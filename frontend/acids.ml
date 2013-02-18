@@ -53,8 +53,6 @@ and 'a clock_exp_pword =
 and 'a exp =
     {
       e_desc : 'a exp_desc;
-      e_type : ty option;
-      e_clock : 'a clock option;
       e_loc : loc;
       e_info : 'a;
     }
@@ -73,6 +71,14 @@ and 'a e_desc =
   | E_mergepat of 'a exp Acids_misc.tree
   | E_valof of 'a clock_exp
 
+and app =
+  {
+    a_op : op;
+  }
+
+and op =
+| O_node of Names.longname
+
 and 'a block =
     {
       b_decls : 'a var_dec Ident.Env.t;
@@ -89,3 +95,20 @@ and 'a pat =
   | P_ident of Ident.t
   | P_tuple of 'a pat list
   | P_split of ('a pat, 'a exp) Acid_misc.tree
+
+type 'a node =
+  {
+    n_name : Names.longname;
+    n_inputs : 'a var_dec list;
+    n_body : 'a exp;
+    n_env : 'a node Names.Env.t;
+    n_info : 'a;
+  }
+
+type 'a file =
+  {
+    f_name : Names.modname;
+    f_imports : Names.modname list;
+    f_initial_env : 'a node Names.Env.t;
+    f_nodes : 'a node list;
+  }

@@ -50,6 +50,10 @@ and 'a clock_exp_pword =
       ep_period : ('a exp, 'a exp) Acids_misc.tree;
     }
 
+and 'a clock_annot =
+| Ca_var of Acids_misc.Ca_var.t
+| Ca_on of 'a clock_annot * 'a clock_exp
+
 and 'a exp =
     {
       e_desc : 'a exp_desc;
@@ -71,6 +75,8 @@ and 'a e_desc =
   | E_mergepat of 'a exp Acids_misc.tree
   | E_valof of 'a clock_exp
 
+  | E_clockannot of 'a exp * 'a clock_annot
+
 and app =
   {
     a_op : op;
@@ -78,6 +84,7 @@ and app =
 
 and op =
 | O_node of Names.longname
+
 
 and 'a block =
     {

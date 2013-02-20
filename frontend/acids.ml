@@ -15,12 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type 'a var_dec =
-    {
-      v_ident : Ident.t;
-      v_info : 'a;
-      v_loc : Loc.t;
-    }
+type pat_syn = bool
 
 type 'a clock_exp =
     {
@@ -36,37 +31,42 @@ and 'a clock_exp_desc =
   | Ce_iter of 'a clock_exp
 
 and 'a clock_exp_pword =
-    {
-      ep_prefix : ('a exp, 'a exp) Ast_misc.power_tree;
-      ep_period : ('a exp, 'a exp) Ast_misc.power_tree;
-    }
+  {
+    ep_prefix : ('a exp, 'a exp) Ast_misc.power_tree;
+    ep_period : ('a exp, 'a exp) Ast_misc.power_tree;
+  }
 
 and 'a clock_annot =
-| Ca_var of Ast_misc.Ca_var.t
-| Ca_on of 'a clock_annot * 'a clock_exp
+  | Ca_var of int
+  | Ca_on of 'a clock_annot * 'a clock_exp
 
 and 'a exp =
-    {
-      e_desc : 'a exp_desc;
-      e_loc : loc;
-      e_info : 'a;
-    }
+  {
+    e_desc : 'a exp_desc;
+    e_loc : Loc.t;
+    e_info : 'a;
+  }
 
-and 'a e_desc =
+and 'a exp_desc =
   | E_var of Ident.t
+  | E_const of Ast_misc.const
+
+  | E_fst of 'a exp
+  | E_snd of 'a exp
   | E_tuple of 'a exp list
 
-  | E_app of app * 'a exp list
+  | E_app of 'a app * 'a exp list
   | E_where of 'a exp * 'a block
 
   | E_when of 'a exp * 'a clock_exp
   | E_split of 'a clock_exp * 'a exp list
-  | E_merge of 'a clock_exp * 'a exp list
+  | E_merge of 'a clock_exp * 'a exp list * pat_syn
 
-  | E_mergepat of 'a exp Ast_misc.power_tree
   | E_valof of 'a clock_exp
 
   | E_clockannot of 'a exp * 'a clock_annot
+
+  | E_clockdom of 'a exp * 'a domain
 
 and 'a app =
   {
@@ -76,28 +76,36 @@ and 'a app =
 
 and op =
   | O_node of Names.longname
+  | O_fst | O_snd
 
 and 'a block =
-    {
-      b_decls : 'a var_dec Ident.Env.t;
-      b_body : 'a eq list;
-    }
+  {
+    b_decls : 'a Ast_misc.var_dec Ident.Env.t;
+    b_body : 'a eq list;
+  }
 
-4and 'a eq =
-    {
-      eq_rhs : 'a pat;
-      eq_lhs : 'a exp;
-    }
+and 'a eq =
+  {
+    eq_rhs : 'a pat;
+    eq_lhs : 'a exp;
+  }
 
 and 'a pat =
   | P_ident of Ident.t
   | P_tuple of 'a pat list
-  | P_split of ('a pat, 'a exp) Acid_misc.power_tree
+  | P_split of ('a pat, 'a exp) Ast_misc.power_tree
+
+and 'a domain =
+  {
+    d_base_clock : 'a clock_annot;
+    d_slack : int option;
+    d_par : bool;
+  }
 
 type 'a node =
   {
     n_name : Names.longname;
-    n_inputs : 'a var_dec list;
+    n_inputs : 'a Ast_misc.var_dec list;
     n_body : 'a exp;
     n_env : 'a node Names.Env.t;
     n_info : 'a;

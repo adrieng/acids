@@ -15,7 +15,43 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type 'a var_dec =
+    {
+      v_ident : Ident.t;
+      v_info : 'a;
+      v_loc : Loc.t;
+    }
+
+type const =
+  | Cbool of bool
+  | Cint of Int.t
+  | Cfloat of float
+
 type ('a, 'b) power_tree =
   | Leaf of 'a
-  | Concat of ('a, 'b) tree list
-  | Power of ('a, 'b) tree * 'b
+  | Concat of ('a, 'b) power_tree list
+  | Power of ('a, 'b) power_tree * 'b
+
+module MakeVar =
+  functor
+    (S :
+      sig
+        type ('a, 'b) t
+        val print :
+          (Format.formatter -> 'a -> unit) ->
+          Format.formatter ->
+          ('a, 'b) t ->
+          unit
+      end) ->
+struct
+  type 'b t =
+    {
+      v_id : int;
+      mutable v_link : ('b t, 'b) S.t;
+    }
+
+  let rec print_var fmt (v : 'b t) =
+    Format.fprintf fmt "%a%d"
+      (S.print print_var) v.v_link
+      v.v_id
+end

@@ -15,8 +15,12 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type ('a, 'b) tree =
-  | Leaf of 'a
-  | Concat of ('a, 'b) tree list
-  | Power of ('a, 'b) tree * 'b
 
+type 'a clock_type =
+  | Ct_var of Acids_misc.Ct_var.t
+  | Ct_tuple of 'a clock_type list
+  | Ct_stream_type of 'a stream_type
+
+and 'a stream_type =
+  | St_var of Acids_misc.St_var.t
+  | St_on of 'a stream_type * 'a clock_exp

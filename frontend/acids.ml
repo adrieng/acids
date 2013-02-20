@@ -22,16 +22,7 @@ type 'a var_dec =
       v_loc : Loc.t;
     }
 
-type 'a clock_type =
-  | Ct_var of Acids_misc.Ct_var.t
-  | Ct_tuple of 'a clock_type list
-  | Ct_stream_type of 'a stream_type
-
-and 'a stream_type =
-  | St_var of Acids_misc.St_var.t
-  | St_on of 'a stream_type * 'a clock_exp
-
-and 'a clock_exp =
+type 'a clock_exp =
     {
       ce_desc : 'a clock_exp_desc;
       ce_loc : Loc.t;
@@ -46,12 +37,12 @@ and 'a clock_exp_desc =
 
 and 'a clock_exp_pword =
     {
-      ep_prefix : ('a exp, 'a exp) Acids_misc.tree;
-      ep_period : ('a exp, 'a exp) Acids_misc.tree;
+      ep_prefix : ('a exp, 'a exp) Ast_misc.power_tree;
+      ep_period : ('a exp, 'a exp) Ast_misc.power_tree;
     }
 
 and 'a clock_annot =
-| Ca_var of Acids_misc.Ca_var.t
+| Ca_var of Ast_misc.Ca_var.t
 | Ca_on of 'a clock_annot * 'a clock_exp
 
 and 'a exp =
@@ -72,19 +63,19 @@ and 'a e_desc =
   | E_split of 'a clock_exp * 'a exp list
   | E_merge of 'a clock_exp * 'a exp list
 
-  | E_mergepat of 'a exp Acids_misc.tree
+  | E_mergepat of 'a exp Ast_misc.power_tree
   | E_valof of 'a clock_exp
 
   | E_clockannot of 'a exp * 'a clock_annot
 
-and app =
+and 'a app =
   {
     a_op : op;
+    a_info : 'a;
   }
 
 and op =
-| O_node of Names.longname
-
+  | O_node of Names.longname
 
 and 'a block =
     {
@@ -92,7 +83,7 @@ and 'a block =
       b_body : 'a eq list;
     }
 
-and 'a eq =
+4and 'a eq =
     {
       eq_rhs : 'a pat;
       eq_lhs : 'a exp;
@@ -101,7 +92,7 @@ and 'a eq =
 and 'a pat =
   | P_ident of Ident.t
   | P_tuple of 'a pat list
-  | P_split of ('a pat, 'a exp) Acid_misc.tree
+  | P_split of ('a pat, 'a exp) Acid_misc.power_tree
 
 type 'a node =
   {

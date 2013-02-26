@@ -15,106 +15,141 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type pat_syn = bool
+module type S =
+sig
+  type var
 
-type 'a clock_exp =
-    {
-      ce_desc : 'a clock_exp_desc;
-      ce_loc : Loc.t;
-      ce_info : 'a;
-    }
+  val print_var : Format.formatter -> var -> unit
 
-and 'a clock_exp_desc =
-  | Ce_var of Ident.t
-  | Ce_pword of 'a clock_exp_pword
-  | Ce_equal of 'a clock_exp * 'a exp
-  | Ce_iter of 'a clock_exp
+  type clock_exp_info
 
-and 'a clock_exp_pword =
+  val print_clock_exp_info : Format.formatter -> clock_exp_info -> unit
+
+  type exp_info
+
+  val print_exp_info : Format.formatter -> exp_info -> unit
+
+  type app_info
+
+  val print_app_info : Format.formatter -> app_info -> unit
+
+  type block_info
+
+  val print_block_info : Format.formatter -> block_info -> unit
+
+  type eq_info
+
+  val print_eq_info : Format.formatter -> eq_info -> unit
+
+  type node_info
+
+  val print_node_info : Format.formatter -> node_info -> unit
+end
+
+module Make = functor (S : S) ->
+struct
+  type pat_syn = bool
+
+  type clock_exp =
+      {
+        ce_desc : clock_exp_desc;
+        ce_loc : Loc.t;
+        ce_info : S.clock_exp_info;
+      }
+
+  and clock_exp_desc =
+    | Ce_var of Ident.t
+    | Ce_pword of clock_exp_pword
+    | Ce_equal of clock_exp * exp
+    | Ce_iter of clock_exp
+
+  and clock_exp_pword =
   {
-    ep_prefix : ('a exp, 'a exp) Ast_misc.power_tree;
-    ep_period : ('a exp, 'a exp) Ast_misc.power_tree;
+    ep_prefix : (exp, exp) Ast_misc.power_tree;
+    ep_period : (exp, exp) Ast_misc.power_tree;
   }
 
-and 'a clock_annot =
-  | Ca_var of int
-  | Ca_on of 'a clock_annot * 'a clock_exp
+  and clock_annot =
+    | Ca_var of int
+    | Ca_on of clock_annot * clock_exp
 
-and 'a exp =
-  {
-    e_desc : 'a exp_desc;
-    e_loc : Loc.t;
-    e_info : 'a;
-  }
+  and exp =
+      {
+        e_desc : exp_desc;
+        e_loc : Loc.t;
+        e_info : S.exp_info;
+      }
 
-and 'a exp_desc =
-  | E_var of Ident.t
-  | E_const of Ast_misc.const
+  and exp_desc =
+    | E_var of S.var
+    | E_const of Ast_misc.const
 
-  | E_fst of 'a exp
-  | E_snd of 'a exp
-  | E_tuple of 'a exp list
+    | E_fst of exp
+    | E_snd of exp
+    | E_tuple of exp list
 
-  | E_app of 'a app * 'a exp list
-  | E_where of 'a exp * 'a block
+    | E_app of app * exp list
+    | E_where of exp * block
 
-  | E_when of 'a exp * 'a clock_exp
-  | E_split of 'a clock_exp * 'a exp list
-  | E_merge of 'a clock_exp * 'a exp list * pat_syn
+    | E_when of exp * clock_exp
+    | E_split of clock_exp * exp list
+    | E_merge of clock_exp * exp list * pat_syn
 
-  | E_valof of 'a clock_exp
+    | E_valof of clock_exp
 
-  | E_clockannot of 'a exp * 'a clock_annot
+    | E_clockannot of exp * clock_annot
 
-  | E_clockdom of 'a exp * 'a domain
+    | E_clockdom of exp * domain
 
-and 'a app =
-  {
-    a_op : op;
-    a_info : 'a;
-  }
+  and app =
+      {
+        a_op : op;
+        a_info : S.app_info;
+      }
 
-and op =
-  | O_node of Names.longname
-  | O_fst | O_snd
+  and op =
+    | O_node of Names.longname
 
-and 'a block =
-  {
-    b_decls : 'a Ast_misc.var_dec Ident.Env.t;
-    b_body : 'a eq list;
-  }
+  and block =
+      {
+        b_body : eq list;
+        b_info : S.block_info;
+      }
 
-and 'a eq =
-  {
-    eq_rhs : 'a pat;
-    eq_lhs : 'a exp;
-  }
+  and eq =
+      {
+        eq_rhs : pat;
+        eq_lhs : exp;
+        eq_info : S.eq_info;
+      }
 
-and 'a pat =
-  | P_ident of Ident.t
-  | P_tuple of 'a pat list
-  | P_split of ('a pat, 'a exp) Ast_misc.power_tree
+  and pat =
+    | P_var of S.var
+    | P_tuple of pat list
+    | P_clock_annot of pat * clock_annot
+    | P_split of (pat, exp) Ast_misc.power_tree
 
-and 'a domain =
-  {
-    d_base_clock : 'a clock_annot;
-    d_slack : int option;
-    d_par : bool;
-  }
+  and domain =
+      {
+        d_base_clock : clock_annot;
+        d_slack : int option;
+        d_par : bool;
+      }
 
-type 'a node =
-  {
-    n_name : Names.longname;
-    n_inputs : 'a Ast_misc.var_dec list;
-    n_body : 'a exp;
-    n_env : 'a node Names.Env.t;
-    n_info : 'a;
-  }
+  type node =
+      {
+        n_name : Names.longname;
+        n_input : pat;
+        n_body : exp;
+        n_env : node Names.Env.t;
+        n_info : S.node_info;
+      }
 
-type 'a file =
-  {
-    f_name : Names.modname;
-    f_imports : Names.modname list;
-    f_initial_env : 'a node Names.Env.t;
-    f_nodes : 'a node list;
-  }
+  type file =
+      {
+        f_name : Names.modname;
+        f_imports : Names.modname list;
+        f_initial_env : node Names.Env.t;
+        f_nodes : node list;
+      }
+end

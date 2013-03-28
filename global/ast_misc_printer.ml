@@ -16,4 +16,3 @@
  *)
 
 let print_var_dec print_info fmt vd =
-

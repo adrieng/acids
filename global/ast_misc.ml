@@ -55,3 +55,19 @@ struct
       (Utils.print_opt (S.print print_var)) v.v_link
       v.v_id
 end
+
+let print_const fmt c =
+  match c with
+  | Cbool b -> Format.fprintf fmt "%b" b
+  | Cint i -> Format.fprintf fmt "%nd" i
+  | Cfloat f -> Format.fprintf fmt "%f" f
+
+let rec print_power_tree print_a print_b fmt tr =
+  match tr with
+  | Leaf a -> print_a fmt a
+  | Concat tr_l ->
+    Utils.print_list_r (print_power_tree print_a print_b) "" fmt tr_l
+  | Power (tr, pw) ->
+    Format.fprintf fmt "%a^%a"
+      (print_power_tree print_a print_b) tr
+      print_b pw

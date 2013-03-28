@@ -37,6 +37,10 @@ sig
 
   val print_block_info : Format.formatter -> block_info -> unit
 
+  type pat_info
+
+  val print_pat_info : Format.formatter -> pat_info -> unit
+
   type eq_info
 
   val print_eq_info : Format.formatter -> eq_info -> unit
@@ -58,7 +62,7 @@ struct
       }
 
   and clock_exp_desc =
-    | Ce_var of Ident.t
+    | Ce_var of S.var
     | Ce_pword of clock_exp_pword
     | Ce_equal of clock_exp * exp
     | Ce_iter of clock_exp
@@ -92,7 +96,7 @@ struct
     | E_where of exp * block
 
     | E_when of exp * clock_exp
-    | E_split of clock_exp * exp list
+    | E_split of clock_exp * exp
     | E_merge of clock_exp * exp list * pat_syn
 
     | E_valof of clock_exp
@@ -118,12 +122,18 @@ struct
 
   and eq =
       {
-        eq_rhs : pat;
-        eq_lhs : exp;
+        eq_lhs : pat;
+        eq_rhs : exp;
         eq_info : S.eq_info;
       }
 
   and pat =
+      {
+        p_desc : pat_desc;
+        p_info : S.pat_info;
+      }
+
+  and pat_desc =
     | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
@@ -131,8 +141,7 @@ struct
 
   and domain =
       {
-        d_base_clock : clock_annot;
-        d_slack : int option;
+        d_base_clock : clock_annot option;
         d_par : bool;
       }
 

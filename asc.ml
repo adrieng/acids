@@ -16,6 +16,7 @@
  *)
 
 open Acids
+open Acids_printer
 
 let _ =
   ()

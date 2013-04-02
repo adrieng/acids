@@ -67,7 +67,7 @@ struct
       Format.fprintf fmt "@[split %a@ %a@]"
         print_clock_exp ce
         print_exp e
-    | E_merge (ce, e_l, _) ->
+    | E_merge (ce, e_l) ->
       Format.fprintf fmt "@[merge@ %a (@[%a@])@]"
         print_clock_exp ce
         (Utils.print_list_r print_exp "") e_l

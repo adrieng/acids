@@ -52,8 +52,6 @@ end
 
 module Make = functor (S : S) ->
 struct
-  type pat_syn = bool
-
   type clock_exp =
       {
         ce_desc : clock_exp_desc;
@@ -97,7 +95,7 @@ struct
 
     | E_when of exp * clock_exp
     | E_split of clock_exp * exp
-    | E_merge of clock_exp * exp list * pat_syn
+    | E_merge of clock_exp * exp list
 
     | E_valof of clock_exp
 

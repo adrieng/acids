@@ -22,31 +22,24 @@ sig
   val print_var : Format.formatter -> var -> unit
 
   type clock_exp_info
-
   val print_clock_exp_info : Format.formatter -> clock_exp_info -> unit
 
   type exp_info
-
   val print_exp_info : Format.formatter -> exp_info -> unit
 
   type app_info
-
   val print_app_info : Format.formatter -> app_info -> unit
 
   type block_info
-
   val print_block_info : Format.formatter -> block_info -> unit
 
   type pat_info
-
   val print_pat_info : Format.formatter -> pat_info -> unit
 
   type eq_info
-
   val print_eq_info : Format.formatter -> eq_info -> unit
 
   type node_info
-
   val print_node_info : Format.formatter -> node_info -> unit
 end
 

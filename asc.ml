@@ -17,6 +17,68 @@
 
 open Acids
 open Acids_printer
+open Pass_manager
+
+(*****************************************************************************)
+(* Error handling *)
+
+let error_is_internal exn =
+  match exn with
+  | Parsing_pass.Could_not_open filen
+    -> false
+  | _
+    -> true
+
+let print_error _ fmt exn =
+  match exn with
+  | Parsing_pass.Could_not_open filen ->
+    Format.fprintf fmt "Cannot find file %s" filen
+  | exn ->
+    Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
+
+(*****************************************************************************)
+(* Compilation flow *)
+
+let flow =
+  let open Pass_manager in
+  Parsing_pass.parse
+
+(*****************************************************************************)
+(* File handling *)
+
+let handle_file filen =
+  let ctx =
+    Pass_manager.make_ctx
+      ~serialize_transforms:!Compiler_options.serialize_transforms
+      ~stop_after:!Compiler_options.stop_after
+      ~current_file:filen
+      ~error_is_internal:error_is_internal
+      ~print_error:print_error
+      ()
+  in
+
+  let ctx =
+    let add_attr ctx (attr, def, _) =
+      Pass_manager.ctx_set_attr
+        ctx
+        (attr, !(Compiler_options.ref_of_ctx_option def))
+    in
+    List.fold_left add_attr ctx Compiler_options.ctx_options
+  in
+
+  let b = Pass_manager.eval_to_completion flow ctx filen in
+  exit (if b then 0 else 1)
+
+let files = ref []
 
 let _ =
-  ()
+  try
+    Arg.parse
+      Compiler_options.options
+      (fun s -> files := s :: !files)
+      Compiler_options.usage;
+    files := List.rev !files;
+    List.iter handle_file !files
+  with Compiler.Internal_error reason ->
+    Format.eprintf "Internal error: %s@." reason;
+    exit 2

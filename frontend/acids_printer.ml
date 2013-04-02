@@ -15,7 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Print = functor (S : Acids.S) ->
+module Make = functor (S : Acids.S) ->
 struct
   module Acids = Acids.Make(S)
   open Acids

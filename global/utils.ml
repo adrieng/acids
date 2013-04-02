@@ -250,6 +250,9 @@ let add_overflow x y =
            y)
         y)) >= 0n
 
+let make_imperative_var init =
+  let r = ref init in
+  (fun () -> !r), (fun s -> r := s)
 
 module Make = ((functor (S : Map.OrderedType) ->
 struct

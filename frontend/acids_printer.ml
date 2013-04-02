@@ -126,4 +126,17 @@ struct
       (if dom.d_par then "par" else "")
       print_exp e
       (Utils.print_opt print_base_clock) dom.d_base_clock
+
+  let print_node fmt nd =
+    Format.fprintf fmt "@[let node@ %a@ %a=@ %a@]"
+      Names.print_longname_short nd.n_name
+      print_pat nd.n_input
+      print_exp nd.n_body
+
+  let print_file fmt file =
+    let print_import fmt modn =
+      Format.fprintf fmt "open %a" Names.print_modname modn
+    in
+    Utils.print_list_eol print_import fmt file.f_imports;
+    Utils.print_list_eol print_node fmt file.f_nodes
 end

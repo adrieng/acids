@@ -50,5 +50,8 @@ clean:
 %.cmxa:
 	ocamlbuild ${OCAMLBUILDOPTS} $@
 
+%.inferred.mli:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
 .FORCE:
 asc.native asc.byte: .FORCE

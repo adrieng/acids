@@ -36,6 +36,7 @@
 
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
+let int = digit+
 let exponent = ('e' | 'E') ('+' | '-')? digit+
 let float = digit+ '.' digit* exponent?
           | digit* '.'digit+ exponent?
@@ -50,7 +51,14 @@ rule token = parse
 | "(" { LPAREN }
 | ")" { RPAREN }
 | "^" { CARET }
+| "{" { LBRACE }
+| "}" { RBRACE }
 | "=" { EQUAL }
+
+| "true" { BOOL true }
+| "false" { BOOL false }
+| int as i { INT (Int.of_string i) }
+| float as f { FLOAT (float_of_string f) }
 
 | "valof" { VALOF }
 | "let" { LET }

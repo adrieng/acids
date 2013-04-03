@@ -28,8 +28,8 @@ struct
     | Ce_var v -> S.print_var fmt v
     | Ce_pword
         {
-          ep_prefix = ue;
-          ep_period = ve;
+          cep_prefix = ue;
+          cep_period = ve;
         } ->
       Format.fprintf fmt "%a(%a)"
         (Ast_misc.print_power_tree print_exp print_exp) ue

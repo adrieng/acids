@@ -15,10 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Acids
-open Acids_printer
-open Pass_manager
-
 (*****************************************************************************)
 (* Error handling *)
 
@@ -50,7 +46,6 @@ let print_error _ fmt exn =
 (* Compilation flow *)
 
 let flow =
-  let open Pass_manager in
   Parsing_pass.parse
 
 (*****************************************************************************)

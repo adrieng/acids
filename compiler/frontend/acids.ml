@@ -59,8 +59,8 @@ struct
 
   and clock_exp_pword =
   {
-    ep_prefix : (exp, exp) Ast_misc.power_tree;
-    ep_period : (exp, exp) Ast_misc.power_tree;
+    cep_prefix : (exp, exp) Ast_misc.power_tree;
+    cep_period : (exp, exp) Ast_misc.power_tree;
   }
 
   and clock_annot =
@@ -141,6 +141,7 @@ struct
         n_name : Names.longname;
         n_input : pat;
         n_body : exp;
+        n_pragma : Pragma.t option;
         n_loc : Loc.t;
         n_env : node Names.Env.t;
         n_info : S.node_info;

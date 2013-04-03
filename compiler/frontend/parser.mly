@@ -16,6 +16,22 @@
  */
 
 %{
+  let ptree_concat x y =
+    let to_list t = match t with | Ast_misc.Concat l -> l | _ -> [t] in
+    to_list x @ to_list y
+
+ let make_concat l =
+   match l with
+   | [] -> invalid_arg "make_concat: empty list"
+   | [x] -> x
+   | _ :: _ -> Ast_misc.Concat l
+
+  let make_ce_pword (u, v) =
+    {
+      Acids_parsetree.cep_prefix = u;
+      Acids_parsetree.cep_period = v;
+    }
+
   let make_located make (x, loc) = make x loc
 
   let make_clock_exp ced loc =
@@ -39,11 +55,12 @@
      Acids_parsetree.p_info = ();
    }
 
- let make_node (n, p, e) loc =
+ let make_node (n, p, e, pr) loc =
    {
      Acids_parsetree.n_name = n;
      Acids_parsetree.n_input = p;
      Acids_parsetree.n_body = e;
+     Acids_parsetree.n_pragma = pr;
      Acids_parsetree.n_loc = loc;
      Acids_parsetree.n_env = Names.Env.empty;
      Acids_parsetree.n_info = ();
@@ -63,7 +80,7 @@
 
 /* Punctuation */
 
-%token LPAREN RPAREN CARET
+%token LPAREN RPAREN CARET LBRACE RBRACE
 %token EQUAL
 
 /* Keywords */
@@ -75,11 +92,21 @@
 %token<string> IDENT
 %token<string> UIDENT
 
-/* MISC */
+%token<bool> BOOL
+%token<Int.t> INT
+%token<float> FLOAT
+
+/* Misc */
 
 %token BEGIN_PRAGMA END_PRAGMA
 
 %token EOF
+
+/* Disambiguation tokens */
+
+/* Precedence and associativity */
+
+/* Start of the grammar */
 
 %start file
 %type<Acids_parsetree.file> file
@@ -92,26 +119,38 @@ with_loc(X):
 paren(X):
 | LPAREN x = X RPAREN { x }
 
-ptree(X, Y):
+simple_ptree(X, Y):
 | X { Ast_misc.Leaf $1 }
-| list(ptree(X, Y)) { Ast_misc.Concat $1 }
-| X CARET Y { Ast_misc.Power ($1, $3) }
+| simple_ptree(X, Y) CARET Y { Ast_misc.Power ($1, $3) }
+| LBRACE ptree(X, Y) RBRACE { $2 }
+
+ptree(X, Y):
+| nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
 
 upword(X, Y):
-| u = list(ptree(X, Y)) LPAREN v = nonempty_list(ptree(X, Y)) RPAREN { (u, v) }
+| LPAREN v = ptree(X, Y) RPAREN { (Ast_misc.Concat [], v) }
+| u = ptree(X, Y) LPAREN v = ptree(X, Y) RPAREN { (u, v) }
 
 nodename:
 | UIDENT { Initial.make_longname $1 }
 
 //////////////////////////////////////////////////////////////////
 
+const:
+| BOOL { Ast_misc.Cbool $1 }
+| INT { Ast_misc.Cint $1 }
+| FLOAT { Ast_misc.Cfloat $1 }
+
 clock_exp_desc:
 | IDENT { Acids_parsetree.Ce_var $1 }
+| upword(exp, exp) { Acids_parsetree.Ce_pword (make_ce_pword $1) }
 
 clock_exp:
 | with_loc(clock_exp_desc) { make_located make_clock_exp $1 }
 
 exp_desc:
+| const { Acids_parsetree.E_const $1 }
+| IDENT { Acids_parsetree.E_var $1 }
 | VALOF clock_exp { Acids_parsetree.E_valof $2 }
 
 exp:
@@ -123,8 +162,12 @@ pat_desc:
 pat:
 | with_loc(pat_desc) { make_located make_pat $1 }
 
+pragma:
+| { None }
+| BEGIN_PRAGMA END_PRAGMA { Some () }
+
 node_desc:
-| LET NODE n = nodename p = pat EQUAL e = exp { (n, p, e) }
+| pr = pragma LET NODE n = nodename p = pat EQUAL e = exp { (n, p, e, pr) }
 
 node:
 | with_loc(node_desc) { make_located make_node $1 }

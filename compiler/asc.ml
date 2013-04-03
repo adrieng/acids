@@ -24,15 +24,25 @@ open Pass_manager
 
 let error_is_internal exn =
   match exn with
-  | Parsing_pass.Could_not_open filen
-    -> false
+  | Parsing_pass.Could_not_open _
+  | Lexer.Lexical_error _
+  | Parser_utils.Parse_error _
+    ->
+    false
   | _
-    -> true
+    ->
+    true
 
 let print_error _ fmt exn =
   match exn with
   | Parsing_pass.Could_not_open filen ->
     Format.fprintf fmt "Cannot find file %s" filen
+  | Lexer.Lexical_error reason ->
+    Loc.report fmt reason;
+    Format.fprintf fmt "Lexical error: %s" (Loc.view reason)
+  | Parser_utils.Parse_error reason ->
+    Loc.print fmt reason;
+    Format.fprintf fmt "Syntax error"
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 

@@ -22,25 +22,25 @@ struct
   type var = string
   let print_var fmt s = Format.fprintf fmt "%s" s
 
-  type clock_exp_info = ()
+  type clock_exp_info = unit
   let print_clock_exp_info = print_no_info
 
-  type exp_info = ()
+  type exp_info = unit
   let print_exp_info = print_no_info
 
-  type app_info = ()
+  type app_info = unit
   let print_app_info = print_no_info
 
-  type block_info = ()
+  type block_info = unit
   let print_block_info = print_no_info
 
-  type pat_info = ()
+  type pat_info = unit
   let print_pat_info = print_no_info
 
-  type eq_info = ()
+  type eq_info = unit
   let print_eq_info = print_no_info
 
-  type node_info = ()
+  type node_info = unit
   let print_node_info = print_no_info
 end
 

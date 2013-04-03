@@ -18,7 +18,6 @@
 module type S =
 sig
   type var
-
   val print_var : Format.formatter -> var -> unit
 
   type clock_exp_info
@@ -121,6 +120,7 @@ struct
   and pat =
       {
         p_desc : pat_desc;
+        p_loc : Loc.t;
         p_info : S.pat_info;
       }
 
@@ -141,6 +141,7 @@ struct
         n_name : Names.longname;
         n_input : pat;
         n_body : exp;
+        n_loc : Loc.t;
         n_env : node Names.Env.t;
         n_info : S.node_info;
       }

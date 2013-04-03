@@ -47,6 +47,19 @@ rule token = parse
 | "(*-" { pragma lexbuf }
 | "(*" { comment lexbuf; token lexbuf }
 
+| "(" { LPAREN }
+| ")" { RPAREN }
+| "^" { CARET }
+| "=" { EQUAL }
+
+| "valof" { VALOF }
+| "let" { LET }
+| "node" { NODE }
+| "open" { OPEN }
+
+| lident as s { IDENT s }
+| uident as s { UIDENT s }
+
 | ' '+ { token lexbuf }
 | '\n' { newline lexbuf; token lexbuf }
 

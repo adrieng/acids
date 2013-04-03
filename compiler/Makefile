@@ -20,8 +20,8 @@ OCAMLBUILDOPTS=-j $(NCPU) -use-menhir -use-ocamlfind -classic-display \
 TARGETS= \
 	 asc.byte
 
-.PHONY : clean all toprun test unit_test doc
-.PRECIOUS : %.native %.byte %.top
+.PHONY: clean all toprun test unit_test doc
+.SUFFIX:
 
 all: $(TARGETS)
 	ocamlbuild $(OCAMLBUILDOPTS) $(TARGETS)
@@ -29,7 +29,7 @@ all: $(TARGETS)
 # doc:
 # 	$(MAKE) -C doc
 
-%.conflicts:	%.mly
+%.conflicts: %.mly
 	ocamlbuild $(OCAMLBUILDOPTS) $@
 
 clean:
@@ -49,3 +49,6 @@ clean:
 
 %.cmxa:
 	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+.FORCE:
+asc.native asc.byte: .FORCE

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+PREF=native
+CDIR=`dirname $0`
+
+if [ -f $CDIR/compiler/asc.native ]
+then
+    make -C $CDIR/compiler asc.native > /dev/null
+    C=$CDIR/compiler/asc.native
+else
+    if [ -f $CDIR/compiler/asc.byte ]
+    then
+        make -C $CDIR/compiler asc.byte > /dev/null
+        C=$CDIR/compiler/asc.byte
+    else
+        make -C $CDIR/compiler asc.$PREF > /dev/null
+        C=$CDIR/compiler/asc.$PREF
+    fi
+fi
+
+$C $@

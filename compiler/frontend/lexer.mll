@@ -54,6 +54,7 @@ rule token = parse
 | "{" { LBRACE }
 | "}" { RBRACE }
 | "=" { EQUAL }
+| "," { COMMA }
 
 | "true" { BOOL true }
 | "false" { BOOL false }
@@ -61,9 +62,16 @@ rule token = parse
 | float as f { FLOAT (float_of_string f) }
 
 | "valof" { VALOF }
+| "fst" { FST }
+| "snd" { SND }
+
 | "let" { LET }
 | "node" { NODE }
 | "open" { OPEN }
+
+| "where" { WHERE }
+| "rec" { REC }
+| "and" { AND }
 
 | lident as s { IDENT s }
 | uident as s { UIDENT s }

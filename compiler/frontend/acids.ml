@@ -107,6 +107,7 @@ struct
   and block =
       {
         b_body : eq list;
+        b_loc : Loc.t;
         b_info : S.block_info;
       }
 
@@ -114,6 +115,7 @@ struct
       {
         eq_lhs : pat;
         eq_rhs : exp;
+        eq_loc : Loc.t;
         eq_info : S.eq_info;
       }
 

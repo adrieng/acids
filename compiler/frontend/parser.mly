@@ -16,10 +16,6 @@
  */
 
 %{
-  let ptree_concat x y =
-    let to_list t = match t with | Ast_misc.Concat l -> l | _ -> [t] in
-    to_list x @ to_list y
-
  let make_concat l =
    match l with
    | [] -> invalid_arg "make_concat: empty list"
@@ -55,6 +51,21 @@
      Acids_parsetree.p_info = ();
    }
 
+ let make_eq (p, e) loc =
+   {
+     Acids_parsetree.eq_lhs = p;
+     Acids_parsetree.eq_rhs = e;
+     Acids_parsetree.eq_loc = loc;
+     Acids_parsetree.eq_info = ();
+   }
+
+ let make_block eqs loc =
+   {
+     Acids_parsetree.b_body = eqs;
+     Acids_parsetree.b_loc = loc;
+     Acids_parsetree.b_info = ();
+   }
+
  let make_node (n, p, e, pr) loc =
    {
      Acids_parsetree.n_name = n;
@@ -82,10 +93,11 @@
 
 %token LPAREN RPAREN CARET LBRACE RBRACE
 %token EQUAL
+%token COMMA
 
 /* Keywords */
 
-%token VALOF LET NODE OPEN
+%token VALOF LET NODE OPEN FST SND WHERE REC AND
 
 /* Identifiers and constants */
 
@@ -105,6 +117,9 @@
 /* Disambiguation tokens */
 
 /* Precedence and associativity */
+
+%left WHERE
+%nonassoc FST SND
 
 /* Start of the grammar */
 
@@ -128,8 +143,8 @@ ptree(X, Y):
 | nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
 
 upword(X, Y):
-| LPAREN v = ptree(X, Y) RPAREN { (Ast_misc.Concat [], v) }
-| u = ptree(X, Y) LPAREN v = ptree(X, Y) RPAREN { (u, v) }
+| v = paren(ptree(X, Y)) { (Ast_misc.Concat [], v) }
+| u = ptree(X, Y) v = paren(ptree(X, Y)) { (u, v) }
 
 nodename:
 | UIDENT { Initial.make_longname $1 }
@@ -143,18 +158,49 @@ const:
 
 clock_exp_desc:
 | IDENT { Acids_parsetree.Ce_var $1 }
-| upword(exp, exp) { Acids_parsetree.Ce_pword (make_ce_pword $1) }
+| upword(trivial_exp, trivial_exp)
+    { Acids_parsetree.Ce_pword (make_ce_pword $1) }
 
 clock_exp:
 | with_loc(clock_exp_desc) { make_located make_clock_exp $1 }
 
-exp_desc:
+trivial_exp_desc:
 | const { Acids_parsetree.E_const $1 }
 | IDENT { Acids_parsetree.E_var $1 }
+
+trivial_exp:
+| with_loc(trivial_exp_desc) { make_located make_exp $1 }
+
+simple_exp_desc:
+| const { Acids_parsetree.E_const $1 }
+| IDENT { Acids_parsetree.E_var $1 }
+| paren(exp_desc) { $1 }
+
+simple_exp:
+| with_loc(simple_exp_desc) { make_located make_exp $1 }
+
+exp_desc:
+| trivial_exp_desc { $1 }
+
+| FST exp { Acids_parsetree.E_fst $2 }
+| SND exp { Acids_parsetree.E_snd $2 }
+| paren(separated_list(COMMA, exp)) { Acids_parsetree.E_tuple $1 }
+
+| exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
+
 | VALOF clock_exp { Acids_parsetree.E_valof $2 }
 
 exp:
 | with_loc(exp_desc) { make_located make_exp $1 }
+
+eq_desc:
+| p = pat EQUAL e = exp { (p, e) }
+
+eq:
+| with_loc(eq_desc) { make_located make_eq $1 }
+
+block:
+| with_loc(separated_nonempty_list(AND, eq)) { make_located make_block $1 }
 
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }

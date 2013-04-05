@@ -118,9 +118,6 @@
 
 /* Precedence and associativity */
 
-%left WHERE
-%nonassoc FST SND
-
 /* Start of the grammar */
 
 %start file
@@ -180,13 +177,14 @@ simple_exp:
 | with_loc(simple_exp_desc) { make_located make_exp $1 }
 
 exp_desc:
-| trivial_exp_desc { $1 }
+| simple_exp_desc { $1 }
 
 | FST exp { Acids_parsetree.E_fst $2 }
 | SND exp { Acids_parsetree.E_snd $2 }
-| paren(separated_list(COMMA, exp)) { Acids_parsetree.E_tuple $1 }
+| e = simple_exp COMMA t = separated_nonempty_list(COMMA, simple_exp)
+          { Acids_parsetree.E_tuple (e :: t) }
 
-| exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
+| simple_exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
 
 | VALOF clock_exp { Acids_parsetree.E_valof $2 }
 

@@ -130,7 +130,13 @@ struct
     | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
-    | P_split of (pat, exp) Ast_misc.power_tree
+    | P_split of pat_split
+
+  and pat_split =
+    {
+      ps_prefix : (pat, exp) Ast_misc.power_tree;
+      ps_period : (pat, exp) Ast_misc.power_tree;
+    }
 
   and domain =
       {

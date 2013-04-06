@@ -107,8 +107,9 @@ struct
         print_pat p
         print_clock_annot ck
     | P_split p_t ->
-      Format.fprintf fmt "<%a>"
-        (Ast_misc.print_power_tree print_pat print_exp) p_t
+      Format.fprintf fmt "%a(%a)"
+        (Ast_misc.print_power_tree print_pat print_exp) p_t.ps_prefix
+        (Ast_misc.print_power_tree print_pat print_exp) p_t.ps_period
 
   and print_clock_annot fmt ck =
     match ck with

@@ -30,6 +30,12 @@
       Acids_parsetree.cep_period = v;
     }
 
+  let make_pat_split u v =
+    {
+      Acids_parsetree.ps_prefix = u;
+      Acids_parsetree.ps_period = v;
+    }
+
   let make_located make (x, loc) = make x loc
 
   let make_clock_exp ced loc =
@@ -268,9 +274,16 @@ clock_annot:
 pat_tuple:
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
+pat_split:
+| v = paren(ptree(pat, simple_exp))
+          { make_pat_split (Ast_misc.Concat []) v }
+| u = ptree(pat, simple_exp) v = paren(ptree(pat, simple_exp))
+          { make_pat_split u v }
+
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
 | paren(pat_tuple) { Acids_parsetree.P_tuple $1 }
+| paren(pat_split) { Acids_parsetree.P_split $1 }
 | pat DCOLON clock_annot { Acids_parsetree.P_clock_annot ($1, $3) }
 
 pat:

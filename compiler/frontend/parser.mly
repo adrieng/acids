@@ -16,11 +16,13 @@
  */
 
 %{
- let make_concat l =
-   match l with
-   | [] -> invalid_arg "make_concat: empty list"
-   | [x] -> x
-   | _ :: _ -> Ast_misc.Concat l
+  let string_of_op s = "(" ^ s ^ ")"
+
+  let make_concat l =
+    match l with
+    | [] -> invalid_arg "make_concat: empty list"
+    | [x] -> x
+    | _ :: _ -> Ast_misc.Concat l
 
   let make_ce_pword (u, v) =
     {
@@ -37,45 +39,56 @@
       Acids_parsetree.ce_info = ();
     }
 
- let make_exp ed loc =
-   {
-     Acids_parsetree.e_desc = ed;
-     Acids_parsetree.e_loc = loc;
-     Acids_parsetree.e_info = ();
-   }
+  let make_exp ed loc =
+    {
+      Acids_parsetree.e_desc = ed;
+      Acids_parsetree.e_loc = loc;
+      Acids_parsetree.e_info = ();
+    }
 
- let make_pat pd loc =
-   {
-     Acids_parsetree.p_desc = pd;
-     Acids_parsetree.p_loc = loc;
-     Acids_parsetree.p_info = ();
-   }
+  let make_app ln e =
+    let app =
+      {
+        Acids_parsetree.a_op = Acids_parsetree.O_node ln;
+        Acids_parsetree.a_info = ();
+      }
+    in
+    Acids_parsetree.E_app (app, e)
 
- let make_eq (p, e) loc =
-   {
-     Acids_parsetree.eq_lhs = p;
-     Acids_parsetree.eq_rhs = e;
-     Acids_parsetree.eq_loc = loc;
-     Acids_parsetree.eq_info = ();
-   }
+  let make_tuple e_l loc = make_exp (Acids_parsetree.E_tuple e_l) loc
 
- let make_block eqs loc =
-   {
-     Acids_parsetree.b_body = eqs;
-     Acids_parsetree.b_loc = loc;
-     Acids_parsetree.b_info = ();
-   }
+  let make_pat pd loc =
+    {
+      Acids_parsetree.p_desc = pd;
+      Acids_parsetree.p_loc = loc;
+      Acids_parsetree.p_info = ();
+    }
 
- let make_node (n, p, e, pr) loc =
-   {
-     Acids_parsetree.n_name = n;
-     Acids_parsetree.n_input = p;
-     Acids_parsetree.n_body = e;
-     Acids_parsetree.n_pragma = pr;
-     Acids_parsetree.n_loc = loc;
-     Acids_parsetree.n_env = Names.Env.empty;
-     Acids_parsetree.n_info = ();
-   }
+  let make_eq (p, e) loc =
+    {
+      Acids_parsetree.eq_lhs = p;
+      Acids_parsetree.eq_rhs = e;
+      Acids_parsetree.eq_loc = loc;
+      Acids_parsetree.eq_info = ();
+    }
+
+  let make_block eqs loc =
+    {
+      Acids_parsetree.b_body = eqs;
+      Acids_parsetree.b_loc = loc;
+      Acids_parsetree.b_info = ();
+    }
+
+  let make_node (n, p, e, pr) loc =
+    {
+      Acids_parsetree.n_name = n;
+      Acids_parsetree.n_input = p;
+      Acids_parsetree.n_body = e;
+      Acids_parsetree.n_pragma = pr;
+      Acids_parsetree.n_loc = loc;
+      Acids_parsetree.n_env = Names.Env.empty;
+      Acids_parsetree.n_info = ();
+    }
 
   let make_file imports body =
     {
@@ -91,18 +104,20 @@
 
 /* Punctuation */
 
-%token LPAREN RPAREN CARET LBRACE RBRACE
+%token LPAREN RPAREN CARET LBRACE RBRACE LCHEVRON RCHEVRON
 %token EQUAL
 %token COMMA
 
 /* Keywords */
 
-%token VALOF LET NODE OPEN FST SND WHERE REC AND
+%token LET NODE OPEN FST SND WHERE REC AND DOT
+%token WHEN SPLIT MERGE
 
 /* Identifiers and constants */
 
 %token<string> IDENT
 %token<string> UIDENT
+%token<string> OP
 
 %token<bool> BOOL
 %token<Int.t> INT
@@ -131,6 +146,9 @@ with_loc(X):
 paren(X):
 | LPAREN x = X RPAREN { x }
 
+chevrons(X):
+| LCHEVRON x = X RCHEVRON { x }
+
 simple_ptree(X, Y):
 | X { Ast_misc.Leaf $1 }
 | simple_ptree(X, Y) CARET Y { Ast_misc.Power ($1, $3) }
@@ -143,8 +161,13 @@ upword(X, Y):
 | v = paren(ptree(X, Y)) { (Ast_misc.Concat [], v) }
 | u = ptree(X, Y) v = paren(ptree(X, Y)) { (u, v) }
 
-nodename:
-| UIDENT { Initial.make_longname $1 }
+shortname:
+| IDENT { Initial.make_longname $1 }
+| paren(OP) { Initial.make_longname (string_of_op $1) }
+
+longname:
+| shortname { $1 }
+| modn = UIDENT DOT n = IDENT { Initial.make_longname ~modn n }
 
 //////////////////////////////////////////////////////////////////
 
@@ -161,6 +184,9 @@ clock_exp_desc:
 clock_exp:
 | with_loc(clock_exp_desc) { make_located make_clock_exp $1 }
 
+clock_exp_exp:
+| chevrons(clock_exp) { $1 }
+
 trivial_exp_desc:
 | const { Acids_parsetree.E_const $1 }
 | IDENT { Acids_parsetree.E_var $1 }
@@ -169,36 +195,52 @@ trivial_exp:
 | with_loc(trivial_exp_desc) { make_located make_exp $1 }
 
 simple_exp_desc:
-| const { Acids_parsetree.E_const $1 }
-| IDENT { Acids_parsetree.E_var $1 }
+| trivial_exp_desc { $1 }
+| FST simple_exp { Acids_parsetree.E_fst $2 }
+| SND simple_exp { Acids_parsetree.E_snd $2 }
+| clock_exp_exp { Acids_parsetree.E_valof $1 }
 | paren(exp_desc) { $1 }
 
 simple_exp:
 | with_loc(simple_exp_desc) { make_located make_exp $1 }
 
-exp_desc:
+nowhere_exp_desc:
 | simple_exp_desc { $1 }
 
-| FST exp { Acids_parsetree.E_fst $2 }
-| SND exp { Acids_parsetree.E_snd $2 }
 | e = simple_exp COMMA t = separated_nonempty_list(COMMA, simple_exp)
           { Acids_parsetree.E_tuple (e :: t) }
 
-| simple_exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
+| e1 = simple_exp s = OP e2 = simple_exp
+          { let l = Parser_utils.make_loc $startpos $endpos in
+            make_app (Initial.make_longname s) (make_tuple [e1; e2] l) }
+| longname nowhere_exp { make_app $1 $2 }
 
-| VALOF clock_exp { Acids_parsetree.E_valof $2 }
+| e = simple_exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
+| MERGE ce = clock_exp_exp e_l = nonempty_list(simple_exp)
+          { Acids_parsetree.E_merge (ce, e_l) }
+| SPLIT ce = clock_exp_exp e = simple_exp { Acids_parsetree.E_split (ce, e) }
+
+nowhere_exp:
+| with_loc(nowhere_exp_desc) { make_located make_exp $1 }
+
+exp_desc:
+| nowhere_exp_desc { $1 }
+| simple_exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
 
 exp:
 | with_loc(exp_desc) { make_located make_exp $1 }
 
 eq_desc:
-| p = pat EQUAL e = exp { (p, e) }
+| p = pat EQUAL e = nowhere_exp { (p, e) }
 
 eq:
 | with_loc(eq_desc) { make_located make_eq $1 }
 
+block_desc:
+| separated_nonempty_list(AND, eq) { $1 }
+
 block:
-| with_loc(separated_nonempty_list(AND, eq)) { make_located make_block $1 }
+| with_loc(block_desc) { make_located make_block $1 }
 
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
@@ -211,7 +253,7 @@ pragma:
 | BEGIN_PRAGMA END_PRAGMA { Some () }
 
 node_desc:
-| pr = pragma LET NODE n = nodename p = pat EQUAL e = exp { (n, p, e, pr) }
+| pr = pragma LET NODE n = shortname p = pat EQUAL e = exp { (n, p, e, pr) }
 
 node:
 | with_loc(node_desc) { make_located make_node $1 }

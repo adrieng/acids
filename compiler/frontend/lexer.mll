@@ -44,24 +44,28 @@ let float = digit+ '.' digit* exponent?
 let lident = ['a'-'z'] (alpha | '_' | ''' | digit)*
 let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 
+let op = ['+' '-' '*' '-' '/' '^' '%' '#']+
+
 rule token = parse
 | "(*-" { pragma lexbuf }
-| "(*" { comment lexbuf; token lexbuf }
+| "(*" { comment lexbuf }
 
 | "(" { LPAREN }
 | ")" { RPAREN }
 | "^" { CARET }
 | "{" { LBRACE }
 | "}" { RBRACE }
+| "{" { LCHEVRON }
+| "}" { RCHEVRON }
 | "=" { EQUAL }
 | "," { COMMA }
+| "." { DOT }
 
 | "true" { BOOL true }
 | "false" { BOOL false }
 | int as i { INT (Int.of_string i) }
 | float as f { FLOAT (float_of_string f) }
 
-| "valof" { VALOF }
 | "fst" { FST }
 | "snd" { SND }
 
@@ -73,8 +77,16 @@ rule token = parse
 | "rec" { REC }
 | "and" { AND }
 
+| "when" { WHEN }
+| "merge" { MERGE }
+| "split" { SPLIT }
+
+| "$" { word lexbuf }
+
 | lident as s { IDENT s }
 | uident as s { UIDENT s }
+
+| op as s { OP s }
 
 | ' '+ { token lexbuf }
 | '\n' { newline lexbuf; token lexbuf }
@@ -88,8 +100,14 @@ and pragma = parse
 | "-*)" { END_PRAGMA }
 
 and comment = parse
-| "*)" { () }
+| "*)" { token lexbuf }
 | "(*" { comment lexbuf }
 | '\n' { newline lexbuf; comment lexbuf }
 | _ { comment lexbuf }
 | eof { lexical_error lexbuf "unterminated comment" }
+
+and word = parse
+| ['0'-'9'] as c { INT (Int.of_char c) }
+| '\n' { newline lexbuf; word lexbuf }
+| eof { lexical_error lexbuf "unterminated word" }
+| _ { token lexbuf }

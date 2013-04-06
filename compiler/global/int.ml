@@ -16,3 +16,5 @@
  *)
 
 include Nativeint
+
+let of_char c = of_string (String.make 1 c)

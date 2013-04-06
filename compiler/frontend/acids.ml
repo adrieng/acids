@@ -82,7 +82,7 @@ struct
     | E_snd of exp
     | E_tuple of exp list
 
-    | E_app of app * exp list
+    | E_app of app * exp
     | E_where of exp * block
 
     | E_when of exp * clock_exp

@@ -51,10 +51,10 @@ struct
     | E_tuple e_l ->
       Format.fprintf fmt "(%a)"
         (Utils.print_list_r print_exp ",") e_l
-    | E_app (app, e_l) ->
-      Format.fprintf fmt "%a(%a)"
+    | E_app (app, e) ->
+      Format.fprintf fmt "%a %a"
         print_op app.a_op
-        (Utils.print_list_r print_exp ",") e_l
+        print_exp e
     | E_where (e, bl) ->
       Format.fprintf fmt "@[%a where@ %a@]"
         print_exp e

@@ -93,7 +93,7 @@ struct
 
     | E_clockannot of exp * clock_annot
 
-    | E_clockdom of exp * domain
+    | E_dom of exp * domain
 
   and app =
       {

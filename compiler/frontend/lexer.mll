@@ -60,6 +60,7 @@ rule token = parse
 | "=" { EQUAL }
 | "," { COMMA }
 | "." { DOT }
+| "::" { DCOLON }
 
 | "true" { BOOL true }
 | "false" { BOOL false }
@@ -81,7 +82,15 @@ rule token = parse
 | "merge" { MERGE }
 | "split" { SPLIT }
 
+| "on" { ON }
+| "base" { BASE }
+
+| "dom" { DOM false }
+| "pardom" { DOM true }
+
 | "$" { word lexbuf }
+
+| "'s"(int as i) { STVAR (int_of_string i) }
 
 | lident as s { IDENT s }
 | uident as s { UIDENT s }

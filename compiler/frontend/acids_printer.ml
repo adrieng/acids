@@ -77,8 +77,8 @@ struct
       Format.fprintf fmt "(%a :: %a)"
         print_exp e
         print_clock_annot ck
-    | E_clockdom (e, dom) ->
-      print_clock_dom fmt dom e
+    | E_dom (e, dom) ->
+      print_dom fmt dom e
 
   and print_op fmt op =
     match op with
@@ -118,9 +118,9 @@ struct
         print_clock_annot ck
         print_clock_exp ce
 
-  and print_clock_dom fmt dom e =
+  and print_dom fmt dom e =
     let print_base_clock fmt ck =
-      Format.fprintf fmt "@ by %a" print_clock_annot ck
+      Format.fprintf fmt "@ base %a" print_clock_annot ck
     in
     Format.fprintf fmt "@[%sdom %a%a@]"
       (if dom.d_par then "par" else "")

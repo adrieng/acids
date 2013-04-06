@@ -39,6 +39,15 @@
       Acids_parsetree.ce_info = ();
     }
 
+  let make_domain par base e =
+    let d =
+      {
+        Acids_parsetree.d_base_clock = base;
+        Acids_parsetree.d_par = par;
+      }
+    in
+    Acids_parsetree.E_dom (e, d)
+
   let make_exp ed loc =
     {
       Acids_parsetree.e_desc = ed;
@@ -104,20 +113,23 @@
 
 /* Punctuation */
 
-%token LPAREN RPAREN CARET LBRACE RBRACE LCHEVRON RCHEVRON
-%token EQUAL
-%token COMMA
+%token LPAREN RPAREN CARET LBRACE RBRACE DOT LCHEVRON RCHEVRON
+%token EQUAL COMMA DCOLON
 
 /* Keywords */
 
-%token LET NODE OPEN FST SND WHERE REC AND DOT
+%token LET NODE OPEN FST SND WHERE REC AND
 %token WHEN SPLIT MERGE
+%token ON BASE
+
+%token<bool> DOM                        (* true for parallelism *)
 
 /* Identifiers and constants */
 
 %token<string> IDENT
 %token<string> UIDENT
 %token<string> OP
+%token<int> STVAR
 
 %token<bool> BOOL
 %token<Int.t> INT
@@ -220,15 +232,22 @@ nowhere_exp_desc:
           { Acids_parsetree.E_merge (ce, e_l) }
 | SPLIT ce = clock_exp_exp e = simple_exp { Acids_parsetree.E_split (ce, e) }
 
+| e = simple_exp DCOLON ck = clock_annot
+          { Acids_parsetree.E_clockannot (e, ck) }
+
 nowhere_exp:
 | with_loc(nowhere_exp_desc) { make_located make_exp $1 }
 
 exp_desc:
 | nowhere_exp_desc { $1 }
 | simple_exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
+| par = DOM e = nowhere_exp ba = option(base_annot) { make_domain par ba e }
 
 exp:
 | with_loc(exp_desc) { make_located make_exp $1 }
+
+base_annot:
+| BASE clock_annot { $2 }
 
 eq_desc:
 | p = pat EQUAL e = nowhere_exp { (p, e) }
@@ -242,8 +261,17 @@ block_desc:
 block:
 | with_loc(block_desc) { make_located make_block $1 }
 
+clock_annot:
+| STVAR { Acids_parsetree.Ca_var $1 }
+| clock_annot ON clock_exp { Acids_parsetree.Ca_on ($1, $3) }
+
+pat_tuple:
+| p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
+
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
+| paren(pat_tuple) { Acids_parsetree.P_tuple $1 }
+| pat DCOLON clock_annot { Acids_parsetree.P_clock_annot ($1, $3) }
 
 pat:
 | with_loc(pat_desc) { make_located make_pat $1 }

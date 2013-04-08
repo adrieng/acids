@@ -30,7 +30,7 @@
       Acids_parsetree.cep_period = v;
     }
 
-  let make_pat_split u v =
+  let make_pat_split (u, v) =
     {
       Acids_parsetree.ps_prefix = u;
       Acids_parsetree.ps_period = v;
@@ -163,7 +163,7 @@
 with_loc(X):
  | x = X { x, Parser_utils.make_loc $startpos $endpos }
 
-paren(X):
+parens(X):
 | LPAREN x = X RPAREN { x }
 
 chevrons(X):
@@ -177,13 +177,13 @@ simple_ptree(X, Y):
 ptree(X, Y):
 | nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
 
-upword(X, Y):
-| v = paren(ptree(X, Y)) { (Ast_misc.Concat [], v) }
-| u = ptree(X, Y) v = paren(ptree(X, Y)) { (u, v) }
+upword(X, Y, Z):
+| v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
+| u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
 
 shortname:
 | IDENT { Initial.make_longname $1 }
-| paren(OP) { Initial.make_longname (string_of_op $1) }
+| parens(OP) { Initial.make_longname (string_of_op $1) }
 
 longname:
 | shortname { $1 }
@@ -199,7 +199,7 @@ const:
 
 clock_exp_desc:
 | IDENT { Acids_parsetree.Ce_var $1 }
-| upword(trivial_exp, trivial_exp)
+| upword(trivial_exp, trivial_exp, parens)
     { Acids_parsetree.Ce_pword (make_ce_pword $1) }
 
 clock_exp:
@@ -220,7 +220,7 @@ simple_exp_desc:
 | FST simple_exp { Acids_parsetree.E_fst $2 }
 | SND simple_exp { Acids_parsetree.E_snd $2 }
 | clock_exp_exp { Acids_parsetree.E_valof $1 }
-| paren(exp_desc) { $1 }
+| parens(exp_desc) { $1 }
 
 simple_exp:
 | with_loc(simple_exp_desc) { make_located make_exp $1 }
@@ -278,15 +278,12 @@ pat_tuple:
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
 pat_split:
-| v = chevrons(ptree(pat, simple_exp))
-          { make_pat_split (Ast_misc.Concat []) v }
-| u = ptree(pat, simple_exp) v = chevrons(ptree(pat, simple_exp))
-          { make_pat_split u v }
+| upword(pat, simple_exp, chevrons) { make_pat_split $1 }
 
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
-| paren(pat_tuple) { Acids_parsetree.P_tuple $1 }
-| LPAREN ps = pat_split RPAREN { Acids_parsetree.P_split ps }
+| parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
+| ps = parens(pat_split) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
           { Acids_parsetree.P_clock_annot (p, ck) }
 

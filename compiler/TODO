@@ -1,2 +1,0 @@
-- Better pretty-printing of words: use the wb prefix when needed
-- Factor out common cases in the grammar (ultimately periodic words of ptree)

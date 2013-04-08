@@ -1,1 +1,2 @@
 <**/*.ml> or <**/*.mli> or <**/*.byte> or <**/*.native>: package(menhirLib), use_unix, annot, debug, use_str
+<frontend/parser.ml>: parser

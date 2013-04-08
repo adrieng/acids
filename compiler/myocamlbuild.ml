@@ -23,6 +23,12 @@ let df = function
       ["ocaml"; "compile" ]
       (S[A "-w"; A "Ae"; A "-warn-error"; A "PUF"; A "-w"; A "-9"]);
 
+    (* Menhir generates a useless rec flag, disable warning for this file
+       (I'm unhappy about this). *)
+    flag
+      ["ocaml"; "compile"; "parser" ]
+      (S[A "-w"; A "-39"]);
+
   | _ -> ()
 
 let _ = dispatch df

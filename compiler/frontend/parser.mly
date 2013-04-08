@@ -94,12 +94,13 @@
       Acids_parsetree.b_info = ();
     }
 
-  let make_node (n, p, e, pr) loc =
+  let make_node (s, n, p, e, pr) loc =
     {
       Acids_parsetree.n_name = n;
       Acids_parsetree.n_input = p;
       Acids_parsetree.n_body = e;
       Acids_parsetree.n_pragma = pr;
+      Acids_parsetree.n_static = s;
       Acids_parsetree.n_loc = loc;
       Acids_parsetree.n_env = Names.Env.empty;
       Acids_parsetree.n_info = ();
@@ -124,7 +125,7 @@
 
 /* Keywords */
 
-%token LET NODE OPEN FST SND WHERE REC AND
+%token LET NODE STATIC OPEN FST SND WHERE REC AND
 %token WHEN SPLIT MERGE
 %token ON BASE
 
@@ -296,8 +297,13 @@ pragma:
 | { None }
 | BEGIN_PRAGMA END_PRAGMA { Some () }
 
+static:
+| { false }
+| STATIC { true }
+
 node_desc:
-| pr = pragma LET NODE n = shortname p = pat EQUAL e = exp { (n, p, e, pr) }
+| pr = pragma LET NODE s = static n = shortname p = pat EQUAL e = exp
+          { (s, n, p, e, pr) }
 
 node:
 | with_loc(node_desc) { make_located make_node $1 }

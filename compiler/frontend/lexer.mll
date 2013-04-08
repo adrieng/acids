@@ -82,6 +82,7 @@ rule token = parse
 
 | "let" { LET }
 | "node" { NODE }
+| "static" { STATIC }
 | "open" { OPEN }
 
 | "where" { WHERE }

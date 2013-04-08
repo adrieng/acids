@@ -275,16 +275,17 @@ pat_tuple:
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
 pat_split:
-| v = paren(ptree(pat, simple_exp))
+| v = chevrons(ptree(pat, simple_exp))
           { make_pat_split (Ast_misc.Concat []) v }
-| u = ptree(pat, simple_exp) v = paren(ptree(pat, simple_exp))
+| u = ptree(pat, simple_exp) v = chevrons(ptree(pat, simple_exp))
           { make_pat_split u v }
 
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
 | paren(pat_tuple) { Acids_parsetree.P_tuple $1 }
-| paren(pat_split) { Acids_parsetree.P_split $1 }
-| pat DCOLON clock_annot { Acids_parsetree.P_clock_annot ($1, $3) }
+| LPAREN ps = pat_split RPAREN { Acids_parsetree.P_split ps }
+| LPAREN p = pat DCOLON ck = clock_annot RPAREN
+          { Acids_parsetree.P_clock_annot (p, ck) }
 
 pat:
 | with_loc(pat_desc) { make_located make_pat $1 }

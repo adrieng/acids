@@ -140,6 +140,7 @@
 %token<bool> BOOL
 %token<Int.t> INT
 %token<float> FLOAT
+%token<int list> WORD
 
 /* Misc */
 
@@ -193,6 +194,7 @@ const:
 | BOOL { Ast_misc.Cbool $1 }
 | INT { Ast_misc.Cint $1 }
 | FLOAT { Ast_misc.Cfloat $1 }
+| WORD { Ast_misc.Cword $1 }
 
 clock_exp_desc:
 | IDENT { Acids_parsetree.Ce_var $1 }

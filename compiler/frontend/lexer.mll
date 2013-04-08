@@ -32,6 +32,16 @@
       { pos with
         pos_lnum = pos.pos_lnum + 1;
         pos_bol = pos.pos_cnum }
+
+  (**********************************************************************)
+
+  let int_list_of_string w =
+    let rec add i l =
+      if i >= String.length w
+      then List.rev l
+      else add (i + 1) (int_of_string (String.make 1 w.[i]) :: l)
+    in
+    add 0 []
 }
 
 let alpha = ['a'-'z' 'A'-'Z']
@@ -88,7 +98,7 @@ rule token = parse
 | "dom" { DOM false }
 | "pardom" { DOM true }
 
-| "$" { word lexbuf }
+| '@' (['0' - '9']+ as s) '@' { WORD (int_list_of_string s) }
 
 | "'s"(int as i) { STVAR (int_of_string i) }
 
@@ -114,9 +124,3 @@ and comment = parse
 | '\n' { newline lexbuf; comment lexbuf }
 | _ { comment lexbuf }
 | eof { lexical_error lexbuf "unterminated comment" }
-
-and word = parse
-| ['0'-'9'] as c { INT (Int.of_char c) }
-| '\n' { newline lexbuf; word lexbuf }
-| eof { lexical_error lexbuf "unterminated word" }
-| _ { token lexbuf }

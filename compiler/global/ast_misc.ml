@@ -26,6 +26,7 @@ type const =
   | Cbool of bool
   | Cint of Int.t
   | Cfloat of float
+  | Cword of int list (* [0-9] ints *)
 
 type ('a, 'b) power_tree =
   | Leaf of 'a
@@ -61,6 +62,9 @@ let print_const fmt c =
   | Cbool b -> Format.fprintf fmt "%b" b
   | Cint i -> Format.fprintf fmt "%nd" i
   | Cfloat f -> Format.fprintf fmt "%f" f
+  | Cword w ->
+    let print_int fmt i = Format.fprintf fmt "%d" i in
+    Format.fprintf fmt "@%a@" (Utils.print_list print_int) w
 
 let rec print_power_tree print_a print_b fmt tr =
   match tr with

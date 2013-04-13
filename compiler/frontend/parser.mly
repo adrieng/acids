@@ -275,7 +275,7 @@ clock_annot:
 | clock_annot ON clock_exp { Acids_parsetree.Ca_on ($1, $3) }
 
 pat_tuple:
-| p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
+| p_l = separated_list(COMMA, pat) { p_l }
 
 pat_split:
 | upword(pat, simple_exp, chevrons) { make_pat_split $1 }

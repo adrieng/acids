@@ -136,7 +136,7 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   let print_node fmt nd =
-    Format.fprintf fmt "@[let %snode@ %a@ %a=@ %a@]"
+    Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a@]"
       (if nd.n_static then "static " else "")
       Names.print_longname_short nd.n_name
       print_pat nd.n_input
@@ -144,7 +144,7 @@ struct
 
   let print_file fmt file =
     let print_import fmt modn =
-      Format.fprintf fmt "open %a" Names.print_modname modn
+      Format.fprintf fmt "open %a@\n" Names.print_modname modn
     in
     Utils.print_list_eol print_import fmt file.f_imports;
     Utils.print_list_eol print_node fmt file.f_nodes

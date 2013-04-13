@@ -116,10 +116,11 @@ type ('i, 'o) transform =
 
     t_print_input : (Format.formatter -> 'i -> unit) option;
     t_print_output : (Format.formatter -> 'o -> unit) option;
+    t_ext : string;
   }
 
 let make_transform
-    ?(assume = none) ?(guarantee = none)
+    ?(assume = none) ?(guarantee = none) ?(ext = ".log")
     ?print_in ?print_out
     name desc
     =
@@ -130,6 +131,7 @@ let make_transform
     t_guarantee = guarantee;
     t_print_input = print_in;
     t_print_output = print_out;
+    t_ext = ext;
   }
 
 type _ pass =
@@ -186,8 +188,11 @@ let serialize_transform ctx t y =
   | Some print ->
     let t_name = Str.global_replace (Str.regexp " ") "_" t.t_name in
     let fn =
-      (Filename.chop_extension (ctx_current_file ctx))
-      ^ "_" ^ t_name ^ ".nirlog"
+      Printf.sprintf
+        "%s.log.%s.%s"
+        (Filename.chop_extension (ctx_current_file ctx))
+        t_name
+        t.t_ext
     in
     if debug ctx
     then Format.printf "(* [%s] serialized to %s *)@." t.t_name fn;

@@ -15,26 +15,4 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-exception Could_not_open of string
-
-let could_not_open filen = raise (Could_not_open filen)
-
-let parse =
-  let parse_file ctx filen =
-    Initial.set_current_file_name filen;
-    let ic =
-      try open_in filen
-      with Sys_error _ -> could_not_open filen
-    in
-    let lexbuf = Lexing.from_channel ic in
-    let ptree = Parser.file Lexer.token lexbuf in
-    close_in ic;
-    ctx, ptree
-  in
-
-  let open Pass_manager in
-  P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_parsetree.print_file
-       "parsing"
-       parse_file)
+let make_transform = Pass_manager.make_transform ~ext:"asc"

@@ -64,6 +64,7 @@ type ('i, 'o) transform
 val make_transform :
   ?assume:'a prop ->
   ?guarantee:'b prop ->
+  ?ext : string ->
   ?print_in:(Format.formatter -> 'a -> unit) ->
   ?print_out:(Format.formatter -> 'b -> unit) ->
   transform_name ->

@@ -6,4 +6,4 @@ all: $(TESTS)
 	./run_test.pl $^
 
 clean:
-	rm -f *.log.*.asc
+	rm -f *.log.*.as

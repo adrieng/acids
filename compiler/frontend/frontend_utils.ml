@@ -15,4 +15,4 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let make_transform = Pass_manager.make_transform ~ext:"asc"
+let make_transform = Pass_manager.make_transform ~ext:"as"

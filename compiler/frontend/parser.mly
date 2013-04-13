@@ -153,7 +153,12 @@
 
 /* Disambiguation tokens */
 
+%token APP
+
 /* Precedence and associativity */
+
+%right FBY
+%right APP
 
 /* Start of the grammar */
 
@@ -236,10 +241,10 @@ nowhere_exp_desc:
 | e1 = simple_exp s = OP e2 = simple_exp
           { let l = Parser_utils.make_loc $startpos $endpos in
             make_app (Initial.make_longname s) (make_tuple [e1; e2] l) }
-| longname nowhere_exp { make_app $1 $2 }
+| longname nowhere_exp %prec APP { make_app $1 $2 }
 
-| e1 = simple_exp FBY e2 = simple_exp { Acids_parsetree.E_fby (e1, e2) }
-| IF e1 = simple_exp THEN e2 = simple_exp ELSE e3 = simple_exp
+| e1 = nowhere_exp FBY e2 = nowhere_exp { Acids_parsetree.E_fby (e1, e2) }
+| IF e1 = nowhere_exp THEN e2 = nowhere_exp ELSE e3 = simple_exp
           { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
 
 | e = simple_exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }

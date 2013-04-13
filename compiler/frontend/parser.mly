@@ -192,13 +192,16 @@ upword(X, Y, Z):
 | v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
 | u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
 
-shortname:
-| IDENT { Initial.make_longname $1 }
-| parens(OP) { Initial.make_longname (string_of_op $1) }
+name:
+| IDENT { $1 }
+| OP { string_of_op $1 }
 
-longname:
-| shortname { $1 }
-| modn = UIDENT DOT n = IDENT { Initial.make_longname ~modn n }
+shortname:
+| s = IDENT | s = parens(OP) { Initial.make_longname s }
+
+%inline longname:
+| n = name { Initial.make_longname n }
+| modn = UIDENT DOT n = name { Initial.make_longname ~modn n }
 
 //////////////////////////////////////////////////////////////////
 
@@ -244,8 +247,10 @@ nowhere_exp_desc:
 
 | e1 = simple_exp s = OP e2 = simple_exp
           { let l = Parser_utils.make_loc $startpos $endpos in
-            make_app (Initial.make_longname s) (make_tuple [e1; e2] l) }
-| longname nowhere_exp %prec APP { make_app $1 $2 }
+            make_app
+              (Initial.make_longname (string_of_op s))
+              (make_tuple [e1; e2] l) }
+| ln = longname e = nowhere_exp %prec APP { make_app ln e }
 
 | e1 = nowhere_exp FBY e2 = nowhere_exp { Acids_parsetree.E_fby (e1, e2) }
 | IF e1 = nowhere_exp THEN e2 = nowhere_exp ELSE e3 = simple_exp

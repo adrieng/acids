@@ -85,6 +85,11 @@ rule token = parse
 | "static" { STATIC }
 | "open" { OPEN }
 
+| "fby" { FBY }
+| "if" { IF }
+| "then" { THEN }
+| "else" { ELSE }
+
 | "where" { WHERE }
 | "rec" { REC }
 | "and" { AND }

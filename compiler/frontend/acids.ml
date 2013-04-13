@@ -75,25 +75,28 @@ struct
       }
 
   and exp_desc =
-    | E_var of S.var
-    | E_const of Ast_misc.const
+    | E_var of S.var (** variables *)
+    | E_const of Ast_misc.const (** constants *)
 
-    | E_fst of exp
-    | E_snd of exp
-    | E_tuple of exp list
+    | E_fst of exp (** left projection *)
+    | E_snd of exp (** right projection *)
+    | E_tuple of exp list (** tuple *)
 
-    | E_app of app * exp
-    | E_where of exp * block
+    | E_fby of exp * exp (** dervied operator followed-by *)
+    | E_ifthenelse of exp * exp * exp (** derived operator if then else *)
 
-    | E_when of exp * clock_exp
-    | E_split of clock_exp * exp
-    | E_merge of clock_exp * exp list
+    | E_app of app * exp (** application *)
+    | E_where of exp * block (** local declarations *)
 
-    | E_valof of clock_exp
+    | E_when of exp * clock_exp (** sampling *)
+    | E_split of clock_exp * exp (** splitting (n-ary sampling) *)
+    | E_merge of clock_exp * exp list (** merging *)
 
-    | E_clockannot of exp * clock_annot
+    | E_valof of clock_exp (** evaluating clock exps *)
 
-    | E_dom of exp * domain
+    | E_clockannot of exp * clock_annot (** annotations for clock inference *)
+
+    | E_dom of exp * domain (** clock domain *)
 
   and app =
       {

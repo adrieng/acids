@@ -125,7 +125,9 @@
 
 /* Keywords */
 
-%token LET NODE STATIC OPEN FST SND WHERE REC AND
+%token LET NODE STATIC OPEN FST SND
+%token FBY IF THEN ELSE
+%token WHERE REC AND
 %token WHEN SPLIT MERGE
 %token ON BASE
 
@@ -235,6 +237,10 @@ nowhere_exp_desc:
           { let l = Parser_utils.make_loc $startpos $endpos in
             make_app (Initial.make_longname s) (make_tuple [e1; e2] l) }
 | longname nowhere_exp { make_app $1 $2 }
+
+| e1 = simple_exp FBY e2 = simple_exp { Acids_parsetree.E_fby (e1, e2) }
+| IF e1 = simple_exp THEN e2 = simple_exp ELSE e3 = simple_exp
+          { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
 
 | e = simple_exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
 | MERGE ce = clock_exp_exp e_l = nonempty_list(simple_exp)

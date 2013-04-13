@@ -4,4 +4,4 @@
 *)
 let node f () = o where rec o = 0 fby (o + 1)
 
-let node g () = e where x = fst e where rec y = 2
+let node g () = x where rec x = fst (y where rec y = (2, 3))

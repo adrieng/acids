@@ -51,6 +51,13 @@ struct
     | E_tuple e_l ->
       Format.fprintf fmt "(%a)"
         (Utils.print_list_r print_exp ",") e_l
+    | E_fby (e1, e2) ->
+      Format.fprintf fmt "%a@ fby %a" print_exp e1 print_exp e2
+    | E_ifthenelse (e1, e2, e3) ->
+      Format.fprintf fmt "@[if %a@ then %a@ else %a@]"
+        print_exp e1
+        print_exp e2
+        print_exp e3
     | E_app (app, e) ->
       Format.fprintf fmt "%a %a"
         print_op app.a_op

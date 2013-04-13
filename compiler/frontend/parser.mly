@@ -310,3 +310,4 @@ import:
 
 file:
 | imports = list(import) nodes = list(node) EOF { make_file imports nodes }
+| error { Parser_utils.parse_error $startpos $endpos }

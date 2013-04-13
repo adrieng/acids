@@ -147,5 +147,6 @@ struct
       Format.fprintf fmt "open %a@\n" Names.print_modname modn
     in
     Utils.print_list_eol print_import fmt file.f_imports;
-    Utils.print_list_eol print_node fmt file.f_nodes
+    Utils.print_list_eol print_node fmt file.f_nodes;
+    Format.fprintf fmt "@\n"
 end

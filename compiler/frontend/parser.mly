@@ -120,8 +120,12 @@
 
 /* Punctuation */
 
-%token LPAREN RPAREN CARET LBRACE RBRACE DOT LCHEVRON RCHEVRON
+%token LPAREN RPAREN CARET LBRACE RBRACE DOT
 %token EQUAL COMMA DCOLON
+
+/* Operators */
+
+%token LT GT
 
 /* Keywords */
 
@@ -174,7 +178,7 @@ parens(X):
 | LPAREN x = X RPAREN { x }
 
 chevrons(X):
-| LCHEVRON x = X RCHEVRON { x }
+| LT x = X GT { x }
 
 simple_ptree(X, Y):
 | X { Ast_misc.Leaf $1 }

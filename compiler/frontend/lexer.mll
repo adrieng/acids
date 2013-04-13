@@ -65,12 +65,13 @@ rule token = parse
 | "^" { CARET }
 | "{" { LBRACE }
 | "}" { RBRACE }
-| "{" { LCHEVRON }
-| "}" { RCHEVRON }
 | "=" { EQUAL }
 | "," { COMMA }
 | "." { DOT }
 | "::" { DCOLON }
+
+| "<" { LT }
+| ">" { GT }
 
 | "true" { BOOL true }
 | "false" { BOOL false }

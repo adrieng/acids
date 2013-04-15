@@ -318,7 +318,7 @@ base_annot:
 | BASE clock_annot { $2 }
 
 eq_desc:
-| p = pat EQUAL e = simple_exp { (p, e) }
+| p = pat EQUAL e = exp { (p, e) }
 
 eq:
 | with_loc(eq_desc) { make_located make_eq $1 }

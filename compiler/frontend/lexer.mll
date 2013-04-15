@@ -88,6 +88,8 @@ rule token = parse
 | "static" { STATIC }
 | "open" { OPEN }
 
+| "iter" { ITER }
+
 | "fby" { FBY }
 | "if" { IF }
 | "then" { THEN }

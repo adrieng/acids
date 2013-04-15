@@ -132,16 +132,18 @@
 /* Punctuation */
 
 %token LPAREN RPAREN CARET LBRACE RBRACE DOT
-%token EQUAL COMMA DCOLON
+%token COMMA DCOLON
 
 /* Operators */
 
+%token EQUAL
 %token LT GT LE GE
 %token PLUS MINUS TIMES DIV
 
 /* Keywords */
 
 %token LET NODE STATIC OPEN FST SND
+%token ITER
 %token FBY IF THEN ELSE
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
@@ -185,6 +187,9 @@
 %left SPLIT
 %left IF
 %left WHERE
+
+%left EQUAL
+%nonassoc ITER
 
 /* Start of the grammar */
 
@@ -234,7 +239,9 @@ const:
 | WORD { Ast_misc.Cword $1 }
 
 clock_exp_desc:
-| IDENT { Acids_parsetree.Ce_var $1 }
+| v = IDENT { Acids_parsetree.Ce_var v }
+| ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
+| ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
 | upword(trivial_exp, trivial_exp, parens)
     { Acids_parsetree.Ce_pword (make_ce_pword $1) }
 

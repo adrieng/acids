@@ -157,10 +157,13 @@
 
 /* Disambiguation tokens */
 
-%token APP
+%token APP BINOP
 
 /* Precedence and associativity */
 
+%nonassoc OP
+%nonassoc IDENT
+%left BINOP
 %right FBY
 %right APP
 
@@ -181,9 +184,9 @@ chevrons(X):
 | LT x = X GT { x }
 
 simple_ptree(X, Y):
-| X { Ast_misc.Leaf $1 }
-| simple_ptree(X, Y) CARET Y { Ast_misc.Power ($1, $3) }
-| LBRACE ptree(X, Y) RBRACE { $2 }
+| x = X { Ast_misc.Leaf x }
+| t = simple_ptree(X, Y) CARET y = Y { Ast_misc.Power (t, y) }
+| LBRACE t = ptree(X, Y) RBRACE { t }
 
 ptree(X, Y):
 | nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
@@ -192,11 +195,11 @@ upword(X, Y, Z):
 | v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
 | u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
 
-name:
-| IDENT { $1 }
-| OP { string_of_op $1 }
+%inline name:
+| s = IDENT { s }
+| s = OP { string_of_op s }
 
-shortname:
+%inline shortname:
 | s = IDENT | s = parens(OP) { Initial.make_longname s }
 
 %inline longname:
@@ -223,29 +226,29 @@ clock_exp_exp:
 | chevrons(clock_exp) { $1 }
 
 trivial_exp_desc:
-| const { Acids_parsetree.E_const $1 }
-| IDENT { Acids_parsetree.E_var $1 }
+| c = const { Acids_parsetree.E_const c }
+| v = IDENT { Acids_parsetree.E_var v }
 
 trivial_exp:
-| with_loc(trivial_exp_desc) { make_located make_exp $1 }
+| ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
 simple_exp_desc:
-| trivial_exp_desc { $1 }
-| FST simple_exp { Acids_parsetree.E_fst $2 }
-| SND simple_exp { Acids_parsetree.E_snd $2 }
-| clock_exp_exp { Acids_parsetree.E_valof $1 }
-| parens(exp_desc) { $1 }
+| e = trivial_exp_desc { e }
+| FST e = simple_exp { Acids_parsetree.E_fst e }
+| SND e = simple_exp { Acids_parsetree.E_snd e }
+| ce = clock_exp_exp { Acids_parsetree.E_valof ce }
+| e = parens(exp_desc) { e }
 
 simple_exp:
-| with_loc(simple_exp_desc) { make_located make_exp $1 }
+| ed = with_loc(simple_exp_desc) { make_located make_exp ed }
 
 nowhere_exp_desc:
-| simple_exp_desc { $1 }
+| e = simple_exp_desc { e }
 
 | e = simple_exp COMMA t = separated_nonempty_list(COMMA, simple_exp)
           { Acids_parsetree.E_tuple (e :: t) }
 
-| e1 = simple_exp s = OP e2 = simple_exp
+| e1 = simple_exp s = OP e2 = simple_exp %prec BINOP
           { let l = Parser_utils.make_loc $startpos $endpos in
             make_app
               (Initial.make_longname (string_of_op s))
@@ -264,12 +267,12 @@ nowhere_exp_desc:
 | e = simple_exp DCOLON ck = clock_annot
           { Acids_parsetree.E_clockannot (e, ck) }
 
-nowhere_exp:
-| with_loc(nowhere_exp_desc) { make_located make_exp $1 }
+%inline nowhere_exp:
+| ed = with_loc(nowhere_exp_desc) { make_located make_exp ed }
 
 exp_desc:
 | nowhere_exp_desc { $1 }
-| simple_exp WHERE REC block { Acids_parsetree.E_where ($1, $4) }
+| e = simple_exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
 | par = DOM e = nowhere_exp ba = option(base_annot) { make_domain par ba e }
 
 exp:

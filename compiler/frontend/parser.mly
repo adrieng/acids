@@ -176,10 +176,15 @@
 %nonassoc OP
 %nonassoc IDENT
 %right FBY
+%nonassoc FST SND
 %left TIMES DIV
 %left PLUS MINUS
 %left LE GE LT GT
 %right APP
+%left WHEN
+%left SPLIT
+%left IF
+%left WHERE
 
 /* Start of the grammar */
 
@@ -247,62 +252,57 @@ trivial_exp_desc:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
 simple_exp_desc:
-| e = trivial_exp_desc { e }
-| FST e = simple_exp { Acids_parsetree.E_fst e }
-| SND e = simple_exp { Acids_parsetree.E_snd e }
-| ce = clock_exp_exp { Acids_parsetree.E_valof ce }
-| e = parens(exp_desc) { e }
+| ed = trivial_exp_desc { ed }
+| ed = parens(exp_desc) { ed }
+| LPAREN e = exp DCOLON ck = clock_annot RPAREN
+                        { Acids_parsetree.E_clockannot (e, ck) }
 
 %inline simple_exp:
 | ed = with_loc(simple_exp_desc) { make_located make_exp ed }
 
-nowhere_exp_desc:
-| e = simple_exp_desc { e }
-
-| e = simple_exp COMMA t = separated_nonempty_list(COMMA, simple_exp)
-          { Acids_parsetree.E_tuple (e :: t) }
-
-| e1 = nowhere_exp PLUS e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.plus e1 e2 }
-| e1 = nowhere_exp MINUS e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.minus e1 e2 }
-| e1 = nowhere_exp TIMES e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.times e1 e2 }
-| e1 = nowhere_exp DIV e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.div e1 e2 }
-| e1 = nowhere_exp LE e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.le e1 e2 }
-| e1 = nowhere_exp GE e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.ge e1 e2 }
-| e1 = nowhere_exp LT e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.lt e1 e2 }
-| e1 = nowhere_exp GT e2 = nowhere_exp
-          { make_bin_op $startpos $endpos Parser_utils.gt e1 e2 }
-
-| e1 = nowhere_exp s = OP e2 = nowhere_exp
-          { make_bin_op $startpos $endpos s e1 e2 }
-
-| ln = longname e = nowhere_exp %prec APP { make_app ln e }
-
-| e1 = nowhere_exp FBY e2 = nowhere_exp { Acids_parsetree.E_fby (e1, e2) }
-| IF e1 = nowhere_exp THEN e2 = nowhere_exp ELSE e3 = simple_exp
-          { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
-
-| e = simple_exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
-| MERGE ce = clock_exp_exp e_l = nonempty_list(simple_exp)
-          { Acids_parsetree.E_merge (ce, e_l) }
-| SPLIT ce = clock_exp_exp e = simple_exp { Acids_parsetree.E_split (ce, e) }
-
-| e = simple_exp DCOLON ck = clock_annot
-          { Acids_parsetree.E_clockannot (e, ck) }
-
-%inline nowhere_exp:
-| ed = with_loc(nowhere_exp_desc) { make_located make_exp ed }
-
 exp_desc:
-| nowhere_exp_desc { $1 }
-| e = nowhere_exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
-| par = DOM e = nowhere_exp ba = option(base_annot) { make_domain par ba e }
+| ed = simple_exp_desc { ed }
+
+| FST e = exp { Acids_parsetree.E_fst e }
+| SND e = exp { Acids_parsetree.E_snd e }
+| LPAREN e = exp COMMA e_l = separated_nonempty_list(COMMA, exp) RPAREN
+            { Acids_parsetree.E_tuple (e :: e_l) }
+
+| e1 = exp PLUS e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.plus e1 e2 }
+| e1 = exp MINUS e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.minus e1 e2 }
+| e1 = exp TIMES e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.times e1 e2 }
+| e1 = exp DIV e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.div e1 e2 }
+| e1 = exp LE e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.le e1 e2 }
+| e1 = exp GE e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.ge e1 e2 }
+| e1 = exp LT e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.lt e1 e2 }
+| e1 = exp GT e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.gt e1 e2 }
+| e1 = exp s = OP e2 = exp
+            { make_bin_op $startpos $endpos s e1 e2 }
+
+| ln = longname e = exp %prec APP { make_app ln e }
+
+| e1 = exp FBY e2 = exp { Acids_parsetree.E_fby (e1, e2) }
+| IF e1 = exp THEN e2 = exp ELSE e3 = exp %prec IF
+            { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
+
+| e = exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
+| MERGE ce = clock_exp_exp e_l = nonempty_list(simple_exp)
+            { Acids_parsetree.E_merge (ce, e_l) }
+| SPLIT ce = clock_exp_exp e = exp { Acids_parsetree.E_split (ce, e) }
+
+| ce = clock_exp_exp { Acids_parsetree.E_valof ce }
+
+| e = exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
+| par = DOM e = simple_exp ba = option(base_annot)
+                              { make_domain par ba e }
 
 %inline exp:
 | ed = with_loc(exp_desc) { make_located make_exp ed }
@@ -311,7 +311,7 @@ base_annot:
 | BASE clock_annot { $2 }
 
 eq_desc:
-| p = pat EQUAL e = nowhere_exp { (p, e) }
+| p = pat EQUAL e = simple_exp { (p, e) }
 
 eq:
 | with_loc(eq_desc) { make_located make_eq $1 }

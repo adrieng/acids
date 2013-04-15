@@ -22,3 +22,13 @@ let make_loc startp endp =
 
 let parse_error startp endp =
   raise (Parse_error (make_loc startp endp))
+
+let plus = "+"
+let minus = "-"
+let times = "*"
+let div = "/"
+
+let lt = "<"
+let gt = ">"
+let le = "<="
+let ge = ">="

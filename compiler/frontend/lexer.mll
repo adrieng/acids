@@ -70,6 +70,8 @@ rule token = parse
 | "." { DOT }
 | "::" { DCOLON }
 
+| "<=" { LE }
+| ">=" { GE }
 | "<" { LT }
 | ">" { GT }
 
@@ -111,6 +113,11 @@ rule token = parse
 
 | lident as s { IDENT s }
 | uident as s { UIDENT s }
+
+| "+" { PLUS }
+| "-" { MINUS }
+| "*" { TIMES }
+| "/" { DIV }
 
 | op as s { OP s }
 

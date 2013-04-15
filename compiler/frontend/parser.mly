@@ -72,6 +72,17 @@
 
   let make_tuple e_l loc = make_exp (Acids_parsetree.E_tuple e_l) loc
 
+  let make_bin_op start stop op e1 e2 =
+    let loc = Parser_utils.make_loc start stop in
+    let ln = Initial.make_longname (string_of_op op) in
+    let app =
+      {
+        Acids_parsetree.a_op = Acids_parsetree.O_node ln;
+        Acids_parsetree.a_info = ();
+      }
+    in
+    Acids_parsetree.E_app (app, make_tuple [e1; e2] loc)
+
   let make_pat pd loc =
     {
       Acids_parsetree.p_desc = pd;
@@ -125,7 +136,8 @@
 
 /* Operators */
 
-%token LT GT
+%token LT GT LE GE
+%token PLUS MINUS TIMES DIV
 
 /* Keywords */
 
@@ -157,14 +169,16 @@
 
 /* Disambiguation tokens */
 
-%token APP BINOP
+%token APP
 
 /* Precedence and associativity */
 
 %nonassoc OP
 %nonassoc IDENT
-%left BINOP
 %right FBY
+%left TIMES DIV
+%left PLUS MINUS
+%left LE GE LT GT
 %right APP
 
 /* Start of the grammar */
@@ -180,7 +194,7 @@ with_loc(X):
 parens(X):
 | LPAREN x = X RPAREN { x }
 
-chevrons(X):
+%inline chevrons(X):
 | LT x = X GT { x }
 
 simple_ptree(X, Y):
@@ -223,7 +237,7 @@ clock_exp:
 | with_loc(clock_exp_desc) { make_located make_clock_exp $1 }
 
 clock_exp_exp:
-| chevrons(clock_exp) { $1 }
+| ce = chevrons(clock_exp) { ce }
 
 trivial_exp_desc:
 | c = const { Acids_parsetree.E_const c }
@@ -248,11 +262,26 @@ nowhere_exp_desc:
 | e = simple_exp COMMA t = separated_nonempty_list(COMMA, simple_exp)
           { Acids_parsetree.E_tuple (e :: t) }
 
-| e1 = simple_exp s = OP e2 = simple_exp %prec BINOP
-          { let l = Parser_utils.make_loc $startpos $endpos in
-            make_app
-              (Initial.make_longname (string_of_op s))
-              (make_tuple [e1; e2] l) }
+| e1 = nowhere_exp PLUS e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.plus e1 e2 }
+| e1 = nowhere_exp MINUS e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.minus e1 e2 }
+| e1 = nowhere_exp TIMES e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.times e1 e2 }
+| e1 = nowhere_exp DIV e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.div e1 e2 }
+| e1 = nowhere_exp LE e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.le e1 e2 }
+| e1 = nowhere_exp GE e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.ge e1 e2 }
+| e1 = nowhere_exp LT e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.lt e1 e2 }
+| e1 = nowhere_exp GT e2 = nowhere_exp
+          { make_bin_op $startpos $endpos Parser_utils.gt e1 e2 }
+
+| e1 = nowhere_exp s = OP e2 = nowhere_exp
+          { make_bin_op $startpos $endpos s e1 e2 }
+
 | ln = longname e = nowhere_exp %prec APP { make_app ln e }
 
 | e1 = nowhere_exp FBY e2 = nowhere_exp { Acids_parsetree.E_fby (e1, e2) }

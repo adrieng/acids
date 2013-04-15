@@ -229,7 +229,7 @@ trivial_exp_desc:
 | c = const { Acids_parsetree.E_const c }
 | v = IDENT { Acids_parsetree.E_var v }
 
-trivial_exp:
+%inline trivial_exp:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
 simple_exp_desc:
@@ -239,7 +239,7 @@ simple_exp_desc:
 | ce = clock_exp_exp { Acids_parsetree.E_valof ce }
 | e = parens(exp_desc) { e }
 
-simple_exp:
+%inline simple_exp:
 | ed = with_loc(simple_exp_desc) { make_located make_exp ed }
 
 nowhere_exp_desc:
@@ -272,11 +272,11 @@ nowhere_exp_desc:
 
 exp_desc:
 | nowhere_exp_desc { $1 }
-| e = simple_exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
+| e = nowhere_exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
 | par = DOM e = nowhere_exp ba = option(base_annot) { make_domain par ba e }
 
-exp:
-| with_loc(exp_desc) { make_located make_exp $1 }
+%inline exp:
+| ed = with_loc(exp_desc) { make_located make_exp ed }
 
 base_annot:
 | BASE clock_annot { $2 }

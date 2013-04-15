@@ -175,21 +175,21 @@
 
 /* Precedence and associativity */
 
-%nonassoc OP
-%nonassoc IDENT
-%right FBY
-%nonassoc FST SND
-%left TIMES DIV
-%left PLUS MINUS
-%left LE GE LT GT
-%right APP
-%left WHEN
-%left SPLIT
-%left IF
-%left WHERE
-
-%left EQUAL
 %nonassoc ITER
+%left EQUAL
+
+%left WHERE
+%left IF
+%left SPLIT
+%left WHEN
+%right APP
+%left LE GE LT GT
+%left PLUS MINUS
+%left TIMES DIV
+%nonassoc FST SND
+%right FBY
+%nonassoc IDENT
+%nonassoc OP
 
 /* Start of the grammar */
 
@@ -272,8 +272,8 @@ exp_desc:
 
 | FST e = exp { Acids_parsetree.E_fst e }
 | SND e = exp { Acids_parsetree.E_snd e }
-| LPAREN e = exp COMMA e_l = separated_nonempty_list(COMMA, exp) RPAREN
-            { Acids_parsetree.E_tuple (e :: e_l) }
+| e = simple_exp COMMA e_l = separated_nonempty_list(COMMA, simple_exp)
+              { Acids_parsetree.E_tuple (e :: e_l) }
 
 | e1 = exp PLUS e2 = exp
             { make_bin_op $startpos $endpos Parser_utils.plus e1 e2 }

@@ -30,8 +30,8 @@ let get_current_module () = module_name_for_file_name (get_current_file_name ())
 
 let make_longname ?modn shortn =
   let modn = match modn with
-    | None -> get_current_module ()
-    | Some modn -> modn
+    | None -> Names.LocalModule
+    | Some modn -> Names.Module modn
   in
   assert (shortn <> "");
   Names.make_longname modn shortn

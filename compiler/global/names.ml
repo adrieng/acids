@@ -19,9 +19,13 @@ type modname = string
 
 type shortname = string
 
+type modul =
+  | LocalModule
+  | Module of modname
+
 type longname =
   {
-    modn : modname;
+    modn : modul;
     shortn : shortname;
   }
 
@@ -32,10 +36,12 @@ let print_modname fmt m = Format.fprintf fmt "%s" m
 let print_shortname fmt s = Format.fprintf fmt "%s" s
 
 let print_longname fmt ln =
-  Format.fprintf fmt
-    "%a.%a"
-    print_modname ln.modn
-    print_shortname ln.shortn
+  match ln.modn with
+  | LocalModule -> print_shortname fmt ln.shortn
+  | Module modn ->
+    Format.fprintf fmt "%a.%a"
+      print_modname modn
+      print_shortname ln.shortn
 
 let print_longname_short fmt ln = print_shortname fmt ln.shortn
 
@@ -69,19 +75,3 @@ module Env =
     let of_assoc_list l =
       List.fold_left (fun env (id, x) -> M.add id x env) M.empty l
   end
-
-class ['a] iterator =
-object(self)
-  method modname : modname -> 'a -> modname * 'a =
-    fun modn acc -> modn, acc
-
-  method shortname : shortname -> 'a -> shortname * 'a =
-    fun shortn acc -> shortn, acc
-
-  method longname : longname -> 'a -> longname * 'a =
-    fun { modn = modn; shortn = shortn; } acc ->
-      let modn, acc = self#modname modn acc in
-      let shortn, acc = self#shortname shortn acc in
-      { modn = modn; shortn = shortn; }, acc
-end
-

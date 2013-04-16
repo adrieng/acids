@@ -36,22 +36,23 @@ type ('a, 'b) power_tree =
 module MakeVar =
   functor
     (S :
-      sig
-        type ('a, 'b) t
-        val print :
-          (Format.formatter -> 'a -> unit) ->
-          Format.formatter ->
-          ('a, 'b) t ->
-          unit
-      end) ->
-struct
-  type 'b t =
-    {
-      v_id : int;
-      mutable v_link : ('b t, 'b) S.t option;
-    }
+       sig
+         type 'a t
+         val print :
+           (Format.formatter -> 'a -> unit) ->
+           Format.formatter ->
+           'a t ->
+           unit
 
-  let rec print_var fmt (v : 'b t) =
+       end) ->
+struct
+  type t =
+      {
+        v_id : int;
+        mutable v_link : t S.t option;
+      }
+
+  let rec print_var fmt v =
     Format.fprintf fmt "%a%d"
       (Utils.print_opt (S.print print_var)) v.v_link
       v.v_id

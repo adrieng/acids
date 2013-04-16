@@ -75,3 +75,5 @@ module Env =
     let of_assoc_list l =
       List.fold_left (fun env (id, x) -> M.add id x env) M.empty l
   end
+
+module ShortEnv = Utils.String_map

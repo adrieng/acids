@@ -46,7 +46,9 @@ let print_error _ fmt exn =
 (* Compilation flow *)
 
 let flow =
+  let open Pass_manager in
   Parsing_pass.parse
+  +>+ Scoping.scope
 
 (*****************************************************************************)
 (* File handling *)

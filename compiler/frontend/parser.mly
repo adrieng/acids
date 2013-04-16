@@ -124,7 +124,7 @@
         if !Compiler_options.no_pervasives
         then imports
         else "Pervasives" :: imports;
-      Acids_parsetree.f_initial_env = Names.Env.empty;
+      Acids_parsetree.f_info = ();
       Acids_parsetree.f_nodes = body;
     }
 %}
@@ -194,7 +194,7 @@
 /* Start of the grammar */
 
 %start file
-%type<Acids_parsetree.file> file
+%type<unit Acids_parsetree.file> file
 
 %%
 

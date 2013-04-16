@@ -159,11 +159,11 @@ struct
         n_info : S.node_info;
       }
 
-  type file =
+  type 'a file =
       {
         f_name : Names.modname;
         f_imports : Names.modname list;
-        f_initial_env : node Names.Env.t;
+        f_info : 'a;
         f_nodes : node list;
       }
 end

@@ -37,20 +37,22 @@ module MakeVar =
   functor
     (S :
        sig
-         type 'a t
+         type 'a pre_ty
          val print :
            (Format.formatter -> 'a -> unit) ->
            Format.formatter ->
-           'a t ->
+           'a pre_ty ->
            unit
 
        end) ->
 struct
-  type t =
+  type ty_var =
       {
         v_id : int;
-        mutable v_link : t S.t option;
+        mutable v_link : ty_var S.pre_ty option;
       }
+
+  include S
 
   let rec print_var fmt v =
     Format.fprintf fmt "%a%d"

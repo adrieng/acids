@@ -50,12 +50,12 @@ let print_ty_sig fmt tys =
     print_ty tys.ty_sig_input
     print_ty tys.ty_sig_output
 
-module V = Ast_misc.MakeVar(
+module PreTy =
   struct
-    type 'a t =
+    type 'a pre_ty =
       | Pty_var of 'a
       | Pty_scal of ty_scal
-      | Pty_prod of 'a t list
+      | Pty_prod of 'a pre_ty list
 
     let rec print print_var fmt pty =
       match pty with
@@ -64,4 +64,14 @@ module V = Ast_misc.MakeVar(
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l
-  end)
+  end
+module VarTy = Ast_misc.MakeVar(PreTy)
+
+let rec ty_of_pre_ty pty =
+  let open PreTy in
+  let open VarTy in
+  match pty with
+  | Pty_var { v_link = Some pty; } -> ty_of_pre_ty pty
+  | Pty_var { v_id = id; v_link = None; } -> Ty_var id
+  | Pty_scal tys -> Ty_scal tys
+  | Pty_prod ty_l -> Ty_prod (List.map ty_of_pre_ty ty_l)

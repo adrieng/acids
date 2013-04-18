@@ -71,4 +71,6 @@ let rec ty_of_pre_ty pty =
 
 let is_static = (=) S_static
 
-
+let is_static_signature ssig =
+  List.exists is_static ssig.st_sig_input
+  || List.exists is_static ssig.st_sig_output

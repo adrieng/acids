@@ -44,17 +44,17 @@ let rec print_static_ty fmt sty =
 module PreTy =
 struct
   type 'a pre_ty =
-  | Psy_var of 'a
-  | Psy_scal of static_ty_scal
-  | Psy_prod of 'a pre_ty list
+    | Psy_var of 'a
+    | Psy_scal of static_ty_scal
+    | Psy_prod of 'a pre_ty list
 
-  let rec print print_var fmt sty =
+  let rec print print_var fmt pty =
     match sty with
     | Psy_var v -> print_var fmt v
     | Psy_scal ss -> print_static_ty_scal fmt ss
-    | Psy_prod sty_l ->
+    | Psy_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
-        (Utils.print_list_r (print print_var) " *") sty_l
+        (Utils.print_list_r (print print_var) " *") pty_l
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 

@@ -67,5 +67,15 @@ let load_interface filen =
     let ic = open_in_bin filen in
     let i = input_binary_int ic in
     if i != Compiler.magic_number then bad_magic_number filen;
-    (Marshal.from_channel ic : iface)
+    let (intf : iface) = Marshal.from_channel ic in
+    close_in ic;
+    intf
+  with _ -> could_not_open_file filen
+
+let store_interface filen intf =
+  try
+    let oc = open_out_bin filen in
+    output_binary_int oc Compiler.magic_number;
+    Marshal.to_channel oc intf [];
+    close_out oc
   with _ -> could_not_open_file filen

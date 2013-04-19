@@ -60,14 +60,12 @@ module VarTy = Ast_misc.MakeVar(PreTy)
 
 let rec ty_of_pre_ty pty =
   let open PreTy in
-  let open VarTy in
   match pty with
-  | Psy_var { v_link = Some pty } -> ty_of_pre_ty pty
-  | Psy_var { v_link = None; } ->
+  | Psy_var v ->
     (* type variables default to dynamic since its more modular *)
-    Sy_scal S_dynamic
+    VarTy.ty_of_ty_var ty_of_pre_ty (fun _ -> Sy_scal S_dynamic) v
   | Psy_scal ss -> Sy_scal ss
-  | Psy_prod psy_l -> Sy_prod (List.map ty_of_pre_ty psy_l)
+  | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
 
 let rec is_static st =
   match st with

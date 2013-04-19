@@ -49,7 +49,7 @@ struct
     | Psy_prod of 'a pre_ty list
 
   let rec print print_var fmt pty =
-    match sty with
+    match pty with
     | Psy_var v -> print_var fmt v
     | Psy_scal ss -> print_static_ty_scal fmt ss
     | Psy_prod pty_l ->
@@ -69,8 +69,11 @@ let rec ty_of_pre_ty pty =
   | Psy_scal ss -> Sy_scal ss
   | Psy_prod psy_l -> Sy_prod (List.map ty_of_pre_ty psy_l)
 
-let is_static = (=) S_static
+let rec is_static st =
+  match st with
+  | Sy_scal S_static -> true
+  | Sy_scal S_dynamic -> true
+  | Sy_prod st_l -> List.exists is_static st_l
 
 let is_static_signature ssig =
-  List.exists is_static ssig.st_sig_input
-  || List.exists is_static ssig.st_sig_output
+  is_static ssig.st_sig_input || is_static ssig.st_sig_output

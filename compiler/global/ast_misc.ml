@@ -33,6 +33,7 @@ type ('a, 'b) power_tree =
   | Concat of ('a, 'b) power_tree list
   | Power of ('a, 'b) power_tree * 'b
 
+(** Generic module for unification variables *)
 module MakeVar =
   functor
     (S :
@@ -43,7 +44,6 @@ module MakeVar =
            Format.formatter ->
            'a pre_ty ->
            unit
-
        end) ->
 struct
   type ty_var =
@@ -58,6 +58,11 @@ struct
     Format.fprintf fmt "%a%d"
       (Utils.print_opt (S.print print_var)) v.v_link
       v.v_id
+
+  let ty_of_ty_var ty_of_pre_ty ty_of_var_id tyv =
+    match tyv.v_link with
+    | Some pty -> ty_of_pre_ty pty
+    | None -> ty_of_var_id tyv.v_id
 end
 
 let print_const fmt c =

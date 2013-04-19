@@ -69,9 +69,7 @@ module VarTy = Ast_misc.MakeVar(PreTy)
 
 let rec ty_of_pre_ty pty =
   let open PreTy in
-  let open VarTy in
   match pty with
-  | Pty_var { v_link = Some pty; } -> ty_of_pre_ty pty
-  | Pty_var { v_id = id; v_link = None; } -> Ty_var id
+  | Pty_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ty_var i) v
   | Pty_scal tys -> Ty_scal tys
   | Pty_prod ty_l -> Ty_prod (List.map ty_of_pre_ty ty_l)

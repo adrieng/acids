@@ -18,3 +18,5 @@
 include Nativeint
 
 let of_char c = of_string (String.make 1 c)
+
+let print fmt i = Format.fprintf fmt "%nd" i

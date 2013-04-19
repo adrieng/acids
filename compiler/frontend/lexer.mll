@@ -109,7 +109,7 @@ rule token = parse
 | "dom" { DOM false }
 | "pardom" { DOM true }
 
-| '@' (['0' - '9']+ as s) '@' { WORD (int_list_of_string s) }
+| '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
 
 | "'s"(int as i) { STVAR (int_of_string i) }
 

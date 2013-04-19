@@ -1,6 +1,6 @@
-(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2012
+(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2013
  *
- * This file is part of nsched.
+ * This file is part of Acid Synchrone.
  *
  * nsched is free software: you can redistribute it and/or modify it under the
  * terms of the GNU General Public License as published by the Free Software
@@ -15,10 +15,4 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-(** Fundamental compiler stuff *)
 
-let magic_number = 0x4201
-
-exception Internal_error of string
-
-let internal_error reason = raise (Internal_error reason)

@@ -1,1 +1,2 @@
 - No split pattern in node sigs
+- Properly print "forall"s for type variables

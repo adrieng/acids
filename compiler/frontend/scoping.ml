@@ -15,6 +15,8 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+open Interface
+
 (** {2 Scoping pass}
 
     The scoping pass is responsible for converting plain strings from the parsed
@@ -32,8 +34,8 @@ let scope_longname local_nodes ln mod_env =
     (* If the node exists in the local module, this is a local node call.
        Otherwise we look it up in the imported modules. *)
     if ShortEnv.mem ln.shortn local_nodes
-    then { modn = LocalModule; shortn = ln.shortn; }
-    else { modn = Module (find_module_with_node mod_env ln); shortn = ln.shortn; }
+    then { ln with modn = LocalModule; }
+    else { ln with modn = Module (find_module_with_node mod_env ln); }
   | Module modn ->
     assert false
 

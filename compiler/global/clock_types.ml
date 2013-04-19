@@ -36,6 +36,12 @@ type clock_type =
   | Ct_stream of stream_type
   | Ct_prod of clock_type list
 
+type clock_sig =
+    {
+      ct_sig_input : clock_type;
+      ct_sig_output : clock_type;
+    }
+
 let print_clock_exp_pword fmt { u = u; v = v; } =
   Format.fprintf fmt "%a(%a)"
     (Ast_misc.print_power_tree Int.print Int.print) u

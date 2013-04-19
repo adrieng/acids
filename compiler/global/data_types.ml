@@ -15,23 +15,23 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type ty_scal =
+type data_ty_scal =
   | Tys_bool
   | Tys_int
   | Tys_float
 
-type ty =
+type data_ty =
   | Ty_var of int
-  | Ty_scal of ty_scal
-  | Ty_prod of ty list
+  | Ty_scal of data_ty_scal
+  | Ty_prod of data_ty list
 
-type ty_sig =
+type data_sig =
     {
-      ty_sig_input : ty;
-      ty_sig_output : ty;
+      data_sig_input : data_ty;
+      data_sig_output : data_ty;
     }
 
-let print_ty_scal fmt tys =
+let print_data_ty_scal fmt tys =
   match tys with
   | Tys_bool -> Format.fprintf fmt "bool"
   | Tys_int -> Format.fprintf fmt "int"
@@ -40,27 +40,27 @@ let print_ty_scal fmt tys =
 let rec print_ty fmt ty =
   match ty with
   | Ty_var id -> Format.fprintf fmt "'x%d" id
-  | Ty_scal tys -> print_ty_scal fmt tys
+  | Ty_scal tys -> print_data_ty_scal fmt tys
   | Ty_prod ty_l ->
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
 
-let print_ty_sig fmt tys =
+let print_data_sig fmt tys =
   Format.fprintf fmt "@[%a -> %a@]"
-    print_ty tys.ty_sig_input
-    print_ty tys.ty_sig_output
+    print_ty tys.data_sig_input
+    print_ty tys.data_sig_output
 
 module PreTy =
   struct
     type 'a pre_ty =
       | Pty_var of 'a
-      | Pty_scal of ty_scal
+      | Pty_scal of data_ty_scal
       | Pty_prod of 'a pre_ty list
 
     let rec print print_var fmt pty =
       match pty with
       | Pty_var v -> print_var fmt v
-      | Pty_scal tys -> print_ty_scal fmt tys
+      | Pty_scal tys -> print_data_ty_scal fmt tys
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l

@@ -64,7 +64,7 @@ type iface =
 
 let load_interface filen =
   try
-    let ic = open_in filen in
+    let ic = open_in_bin filen in
     let i = input_binary_int ic in
     if i != Compiler.magic_number then bad_magic_number filen;
     (Marshal.from_channel ic : iface)

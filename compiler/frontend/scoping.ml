@@ -92,7 +92,7 @@ let check_module_with_node intf_env modn shortn loc =
   then node_not_found modn shortn loc;
   intf_env
 
-let scope_longname local_nodes imported_mods intf_env ln loc =
+let scope_longname imported_mods local_nodes intf_env ln loc =
   let open Names in
   match ln.modn with
   | LocalModule ->
@@ -130,7 +130,7 @@ let rec scope_clock_annot imported_mods cka acc =
     let cka, acc = scope_clock_annot imported_mods cka acc in
     Acids_scoped.Ca_on (cka, ce), acc
 
-and scope_clock_exp imported_mods ce ((local_nodes, intf_env, id_env) as acc) =
+and scope_clock_exp imported_mods ce ((_, _, id_env) as acc) =
   let ced, acc =
     match ce.ce_desc with
     | Ce_var v ->
@@ -185,11 +185,31 @@ and scope_exp imported_mods e ((local_nodes, intf_env, id_env) as acc) =
       let e2, acc = scope_exp imported_mods e2 acc in
       let e3, acc = scope_exp imported_mods e3 acc in
       Acids_scoped.E_ifthenelse (e1, e2, e3), acc
+    | E_app (app, e) ->
+      let app, acc = scope_app imported_mods app acc in
+      let e, acc = scope_exp imported_mods e acc in
+      Acids_scoped.E_app (app, e), acc
   in
   {
     Acids_scoped.e_desc = ed;
     Acids_scoped.e_loc = e.e_loc;
     Acids_scoped.e_info = e.e_info;
+  },
+  acc
+
+and scope_app imported_mods app (local_nodes, intf_env, id_env) =
+  let op, acc =
+    match app.a_op with
+    | O_node ln ->
+      let ln, intf_env =
+        scope_longname imported_mods local_nodes intf_env ln app.a_loc
+      in
+      Acids_scoped.O_node ln, (local_nodes, intf_env, id_env)
+  in
+  {
+    Acids_scoped.a_op = op;
+    Acids_scoped.a_info = app.a_info;
+    Acids_scoped.a_loc = app.a_loc;
   },
   acc
 

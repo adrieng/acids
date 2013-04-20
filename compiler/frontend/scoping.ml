@@ -155,11 +155,43 @@ and scope_clock_exp imported_mods ce ((local_nodes, intf_env, id_env) as acc) =
   {
     Acids_scoped.ce_desc = ced;
     Acids_scoped.ce_loc = ce.ce_loc;
-    Acids_scoped.ce_info = ();
+    Acids_scoped.ce_info = ce.ce_info;
   },
   acc
 
-and scope_exp imported_mods e acc = assert false
+and scope_exp imported_mods e ((local_nodes, intf_env, id_env) as acc) =
+  let ed, acc =
+    match e.e_desc with
+    | E_var v ->
+      let id = find_var id_env v e.e_loc in
+      Acids_scoped.E_var id, (local_nodes, intf_env, id_env)
+    | E_const c ->
+      Acids_scoped.E_const c, acc
+    | E_fst e ->
+      let e, acc = scope_exp imported_mods e acc in
+      Acids_scoped.E_fst e, acc
+    | E_snd e ->
+      let e, acc = scope_exp imported_mods e acc in
+      Acids_scoped.E_snd e, acc
+    | E_tuple e_l ->
+      let e_l, acc = Utils.mapfold (scope_exp imported_mods) e_l acc in
+      Acids_scoped.E_tuple e_l, acc
+    | E_fby (e1, e2) ->
+      let e1, acc = scope_exp imported_mods e1 acc in
+      let e2, acc = scope_exp imported_mods e2 acc in
+      Acids_scoped.E_fby (e1, e2), acc
+    | E_ifthenelse (e1, e2, e3) ->
+      let e1, acc = scope_exp imported_mods e1 acc in
+      let e2, acc = scope_exp imported_mods e2 acc in
+      let e3, acc = scope_exp imported_mods e3 acc in
+      Acids_scoped.E_ifthenelse (e1, e2, e3), acc
+  in
+  {
+    Acids_scoped.e_desc = ed;
+    Acids_scoped.e_loc = e.e_loc;
+    Acids_scoped.e_info = e.e_info;
+  },
+  acc
 
 and scope_pattern imported_mods p ((local_nodes, intf_env, id_env) as acc) =
   let pd, acc =
@@ -186,7 +218,18 @@ and scope_pattern imported_mods p ((local_nodes, intf_env, id_env) as acc) =
   {
     Acids_scoped.p_desc = pd;
     Acids_scoped.p_loc = p.p_loc;
-    Acids_scoped.p_info = ();
+    Acids_scoped.p_info = p.p_info;
+  },
+  acc
+
+and scope_equation imported_mods eq acc =
+  let p, acc = scope_pattern imported_mods eq.eq_lhs acc in
+  let e, acc = scope_exp imported_mods eq.eq_rhs acc in
+  {
+    Acids_scoped.eq_lhs = p;
+    Acids_scoped.eq_rhs = e;
+    Acids_scoped.eq_loc = eq.eq_loc;
+    Acids_scoped.eq_info = eq.eq_info;
   },
   acc
 

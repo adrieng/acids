@@ -31,6 +31,8 @@ let no_pervasives = ref false
 
 let optimize = ref true
 
+let search_path = ref [Filename.current_dir_name]
+
 let set r x () = r := x
 
 let add lr x = set lr (x :: !lr) ()

@@ -20,6 +20,7 @@
 type error =
   | Could_not_open_file of string
   | Bad_magic_number of string
+  | Could_not_find_file of string
 
 exception Interface_error of error
 
@@ -29,12 +30,19 @@ let print_error fmt err =
     Format.fprintf fmt "Could not open interface file %s" filen
   | Bad_magic_number filen ->
     Format.fprintf fmt "Bad magic number in file %s" filen
+  | Could_not_find_file filen ->
+    Format.fprintf fmt "Could not find file %s in @[%a@]"
+      filen
+      (Utils.print_list_r Utils.print_string ";") !Compiler_options.search_path
 
 let could_not_open_file filen =
   raise (Interface_error (Could_not_open_file filen))
 
 let bad_magic_number filen =
   raise (Interface_error (Bad_magic_number filen))
+
+let could_not_find_file filen =
+  raise (Interface_error (Could_not_find_file filen))
 
 (** {2 Definitions of data types} *)
 
@@ -54,10 +62,10 @@ type node_decl =
   | Nd_static of static_node_decl
   | Nd_dynamic of dynamic_node_decl
 
-type iface =
+type t =
     {
-      m_name : Names.shortname;
-      m_body : node_decl Names.ShortEnv.t;
+      i_name : Names.shortname;
+      i_body : node_decl Names.ShortEnv.t;
     }
 
 (** {2 I/O functions} *)
@@ -67,10 +75,20 @@ let load_interface filen =
     let ic = open_in_bin filen in
     let i = input_binary_int ic in
     if i != Compiler.magic_number then bad_magic_number filen;
-    let (intf : iface) = Marshal.from_channel ic in
+    let (intf : t) = Marshal.from_channel ic in
     close_in ic;
     intf
   with _ -> could_not_open_file filen
+
+let load_interface_from_standard_path filen =
+  let rec try_dirs dirs =
+    match dirs with
+    | [] -> could_not_find_file filen
+    | dirn :: dirs ->
+      try load_interface (Filename.concat dirn filen)
+      with Not_found -> try_dirs dirs
+  in
+  try_dirs !Compiler_options.search_path
 
 let store_interface filen intf =
   try
@@ -79,3 +97,5 @@ let store_interface filen intf =
     Marshal.to_channel oc intf [];
     close_out oc
   with _ -> could_not_open_file filen
+
+(** {2 Look-up functions} *)

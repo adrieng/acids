@@ -37,6 +37,7 @@
 
 type error =
   | Unknown_node of Names.shortname * Loc.t
+  | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
 
 exception Scoping_error of error
@@ -47,10 +48,18 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown node %a"
       Loc.print l
       Names.print_shortname shortn
+  | Node_not_found (modn, shortn, l) ->
+    Format.fprintf fmt "%aNode %a not found in module %a"
+      Loc.print l
+      Names.print_shortname shortn
+      Names.print_modname modn
   | Unbound_var (v, l) ->
     Format.fprintf fmt "%aUnknown identifier %s" Loc.print l v
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
+
+let node_not_found modn shortn loc =
+  raise (Scoping_error (Node_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
 
@@ -71,7 +80,15 @@ let find_module_with_node imported_mods intf_env shortn loc =
   try List.find mod_has_node imported_mods
   with Not_found -> unknown_node shortn loc
 
-let check_module_with_node intf_env ln loc =
+let check_module_with_node intf_env modn shortn loc =
+  let intf, intf_env =
+    try Names.ShortEnv.find modn intf_env, intf_env
+    with Not_found ->
+      let intf = Interface.load_interface_from_module_name modn in
+      intf, Names.ShortEnv.add modn intf intf_env
+  in
+  if not (Names.ShortEnv.mem shortn intf.Interface.i_body)
+  then node_not_found modn shortn loc;
   intf_env
 
 let scope_longname (local_nodes, imported_mods) intf_env ln loc =
@@ -87,8 +104,8 @@ let scope_longname (local_nodes, imported_mods) intf_env ln loc =
         find_module_with_node imported_mods intf_env ln.shortn loc
       in
       { ln with modn = Module modn; }, intf_env
-  | Module _ ->
-    let intf_env = check_module_with_node intf_env ln loc in
+  | Module modn ->
+    let intf_env = check_module_with_node intf_env modn ln.shortn loc in
     ln, intf_env
 
 (** {2 AST traversal} *)

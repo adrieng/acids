@@ -68,7 +68,7 @@ type t =
       i_body : node_decl Names.ShortEnv.t;
     }
 
-(** {2 I/O functions} *)
+(** {2 Low-level I/O functions} *)
 
 let load_interface filen =
   try
@@ -80,16 +80,6 @@ let load_interface filen =
     intf
   with _ -> could_not_open_file filen
 
-let load_interface_from_standard_path filen =
-  let rec try_dirs dirs =
-    match dirs with
-    | [] -> could_not_find_file filen
-    | dirn :: dirs ->
-      try load_interface (Filename.concat dirn filen)
-      with Not_found -> try_dirs dirs
-  in
-  try_dirs !Compiler_options.search_path
-
 let store_interface filen intf =
   try
     let oc = open_out_bin filen in
@@ -99,3 +89,18 @@ let store_interface filen intf =
   with _ -> could_not_open_file filen
 
 (** {2 Look-up functions} *)
+
+let load_interface_from_module_name modn =
+  let filen =
+    Filename.concat
+      (String.uncapitalize modn)
+      "aso"
+  in
+  let rec try_dirs dirs =
+    match dirs with
+    | [] -> could_not_find_file filen
+    | dirn :: dirs ->
+      try load_interface (Filename.concat dirn filen)
+      with Not_found -> try_dirs dirs
+  in
+  try_dirs !Compiler_options.search_path

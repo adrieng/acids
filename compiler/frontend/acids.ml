@@ -96,6 +96,7 @@ struct
       {
         a_op : op;
         a_info : S.app_info;
+        a_loc : Loc.t;
       }
 
   and op =

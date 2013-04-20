@@ -53,11 +53,12 @@
       Acids_parsetree.e_info = ();
     }
 
-  let make_app ln e =
+  let make_app e ln ln_loc =
     let app =
       {
         Acids_parsetree.a_op = Acids_parsetree.O_node ln;
         Acids_parsetree.a_info = ();
+        Acids_parsetree.a_loc = ln_loc;
       }
     in
     Acids_parsetree.E_app (app, e)
@@ -71,6 +72,7 @@
       {
         Acids_parsetree.a_op = Acids_parsetree.O_node ln;
         Acids_parsetree.a_info = ();
+        Acids_parsetree.a_loc = Parser_utils.make_loc start stop;
       }
     in
     Acids_parsetree.E_app (app, make_tuple [e1; e2] loc)
@@ -190,7 +192,7 @@
 
 %%
 
-with_loc(X):
+%inline with_loc(X):
  | x = X { x, Parser_utils.make_loc $startpos $endpos }
 
 parens(X):
@@ -238,7 +240,7 @@ clock_exp_desc:
     { Acids_parsetree.Ce_pword (make_ce_pword $1) }
 
 clock_exp:
-| with_loc(clock_exp_desc) { make_located make_clock_exp $1 }
+| ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
 
 clock_exp_exp:
 | ce = chevrons(clock_exp) { ce }
@@ -286,7 +288,7 @@ exp_desc:
 | e1 = exp s = OP e2 = exp
             { make_bin_op $startpos $endpos s e1 e2 }
 
-| ln = longname e = exp %prec APP { make_app ln e }
+| ln = with_loc(longname) e = exp %prec APP { make_located (make_app e) ln }
 
 | e1 = exp FBY e2 = exp { Acids_parsetree.E_fby (e1, e2) }
 | IF e1 = exp THEN e2 = exp ELSE e3 = exp %prec IF
@@ -313,13 +315,13 @@ eq_desc:
 | p = pat EQUAL e = exp { (p, e) }
 
 eq:
-| with_loc(eq_desc) { make_located make_eq $1 }
+| eqd = with_loc(eq_desc) { make_located make_eq eqd }
 
 block_desc:
 | separated_nonempty_list(AND, eq) { $1 }
 
 block:
-| with_loc(block_desc) { make_located make_block $1 }
+| b = with_loc(block_desc) { make_located make_block b }
 
 clock_annot:
 | STVAR { Acids_parsetree.Ca_var $1 }
@@ -339,7 +341,7 @@ pat_desc:
           { Acids_parsetree.P_clock_annot (p, ck) }
 
 pat:
-| with_loc(pat_desc) { make_located make_pat $1 }
+| pd = with_loc(pat_desc) { make_located make_pat pd }
 
 pragma:
 | { None }
@@ -354,7 +356,7 @@ node_desc:
           { (s, n, p, e, pr) }
 
 node:
-| with_loc(node_desc) { make_located make_node $1 }
+| nd = with_loc(node_desc) { make_located make_node nd }
 
 import:
 | OPEN UIDENT { $2 }

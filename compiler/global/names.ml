@@ -59,6 +59,8 @@ module Env =
     module M = Map.Make(LongnameOrdered)
     include M
 
+    let union env1 env2 = M.fold (fun k v env2 -> M.add k v env2) env1 env2
+
     let disjoint_union env1 env2 =
       let add k v env =
         if M.mem k env then invalid_arg "disjoint_union" else M.add k v env

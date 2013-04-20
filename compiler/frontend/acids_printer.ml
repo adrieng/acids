@@ -132,7 +132,7 @@ struct
   let print_node fmt nd =
     Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a@]"
       (if nd.n_static then "static " else "")
-      Names.print_longname_short nd.n_name
+      Names.print_shortname nd.n_name
       print_pat nd.n_input
       print_exp nd.n_body
 

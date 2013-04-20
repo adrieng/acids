@@ -138,13 +138,12 @@ struct
 
   type node =
       {
-        n_name : Names.longname;
+        n_name : Names.shortname;
         n_input : pat;
         n_body : exp;
         n_pragma : Pragma.t option;
         n_static : bool;
         n_loc : Loc.t;
-        n_env : node Names.Env.t;
         n_info : S.node_info;
       }
 

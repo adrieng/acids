@@ -301,6 +301,32 @@ and scope_domain imported_mods dom acc =
   },
   acc
 
+(* TODO: local_nodes not an acc above *)
+
+let scope_node imported_mods node (local_nodes, intf_env) =
+  (* TODO: check for duplicate nodes *)
+  Ident.reset ();
+  let acc = (local_nodes, intf_env, Utils.String_map.empty) in
+  let inp, acc = scope_pattern imported_mods node.n_input acc in
+  let body, (local_nodes, intf_env, _) =
+    scope_exp imported_mods node.n_body acc
+  in
+  let node =
+    {
+      Acids_scoped.n_name = node.n_name;
+      Acids_scoped.n_input = inp;
+      Acids_scoped.n_body = body;
+      Acids_scoped.n_pragma = node.n_pragma;
+      Acids_scoped.n_static = node.n_static;
+      Acids_scoped.n_loc = node.n_loc;
+      Acids_scoped.n_info = node.n_info;
+    }
+  in
+  let local_nodes =
+    Names.ShortEnv.add node.Acids_scoped.n_name node local_nodes
+  in
+  node, (local_nodes, intf_env)
+
 let scope_file ctx (file : unit Acids_parsetree.file) =
   ctx, (file : unit Acids_parsetree.file)
 

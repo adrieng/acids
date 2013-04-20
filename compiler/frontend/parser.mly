@@ -107,7 +107,6 @@
       Acids_parsetree.n_pragma = pr;
       Acids_parsetree.n_static = s;
       Acids_parsetree.n_loc = loc;
-      Acids_parsetree.n_env = Names.Env.empty;
       Acids_parsetree.n_info = ();
     }
 
@@ -218,7 +217,7 @@ upword(X, Y, Z):
 | s = OP { string_of_op s }
 
 %inline shortname:
-| s = IDENT | s = parens(OP) { Initial.make_longname s }
+| s = IDENT | s = parens(OP) { s }
 
 %inline longname:
 | n = name { Initial.make_longname n }

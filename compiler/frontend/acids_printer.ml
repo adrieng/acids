@@ -26,14 +26,10 @@ struct
   and print_clock_exp_desc fmt ced =
     match ced with
     | Ce_var v -> S.print_var fmt v
-    | Ce_pword
-        {
-          cep_prefix = ue;
-          cep_period = ve;
-        } ->
+    | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
       Format.fprintf fmt "%a(%a)"
-        (Ast_misc.print_power_tree print_exp print_exp) ue
-        (Ast_misc.print_power_tree print_exp print_exp) ve
+        (Ast_misc.print_power_tree print_exp print_exp) u
+        (Ast_misc.print_power_tree print_exp print_exp) v
     | Ce_equal (ce, e) ->
       Format.fprintf fmt "%a = %a" print_clock_exp ce print_exp e
     | Ce_iter ce ->
@@ -114,9 +110,7 @@ struct
         print_pat p
         print_clock_annot ck
     | P_split p_t ->
-      Format.fprintf fmt "%a(%a)"
-        (Ast_misc.print_power_tree print_pat print_exp) p_t.ps_prefix
-        (Ast_misc.print_power_tree print_pat print_exp) p_t.ps_period
+      Ast_misc.print_upword print_pat print_exp fmt p_t
 
   and print_clock_annot fmt ck =
     match ck with

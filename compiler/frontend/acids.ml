@@ -53,15 +53,9 @@ struct
 
   and clock_exp_desc =
     | Ce_var of S.var
-    | Ce_pword of clock_exp_pword
+    | Ce_pword of (exp, exp) Ast_misc.upword
     | Ce_equal of clock_exp * exp
     | Ce_iter of clock_exp
-
-  and clock_exp_pword =
-  {
-    cep_prefix : (exp, exp) Ast_misc.power_tree;
-    cep_period : (exp, exp) Ast_misc.power_tree;
-  }
 
   and clock_annot =
     | Ca_var of int
@@ -133,13 +127,7 @@ struct
     | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
-    | P_split of pat_split
-
-  and pat_split =
-    {
-      ps_prefix : (pat, exp) Ast_misc.power_tree;
-      ps_period : (pat, exp) Ast_misc.power_tree;
-    }
+    | P_split of (pat, exp) Ast_misc.upword
 
   and domain =
       {

@@ -121,34 +121,40 @@ let find_var id_env v loc =
 
 open Acids_parsetree
 
-let rec scope_clock_annot cka id_env =
+let rec scope_clock_annot imported_mods cka id_env =
   match cka with
   | Ca_var i ->
     Acids_scoped.Ca_var i, id_env
   | Ca_on (cka, ce) ->
-    let ce, id_env = scope_clock_exp ce id_env in
-    let cka, id_env = scope_clock_annot cka id_env in
+    let ce, id_env = scope_clock_exp imported_mods ce id_env in
+    let cka, id_env = scope_clock_annot imported_mods cka id_env in
     Acids_scoped.Ca_on (cka, ce), id_env
 
-and scope_clock_exp ce id_env = assert false
+and scope_clock_exp imported_mods ce id_env = assert false
 
-and scope_pattern p id_env =
+and scope_exp imported_mods e id_env = assert false
+
+and scope_pattern imported_mods p id_env =
   let pd, id_env =
     match p.p_desc with
     | P_var v ->
       let id, intf_env = add_var id_env v in
       Acids_scoped.P_var id, intf_env
     | P_tuple p_l ->
-      let p_l, intf_env = Utils.mapfold scope_pattern p_l id_env in
+      let p_l, intf_env =
+        Utils.mapfold (scope_pattern imported_mods) p_l id_env
+      in
       Acids_scoped.P_tuple p_l, intf_env
     | P_clock_annot (p, cka) ->
-      let cka, id_env = scope_clock_annot cka id_env in
-      let p, id_env = scope_pattern p id_env in
+      let cka, id_env = scope_clock_annot imported_mods cka id_env in
+      let p, id_env = scope_pattern imported_mods p id_env in
       Acids_scoped.P_clock_annot (p, cka), id_env
     | P_split p_l ->
-      let scope_clock_annot cka id_env = cka, id_env in (* nothing *)
       let p_l, intf_env =
-        assert false
+        Ast_misc.mapfold_upword
+          (scope_pattern imported_mods)
+          (scope_exp imported_mods)
+          p_l id_env
       in
       Acids_scoped.P_split p_l, id_env
   in

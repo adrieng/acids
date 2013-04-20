@@ -24,17 +24,9 @@
     | [x] -> x
     | _ :: _ -> Ast_misc.Concat l
 
-  let make_ce_pword (u, v) =
-    {
-      Acids_parsetree.cep_prefix = u;
-      Acids_parsetree.cep_period = v;
-    }
+  let make_ce_pword (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
 
-  let make_pat_split (u, v) =
-    {
-      Acids_parsetree.ps_prefix = u;
-      Acids_parsetree.ps_period = v;
-    }
+  let make_pat_split (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
 
   let make_located make (x, loc) = make x loc
 

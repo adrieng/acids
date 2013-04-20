@@ -53,6 +53,13 @@ let rec print_power_tree print_a print_b fmt tr =
       (print_power_tree print_a print_b) tr
       print_b pw
 
+type ('a, 'b) upword = { u : ('a, 'b) power_tree; v : ('a, 'b) power_tree; }
+
+let print_upword print_a print_b fmt { u = u; v = v; } =
+  Format.fprintf fmt "%a(%a)"
+    (print_power_tree print_a print_b) u
+    (print_power_tree print_a print_b) v
+
 let rec mapfold_power_tree f g pt acc =
   match pt with
   | Leaf x ->
@@ -65,6 +72,11 @@ let rec mapfold_power_tree f g pt acc =
     let pw, acc = g pw acc in
     let pt, acc = mapfold_power_tree f g pt acc in
     Power (pt, pw), acc
+
+let mapfold_upword f g { u = u; v = v; } acc =
+  let u, acc = mapfold_power_tree f g u acc in
+  let v, acc = mapfold_power_tree f g v acc in
+  { u = u; v = v; }, acc
 
 (** Generic module for unification variables *)
 module MakeVar =

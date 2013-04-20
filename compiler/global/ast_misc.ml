@@ -29,10 +29,42 @@ type const =
   | Cfloat of float
   | Cword of int list (* [0-9] ints *)
 
+let print_const fmt c =
+  match c with
+  | Cbool b -> Format.fprintf fmt "%b" b
+  | Cint i -> Format.fprintf fmt "%nd" i
+  | Cfloat f -> Format.fprintf fmt "%f" f
+  | Cword w ->
+    let print_int fmt i = Format.fprintf fmt "%d" i in
+    Format.fprintf fmt "@%a@" (Utils.print_list print_int) w
+
 type ('a, 'b) power_tree =
   | Leaf of 'a
   | Concat of ('a, 'b) power_tree list
   | Power of ('a, 'b) power_tree * 'b
+
+let rec print_power_tree print_a print_b fmt tr =
+  match tr with
+  | Leaf a -> print_a fmt a
+  | Concat tr_l ->
+    Utils.print_list_r (print_power_tree print_a print_b) "" fmt tr_l
+  | Power (tr, pw) ->
+    Format.fprintf fmt "%a^%a"
+      (print_power_tree print_a print_b) tr
+      print_b pw
+
+let rec mapfold_power_tree f g pt acc =
+  match pt with
+  | Leaf x ->
+    let x, acc = f x acc in
+    Leaf x, acc
+  | Concat pt_l ->
+    let pt_l, acc = Utils.mapfold (mapfold_power_tree f g) pt_l acc in
+    Concat pt_l, acc
+  | Power (pt, pw) ->
+    let pw, acc = g pw acc in
+    let pt, acc = mapfold_power_tree f g pt acc in
+    Power (pt, pw), acc
 
 (** Generic module for unification variables *)
 module MakeVar =
@@ -65,22 +97,3 @@ struct
     | Some pty -> ty_of_pre_ty pty
     | None -> ty_of_var_id tyv.v_id
 end
-
-let print_const fmt c =
-  match c with
-  | Cbool b -> Format.fprintf fmt "%b" b
-  | Cint i -> Format.fprintf fmt "%nd" i
-  | Cfloat f -> Format.fprintf fmt "%f" f
-  | Cword w ->
-    let print_int fmt i = Format.fprintf fmt "%d" i in
-    Format.fprintf fmt "@%a@" (Utils.print_list print_int) w
-
-let rec print_power_tree print_a print_b fmt tr =
-  match tr with
-  | Leaf a -> print_a fmt a
-  | Concat tr_l ->
-    Utils.print_list_r (print_power_tree print_a print_b) "" fmt tr_l
-  | Power (tr, pw) ->
-    Format.fprintf fmt "%a^%a"
-      (print_power_tree print_a print_b) tr
-      print_b pw

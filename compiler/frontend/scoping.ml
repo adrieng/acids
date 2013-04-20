@@ -92,7 +92,7 @@ let check_module_with_node intf_env modn shortn loc =
   then node_not_found modn shortn loc;
   intf_env
 
-let scope_longname (local_nodes, imported_mods) intf_env ln loc =
+let scope_longname local_nodes imported_mods intf_env ln loc =
   let open Names in
   match ln.modn with
   | LocalModule ->
@@ -109,15 +109,55 @@ let scope_longname (local_nodes, imported_mods) intf_env ln loc =
     let intf_env = check_module_with_node intf_env modn ln.shortn loc in
     ln, intf_env
 
-let add_var env v =
+let add_var id_env v =
   let id = Ident.make_source v in
-  id, Utils.String_map.add v id env
+  id, Utils.String_map.add v id id_env
 
-let find_var env v loc =
-  try Utils.String_map.find v env
+let find_var id_env v loc =
+  try Utils.String_map.find v id_env
   with Not_found -> unbound_var v loc
 
 (** {2 AST traversal} *)
+
+open Acids_parsetree
+
+let rec scope_clock_annot cka id_env =
+  match cka with
+  | Ca_var i ->
+    Acids_scoped.Ca_var i, id_env
+  | Ca_on (cka, ce) ->
+    let ce, id_env = scope_clock_exp ce id_env in
+    let cka, id_env = scope_clock_annot cka id_env in
+    Acids_scoped.Ca_on (cka, ce), id_env
+
+and scope_clock_exp ce id_env = assert false
+
+and scope_pattern p id_env =
+  let pd, id_env =
+    match p.p_desc with
+    | P_var v ->
+      let id, intf_env = add_var id_env v in
+      Acids_scoped.P_var id, intf_env
+    | P_tuple p_l ->
+      let p_l, intf_env = Utils.mapfold scope_pattern p_l id_env in
+      Acids_scoped.P_tuple p_l, intf_env
+    | P_clock_annot (p, cka) ->
+      let cka, id_env = scope_clock_annot cka id_env in
+      let p, id_env = scope_pattern p id_env in
+      Acids_scoped.P_clock_annot (p, cka), id_env
+    | P_split p_l ->
+      let scope_clock_annot cka id_env = cka, id_env in (* nothing *)
+      let p_l, intf_env =
+        assert false
+      in
+      Acids_scoped.P_split p_l, id_env
+  in
+  {
+    Acids_scoped.p_desc = pd;
+    Acids_scoped.p_loc = p.p_loc;
+    Acids_scoped.p_info = ();
+  },
+  id_env
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
   ctx, (file : unit Acids_parsetree.file)

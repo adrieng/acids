@@ -91,11 +91,7 @@ let store_interface filen intf =
 (** {2 Look-up functions} *)
 
 let load_interface_from_module_name modn =
-  let filen =
-    Filename.concat
-      (String.uncapitalize modn)
-      "aso"
-  in
+  let filen = Filename.concat (String.uncapitalize modn) "aso" in
   let rec try_dirs dirs =
     match dirs with
     | [] -> could_not_find_file filen

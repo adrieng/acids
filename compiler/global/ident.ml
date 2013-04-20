@@ -34,38 +34,25 @@ let reset () =
   global_cpt := 0;
   Hashtbl.clear ident_table
 
-let fresh_ident k n =
+let make_ident kind name =
   let available_name_num =
-    try Hashtbl.find available_name_nums n
+    try Hashtbl.find available_name_nums name
     with Not_found ->
       let r = ref 0 in
-      Hashtbl.add available_name_nums n r;
+      Hashtbl.add available_name_nums name r;
       r
   in
   let id =
     {
       num = !global_cpt;
-      name = n;
+      name = name;
       name_num = !available_name_num;
-      kind = k;
+      kind = kind;
     }
   in
   incr global_cpt;
   incr available_name_num;
   id
-
-let make_ident k n =
-  match k with
-  | Source ->
-    (
-      try Hashtbl.find ident_table n
-      with Not_found ->
-        let id = fresh_ident k n in
-        Hashtbl.add ident_table n id;
-        id
-    )
-  | Internal ->
-    fresh_ident k n
 
 let compare b1 b2 = b2.num - b1.num
 

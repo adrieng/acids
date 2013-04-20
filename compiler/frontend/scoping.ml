@@ -71,6 +71,7 @@ let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
     @param imported_mods list of explicitely imported modules, in reverse order
     @param intf_env an environment mapping module names to Interface.t
     @param shortn the node name to look-up
+    @returns module name defining shortn
 *)
 let find_module_with_node imported_mods intf_env shortn loc =
   let mod_has_node modn =
@@ -98,7 +99,7 @@ let scope_longname (local_nodes, imported_mods) intf_env ln loc =
     (* If the node exists in the local module, this is a local node call.
        Otherwise we look it up in the imported modules. *)
     if ShortEnv.mem ln.shortn local_nodes
-    then { ln with modn = LocalModule; }, intf_env
+    then ln, intf_env
     else
       let modn =
         find_module_with_node imported_mods intf_env ln.shortn loc
@@ -107,6 +108,14 @@ let scope_longname (local_nodes, imported_mods) intf_env ln loc =
   | Module modn ->
     let intf_env = check_module_with_node intf_env modn ln.shortn loc in
     ln, intf_env
+
+let add_var env v =
+  let id = Ident.make_source v in
+  id, Utils.String_map.add v id env
+
+let find_var env v loc =
+  try Utils.String_map.find v env
+  with Not_found -> unbound_var v loc
 
 (** {2 AST traversal} *)
 

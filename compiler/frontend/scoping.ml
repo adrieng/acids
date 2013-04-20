@@ -193,6 +193,29 @@ and scope_exp imported_mods e ((local_nodes, intf_env, id_env) as acc) =
       let e, acc = scope_exp imported_mods e acc in
       let block, acc = scope_block imported_mods block acc in
       Acids_scoped.E_where (e, block), acc
+    | E_when (e, ce) ->
+      let e, acc = scope_exp imported_mods e acc in
+      let ce, acc = scope_clock_exp imported_mods ce acc in
+      Acids_scoped.E_when (e, ce), acc
+    | E_split (ce, e) ->
+      let e, acc = scope_exp imported_mods e acc in
+      let ce, acc = scope_clock_exp imported_mods ce acc in
+      Acids_scoped.E_split (ce, e), acc
+    | E_merge (ce, e_l) ->
+      let ce, acc = scope_clock_exp imported_mods ce acc in
+      let e_l, acc = Utils.mapfold (scope_exp imported_mods) e_l acc in
+      Acids_scoped.E_merge (ce, e_l), acc
+    | E_valof ce ->
+      let ce, acc = scope_clock_exp imported_mods ce acc in
+      Acids_scoped.E_valof ce, acc
+    | E_clockannot (e, cka) ->
+      let e, acc = scope_exp imported_mods e acc in
+      let cka, acc = scope_clock_annot imported_mods cka acc in
+      Acids_scoped.E_clockannot (e, cka), acc
+    | E_dom (e, dom) ->
+      let e, acc = scope_exp imported_mods e acc in
+      let dom, acc = scope_domain imported_mods dom acc in
+      Acids_scoped.E_dom (e, dom), acc
   in
   {
     Acids_scoped.e_desc = ed;
@@ -214,6 +237,27 @@ and scope_app imported_mods app (local_nodes, intf_env, id_env) =
     Acids_scoped.a_op = op;
     Acids_scoped.a_info = app.a_info;
     Acids_scoped.a_loc = app.a_loc;
+  },
+  acc
+
+and scope_block imported_mods block acc =
+  (* TODO: check multiple bindings *)
+  let body, acc = Utils.mapfold (scope_eq imported_mods) block.b_body acc in
+  {
+    Acids_scoped.b_body = body;
+    Acids_scoped.b_loc = block.b_loc;
+    Acids_scoped.b_info = block.b_info;
+  },
+  acc
+
+and scope_eq imported_mods eq acc =
+  let p, acc = scope_pattern imported_mods eq.eq_lhs acc in
+  let e, acc = scope_exp imported_mods eq.eq_rhs acc in
+  {
+    Acids_scoped.eq_lhs = p;
+    Acids_scoped.eq_rhs = e;
+    Acids_scoped.eq_loc = eq.eq_loc;
+    Acids_scoped.eq_info = eq.eq_info;
   },
   acc
 
@@ -247,24 +291,13 @@ and scope_pattern imported_mods p ((local_nodes, intf_env, id_env) as acc) =
   },
   acc
 
-and scope_eq imported_mods eq acc =
-  let p, acc = scope_pattern imported_mods eq.eq_lhs acc in
-  let e, acc = scope_exp imported_mods eq.eq_rhs acc in
+and scope_domain imported_mods dom acc =
+  let base_clock, acc =
+    Utils.mapfold_opt (scope_clock_annot imported_mods) dom.d_base_clock acc
+  in
   {
-    Acids_scoped.eq_lhs = p;
-    Acids_scoped.eq_rhs = e;
-    Acids_scoped.eq_loc = eq.eq_loc;
-    Acids_scoped.eq_info = eq.eq_info;
-  },
-  acc
-
-and scope_block imported_mods block acc =
-  (* TODO: check multiple bindings *)
-  let body, acc = Utils.mapfold (scope_eq imported_mods) block.b_body acc in
-  {
-    Acids_scoped.b_body = body;
-    Acids_scoped.b_loc = block.b_loc;
-    Acids_scoped.b_info = block.b_info;
+    Acids_scoped.d_base_clock = base_clock;
+    Acids_scoped.d_par = dom.d_par;
   },
   acc
 

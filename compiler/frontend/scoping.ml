@@ -189,6 +189,10 @@ and scope_exp imported_mods e ((local_nodes, intf_env, id_env) as acc) =
       let app, acc = scope_app imported_mods app acc in
       let e, acc = scope_exp imported_mods e acc in
       Acids_scoped.E_app (app, e), acc
+    | E_where (e, block) ->
+      let e, acc = scope_exp imported_mods e acc in
+      let block, acc = scope_block imported_mods block acc in
+      Acids_scoped.E_where (e, block), acc
   in
   {
     Acids_scoped.e_desc = ed;
@@ -214,6 +218,7 @@ and scope_app imported_mods app (local_nodes, intf_env, id_env) =
   acc
 
 and scope_pattern imported_mods p ((local_nodes, intf_env, id_env) as acc) =
+  (* TODO: check multiple bindings *)
   let pd, acc =
     match p.p_desc with
     | P_var v ->
@@ -242,7 +247,7 @@ and scope_pattern imported_mods p ((local_nodes, intf_env, id_env) as acc) =
   },
   acc
 
-and scope_equation imported_mods eq acc =
+and scope_eq imported_mods eq acc =
   let p, acc = scope_pattern imported_mods eq.eq_lhs acc in
   let e, acc = scope_exp imported_mods eq.eq_rhs acc in
   {
@@ -250,6 +255,16 @@ and scope_equation imported_mods eq acc =
     Acids_scoped.eq_rhs = e;
     Acids_scoped.eq_loc = eq.eq_loc;
     Acids_scoped.eq_info = eq.eq_info;
+  },
+  acc
+
+and scope_block imported_mods block acc =
+  (* TODO: check multiple bindings *)
+  let body, acc = Utils.mapfold (scope_eq imported_mods) block.b_body acc in
+  {
+    Acids_scoped.b_body = body;
+    Acids_scoped.b_loc = block.b_loc;
+    Acids_scoped.b_info = block.b_info;
   },
   acc
 

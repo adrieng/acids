@@ -20,8 +20,15 @@ struct
   module Acids = Acids.Make(S)
   open Acids
 
+  let print_full_info p fmt x =
+    if !Compiler_options.print_full_info
+    then Format.fprintf fmt " (* %a *)" p x
+    else ()
+
   let rec print_clock_exp fmt ce =
-    print_clock_exp_desc fmt ce.ce_desc
+    Format.fprintf fmt "%a%a"
+      print_clock_exp_desc ce.ce_desc
+      (print_full_info S.print_clock_exp_info) ce.ce_info
 
   and print_clock_exp_desc fmt ced =
     match ced with
@@ -36,7 +43,9 @@ struct
       Format.fprintf fmt "iter %a" print_clock_exp ce
 
   and print_exp fmt e =
-    print_exp_desc fmt e.e_desc
+    Format.fprintf fmt "%a%a"
+      print_exp_desc e.e_desc
+      (print_full_info S.print_exp_info) e.e_info
 
   and print_exp_desc fmt ed =
     match ed with
@@ -56,7 +65,7 @@ struct
         print_exp e3
     | E_app (app, e) ->
       Format.fprintf fmt "%a %a"
-        print_op app.a_op
+        print_app app
         print_exp e
     | E_where (e, bl) ->
       Format.fprintf fmt "@[%a where@ %a@]"
@@ -83,21 +92,30 @@ struct
     | E_dom (e, dom) ->
       print_dom fmt dom e
 
-  and print_op fmt op =
-    match op with
-    | O_node ln -> Names.print_longname fmt ln
+  and print_app fmt app =
+    let print_op fmt op =
+      match op with
+      | O_node ln -> Names.print_longname fmt ln
+    in
+    Format.fprintf fmt "%a%a"
+      print_op app.a_op
+      (print_full_info S.print_app_info) app.a_info
 
   and print_block fmt block =
-    Format.fprintf fmt "@[rec %a@]"
+    Format.fprintf fmt "@[rec %a%a@]"
       (Utils.print_list_r print_eq "and") block.b_body
+      (print_full_info S.print_block_info) block.b_info
 
   and print_eq fmt eq =
-    Format.fprintf fmt "@[%a = %a@]"
+    Format.fprintf fmt "@[%a = %a%a@]"
       print_pat eq.eq_lhs
       print_exp eq.eq_rhs
+      (print_full_info S.print_eq_info) eq.eq_info
 
   and print_pat fmt p =
-    print_pat_desc fmt p.p_desc
+    Format.fprintf fmt "%a%a"
+      print_pat_desc p.p_desc
+      (print_full_info S.print_pat_info) p.p_info
 
   and print_pat_desc fmt pd =
     match pd with
@@ -130,11 +148,12 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   let print_node fmt nd =
-    Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a@]"
+    Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a%a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
       print_pat nd.n_input
       print_exp nd.n_body
+      (print_full_info S.print_node_info) nd.n_info
 
   let print_file fmt file =
     let print_import fmt modn =

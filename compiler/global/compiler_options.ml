@@ -95,6 +95,4 @@ let options =
         ]
     )
 
-let version = "0.01"
-
 let usage = Sys.argv.(0) ^ ": [options] files"

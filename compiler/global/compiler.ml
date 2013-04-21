@@ -19,6 +19,8 @@
 
 let magic_number = 0x4201
 
+let version = "0.01"
+
 exception Internal_error of string
 
 let internal_error reason = raise (Internal_error reason)

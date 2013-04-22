@@ -25,8 +25,8 @@ type static_ty =
 
 type static_sig =
   {
-    st_sig_input : static_ty;
-    st_sig_output : static_ty;
+    static_sig_input : static_ty;
+    static_sig_output : static_ty;
   }
 
 let print_static_ty_scal fmt ss =
@@ -74,4 +74,4 @@ let rec is_static st =
   | Sy_prod st_l -> List.exists is_static st_l
 
 let is_static_signature ssig =
-  is_static ssig.st_sig_input || is_static ssig.st_sig_output
+  is_static ssig.static_sig_input || is_static ssig.static_sig_output

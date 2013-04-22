@@ -126,9 +126,30 @@
   let data_sig mk =
     let open Data_types in
     mk
-      (fun left right -> { data_sig_input = left; data_sig_output = right; })
+      (fun inp out -> { data_sig_input = inp; data_sig_output = out; })
       (fun p -> Ty_prod p)
       (fun p -> Ty_scal p)
+
+  let static_sig mk =
+    let open Static_types in
+    mk
+      (fun inp out -> { static_sig_input = inp; static_sig_output = out; })
+      (fun ty_l -> Sy_prod ty_l)
+      (fun ty -> Sy_scal ty)
+
+  let interval_sig mk =
+    let open Interval_types in
+    mk
+      (fun inp out -> { interval_sig_input = inp; interval_sig_output = out; })
+      (fun ty_l -> It_prod ty_l)
+      (fun ty -> It_scal ty)
+
+  let clock_sig mk =
+    let open Clock_types in
+    mk
+      (fun inp out -> { ct_sig_input = inp; ct_sig_output = out; })
+      (fun ct_l -> Ct_var ct_l)
+      (fun ck -> Ct_stream ck)
 
   let make_interface body =
     let env_from_list env (name, decl) = Names.ShortEnv.add name decl env in
@@ -405,7 +426,7 @@ tuple(ty):
 
 signature(ty):
 | left = tuple(ty) ARROW right = tuple(ty)
-        { fun mk_sig mk_prod  -> mk_sig (left mk_prod) (right mk_prod) }
+        { fun mk_sig mk_prod -> mk_sig (left mk_prod) (right mk_prod) }
 
 data_ty:
 | BOOL_TY { Data_types.Tys_bool }
@@ -426,7 +447,7 @@ node_decl:
   COLON ty_sig = signature(data_ty)
   IS static_sig = signature(static_ty)
   IN interval_sig = signature(interval_ty)
-        { (data_sig ty_sig)  }
+        { nn, make_dynamic_decl ty_sig static_sig interval_sig  }
 
 interface_file:
 | EOF { make_interface [] }

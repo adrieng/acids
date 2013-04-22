@@ -15,15 +15,9 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type clock_exp_pword =
-    {
-      u : (Int.t, Int.t) Ast_misc.power_tree;
-      v : (Int.t, Int.t) Ast_misc.power_tree;
-    }
-
 type clock_exp =
   | Ce_var of Ident.t
-  | Ce_pword of clock_exp_pword
+  | Ce_pword of (Int.t, Int.t) Ast_misc.upword
   | Ce_equal of clock_exp * Int.t
   | Ce_iter of clock_exp
 
@@ -42,15 +36,11 @@ type clock_sig =
       ct_sig_output : clock_type;
     }
 
-let print_clock_exp_pword fmt { u = u; v = v; } =
-  Format.fprintf fmt "%a(%a)"
-    (Ast_misc.print_power_tree Int.print Int.print) u
-    (Ast_misc.print_power_tree Int.print Int.print) v
-
 let rec print_clock_exp fmt ce =
   match ce with
   | Ce_var id -> Ident.print fmt id
-  | Ce_pword pw -> print_clock_exp_pword fmt pw
+  | Ce_pword pw ->
+    Ast_misc.print_upword Int.print Int.print fmt pw
   | Ce_equal (ce, i) ->
     Format.fprintf fmt "%a = %a"
       print_clock_exp ce

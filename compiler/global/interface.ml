@@ -48,8 +48,8 @@ let could_not_find_file filen =
 
 type static_node_decl =
     {
-      sn_info : Acids_preclock.Info.node_info;
-      sn_body : Acids_preclock.node;
+      sn_info : Acids_preinterv.Info.node_info;
+      sn_body : Acids_preinterv.node;
     }
 
 type dynamic_node_decl =

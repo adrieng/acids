@@ -26,8 +26,8 @@ type interval_ty =
 
 type interval_sig =
   {
-    it_sig_input : interval_ty;
-    it_sig_output : interval_ty;
+    interval_sig_input : interval_ty;
+    interval_sig_output : interval_ty;
   }
 
 let print_interval_ty_scal fmt is =

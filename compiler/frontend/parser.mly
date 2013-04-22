@@ -141,7 +141,7 @@
 
 /* Punctuation */
 
-%token LPAREN RPAREN CARET LBRACE RBRACE DOT
+%token LPAREN RPAREN CARET LBRACE RBRACE LBRACKET RBRACKET DOT
 %token COMMA COLON DCOLON
 %token ARROW
 
@@ -159,7 +159,9 @@
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
 %token ON BASE
-%token VAL
+%token VAL IN IS
+
+%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
 
 %token<bool> DOM                        (* true for parallelism *)
 
@@ -248,6 +250,9 @@ upword(X, Y, Z):
 static:
 | { false }
 | STATIC { true }
+
+interval:
+| LBRACKET l = INT COMMA u = INT RBRACKET { Interval.make l u }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Source files
@@ -403,13 +408,24 @@ signature(ty):
         { fun mk_sig mk_prod  -> mk_sig (left mk_prod) (right mk_prod) }
 
 data_ty:
-| BOOL { Tys_bool }
-| INT { Tys_int }
-| FLOAT { Tys_float }
+| BOOL_TY { Data_types.Tys_bool }
+| INT_TY { Data_types.Tys_int }
+| FLOAT_TY { Data_types.Tys_float }
+
+static_ty:
+| STATIC_TY { Static_types.S_static }
+| DYNAMIC_TY { Static_types.S_dynamic }
+
+interval_ty:
+| TOP_TY { Interval_types.Is_top }
+| BOT_TY { Interval_types.Is_bot }
+| i = interval { Interval_types.Is_inter i }
 
 node_decl:
 | VAL nn = nodename
   COLON ty_sig = signature(data_ty)
+  IS static_sig = signature(static_ty)
+  IN interval_sig = signature(interval_ty)
         { (data_sig ty_sig)  }
 
 interface_file:

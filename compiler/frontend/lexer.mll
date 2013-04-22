@@ -65,6 +65,8 @@ rule token = parse
 | "^" { CARET }
 | "{" { LBRACE }
 | "}" { RBRACE }
+| "[" { LBRACKET }
+| "]" { LBRACKET }
 | "=" { EQUAL }
 | "," { COMMA }
 | "." { DOT }
@@ -113,6 +115,17 @@ rule token = parse
 | "pardom" { DOM true }
 
 | "val" { VAL }
+| "in" { IN }
+| "is" { IS }
+
+| "bool" { BOOL_TY }
+| "int" { INT_TY }
+| "float" { FLOAT_TY }
+
+| "D" { DYNAMIC_TY }
+| "S" { STATIC_TY }
+| "T" { TOP_TY }
+| "B" { BOT_TY }
 
 | '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
 

@@ -120,12 +120,30 @@
       Acids_parsetree.f_info = ();
       Acids_parsetree.f_nodes = body;
     }
+
+  (* Interface related functions *)
+
+  let data_sig mk =
+    let open Data_types in
+    mk
+      (fun left right -> { data_sig_input = left; data_sig_output = right; })
+      (fun p -> Ty_prod p)
+      (fun p -> Ty_scal p)
+
+  let make_interface body =
+    let env_from_list env (name, decl) = Names.ShortEnv.add name decl env in
+    {
+      Interface.i_name = Initial.get_current_module ();
+      Interface.i_body =
+        List.fold_left env_from_list Names.ShortEnv.empty body;
+    }
 %}
 
 /* Punctuation */
 
 %token LPAREN RPAREN CARET LBRACE RBRACE DOT
-%token COMMA DCOLON
+%token COMMA COLON DCOLON
+%token ARROW
 
 /* Operators */
 
@@ -141,6 +159,7 @@
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
 %token ON BASE
+%token VAL
 
 %token<bool> DOM                        (* true for parallelism *)
 
@@ -186,8 +205,11 @@
 
 /* Start of the grammar */
 
-%start file
-%type<unit Acids_parsetree.file> file
+%start source_file
+%type<unit Acids_parsetree.file> source_file
+
+%start interface_file
+%type<Interface.t> interface_file
 
 %%
 
@@ -216,14 +238,20 @@ upword(X, Y, Z):
 | s = IDENT { s }
 | s = OP { string_of_op s }
 
-%inline shortname:
+%inline nodename:
 | s = IDENT | s = parens(OP) { s }
 
 %inline longname:
 | n = name { Initial.make_longname n }
 | modn = UIDENT DOT n = name { Initial.make_longname ~modn n }
 
-//////////////////////////////////////////////////////////////////
+static:
+| { false }
+| STATIC { true }
+
+////////////////////////////////////////////////////////////////////////////////
+// Source files
+////////////////////////////////////////////////////////////////////////////////
 
 const:
 | BOOL { Ast_misc.Cbool $1 }
@@ -337,7 +365,7 @@ pat_desc:
 | parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
 | ps = parens(pat_split) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
-          { Acids_parsetree.P_clock_annot (p, ck) }
+        { Acids_parsetree.P_clock_annot (p, ck) }
 
 pat:
 | pd = with_loc(pat_desc) { make_located make_pat pd }
@@ -346,12 +374,8 @@ pragma:
 | { None }
 | BEGIN_PRAGMA END_PRAGMA { Some () }
 
-static:
-| { false }
-| STATIC { true }
-
 node_desc:
-| pr = pragma LET NODE s = static n = shortname p = pat EQUAL e = exp
+| pr = pragma LET NODE s = static n = nodename p = pat EQUAL e = exp
           { (s, n, p, e, pr) }
 
 node:
@@ -360,6 +384,34 @@ node:
 import:
 | OPEN UIDENT { $2 }
 
-file:
+source_file:
 | imports = list(import) nodes = list(node) EOF { make_file imports nodes }
+| error { Parser_utils.parse_error $startpos $endpos }
+
+////////////////////////////////////////////////////////////////////////////////
+// Interface files
+////////////////////////////////////////////////////////////////////////////////
+
+tuple(ty):
+| ty = ty { fun _ mk_scal -> mk_scal ty }
+| ty_l = separated_nonempty_list(TIMES, tuple(ty))
+          { fun mk_prod mk_scal -> mk_prod ty_l }
+| ty = parens(tuple(ty)) { ty }
+
+signature(ty):
+| left = tuple(ty) ARROW right = tuple(ty)
+        { fun mk_sig mk_prod  -> mk_sig (left mk_prod) (right mk_prod) }
+
+data_ty:
+| BOOL { Tys_bool }
+| INT { Tys_int }
+| FLOAT { Tys_float }
+
+node_decl:
+| VAL nn = nodename
+  COLON ty_sig = signature(data_ty)
+        { (data_sig ty_sig)  }
+
+interface_file:
+| EOF { make_interface [] }
 | error { Parser_utils.parse_error $startpos $endpos }

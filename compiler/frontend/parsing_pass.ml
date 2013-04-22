@@ -27,7 +27,7 @@ let parse =
       with Sys_error _ -> could_not_open filen
     in
     let lexbuf = Lexing.from_channel ic in
-    let ptree = Parser.file Lexer.token lexbuf in
+    let ptree = Parser.source_file Lexer.token lexbuf in
     close_in ic;
     ctx, ptree
   in

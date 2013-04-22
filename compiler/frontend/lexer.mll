@@ -69,11 +69,14 @@ rule token = parse
 | "," { COMMA }
 | "." { DOT }
 | "::" { DCOLON }
+| ":" { COLON }
 
 | "<=" { LE }
 | ">=" { GE }
 | "<" { LT }
 | ">" { GT }
+
+| "->" { ARROW }
 
 | "true" { BOOL true }
 | "false" { BOOL false }
@@ -108,6 +111,8 @@ rule token = parse
 
 | "dom" { DOM false }
 | "pardom" { DOM true }
+
+| "val" { VAL }
 
 | '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
 

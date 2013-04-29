@@ -41,6 +41,7 @@ type error =
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
+  | Duplicate_node of Names.shortname * Loc.t
 
 exception Scoping_error of error
 
@@ -65,6 +66,10 @@ let print_error fmt err =
       Format.fprintf fmt "%a%s is bound several times in this block"
         Loc.print l
         s
+  | Duplicate_node (shortn, l) ->
+      Format.fprintf fmt "%a%a is declared several times in the module"
+        Loc.print l
+        Names.print_shortname shortn
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
@@ -78,6 +83,9 @@ let multiple_binding_pattern shortn loc =
 
 let multiple_binding_block shortn loc =
   raise (Scoping_error (Multiple_binding_block (shortn, loc)))
+
+let duplicate_node shortn loc =
+  raise (Scoping_error (Duplicate_node (shortn, loc)))
 
 (** {2 Scoping function} *)
 
@@ -354,6 +362,8 @@ and scope_domain local_nodes imported_mods dom acc =
   acc
 
 let scope_node_def imported_mods node (local_nodes, intf_env) =
+  if Names.ShortEnv.mem node.n_name local_nodes
+  then duplicate_node node.n_name node.n_loc;
   (* TODO: check for duplicate nodes *)
   check_pattern node.n_input;
   Ident.reset ();

@@ -364,7 +364,6 @@ and scope_domain local_nodes imported_mods dom acc =
 let scope_node_def imported_mods node (local_nodes, intf_env) =
   if Names.ShortEnv.mem node.n_name local_nodes
   then duplicate_node node.n_name node.n_loc;
-  (* TODO: check for duplicate nodes *)
   check_pattern node.n_input;
   Ident.reset ();
   let acc = (intf_env, Utils.String_map.empty) in

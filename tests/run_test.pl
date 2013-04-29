@@ -140,7 +140,7 @@ foreach(@ARGV)
 
     next if $ok == 0;
 
-    if($ret_exp == 0)
+    if($ret_exp == 0 && 0) # disabled for now
     {
         my $cpp_file = $file;
         my $hpp_file = $file;

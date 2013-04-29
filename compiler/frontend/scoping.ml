@@ -39,6 +39,8 @@ type error =
   | Unknown_node of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
+  | Multiple_binding_pattern of string * Loc.t
+  | Multiple_binding_block of string * Loc.t
 
 exception Scoping_error of error
 
@@ -55,6 +57,14 @@ let print_error fmt err =
       Names.print_modname modn
   | Unbound_var (v, l) ->
     Format.fprintf fmt "%aUnknown identifier %s" Loc.print l v
+  | Multiple_binding_pattern (s, l) ->
+      Format.fprintf fmt "%a%s is bound several times in this pattern"
+        Loc.print l
+        s
+  | Multiple_binding_block (s, l) ->
+      Format.fprintf fmt "%a%s is bound several times in this block"
+        Loc.print l
+        s
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
@@ -62,6 +72,12 @@ let node_not_found modn shortn loc =
   raise (Scoping_error (Node_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
+
+let multiple_binding_pattern shortn loc =
+  raise (Scoping_error (Multiple_binding_pattern (shortn, loc)))
+
+let multiple_binding_block shortn loc =
+  raise (Scoping_error (Multiple_binding_block (shortn, loc)))
 
 (** {2 Scoping function} *)
 
@@ -120,6 +136,43 @@ let find_var id_env v loc =
 (** {2 AST traversal} *)
 
 open Acids_parsetree
+
+(** {3 Multiple binding checks} *)
+
+let check_pattern block_loc block_env p =
+  let pat_loc = p.p_loc in
+  let rec walk pat_env p =
+    match p.p_desc with
+    | P_var s ->
+        if Utils.String_set.mem s pat_env
+        then multiple_binding_pattern s pat_loc;
+        if Utils.String_set.mem s block_env
+        then multiple_binding_block s block_loc;
+        Utils.String_set.add s pat_env
+    | P_tuple p_l -> List.fold_left walk pat_env p_l
+    | P_clock_annot (p, _) -> walk pat_env p
+    | P_split pw ->
+        let rec walk_ptree pat_env pt =
+          match pt with
+          | Ast_misc.Leaf p -> walk pat_env p
+          | Ast_misc.Concat p_l -> List.fold_left walk_ptree pat_env p_l
+          | Ast_misc.Power (p, _) -> walk_ptree pat_env p
+        in
+        walk_ptree (walk_ptree pat_env pw.Ast_misc.u) pw.Ast_misc.v
+  in
+  let pat_env = walk Utils.String_set.empty p in
+  Utils.String_set.union block_env pat_env
+
+(** The following function checks both multiple bindings spanning a pattern
+    or a block. *)
+let check_block block =
+  let walk_eq block_env eq = check_pattern block.b_loc block_env eq.eq_lhs in
+  ignore (List.fold_left walk_eq Utils.String_set.empty block.b_body)
+
+(** Stand-alone checker for patterns (useful for nodes decls) *)
+let check_pattern p = ignore (check_pattern Loc.dummy Utils.String_set.empty p)
+
+(** {3 Scoping} *)
 
 let rec scope_clock_annot local_nodes imported_mods cka acc =
   let scope_clock_exp = scope_clock_exp local_nodes imported_mods in
@@ -242,7 +295,7 @@ and scope_app local_nodes imported_mods app (intf_env, id_env) =
   acc
 
 and scope_block local_nodes imported_mods block acc =
-  (* TODO: check multiple bindings *)
+  check_block block;
   let scope_eq = scope_eq local_nodes imported_mods in
   let body, acc = Utils.mapfold scope_eq block.b_body acc in
   {
@@ -264,7 +317,6 @@ and scope_eq local_nodes imported_mods eq acc =
   acc
 
 and scope_pattern local_nodes imported_mods p ((intf_env, id_env) as acc) =
-  (* TODO: check multiple bindings *)
   let scope_pattern = scope_pattern local_nodes imported_mods in
   let scope_exp = scope_exp local_nodes imported_mods in
   let pd, acc =
@@ -301,8 +353,9 @@ and scope_domain local_nodes imported_mods dom acc =
   },
   acc
 
-let scope_node imported_mods node (local_nodes, intf_env) =
+let scope_node_def imported_mods node (local_nodes, intf_env) =
   (* TODO: check for duplicate nodes *)
+  check_pattern node.n_input;
   Ident.reset ();
   let acc = (intf_env, Utils.String_map.empty) in
   let inp, acc = scope_pattern local_nodes imported_mods node.n_input acc in

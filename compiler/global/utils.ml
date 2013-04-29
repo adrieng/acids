@@ -150,6 +150,8 @@ let rec gcd a b = if b = 0 then a else gcd b (a mod b)
 
 let lcm a b = (a * b) / gcd a b
 
+module String_set =
+  Set.Make(struct type t = string let compare = Pervasives.compare end)
 module Int_set = Set.Make(struct type t = Int.t let compare = Int.compare end)
 module Int_map = Map.Make(struct type t = Int.t let compare = Int.compare end)
 module Pint_set = Set.Make(struct type t = int let compare x y = x - y end)

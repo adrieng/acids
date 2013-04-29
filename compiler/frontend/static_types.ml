@@ -41,6 +41,11 @@ let rec print_static_ty fmt sty =
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_static_ty " *") sty_l
 
+let print_sig fmt csig =
+  Format.fprintf fmt "@[%a -> %a@]"
+    print_static_ty csig.static_sig_input
+    print_static_ty csig.static_sig_output
+
 module PreTy =
 struct
   type 'a pre_ty =

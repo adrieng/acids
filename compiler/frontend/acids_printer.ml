@@ -147,7 +147,7 @@ struct
       print_exp e
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
-  let print_node fmt nd =
+  let print_node_def fmt nd =
     Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a%a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
@@ -155,9 +155,17 @@ struct
       print_exp nd.n_body
       (print_full_info S.print_node_info) nd.n_info
 
+  let print_node_decl fmt decl =
+    Format.fprintf fmt
+      "@[val %a@ : %a@ :: %a@ is %a@ in %a@]"
+      Data_types.print_sig decl.decl_data
+      Static_types.print_sig decl.decl_static
+      Interval_types.print_sig decl.decl_interv
+      Clock_types.print_sig decl.decl_clock
+
   let print_phrase fmt phr =
     match phr with
-    | Phr_node_def nd -> print_node fmt nd
+    | Phr_node_def nd -> print_node_def fmt nd
 
   let print_file fmt file =
     let print_import fmt modn =

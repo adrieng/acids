@@ -45,7 +45,7 @@ let rec print_ty fmt ty =
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
 
-let print_data_sig fmt tys =
+let print_sig fmt tys =
   Format.fprintf fmt "@[%a -> %a@]"
     print_ty tys.data_sig_input
     print_ty tys.data_sig_output

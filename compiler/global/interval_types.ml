@@ -43,6 +43,11 @@ let rec print_interval_ty fmt ity =
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_interval_ty " *") ity_l
 
+let print_sig fmt cs =
+  Format.fprintf fmt "@[%a -> %a@]"
+    print_interval_ty cs.interval_sig_input
+    print_interval_ty cs.interval_sig_output
+
 module PreTy =
 struct
   type 'a pre_ty =

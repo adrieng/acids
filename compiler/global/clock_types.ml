@@ -64,6 +64,11 @@ let rec print_clock_type fmt ct =
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_clock_type " *") st_l
 
+let print_sig fmt cs =
+  Format.fprintf fmt "%a -> %a"
+    print_clock_type cs.ct_sig_input
+    print_clock_type cs.ct_sig_output
+
 module PreTySt =
 struct
   type 'a pre_ty =

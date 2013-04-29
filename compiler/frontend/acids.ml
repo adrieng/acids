@@ -147,6 +147,15 @@ struct
         n_info : S.node_info;
       }
 
+  type node_decl =
+      {
+        decl_name : Names.shortname;
+        decl_data : Data_types.data_sig;
+        decl_static : Static_types.static_sig;
+        decl_interv : Interval_types.interval_sig;
+        decl_clock : Clock_types.clock_sig;
+      }
+
   type phrase =
     | Phr_node_def of node_def
 

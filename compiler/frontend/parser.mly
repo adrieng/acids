@@ -24,9 +24,7 @@
     | [x] -> x
     | _ :: _ -> Ast_misc.Concat l
 
-  let make_ce_pword (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
-
-  let make_pat_split (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
+  let make_pword (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
 
   let make_located make (x, loc) = make x loc
 
@@ -110,6 +108,59 @@
       Acids_parsetree.n_info = ();
     }
 
+  let make_node_decl name data static interv clock =
+    {
+      Acids_parsetree.decl_name = name;
+      Acids_parsetree.decl_data = data;
+      Acids_parsetree.decl_static = static;
+      Acids_parsetree.decl_interv = interv;
+      Acids_parsetree.decl_clock = clock;
+    }
+
+  let make_ty_sig mk_s =
+    let mk_prod ty_l = Data_types.Ty_prod ty_l in
+    let mk_scal ty = Data_types.Ty_scal ty in
+    let mk_sig inp out =
+      {
+        Data_types.data_sig_input = inp;
+        Data_types.data_sig_output = out;
+      }
+    in
+    mk_s mk_sig (mk_prod, mk_scal)
+
+  let make_static_sig mk_s =
+    let mk_prod ty_l = Static_types.Sy_prod ty_l in
+    let mk_scal ty = Static_types.Sy_scal ty in
+    let mk_sig inp out =
+      {
+        Static_types.static_sig_input = inp;
+        Static_types.static_sig_output = out;
+      }
+    in
+    mk_s mk_sig (mk_prod, mk_scal)
+
+  let make_interval_sig mk_s =
+    let mk_prod ty_l = Interval_types.It_prod ty_l in
+    let mk_scal ty = Interval_types.It_scal ty in
+    let mk_sig inp out =
+      {
+        Interval_types.interval_sig_input = inp;
+        Interval_types.interval_sig_output = out;
+      }
+    in
+    mk_s mk_sig (mk_prod, mk_scal)
+
+  let make_clock_sig mk_s =
+    let mk_prod ty_l = Clock_types.Ct_prod ty_l in
+    let mk_scal ty = Clock_types.Ct_stream ty in
+    let mk_sig inp out =
+      {
+        Clock_types.ct_sig_input = inp;
+        Clock_types.ct_sig_output = out;
+      }
+    in
+    mk_s mk_sig (mk_prod, mk_scal)
+
   let make_file imports body =
     {
       Acids_parsetree.f_name = Initial.get_current_module ();
@@ -121,43 +172,20 @@
       Acids_parsetree.f_body = body;
     }
 
-  (* Interface related functions *)
+  (* Ugly: a bit of scoping at parsing time *)
 
-  let data_sig mk =
-    let open Data_types in
-    mk
-      (fun inp out -> { data_sig_input = inp; data_sig_output = out; })
-      (fun p -> Ty_prod p)
-      (fun p -> Ty_scal p)
+  let ht = Hashtbl.create 100
 
-  let static_sig mk =
-    let open Static_types in
-    mk
-      (fun inp out -> { static_sig_input = inp; static_sig_output = out; })
-      (fun ty_l -> Sy_prod ty_l)
-      (fun ty -> Sy_scal ty)
+  let sig_scope_reinitialize () =
+    Hashtbl.clear ht;
+    Ident.reset ()
 
-  let interval_sig mk =
-    let open Interval_types in
-    mk
-      (fun inp out -> { interval_sig_input = inp; interval_sig_output = out; })
-      (fun ty_l -> It_prod ty_l)
-      (fun ty -> It_scal ty)
-
-  let clock_sig mk =
-    let open Clock_types in
-    mk
-      (fun inp out -> { ct_sig_input = inp; ct_sig_output = out; })
-      (fun ct_l -> Ct_var ct_l)
-      (fun ck -> Ct_stream ck)
-
-  let make_interface body =
-    let env_from_list env (name, decl) = Names.ShortEnv.add name decl env in
-    {
-      Interface.i_name = Initial.get_current_module ();
-      Interface.i_body =
-        List.fold_left env_from_list Names.ShortEnv.empty body;
-    }
+  let sig_scope_ident v =
+    try Hashtbl.find ht v
+    with Not_found ->
+      let id = Ident.make_source v in
+      Hashtbl.add ht v id;
+      id
 %}
 
 /* Punctuation */
@@ -231,9 +259,6 @@
 %start source_file
 %type<unit Acids_parsetree.file> source_file
 
-%start interface_file
-%type<Interface.t> interface_file
-
 %%
 
 %inline with_loc(X):
@@ -253,9 +278,22 @@ simple_ptree(X, Y):
 ptree(X, Y):
 | nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
 
-upword(X, Y, Z):
+upword_desc(X, Y, Z):
 | v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
 | u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
+
+upword(X, Y, Z):
+| w = upword_desc(X, Y, Z) { make_pword w }
+
+tuple(ty):
+| ty = ty { fun (_, mk_scal) -> mk_scal ty }
+| ty_l = parens(separated_nonempty_list(TIMES, tuple(ty)))
+          { fun (mk_prod, mk_scal) ->
+            mk_prod (List.map (fun f -> f (mk_prod, mk_scal)) ty_l) }
+
+signature(ty):
+| left = tuple(ty) ARROW right = tuple(ty)
+        { fun mk_sig mk -> mk_sig (left mk) (right mk) }
 
 %inline name:
 | s = IDENT { s }
@@ -279,6 +317,8 @@ interval:
 // Source files
 ////////////////////////////////////////////////////////////////////////////////
 
+// Definitions
+
 const:
 | BOOL { Ast_misc.Cbool $1 }
 | INT { Ast_misc.Cint $1 }
@@ -289,8 +329,7 @@ clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
 | ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
 | ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
-| upword(trivial_exp, trivial_exp, parens)
-    { Acids_parsetree.Ce_pword (make_ce_pword $1) }
+| upword(trivial_exp, trivial_exp, parens) { Acids_parsetree.Ce_pword $1 }
 
 clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
@@ -383,13 +422,10 @@ clock_annot:
 pat_tuple:
 | p_l = separated_list(COMMA, pat) { p_l }
 
-pat_split:
-| upword(pat, simple_exp, chevrons) { make_pat_split $1 }
-
 pat_desc:
 | IDENT { Acids_parsetree.P_var $1 }
 | parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
-| ps = parens(pat_split) { Acids_parsetree.P_split ps }
+| ps = parens(upword(pat, simple_exp, chevrons)) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
         { Acids_parsetree.P_clock_annot (p, ck) }
 
@@ -407,34 +443,22 @@ node_desc:
 node:
 | nd = with_loc(node_desc) { make_located make_node nd }
 
-phrase:
-| nd = node { Acids_parsetree.Phr_node_def nd }
-
-import:
-| OPEN UIDENT { $2 }
-
-source_file:
-| imports = list(import) body = list(phrase) EOF { make_file imports body }
-| error { Parser_utils.parse_error $startpos $endpos }
-
-////////////////////////////////////////////////////////////////////////////////
-// Interface files
-////////////////////////////////////////////////////////////////////////////////
-
-tuple(ty):
-| ty = ty { fun _ mk_scal -> mk_scal ty }
-| ty_l = separated_nonempty_list(TIMES, tuple(ty))
-          { fun mk_prod mk_scal -> mk_prod ty_l }
-| ty = parens(tuple(ty)) { ty }
-
-signature(ty):
-| left = tuple(ty) ARROW right = tuple(ty)
-        { fun mk_sig mk_prod -> mk_sig (left mk_prod) (right mk_prod) }
+// Declarations
 
 data_ty:
 | BOOL_TY { Data_types.Tys_bool }
 | INT_TY { Data_types.Tys_int }
 | FLOAT_TY { Data_types.Tys_float }
+
+clock_exp_ty:
+| id = IDENT { Clock_types.Ce_var (sig_scope_ident id) }
+| w = upword(INT, INT, parens) { Clock_types.Ce_pword w }
+| ce = clock_exp_ty EQUAL i = INT { Clock_types.Ce_equal (ce, i) }
+| ITER ce = clock_exp_ty { Clock_types.Ce_iter ce }
+
+clock_ty:
+| STVAR { Clock_types.St_var $1 }
+| ck = clock_ty ON ce = clock_exp_ty { Clock_types.St_on (ck, ce) }
 
 static_ty:
 | STATIC_TY { Static_types.S_static }
@@ -445,13 +469,31 @@ interval_ty:
 | BOT_TY { Interval_types.Is_bot }
 | i = interval { Interval_types.Is_inter i }
 
+placeholder_sig_init:
+| { sig_scope_reinitialize () }
+
 node_decl:
-| VAL nn = nodename
+| placeholder_sig_init
+  VAL nn = nodename
   COLON ty_sig = signature(data_ty)
+  DCOLON ck_sig = signature(clock_ty)
   IS static_sig = signature(static_ty)
   IN interval_sig = signature(interval_ty)
-        { nn, make_dynamic_decl ty_sig static_sig interval_sig  }
+        {
+         make_node_decl nn
+           (make_ty_sig ty_sig)
+           (make_static_sig static_sig)
+           (make_interval_sig interval_sig)
+           (make_clock_sig ck_sig)
+        }
 
-interface_file:
-| EOF { make_interface [] }
+import:
+| OPEN UIDENT { $2 }
+
+phrase:
+| nd = node { Acids_parsetree.Phr_node_def nd }
+| decl = node_decl { Acids_parsetree.Phr_node_decl decl }
+
+source_file:
+| imports = list(import) body = list(phrase) EOF { make_file imports body }
 | error { Parser_utils.parse_error $startpos $endpos }

@@ -158,6 +158,7 @@ struct
   let print_node_decl fmt decl =
     Format.fprintf fmt
       "@[val %a@ : %a@ :: %a@ is %a@ in %a@]"
+      Names.print_shortname decl.decl_name
       Data_types.print_sig decl.decl_data
       Static_types.print_sig decl.decl_static
       Interval_types.print_sig decl.decl_interv
@@ -165,7 +166,8 @@ struct
 
   let print_phrase fmt phr =
     match phr with
-    | Phr_node_def nd -> print_node_def fmt nd
+    | Phr_node_def def -> print_node_def fmt def
+    | Phr_node_decl decl -> print_node_decl fmt decl
 
   let print_file fmt file =
     let print_import fmt modn =

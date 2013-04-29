@@ -158,6 +158,7 @@ struct
 
   type phrase =
     | Phr_node_def of node_def
+    | Phr_node_decl of node_decl
 
   type 'a file =
       {

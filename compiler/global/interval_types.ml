@@ -32,8 +32,8 @@ type interval_sig =
 
 let print_interval_ty_scal fmt is =
   match is with
-  | Is_top -> Format.fprintf fmt "top"
-  | Is_bot -> Format.fprintf fmt "bot"
+  | Is_top -> Format.fprintf fmt "T"
+  | Is_bot -> Format.fprintf fmt "B"
   | Is_inter it -> Interval.print fmt it
 
 let rec print_interval_ty fmt ity =

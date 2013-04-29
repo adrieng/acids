@@ -49,7 +49,7 @@ let could_not_find_file filen =
 type static_node_decl =
     {
       sn_info : Acids_preinterv.Info.node_info;
-      sn_body : Acids_preinterv.node;
+      sn_body : Acids_preinterv.node_def;
     }
 
 type dynamic_node_decl =

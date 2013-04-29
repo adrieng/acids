@@ -155,11 +155,15 @@ struct
       print_exp nd.n_body
       (print_full_info S.print_node_info) nd.n_info
 
+  let print_phrase fmt phr =
+    match phr with
+    | Phr_node_def nd -> print_node fmt nd
+
   let print_file fmt file =
     let print_import fmt modn =
       Format.fprintf fmt "open %a@\n" Names.print_modname modn
     in
     Utils.print_list_eol print_import fmt file.f_imports;
-    Utils.print_list_eol print_node fmt file.f_nodes;
+    Utils.print_list_eol print_phrase fmt file.f_body;
     Format.fprintf fmt "@\n"
 end

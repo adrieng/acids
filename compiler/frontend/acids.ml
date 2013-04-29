@@ -136,7 +136,7 @@ struct
         d_par : bool;
       }
 
-  type node =
+  type node_def =
       {
         n_name : Names.shortname;
         n_input : pat;
@@ -147,11 +147,14 @@ struct
         n_info : S.node_info;
       }
 
+  type phrase =
+    | Phr_node_def of node_def
+
   type 'a file =
       {
         f_name : Names.modname;
         f_imports : Names.modname list;
         f_info : 'a;
-        f_nodes : node list;
+        f_body : phrase list;
       }
 end

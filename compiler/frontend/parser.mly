@@ -118,7 +118,7 @@
         then imports
         else "Pervasives" :: imports;
       Acids_parsetree.f_info = ();
-      Acids_parsetree.f_nodes = body;
+      Acids_parsetree.f_body = body;
     }
 
   (* Interface related functions *)
@@ -407,11 +407,14 @@ node_desc:
 node:
 | nd = with_loc(node_desc) { make_located make_node nd }
 
+phrase:
+| nd = node { Acids_parsetree.Phr_node_def nd }
+
 import:
 | OPEN UIDENT { $2 }
 
 source_file:
-| imports = list(import) nodes = list(node) EOF { make_file imports nodes }
+| imports = list(import) body = list(phrase) EOF { make_file imports body }
 | error { Parser_utils.parse_error $startpos $endpos }
 
 ////////////////////////////////////////////////////////////////////////////////

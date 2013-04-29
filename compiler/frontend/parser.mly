@@ -97,7 +97,7 @@
       Acids_parsetree.b_info = ();
     }
 
-  let make_node (s, n, p, e, pr) loc =
+  let make_node_def (s, n, p, e, pr) loc =
     {
       Acids_parsetree.n_name = n;
       Acids_parsetree.n_input = p;
@@ -108,13 +108,14 @@
       Acids_parsetree.n_info = ();
     }
 
-  let make_node_decl name data static interv clock =
+  let make_node_decl (name, data, static, interv, clock) loc =
     {
       Acids_parsetree.decl_name = name;
       Acids_parsetree.decl_data = data;
       Acids_parsetree.decl_static = static;
       Acids_parsetree.decl_interv = interv;
       Acids_parsetree.decl_clock = clock;
+      Acids_parsetree.decl_loc = loc;
     }
 
   let make_ty_sig mk_s =
@@ -441,7 +442,7 @@ node_desc:
           { (s, n, p, e, pr) }
 
 node:
-| nd = with_loc(node_desc) { make_located make_node nd }
+| nd = with_loc(node_desc) { make_located make_node_def nd }
 
 // Declarations
 
@@ -472,7 +473,7 @@ interval_ty:
 placeholder_sig_init:
 | { sig_scope_reinitialize () }
 
-node_decl:
+node_decl_desc:
 | placeholder_sig_init
   VAL nn = nodename
   COLON ty_sig = signature(data_ty)
@@ -480,12 +481,15 @@ node_decl:
   IS static_sig = signature(static_ty)
   IN interval_sig = signature(interval_ty)
         {
-         make_node_decl nn
-           (make_ty_sig ty_sig)
-           (make_static_sig static_sig)
-           (make_interval_sig interval_sig)
-           (make_clock_sig ck_sig)
+           (nn,
+            make_ty_sig ty_sig,
+            make_static_sig static_sig,
+            make_interval_sig interval_sig,
+            make_clock_sig ck_sig)
         }
+
+node_decl:
+| nd = with_loc(node_decl_desc) { make_located make_node_decl nd }
 
 import:
 | OPEN UIDENT { $2 }

@@ -154,6 +154,7 @@ struct
         decl_static : Static_types.static_sig;
         decl_interv : Interval_types.interval_sig;
         decl_clock : Clock_types.clock_sig;
+        decl_loc : Loc.t;
       }
 
   type phrase =

@@ -79,3 +79,4 @@ module Env =
   end
 
 module ShortEnv = Utils.String_map
+module ShortSet = Utils.String_set

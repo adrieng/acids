@@ -122,7 +122,7 @@ let scope_longname local_nodes imported_mods intf_env ln loc =
   | LocalModule ->
     (* If the node exists in the local module, this is a local node call.
        Otherwise we look it up in the imported modules. *)
-    if ShortEnv.mem ln.shortn local_nodes
+    if ShortSet.mem ln.shortn local_nodes
     then ln, intf_env
     else
       let modn =
@@ -179,6 +179,10 @@ let check_block block =
 
 (** Stand-alone checker for patterns (useful for nodes decls) *)
 let check_pattern p = ignore (check_pattern Loc.dummy Utils.String_set.empty p)
+
+let check_node_name local_nodes nn loc =
+  if Names.ShortSet.mem nn local_nodes
+  then duplicate_node nn loc
 
 (** {3 Scoping} *)
 
@@ -362,8 +366,7 @@ and scope_domain local_nodes imported_mods dom acc =
   acc
 
 let scope_node_def imported_mods node (local_nodes, intf_env) =
-  if Names.ShortEnv.mem node.n_name local_nodes
-  then duplicate_node node.n_name node.n_loc;
+  check_node_name local_nodes node.n_name node.n_loc;
   check_pattern node.n_input;
   Ident.reset ();
   let acc = (intf_env, Utils.String_map.empty) in
@@ -382,13 +385,45 @@ let scope_node_def imported_mods node (local_nodes, intf_env) =
       Acids_scoped.n_info = node.n_info;
     }
   in
-  let local_nodes =
-    Names.ShortEnv.add node.Acids_scoped.n_name node local_nodes
-  in
+  let local_nodes = Names.ShortSet.add node.Acids_scoped.n_name local_nodes in
   node, (local_nodes, intf_env)
 
+let scope_node_decl decl (local_nodes, intf_env) =
+  check_node_name local_nodes decl.decl_name decl.decl_loc;
+  let decl =
+    {
+      Acids_scoped.decl_name = decl.decl_name;
+      Acids_scoped.decl_data = decl.decl_data;
+      Acids_scoped.decl_static = decl.decl_static;
+      Acids_scoped.decl_interv = decl.decl_interv;
+      Acids_scoped.decl_clock = decl.decl_clock;
+      Acids_scoped.decl_loc = decl.decl_loc;
+    }
+  in
+  decl,
+  (Names.ShortSet.add decl.Acids_scoped.decl_name local_nodes, intf_env)
+
+let scope_phrase imported_mods phr acc =
+  match phr with
+  | Phr_node_def def ->
+    let def, acc = scope_node_def imported_mods def acc in
+    Acids_scoped.Phr_node_def def, acc
+  | Phr_node_decl decl ->
+    let decl, acc = scope_node_decl decl acc in
+    Acids_scoped.Phr_node_decl decl, acc
+
 let scope_file ctx (file : unit Acids_parsetree.file) =
-  ctx, (file : unit Acids_parsetree.file)
+  let acc = Names.ShortSet.empty, Names.ShortEnv.empty in
+  let body, (_, intf_env) =
+    Utils.mapfold (scope_phrase file.f_imports) file.f_body acc
+  in
+  ctx,
+  {
+    Acids_scoped.f_name = file.f_name;
+    Acids_scoped.f_imports = file.f_imports;
+    Acids_scoped.f_info = object method interfaces = intf_env end;
+    Acids_scoped.f_body = body;
+  }
 
 (** {2 Putting it all together} *)
 
@@ -396,6 +431,6 @@ let scope =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
-       ~print_out:Acids_parsetree.print_file
+       ~print_out:Acids_scoped.print_file
        "scoping"
        scope_file)

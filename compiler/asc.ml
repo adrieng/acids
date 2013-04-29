@@ -23,6 +23,7 @@ let error_is_internal exn =
   | Parsing_pass.Could_not_open _
   | Lexer.Lexical_error _
   | Parser_utils.Parse_error _
+  | Scoping.Scoping_error _
     ->
     false
   | _
@@ -39,6 +40,8 @@ let print_error _ fmt exn =
   | Parser_utils.Parse_error reason ->
     Loc.print fmt reason;
     Format.fprintf fmt "Syntax error"
+  | Scoping.Scoping_error err ->
+    Scoping.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 

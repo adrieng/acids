@@ -256,8 +256,8 @@ and scope_exp local_nodes imported_mods e ((intf_env, id_env) as acc) =
       let e, acc = scope_exp e acc in
       Acids_scoped.E_app (app, e), acc
     | E_where (e, block) ->
-      let e, acc = scope_exp e acc in
       let block, acc = scope_block local_nodes imported_mods block acc in
+      let e, acc = scope_exp e acc in
       Acids_scoped.E_where (e, block), acc
     | E_when (e, ce) ->
       let e, acc = scope_exp e acc in
@@ -308,8 +308,20 @@ and scope_app local_nodes imported_mods app (intf_env, id_env) =
 
 and scope_block local_nodes imported_mods block acc =
   check_block block;
-  let scope_eq = scope_eq local_nodes imported_mods in
-  let body, acc = Utils.mapfold scope_eq block.b_body acc in
+
+  let p_l, acc =
+    let scope_eq_pat eq acc =
+      scope_pattern local_nodes imported_mods eq.eq_lhs acc
+    in
+    Utils.mapfold scope_eq_pat block.b_body acc
+  in
+
+  let body, acc =
+    Utils.mapfold
+      (scope_eq local_nodes imported_mods)
+      (List.combine p_l block.b_body)
+      acc
+  in
   {
     Acids_scoped.b_body = body;
     Acids_scoped.b_loc = block.b_loc;
@@ -317,8 +329,7 @@ and scope_block local_nodes imported_mods block acc =
   },
   acc
 
-and scope_eq local_nodes imported_mods eq acc =
-  let p, acc = scope_pattern local_nodes imported_mods eq.eq_lhs acc in
+and scope_eq local_nodes imported_mods (p, eq) acc =
   let e, acc = scope_exp local_nodes imported_mods eq.eq_rhs acc in
   {
     Acids_scoped.eq_lhs = p;

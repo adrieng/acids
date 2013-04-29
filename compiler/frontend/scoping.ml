@@ -414,19 +414,19 @@ let scope_node_decl decl (local_nodes, intf_env) =
   decl,
   (Names.ShortSet.add decl.Acids_scoped.decl_name local_nodes, intf_env)
 
-let scope_phrase imported_mods phr acc =
+let scope_phrase imported_mods acc phr =
   match phr with
   | Phr_node_def def ->
     let def, acc = scope_node_def imported_mods def acc in
-    Acids_scoped.Phr_node_def def, acc
+    acc, Acids_scoped.Phr_node_def def
   | Phr_node_decl decl ->
     let decl, acc = scope_node_decl decl acc in
-    Acids_scoped.Phr_node_decl decl, acc
+    acc, Acids_scoped.Phr_node_decl decl
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
   let acc = Names.ShortSet.empty, Names.ShortEnv.empty in
-  let body, (_, intf_env) =
-    Utils.mapfold (scope_phrase file.f_imports) file.f_body acc
+  let (_, intf_env), body =
+    Utils.mapfold_left (scope_phrase file.f_imports) acc file.f_body
   in
   ctx,
   {

@@ -166,9 +166,17 @@ struct
         decl_loc : Loc.t;
       }
 
+  type type_def =
+    {
+      ty_name : Names.shortname;
+      ty_body : Ast_misc.constr list;
+      ty_loc : Loc.t;
+    }
+
   type phrase =
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
+    | Phr_type_def of type_def
 
   type 'a file =
       {

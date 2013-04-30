@@ -169,6 +169,13 @@
     in
     mk_s mk_sig (mk_prod, mk_scal)
 
+  let make_type_def ((n, c_l), loc) =
+    {
+      Acids_parsetree.ty_name = n;
+      Acids_parsetree.ty_body = c_l;
+      Acids_parsetree.ty_loc = loc;
+    }
+
   let make_file imports body =
     {
       Acids_parsetree.f_name = Initial.get_current_module ();
@@ -217,6 +224,7 @@
 %token WHEN SPLIT MERGE
 %token ON BASE
 %token VAL IN IS WITH END
+%token TYPE
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
 
@@ -510,12 +518,20 @@ node_decl_desc:
 node_decl:
 | nd = with_loc(node_decl_desc) { make_located make_node_decl nd }
 
+type_def_desc:
+| TYPE nn = IDENT EQUAL c_l = separated_nonempty_list(PIPE, UIDENT)
+   { nn, List.map Initial.make_longname c_l }
+
+type_def:
+| d = with_loc(type_def_desc) { make_type_def d }
+
 import:
 | OPEN UIDENT { $2 }
 
 phrase:
 | nd = node { Acids_parsetree.Phr_node_def nd }
 | decl = node_decl { Acids_parsetree.Phr_node_decl decl }
+| td = type_def { Acids_parsetree.Phr_type_def td }
 
 source_file:
 | imports = list(import) body = list(phrase) EOF { make_file imports body }

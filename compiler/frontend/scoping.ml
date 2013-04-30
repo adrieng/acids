@@ -456,6 +456,7 @@ let scope_phrase imported_mods acc phr =
   | Phr_node_decl decl ->
     let decl, acc = scope_node_decl decl acc in
     acc, Acids_scoped.Phr_node_decl decl
+  | Phr_type_def _ -> assert false (* TODO *)
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
   let acc = Names.ShortSet.empty, Names.ShortEnv.empty in

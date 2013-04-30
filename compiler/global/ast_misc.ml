@@ -22,17 +22,21 @@ type 'a var_dec =
       v_loc : Loc.t;
     }
 
+type constr = Names.longname
+
+let print_constr fmt c = Names.print_longname fmt c
+
 (** Extended constructors *)
 type econstr =
   | Ec_bool of bool
   | Ec_int of Int.t
-  | Ec_constr of Names.longname
+  | Ec_constr of constr
 
 let print_econstr fmt ec =
   match ec with
   | Ec_bool b -> Format.fprintf fmt "%b" b
   | Ec_int i -> Int.print fmt i
-  | Ec_constr ln -> Names.print_longname fmt ln
+  | Ec_constr cstr -> print_constr fmt cstr
 
 type const =
   | Cconstr of econstr

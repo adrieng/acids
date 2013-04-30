@@ -174,10 +174,16 @@ struct
       Interval_types.print_sig decl.decl_interv
       Clock_types.print_sig decl.decl_clock
 
+  let print_type_def fmt tydef =
+    Format.fprintf fmt "@[type %a =@ %a@]"
+      Names.print_shortname tydef.ty_name
+      (Utils.print_list_r Ast_misc.print_constr "|") tydef.ty_body
+
   let print_phrase fmt phr =
     match phr with
     | Phr_node_def def -> print_node_def fmt def
     | Phr_node_decl decl -> print_node_decl fmt decl
+    | Phr_type_def tydef -> print_type_def fmt tydef
 
   let print_file fmt file =
     let print_import fmt modn =

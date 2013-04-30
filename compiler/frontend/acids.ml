@@ -84,7 +84,9 @@ struct
 
     | E_when of exp * clock_exp (** sampling *)
     | E_split of clock_exp * exp (** splitting (n-ary sampling) *)
-    | E_merge of clock_exp * exp list (** merging *)
+
+    | E_bmerge of clock_exp * exp * exp (** merge ce (1 -> e) (0 -> e) *)
+    | E_merge of clock_exp * merge_clause list (** n-ary merge with patterns *)
 
     | E_valof of clock_exp (** evaluating clock exps *)
 
@@ -129,6 +131,13 @@ struct
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_split of (pat, exp) Ast_misc.upword
+
+  and merge_clause =
+    {
+      c_sel : Ast_misc.econstr;
+      c_body : exp;
+      c_loc : Loc.t;
+    }
 
   and domain =
       {

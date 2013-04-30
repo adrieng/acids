@@ -82,6 +82,13 @@
       Acids_parsetree.p_info = ();
     }
 
+  let make_clause ((ec, e), loc) =
+    {
+      Acids_parsetree.c_sel = ec;
+      Acids_parsetree.c_body = e;
+      Acids_parsetree.c_loc = loc;
+    }
+
   let make_eq (p, e) loc =
     {
       Acids_parsetree.eq_lhs = p;
@@ -193,7 +200,7 @@
 
 %token LPAREN RPAREN CARET LBRACE RBRACE LBRACKET RBRACKET DOT
 %token COMMA COLON DCOLON
-%token ARROW
+%token ARROW PIPE
 
 /* Operators */
 
@@ -209,7 +216,7 @@
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
 %token ON BASE
-%token VAL IN IS
+%token VAL IN IS WITH END
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
 
@@ -320,9 +327,13 @@ interval:
 
 // Definitions
 
+econstr:
+| BOOL { Ast_misc.Ec_bool $1 }
+| INT { Ast_misc.Ec_int $1 }
+| UIDENT { Ast_misc.Ec_constr (Initial.make_longname $1) }
+
 const:
-| BOOL { Ast_misc.Cbool $1 }
-| INT { Ast_misc.Cint $1 }
+| econstr { Ast_misc.Cconstr $1 }
 | FLOAT { Ast_misc.Cfloat $1 }
 | WORD { Ast_misc.Cword $1 }
 
@@ -388,8 +399,10 @@ exp_desc:
             { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
 
 | e = exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
-| MERGE ce = clock_exp_exp e_l = nonempty_list(simple_exp)
-            { Acids_parsetree.E_merge (ce, e_l) }
+| MERGE ce = clock_exp_exp e1 = simple_exp e2 = simple_exp
+            { Acids_parsetree.E_bmerge (ce, e1, e2) }
+| MERGE ce = clock_exp_exp WITH c_l = nonempty_list(merge_clause) END
+            { Acids_parsetree.E_merge (ce, c_l) }
 | SPLIT ce = clock_exp_exp e = exp { Acids_parsetree.E_split (ce, e) }
 
 | ce = clock_exp_exp { Acids_parsetree.E_valof ce }
@@ -400,6 +413,12 @@ exp_desc:
 
 %inline exp:
 | ed = with_loc(exp_desc) { make_located make_exp ed }
+
+merge_clause_desc:
+| PIPE ec = econstr ARROW e = exp { (ec, e) }
+
+merge_clause:
+| mc = with_loc(merge_clause_desc) { make_clause mc }
 
 base_annot:
 | BASE clock_annot { $2 }

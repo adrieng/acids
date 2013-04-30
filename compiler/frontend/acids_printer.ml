@@ -79,10 +79,15 @@ struct
       Format.fprintf fmt "@[split %a@ %a@]"
         print_clock_exp ce
         print_exp e
-    | E_merge (ce, e_l) ->
-      Format.fprintf fmt "@[merge@ %a (@[%a@])@]"
+    | E_bmerge (ce, e1, e2) ->
+      Format.fprintf fmt "@[merge %a@ %a@ %a@]"
         print_clock_exp ce
-        (Utils.print_list_r print_exp "") e_l
+        print_exp e1
+        print_exp e2
+    | E_merge (ce, c_l) ->
+      Format.fprintf fmt "@[merge %a with@ %a@ end@]"
+        print_clock_exp ce
+        (Utils.print_list_r print_clause "") c_l
     | E_valof ce ->
       Format.fprintf fmt "?%a" print_clock_exp ce
     | E_clockannot (e, ck) ->
@@ -129,6 +134,11 @@ struct
         print_clock_annot ck
     | P_split p_t ->
       Ast_misc.print_upword print_pat print_exp fmt p_t
+
+  and print_clause fmt clause =
+    Format.fprintf fmt "| %a -> %a"
+      Ast_misc.print_econstr clause.c_sel
+      print_exp clause.c_body
 
   and print_clock_annot fmt ck =
     match ck with

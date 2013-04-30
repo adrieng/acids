@@ -22,20 +22,30 @@ type 'a var_dec =
       v_loc : Loc.t;
     }
 
+(** Extended constructors *)
+type econstr =
+  | Ec_bool of bool
+  | Ec_int of Int.t
+  | Ec_constr of Names.longname
+
+let print_econstr fmt ec =
+  match ec with
+  | Ec_bool b -> Format.fprintf fmt "%b" b
+  | Ec_int i -> Int.print fmt i
+  | Ec_constr ln -> Names.print_longname fmt ln
+
 type const =
-  | Cbool of bool
-  | Cint of Int.t
+  | Cconstr of econstr
   | Cfloat of float
   | Cword of int list (* [0-9] ints *)
 
 let print_const fmt c =
   match c with
-  | Cbool b -> Format.fprintf fmt "%b" b
-  | Cint i -> Format.fprintf fmt "%nd" i
+  | Cconstr c -> print_econstr fmt c
   | Cfloat f -> Format.fprintf fmt "%f" f
   | Cword w ->
     let print_int fmt i = Format.fprintf fmt "%d" i in
-    Format.fprintf fmt "@%a@" (Utils.print_list print_int) w
+    Format.fprintf fmt "'%a'" (Utils.print_list print_int) w
 
 type ('a, 'b) power_tree =
   | Leaf of 'a

@@ -79,6 +79,7 @@ rule token = parse
 | ">" { GT }
 
 | "->" { ARROW }
+| "|" { PIPE }
 
 | "true" { BOOL true }
 | "false" { BOOL false }
@@ -117,6 +118,8 @@ rule token = parse
 | "val" { VAL }
 | "in" { IN }
 | "is" { IS }
+| "with" { WITH }
+| "end" { END }
 
 | "bool" { BOOL_TY }
 | "int" { INT_TY }

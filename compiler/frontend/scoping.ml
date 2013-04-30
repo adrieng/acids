@@ -186,7 +186,24 @@ let check_node_name local_nodes nn loc =
 
 (** {3 Scoping} *)
 
-let rec scope_clock_annot local_nodes imported_mods cka acc =
+let rec scope_econstr local_nodes imported_mods loc ec acc =
+  match ec with
+  | Ast_misc.Ec_int _ | Ast_misc.Ec_bool _ -> ec, acc
+  | Ast_misc.Ec_constr ln ->
+    let (intf_env, id_env) = acc in
+    let ln, intf_env =
+      scope_longname local_nodes imported_mods intf_env ln loc
+    in
+    Ast_misc.Ec_constr ln, (intf_env, id_env)
+
+and scope_const local_nodes imported_mods loc c acc =
+  match c with
+  | Ast_misc.Cconstr ec ->
+    let ec, acc = scope_econstr local_nodes imported_mods loc ec acc in
+    Ast_misc.Cconstr ec, acc
+  | Ast_misc.Cfloat _ | Ast_misc.Cword _ -> c, acc
+
+and scope_clock_annot local_nodes imported_mods cka acc =
   let scope_clock_exp = scope_clock_exp local_nodes imported_mods in
   let scope_clock_annot = scope_clock_annot local_nodes imported_mods in
   match cka with
@@ -232,6 +249,7 @@ and scope_exp local_nodes imported_mods e ((intf_env, id_env) as acc) =
       let id = find_var id_env v e.e_loc in
       Acids_scoped.E_var id, (intf_env, id_env)
     | E_const c ->
+      let c, acc = scope_const local_nodes imported_mods e.e_loc c acc in
       Acids_scoped.E_const c, acc
     | E_fst e ->
       let e, acc = scope_exp e acc in
@@ -267,10 +285,17 @@ and scope_exp local_nodes imported_mods e ((intf_env, id_env) as acc) =
       let e, acc = scope_exp e acc in
       let ce, acc = scope_clock_exp ce acc in
       Acids_scoped.E_split (ce, e), acc
-    | E_merge (ce, e_l) ->
+    | E_bmerge (ce, e1, e2) ->
       let ce, acc = scope_clock_exp ce acc in
-      let e_l, acc = Utils.mapfold scope_exp e_l acc in
-      Acids_scoped.E_merge (ce, e_l), acc
+      let e1, acc = scope_exp e1 acc in
+      let e2, acc = scope_exp e2 acc in
+      Acids_scoped.E_bmerge (ce, e1, e2), acc
+    | E_merge (ce, c_l) ->
+      let ce, acc = scope_clock_exp ce acc in
+      let c_l, acc =
+        Utils.mapfold (scope_merge_clause local_nodes imported_mods) c_l acc
+      in
+      Acids_scoped.E_merge (ce, c_l), acc
     | E_valof ce ->
       let ce, acc = scope_clock_exp ce acc in
       Acids_scoped.E_valof ce, acc
@@ -338,6 +363,15 @@ and scope_eq local_nodes imported_mods (p, eq) acc =
     Acids_scoped.eq_info = eq.eq_info;
   },
   acc
+
+and scope_merge_clause local_nodes imported_mods c acc =
+  let ec, acc = scope_econstr local_nodes imported_mods c.c_loc c.c_sel acc in
+  let e, acc = scope_exp local_nodes imported_mods c.c_body acc in
+  {
+    Acids_scoped.c_sel = ec;
+    Acids_scoped.c_body = e;
+    Acids_scoped.c_loc = c.c_loc;
+  }, acc
 
 and scope_pattern local_nodes imported_mods p ((intf_env, id_env) as acc) =
   let scope_pattern = scope_pattern local_nodes imported_mods in

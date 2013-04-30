@@ -94,15 +94,16 @@ struct
   type ty_var =
       {
         v_id : int;
-        mutable v_link : ty_var S.pre_ty option;
+        mutable v_link : t option;
       }
-
-  include S
+  and t = ty_var S.pre_ty
 
   let rec print_var fmt v =
     Format.fprintf fmt "%a%d"
       (Utils.print_opt (S.print print_var)) v.v_link
       v.v_id
+
+  let print fmt t = S.print print_var fmt t
 
   let ty_of_ty_var ty_of_pre_ty ty_of_var_id tyv =
     match tyv.v_link with

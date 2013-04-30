@@ -52,6 +52,7 @@ let flow =
   let open Pass_manager in
   Parsing_pass.parse
   +>+ Scoping.scope
+  +>+ Data_typing.type_
 
 (*****************************************************************************)
 (* File handling *)

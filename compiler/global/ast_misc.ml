@@ -22,7 +22,6 @@ type 'a var_dec =
       v_loc : Loc.t;
     }
 
-
 type const =
   | Cbool of bool
   | Cint of Int.t
@@ -73,10 +72,20 @@ let rec mapfold_power_tree f g pt acc =
     let pt, acc = mapfold_power_tree f g pt acc in
     Power (pt, pw), acc
 
+let rec iter_power_tree f g pt =
+  match pt with
+  | Leaf x -> f x
+  | Concat pt_l -> List.iter (iter_power_tree f g) pt_l
+  | Power (pt, pw) -> g pw; iter_power_tree f g pt
+
 let mapfold_upword f g { u = u; v = v; } acc =
   let u, acc = mapfold_power_tree f g u acc in
   let v, acc = mapfold_power_tree f g v acc in
   { u = u; v = v; }, acc
+
+let iter_upword f g { u = u; v = v; } =
+  iter_power_tree f g u;
+  iter_power_tree f g v
 
 (** Generic module for unification variables *)
 module MakeVar =

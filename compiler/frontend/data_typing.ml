@@ -95,7 +95,51 @@ let unify loc ty1 ty2 =
   in
   u ty1 ty2
 
+let try_unify_no_conflict loc ty1 ty2 =
+  try unify loc ty1 ty2; true
+  with Typing_error (Unification_conflict _) -> false
+
+(** {2 High-level utilities} *)
+
+let int_ty = PreTy.Pty_scal Tys_int
+let bool_ty = PreTy.Pty_scal Tys_bool
+
+let reset_ty, fresh_ty =
+  let open PreTy in
+  let open VarTy in
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () -> incr r; Pty_var { v_link = None; v_id = !r; })
+
 (** {2 Typing AST nodes} *)
+
+let rec type_clock_exp env ce =
+  let ty =
+    match ce.ce_desc with
+    | Ce_var v -> Ident.Env.find v env
+    | Ce_pword w ->
+      let ty = fresh_ty () in
+      let expect = expect_exp env ty in
+      Ast_misc.iter_upword expect expect w;
+      if not (try_unify_no_conflict ce.ce_loc ty int_ty)
+      then unify ce.ce_loc ty bool_ty;
+      ty
+    | Ce_equal (ce, e) ->
+      let ty = type_clock_exp env ce in
+      expect_exp env ty e;
+      ty
+    | Ce_iter ce ->
+      expect_clock_exp env ce int_ty
+  in
+  assert false
+
+and expect_clock_exp env ce ty = assert false
+
+and type_exp env e = assert false
+
+and expect_exp env e ty = assert false
+
+(** {2 Moving from pretypes to types} *)
 
 let type_file
     ctx

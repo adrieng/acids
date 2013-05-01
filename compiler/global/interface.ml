@@ -86,8 +86,8 @@ let load_interface filen =
     if i != Compiler.magic_number then bad_magic_number filen;
     let (intf : t) = Marshal.from_channel ic in
     close_in ic;
-    intf
-  with _ -> could_not_open_file filen
+    Some intf
+  with Sys_error _ -> None
 
 let store_interface filen intf =
   try
@@ -99,13 +99,22 @@ let store_interface filen intf =
 
 (** {2 Look-up functions} *)
 
+let module_name_of_file_name filen =
+  String.capitalize (Filename.chop_extension (Filename.basename filen))
+
+let interface_file_name_of_module_name modn =
+  String.uncapitalize modn ^ ".aso"
+
 let load_interface_from_module_name modn =
-  let filen = Filename.concat (String.uncapitalize modn) "aso" in
+  let filen = String.uncapitalize modn ^ ".aso" in
   let rec try_dirs dirs =
     match dirs with
     | [] -> could_not_find_file filen
     | dirn :: dirs ->
-      try load_interface (Filename.concat dirn filen)
-      with Not_found -> try_dirs dirs
+      (
+        match load_interface (Filename.concat dirn filen) with
+        | Some intf -> intf
+        | None -> try_dirs dirs
+      )
   in
   try_dirs !Compiler_options.search_path

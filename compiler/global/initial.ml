@@ -15,9 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let module_name_for_file_name filen =
-  String.capitalize (Filename.chop_extension (Filename.basename filen))
-
 let set_current_file_name, get_current_file_name =
   let current_file_name = ref "" in
   (fun s -> current_file_name := s),
@@ -25,8 +22,6 @@ let set_current_file_name, get_current_file_name =
     if !current_file_name = ""
     then Compiler.internal_error "current file not set";
     !current_file_name)
-
-let get_current_module () = module_name_for_file_name (get_current_file_name ())
 
 let make_longname ?modn shortn =
   let modn = match modn with

@@ -178,7 +178,8 @@
 
   let make_file imports body =
     {
-      Acids_parsetree.f_name = Initial.get_current_module ();
+      Acids_parsetree.f_name =
+        Interface.module_name_of_file_name (Initial.get_current_file_name ());
       Acids_parsetree.f_imports =
         if !Compiler_options.no_pervasives
         then imports

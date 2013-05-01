@@ -207,7 +207,7 @@ let check_block block =
   let walk_eq block_env eq = check_pattern block.b_loc block_env eq.eq_lhs in
   ignore (List.fold_left walk_eq Utils.String_set.empty block.b_body)
 
-(** Stand-alone checker for patterns (useful for nodes decls) *)
+(** Stand-alone checker for patterns (used for inputs of nodes defs) *)
 let check_pattern p = ignore (check_pattern Loc.dummy Utils.String_set.empty p)
 
 let check_node_name local_nodes nn loc =

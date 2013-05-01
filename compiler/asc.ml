@@ -24,6 +24,7 @@ let error_is_internal exn =
   | Lexer.Lexical_error _
   | Parser_utils.Parse_error _
   | Scoping.Scoping_error _
+  | Interface.Interface_error _
     ->
     false
   | _
@@ -40,6 +41,8 @@ let print_error _ fmt exn =
   | Parser_utils.Parse_error reason ->
     Loc.print fmt reason;
     Format.fprintf fmt "Syntax error"
+  | Interface.Interface_error err ->
+    Interface.print_error fmt err
   | Scoping.Scoping_error err ->
     Scoping.print_error fmt err
   | exn ->

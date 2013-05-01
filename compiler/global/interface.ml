@@ -21,6 +21,7 @@ type error =
   | Could_not_open_file of string
   | Bad_magic_number of string
   | Could_not_find_file of string
+  | Ill_formed_interface of Names.shortname
 
 exception Interface_error of error
 
@@ -34,6 +35,9 @@ let print_error fmt err =
     Format.fprintf fmt "Could not find file %s in @[%a@]"
       filen
       (Utils.print_list_r Utils.print_string ";") !Compiler_options.search_path
+  | Ill_formed_interface intfn ->
+    Format.fprintf fmt "the internal interface file for %a is ill-formed"
+      Names.print_shortname intfn
 
 let could_not_open_file filen =
   raise (Interface_error (Could_not_open_file filen))
@@ -43,6 +47,9 @@ let bad_magic_number filen =
 
 let could_not_find_file filen =
   raise (Interface_error (Could_not_find_file filen))
+
+let ill_formed_interface intfn =
+  raise (Interface_error (Ill_formed_interface intfn))
 
 (** {2 Definitions of data types} *)
 
@@ -58,23 +65,72 @@ type dynamic_node_decl =
     dn_body : unit; (* Nir.t option *)
   }
 
-type type_decl =
-  {
-    td_constr : Names.shortname list;
-  }
-
 type node_item =
   | I_static of static_node_decl
   | I_dynamic of dynamic_node_decl
 
 type type_item =
-  | I_type of type_decl
+  {
+    td_constr : Names.shortname list;
+  }
 
 type t =
   {
     i_name : Names.shortname;
+    (** maps node names to node items *)
     i_nodes : node_item Names.ShortEnv.t;
+    (** maps type names to constr list *)
     i_types : type_item Names.ShortEnv.t;
+    (** maps constr name to type name *)
+    i_constrs : Names.shortname Names.ShortEnv.t;
+  }
+
+(** {2 Consistency check and recovery functions} *)
+
+let check_type_and_constrs intf =
+  let ill_formed () = ill_formed_interface intf.i_name in
+
+  (* check that each constructor is mapped to the proper type name *)
+  let check_constr constr type_name =
+    let constrs_for_type_name = Names.ShortEnv.find type_name intf.i_types in
+    if not (List.mem constr constrs_for_type_name.td_constr) then ill_formed ()
+  in
+  Names.ShortEnv.iter check_constr intf.i_constrs;
+
+  (* check that each constructor in each type name exists (no need to re-check
+     the constr -> type mapping) *)
+  let check_type _ constrs =
+    let check_constr constr =
+      if not (Names.ShortEnv.mem constr intf.i_constrs)
+      then ill_formed ()
+    in
+    List.iter check_constr constrs.td_constr
+  in
+  Names.ShortEnv.iter check_type intf.i_types;
+
+  (* check for duplicate constr name *)
+  let check_duplicate _ constrs already_seen =
+    let check_constr already_seen constr =
+      if Utils.String_set.mem constr already_seen
+      then ill_formed ()
+      else Utils.String_set.add constr already_seen
+    in
+    List.fold_left check_constr already_seen constrs.td_constr
+  in
+  ignore
+    (Names.ShortEnv.fold check_duplicate intf.i_types Utils.String_set.empty)
+
+let rebuild_constrs_env intf =
+  let add type_name constrs constr_env =
+    let add constr_env constr =
+      Names.ShortEnv.add constr type_name constr_env
+    in
+    List.fold_left add constr_env constrs.td_constr
+  in
+  {
+    intf with
+      i_constrs =
+      Names.ShortEnv.fold add intf.i_types Names.ShortEnv.empty;
   }
 
 (** {2 Low-level I/O functions} *)

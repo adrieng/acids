@@ -37,7 +37,9 @@
 
 type error =
   | Unknown_node of Names.shortname * Loc.t
+  | Unknown_constr of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
+  | Constr_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
@@ -52,10 +54,19 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown node %a"
       Loc.print l
       Names.print_shortname shortn
+  | Unknown_constr (shortn, l) ->
+    Format.fprintf fmt "%aUnknown constructor %a"
+      Loc.print l
+      Names.print_shortname shortn
   | Node_not_found (modn, shortn, l) ->
     Format.fprintf fmt "%aNode %a not found in module %a"
       Loc.print l
       Names.print_shortname shortn
+      Names.print_modname modn
+  | Constr_not_found (modn, constrn, l) ->
+    Format.fprintf fmt "%aConstructor %a not found in module %a"
+      Loc.print l
+      Names.print_shortname constrn
       Names.print_modname modn
   | Unbound_var (v, l) ->
     Format.fprintf fmt "%aUnknown identifier %s" Loc.print l v
@@ -78,8 +89,14 @@ let print_error fmt err =
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
+let unknown_constr shortn loc =
+  raise (Scoping_error (Unknown_constr (shortn, loc)))
+
 let node_not_found modn shortn loc =
   raise (Scoping_error (Node_not_found (modn, shortn, loc)))
+
+let constr_not_found modn shortn loc =
+  raise (Scoping_error (Constr_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
 
@@ -119,6 +136,9 @@ let find_module_with_shortname access error imported_mods intf_env shortn loc =
 let find_module_with_node =
   find_module_with_shortname (fun i -> i.Interface.i_nodes) unknown_node
 
+let find_module_with_constr =
+  find_module_with_shortname (fun i -> i.Interface.i_constrs) unknown_constr
+
 (** Check if the given module name holds the item designated by shortn.
     Works for both node and constructor names. This function loads module as
     needed.
@@ -144,6 +164,9 @@ let check_module_with_name access error intf_env modn shortn loc =
 let check_module_with_node =
   check_module_with_name (fun i -> i.Interface.i_nodes) node_not_found
 
+let check_module_with_constr =
+  check_module_with_name (fun i -> i.Interface.i_constrs) constr_not_found
+
 (** Scope a name in the proper name-space (nodes or constructors) *)
 let scope_longname find check locals imported_mods intf_env ln loc =
   let open Names in
@@ -162,6 +185,9 @@ let scope_longname find check locals imported_mods intf_env ln loc =
     ln, check intf_env modn ln.shortn loc
 
 let scope_node = scope_longname find_module_with_node check_module_with_node
+
+let scope_constr =
+  scope_longname find_module_with_constr check_module_with_constr
 
 let add_var id_env v =
   let id = Ident.make_source v in
@@ -222,9 +248,11 @@ let rec scope_econstr local_nodes imported_mods loc ec acc =
   match ec with
   | Ast_misc.Ec_int _ | Ast_misc.Ec_bool _ -> ec, acc
   | Ast_misc.Ec_constr ln ->
-    let (intf_env, id_env) = acc in
-    let ln, intf_env = scope_node local_nodes imported_mods intf_env ln loc in
-    Ast_misc.Ec_constr ln, (intf_env, id_env)
+    let (intf_env, id_env, local_constrs) = acc in
+    let ln, intf_env =
+      scope_constr local_constrs imported_mods intf_env ln loc
+    in
+    Ast_misc.Ec_constr ln, (intf_env, id_env, local_constrs)
 
 and scope_const local_nodes imported_mods loc c acc =
   match c with

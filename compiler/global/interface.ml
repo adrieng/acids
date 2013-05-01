@@ -47,26 +47,35 @@ let could_not_find_file filen =
 (** {2 Definitions of data types} *)
 
 type static_node_decl =
-    {
-      sn_info : Acids_preinterv.Info.node_info;
-      sn_body : Acids_preinterv.node_def;
-    }
+  {
+    sn_info : Acids_preinterv.Info.node_info;
+    sn_body : Acids_preinterv.node_def;
+  }
 
 type dynamic_node_decl =
-    {
-      dn_info : Acids_clocked.Info.node_info;
-      dn_body : unit; (* Nir.t option *)
-    }
+  {
+    dn_info : Acids_clocked.Info.node_info;
+    dn_body : unit; (* Nir.t option *)
+  }
 
-type node_decl =
-  | Nd_static of static_node_decl
-  | Nd_dynamic of dynamic_node_decl
+type type_decl =
+  {
+    td_constr : Names.shortname list;
+  }
+
+type node_item =
+  | I_static of static_node_decl
+  | I_dynamic of dynamic_node_decl
+
+type type_item =
+  | I_type of type_decl
 
 type t =
-    {
-      i_name : Names.shortname;
-      i_body : node_decl Names.ShortEnv.t;
-    }
+  {
+    i_name : Names.shortname;
+    i_nodes : node_item Names.ShortEnv.t;
+    i_types : type_item Names.ShortEnv.t;
+  }
 
 (** {2 Low-level I/O functions} *)
 

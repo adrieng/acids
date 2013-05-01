@@ -89,32 +89,52 @@ let duplicate_node shortn loc =
 
 (** {2 Scoping function} *)
 
-(** Find which of the imported module (if any) provides the corresponding node
-    name.
+(** Find which of the imported modules (if any) provides the corresponding
+    name. This function is used for finding both node names and
+    type constructors.
 
+    @param access a function for specifying where to look in the interface
+    @param error a function to call in case the constructor is not found
     @param imported_mods list of explicitely imported modules, in reverse order
     @param intf_env an environment mapping module names to Interface.t
-    @param shortn the node name to look-up
+    @param shortn the node or type name to look-up
     @returns module name defining shortn
 *)
-let find_module_with_node imported_mods intf_env shortn loc =
+let find_module_with_shortname access error imported_mods intf_env shortn loc =
   let mod_has_node modn =
     let intf = Names.ShortEnv.find modn intf_env in
-    Names.ShortEnv.mem modn intf.Interface.i_body
+    Names.ShortEnv.mem modn (access intf)
   in
   try List.find mod_has_node imported_mods
-  with Not_found -> unknown_node shortn loc
+  with Not_found -> error shortn loc
 
-let check_module_with_node intf_env modn shortn loc =
+let find_module_with_node =
+  find_module_with_shortname (fun i -> i.Interface.i_nodes) unknown_node
+
+(** Check if the given module name holds the item designated by shortn.
+    Works for both node and type names. This function loads module as
+    needed.
+
+    @param access a function for specifying where to look in the interface
+    @param error a function to call in case the constructor is not found
+    @param intf_env an environment mapping module names to Interface.t
+    @param modn name of the module to check
+    @param shortn the node or type name to look-up
+    @returns potentially updated [intf_env]
+*)
+let check_module_with_name access error intf_env modn shortn loc =
   let intf, intf_env =
     try Names.ShortEnv.find modn intf_env, intf_env
     with Not_found ->
       let intf = Interface.load_interface_from_module_name modn in
       intf, Names.ShortEnv.add modn intf intf_env
   in
-  if not (Names.ShortEnv.mem shortn intf.Interface.i_body)
-  then node_not_found modn shortn loc;
+  if not (Names.ShortEnv.mem shortn (access intf))
+  then error modn shortn loc;
   intf_env
+
+let check_module_with_node =
+  check_module_with_name (fun i -> i.Interface.i_nodes) node_not_found
 
 let scope_longname local_nodes imported_mods intf_env ln loc =
   let open Names in

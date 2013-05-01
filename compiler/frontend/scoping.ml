@@ -42,6 +42,7 @@ type error =
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
   | Duplicate_node of Names.shortname * Loc.t
+  | Duplicate_constr of Names.shortname * Loc.t
 
 exception Scoping_error of error
 
@@ -59,17 +60,21 @@ let print_error fmt err =
   | Unbound_var (v, l) ->
     Format.fprintf fmt "%aUnknown identifier %s" Loc.print l v
   | Multiple_binding_pattern (s, l) ->
-      Format.fprintf fmt "%a%s is bound several times in this pattern"
-        Loc.print l
-        s
+    Format.fprintf fmt "%a%s is bound several times in this pattern"
+      Loc.print l
+      s
   | Multiple_binding_block (s, l) ->
-      Format.fprintf fmt "%a%s is bound several times in this block"
-        Loc.print l
-        s
+    Format.fprintf fmt "%a%s is bound several times in this block"
+      Loc.print l
+      s
   | Duplicate_node (shortn, l) ->
-      Format.fprintf fmt "%a%a is declared several times in the module"
-        Loc.print l
-        Names.print_shortname shortn
+    Format.fprintf fmt "%a%a is declared several times in this module"
+      Loc.print l
+      Names.print_shortname shortn
+  | Duplicate_constr (constrn, l) ->
+    Format.fprintf fmt "%aconstructor %a has already been used in this module"
+      Loc.print l
+      Names.print_shortname constrn
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
@@ -86,6 +91,9 @@ let multiple_binding_block shortn loc =
 
 let duplicate_node shortn loc =
   raise (Scoping_error (Duplicate_node (shortn, loc)))
+
+let duplicate_constr constrn loc =
+  raise (Scoping_error (Duplicate_constr (constrn, loc)))
 
 (** {2 Scoping function} *)
 
@@ -203,8 +211,10 @@ let check_block block =
 let check_pattern p = ignore (check_pattern Loc.dummy Utils.String_set.empty p)
 
 let check_node_name local_nodes nn loc =
-  if Names.ShortSet.mem nn local_nodes
-  then duplicate_node nn loc
+  if Names.ShortSet.mem nn local_nodes then duplicate_node nn loc
+
+let check_type_constr local_constrs cn loc =
+  if Names.ShortSet.mem cn local_constrs then duplicate_constr cn loc
 
 (** {3 Scoping} *)
 

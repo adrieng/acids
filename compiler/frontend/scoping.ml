@@ -97,7 +97,7 @@ let duplicate_node shortn loc =
     @param error a function to call in case the constructor is not found
     @param imported_mods list of explicitely imported modules, in reverse order
     @param intf_env an environment mapping module names to Interface.t
-    @param shortn the node or type name to look-up
+    @param shortn the node or constructor name to look-up
     @returns module name defining shortn
 *)
 let find_module_with_shortname access error imported_mods intf_env shortn loc =
@@ -112,14 +112,14 @@ let find_module_with_node =
   find_module_with_shortname (fun i -> i.Interface.i_nodes) unknown_node
 
 (** Check if the given module name holds the item designated by shortn.
-    Works for both node and type names. This function loads module as
+    Works for both node and constructor names. This function loads module as
     needed.
 
     @param access a function for specifying where to look in the interface
     @param error a function to call in case the constructor is not found
     @param intf_env an environment mapping module names to Interface.t
     @param modn name of the module to check
-    @param shortn the node or type name to look-up
+    @param shortn the node or constructor name to look-up
     @returns potentially updated [intf_env]
 *)
 let check_module_with_name access error intf_env modn shortn loc =
@@ -136,22 +136,24 @@ let check_module_with_name access error intf_env modn shortn loc =
 let check_module_with_node =
   check_module_with_name (fun i -> i.Interface.i_nodes) node_not_found
 
-let scope_longname local_nodes imported_mods intf_env ln loc =
+(** Scope a name in the proper name-space (nodes or constructors) *)
+let scope_longname find check locals imported_mods intf_env ln loc =
   let open Names in
   match ln.modn with
   | LocalModule ->
-    (* If the node exists in the local module, this is a local node call.
-       Otherwise we look it up in the imported modules. *)
-    if ShortSet.mem ln.shortn local_nodes
-    then ln, intf_env
+    (* We check in [locals] whether the name is indeed known
+       at this point. Otherwise we look it up in the imported
+       modules. *)
+    if ShortSet.mem ln.shortn locals
+    then ln, intf_env (* ln is indeed local *)
     else
-      let modn =
-        find_module_with_node imported_mods intf_env ln.shortn loc
-      in
+      let modn = find imported_mods intf_env ln.shortn loc in
       { ln with modn = Module modn; }, intf_env
   | Module modn ->
-    let intf_env = check_module_with_node intf_env modn ln.shortn loc in
-    ln, intf_env
+    (* Check that the module indeed holds the name (loading it if needed). *)
+    ln, check intf_env modn ln.shortn loc
+
+let scope_node = scope_longname find_module_with_node check_module_with_node
 
 let add_var id_env v =
   let id = Ident.make_source v in
@@ -211,9 +213,7 @@ let rec scope_econstr local_nodes imported_mods loc ec acc =
   | Ast_misc.Ec_int _ | Ast_misc.Ec_bool _ -> ec, acc
   | Ast_misc.Ec_constr ln ->
     let (intf_env, id_env) = acc in
-    let ln, intf_env =
-      scope_longname local_nodes imported_mods intf_env ln loc
-    in
+    let ln, intf_env = scope_node local_nodes imported_mods intf_env ln loc in
     Ast_misc.Ec_constr ln, (intf_env, id_env)
 
 and scope_const local_nodes imported_mods loc c acc =
@@ -340,7 +340,7 @@ and scope_app local_nodes imported_mods app (intf_env, id_env) =
     match app.a_op with
     | O_node ln ->
       let ln, intf_env =
-        scope_longname local_nodes imported_mods intf_env ln app.a_loc
+        scope_node local_nodes imported_mods intf_env ln app.a_loc
       in
       Acids_scoped.O_node ln, (intf_env, id_env)
   in

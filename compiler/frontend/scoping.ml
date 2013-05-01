@@ -479,7 +479,14 @@ let scope_phrase imported_mods acc phr =
   | Phr_type_def _ -> assert false (* TODO *)
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
-  let acc = Names.ShortSet.empty, Names.ShortEnv.empty in
+  let intf_env =
+    let load intf_env modn =
+      let intf = Interface.load_interface_from_module_name modn in
+      Names.ShortEnv.add modn intf intf_env
+    in
+    List.fold_left load Names.ShortEnv.empty file.f_imports
+  in
+  let acc = Names.ShortSet.empty, intf_env in
   let (_, intf_env), body =
     Utils.mapfold_left (scope_phrase file.f_imports) acc file.f_body
   in

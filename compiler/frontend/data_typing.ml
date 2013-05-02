@@ -217,7 +217,7 @@ and type_clock_exp env ce =
       M.Ce_equal (ce, e), bool_ty
 
     | Ce_iter ce ->
-      let ce = expect_clock_exp env ce int_ty in
+      let ce = expect_clock_exp env int_ty ce in
       M.Ce_iter ce, int_ty
   in
   {
@@ -227,11 +227,27 @@ and type_clock_exp env ce =
   },
   ty
 
-and expect_clock_exp env ce ty = assert false
+and expect_clock_exp env expected_ty ce =
+  let ce, effective_ty = type_clock_exp env ce in
+  unify ce.M.ce_loc expected_ty effective_ty;
+  ce
 
-and type_exp env e = assert false
+and type_exp env e =
+  let ed, ty =
+    match e.e_desc with
+    | _ -> assert false
+  in
+  {
+    M.e_desc = ed;
+    M.e_loc = e.e_loc;
+    M.e_info = ty;
+  },
+  ty
 
-and expect_exp env e ty = assert false
+and expect_exp env expected_ty e =
+  let e, effective_ty = type_exp env e in
+  unify e.M.e_loc expected_ty effective_ty;
+  e
 
 (** {2 Moving from pretypes to types} *)
 

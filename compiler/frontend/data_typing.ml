@@ -309,8 +309,10 @@ and type_exp env e =
       let ce, ty = type_clock_exp env ce in
       M.E_valof ce, ty
 
-    | E_clockannot _ ->
-      assert false
+    | E_clockannot (e, ca) ->
+      let e, ty = type_exp env e in
+      let ca = type_clock_annot env ca in
+      M.E_clockannot (e, ca), ty
 
     | E_dom _ ->
       assert false
@@ -326,6 +328,14 @@ and expect_exp env expected_ty e =
   let e, effective_ty = type_exp env e in
   unify e.M.e_loc expected_ty effective_ty;
   e
+
+and type_clock_annot env ca =
+  match ca with
+  | Ca_var i -> M.Ca_var i
+  | Ca_on (ca, ce) ->
+    let ca = type_clock_annot env ca in
+    let ce, _ = type_clock_exp env ce in
+    M.Ca_on (ca, ce)
 
 (** {2 Moving from pretypes to types} *)
 

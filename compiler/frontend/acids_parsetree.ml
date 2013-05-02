@@ -17,7 +17,7 @@
 
 let print_no_info fmt _ = Format.fprintf fmt "."
 
-module Parsetree_info =
+module Info =
 struct
   type var = string
   let print_var fmt s = Format.fprintf fmt "%s" s
@@ -44,8 +44,8 @@ struct
   let print_node_info = print_no_info
 end
 
-module Ast = Acids.Make(Parsetree_info)
+module Ast = Acids.Make(Info)
 include Ast
 
-module Printer = Acids_printer.Make(Parsetree_info)
+module Printer = Acids_printer.Make(Info)
 include Printer

@@ -85,6 +85,13 @@ type t =
     i_constrs : Names.shortname Names.ShortEnv.t;
   }
 
+(** {2 Access functions} *)
+
+let data_signature_of_node_item ni =
+  match ni with
+  | I_static snd -> snd.sn_info#ni_data
+  | I_dynamic dnd -> dnd.dn_info#ni_data
+
 (** {2 Consistency check and recovery functions} *)
 
 let check_type_and_constrs intf =

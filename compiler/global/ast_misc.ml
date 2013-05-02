@@ -92,6 +92,12 @@ let rec iter_power_tree f g pt =
   | Concat pt_l -> List.iter (iter_power_tree f g) pt_l
   | Power (pt, pw) -> g pw; iter_power_tree f g pt
 
+let rec map_power_tree f g pt =
+  match pt with
+  | Leaf x -> Leaf (f x)
+  | Concat pt_l -> Concat (List.map (map_power_tree f g) pt_l)
+  | Power (pt, pw) -> Power (map_power_tree f g pt, g pw)
+
 let mapfold_upword f g { u = u; v = v; } acc =
   let u, acc = mapfold_power_tree f g u acc in
   let v, acc = mapfold_power_tree f g v acc in
@@ -100,6 +106,9 @@ let mapfold_upword f g { u = u; v = v; } acc =
 let iter_upword f g { u = u; v = v; } =
   iter_power_tree f g u;
   iter_power_tree f g v
+
+let map_upword f g { u = u; v = v; } =
+  { u = map_power_tree f g u; v = map_power_tree f g v; }
 
 (** Generic module for unification variables *)
 module MakeVar =

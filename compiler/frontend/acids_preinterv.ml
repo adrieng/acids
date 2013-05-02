@@ -58,5 +58,8 @@ struct
   let print_node_info (_ : Format.formatter) _ = ()
 end
 
-module M = Acids.Make(Info)
-include M
+module Ast = Acids.Make(Info)
+include Ast
+
+module Printer = Acids_printer.Make(Info)
+include Printer

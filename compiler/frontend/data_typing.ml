@@ -15,6 +15,8 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+module MakeAst = Acids.Make
+
 open Acids_scoped
 open Data_types
 
@@ -103,6 +105,8 @@ let try_unify_no_conflict loc ty1 ty2 =
 
 let int_ty = PreTy.Pty_scal Tys_int
 let bool_ty = PreTy.Pty_scal Tys_bool
+let float_ty = PreTy.Pty_scal Tys_float
+let user_ty ln = PreTy.Pty_scal (Tys_user ln)
 
 let reset_ty, fresh_ty =
   let open PreTy in
@@ -111,27 +115,117 @@ let reset_ty, fresh_ty =
   (fun () -> r := 0),
   (fun () -> incr r; Pty_var { v_link = None; v_id = !r; })
 
+(** {2 Typing environments} *)
+
+type typing_env =
+  {
+    (** maps module names to interfaces *)
+    intf_env : Interface.t Names.ShortEnv.t;
+    (** maps constructors from the current module to type names *)
+    current_constr : Names.shortname Names.ShortEnv.t;
+    (** maps nodes from the current module to type signatures *)
+    current_nodes : Data_types.data_sig Names.ShortEnv.t;
+    (** maps current idents to (pre)types *)
+    idents : Data_types.VarTy.t Ident.Env.t;
+  }
+
+let find_env local global env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> Names.ShortEnv.find ln.shortn (local env)
+  | Module modn -> global ln.shortn (Names.ShortEnv.find modn env.intf_env)
+
+let find_constr env ln =
+  let global shortn intf =
+    Names.ShortEnv.find shortn intf.Interface.i_constrs
+  in
+  let tyn = find_env (fun env -> env.current_constr) global env ln in
+  Names.make_longname ln.Names.modn tyn
+
+let find_node =
+  let global shortn intf =
+    let open Interface in
+    data_signature_of_node_item (Names.ShortEnv.find shortn intf.i_nodes)
+  in
+  find_env (fun env -> env.current_nodes) global
+
+let find_ident env id = Ident.Env.find id env.idents
+
 (** {2 Typing AST nodes} *)
 
-let rec type_clock_exp env ce =
-  let ty =
+module Info =
+struct
+  type var = Ident.t
+  let print_var = Ident.print
+
+  type clock_exp_info = Data_types.VarTy.t
+  let print_clock_exp_info = Data_types.VarTy.print
+
+  type exp_info = Data_types.VarTy.t
+  let print_exp_info = Data_types.VarTy.print
+
+  type app_info = Data_types.VarTy.t list
+  let print_app_info = Utils.print_list_r Data_types.VarTy.print ","
+
+  type block_info = unit
+  let print_block_info _ () = ()
+
+  type pat_info = Data_types.VarTy.t
+  let print_pat_info = Data_types.VarTy.print
+
+  type eq_info = Data_types.VarTy.t
+  let print_eq_info = Data_types.VarTy.print
+
+  type node_info = Data_types.VarTy.t * Data_types.VarTy.t
+  let print_node_info fmt (inp, out) =
+    Format.fprintf fmt "%a -> %a"
+      Data_types.VarTy.print inp
+      Data_types.VarTy.print out
+end
+
+module M = MakeAst(Info)
+
+let rec type_econstr env ec =
+  let open Ast_misc in
+  match ec with
+  | Ec_bool _ -> bool_ty
+  | Ec_int _ -> int_ty
+  | Ec_constr cn -> user_ty (find_constr env cn)
+
+and type_const env c =
+  let open Ast_misc in
+  match c with
+  | Cconstr ec -> type_econstr env ec
+  | Cfloat _ -> float_ty
+  | Cword _ -> int_ty
+
+and type_clock_exp env ce =
+  let ced, ty =
     match ce.ce_desc with
-    | Ce_var v -> Ident.Env.find v env
+    | Ce_var v ->
+      M.Ce_var v, find_ident env v
+
     | Ce_pword w ->
       let ty = fresh_ty () in
       let expect = expect_exp env ty in
-      Ast_misc.iter_upword expect expect w;
-      if not (try_unify_no_conflict ce.ce_loc ty int_ty)
-      then unify ce.ce_loc ty bool_ty;
-      ty
+      let w = Ast_misc.map_upword expect expect w in
+      M.Ce_pword w, ty
+
     | Ce_equal (ce, e) ->
-      let ty = type_clock_exp env ce in
-      expect_exp env ty e;
-      ty
+      let ce, ty = type_clock_exp env ce in
+      let e = expect_exp env ty e in
+      M.Ce_equal (ce, e), bool_ty
+
     | Ce_iter ce ->
-      expect_clock_exp env ce int_ty
+      let ce = expect_clock_exp env ce int_ty in
+      M.Ce_iter ce, int_ty
   in
-  assert false
+  {
+    M.ce_desc = ced;
+    M.ce_loc = ce.ce_loc;
+    M.ce_info = ty;
+  },
+  ty
 
 and expect_clock_exp env ce ty = assert false
 

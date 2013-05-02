@@ -150,10 +150,22 @@ let find_node =
   in
   find_env (fun env -> env.current_nodes) global
 
+let find_ident env id = Ident.Env.find id env.idents
+
 let add_fresh_type_for_var env id =
   { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
 
-let find_ident env id = Ident.Env.find id env.idents
+let rec add_fresh_types_for_pat env p =
+  match p.p_desc with
+  | P_var id -> add_fresh_type_for_var env id
+  | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
+  | P_clock_annot (p, _) -> add_fresh_types_for_pat env p
+  | P_split w ->
+    Ast_misc.fold_upword
+      (Utils.flip add_fresh_types_for_pat)
+      (fun _ env -> env)
+      w
+      env
 
 (** {2 Typing AST nodes} *)
 
@@ -381,17 +393,7 @@ and type_eq env eq =
   }
 
 and type_block env block =
-  let enrich env eq =
-    let rec enrich env p =
-      match p.p_desc with
-      | P_var id -> add_fresh_type_for_var env id
-      | P_tuple p_l -> List.fold_left enrich env p_l
-      | P_clock_annot (p, _) -> enrich env p
-      | P_split w ->
-        Ast_misc.fold_upword (Utils.flip enrich) (fun _ env -> env) w env
-    in
-    enrich env eq.eq_lhs
-  in
+  let enrich env eq = add_fresh_types_for_pat env eq.eq_lhs in
 
   let env = List.fold_left enrich env block.b_body in
   let body = List.map (type_eq env) block.b_body in

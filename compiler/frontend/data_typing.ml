@@ -107,6 +107,7 @@ let int_ty = PreTy.Pty_scal Tys_int
 let bool_ty = PreTy.Pty_scal Tys_bool
 let float_ty = PreTy.Pty_scal Tys_float
 let user_ty ln = PreTy.Pty_scal (Tys_user ln)
+let tuple_ty ty_l = PreTy.Pty_prod ty_l
 
 let reset_ty, fresh_ty =
   let open PreTy in
@@ -202,8 +203,8 @@ and type_const env c =
 and type_clock_exp env ce =
   let ced, ty =
     match ce.ce_desc with
-    | Ce_var v ->
-      M.Ce_var v, find_ident env v
+    | Ce_var id ->
+      M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
       let ty = fresh_ty () in
@@ -235,7 +236,84 @@ and expect_clock_exp env expected_ty ce =
 and type_exp env e =
   let ed, ty =
     match e.e_desc with
-    | _ -> assert false
+    | E_var id ->
+      M.E_var id, find_ident env id
+
+    | E_const c ->
+      M.E_const c, type_const env c
+
+    | E_fst e ->
+      let ty_l = fresh_ty () in
+      let ty_r = fresh_ty () in
+      let ty_tuple = tuple_ty [ty_l; ty_r] in
+      let e = expect_exp env ty_tuple e in
+      M.E_fst e, ty_l
+
+    | E_snd e ->
+      let ty_l = fresh_ty () in
+      let ty_r = fresh_ty () in
+      let ty_tuple = tuple_ty [ty_l; ty_r] in
+      let e = expect_exp env ty_tuple e in
+      M.E_fst e, ty_r
+
+    | E_tuple e_l ->
+      let e_l, ty_l = List.split (List.map (type_exp env) e_l) in
+      M.E_tuple e_l, tuple_ty ty_l
+
+    | E_fby (e1, e2) ->
+      let e1, ty = type_exp env e1 in
+      let e2 = expect_exp env ty e2 in
+      M.E_fby (e1, e2), ty
+
+    | E_ifthenelse (e1, e2, e3) ->
+      let e1 = expect_exp env bool_ty e1 in
+      let e2, ty = type_exp env e2 in
+      let e3 = expect_exp env ty e3 in
+      M.E_ifthenelse (e1, e2, e3), ty
+
+    | E_app _ ->
+      assert false
+
+    | E_where _ ->
+      assert false
+
+    | E_when (e, ce) ->
+      let e, ty = type_exp env e in
+      let ce = expect_clock_exp env bool_ty ce in
+      M.E_when (e, ce), ty
+
+    | E_split _ ->
+      assert false
+
+    | E_bmerge (ce, e1, e2) ->
+      let ce = expect_clock_exp env bool_ty ce in
+      let e1, ty = type_exp env e1 in
+      let e2 = expect_exp env ty e2 in
+      M.E_bmerge (ce, e1, e2), ty
+
+    | E_merge (ce, c_l) ->
+      let ce, ce_ty = type_clock_exp env ce in
+      let body_ty = fresh_ty () in
+      let type_merge_clause cl =
+        let sel_ty = type_econstr env cl.c_sel in
+        unify cl.c_loc ce_ty sel_ty;
+        {
+          M.c_sel = cl.c_sel;
+          M.c_body = expect_exp env body_ty cl.c_body;
+          M.c_loc = cl.c_loc;
+        }
+      in
+      M.E_merge (ce, List.map type_merge_clause c_l), body_ty
+
+    | E_valof ce ->
+      let ce, ty = type_clock_exp env ce in
+      M.E_valof ce, ty
+
+    | E_clockannot _ ->
+      assert false
+
+    | E_dom _ ->
+      assert false
   in
   {
     M.e_desc = ed;

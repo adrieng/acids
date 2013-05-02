@@ -169,7 +169,7 @@ struct
   type type_def =
     {
       ty_name : Names.shortname;
-      ty_body : Ast_misc.constr list;
+      ty_body : Names.shortname list;
       ty_loc : Loc.t;
     }
 

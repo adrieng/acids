@@ -520,8 +520,7 @@ node_decl:
 | nd = with_loc(node_decl_desc) { make_located make_node_decl nd }
 
 type_def_desc:
-| TYPE nn = IDENT EQUAL c_l = separated_nonempty_list(PIPE, UIDENT)
-   { nn, List.map Initial.make_longname c_l }
+| TYPE nn = IDENT EQUAL c_l = separated_nonempty_list(PIPE, UIDENT) { nn, c_l }
 
 type_def:
 | d = with_loc(type_def_desc) { make_type_def d }

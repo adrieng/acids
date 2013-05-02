@@ -177,7 +177,7 @@ struct
   let print_type_def fmt tydef =
     Format.fprintf fmt "@[type %a =@ %a@]"
       Names.print_shortname tydef.ty_name
-      (Utils.print_list_r Ast_misc.print_constr "|") tydef.ty_body
+      (Utils.print_list_r Names.print_shortname "|") tydef.ty_body
 
   let print_phrase fmt phr =
     match phr with

@@ -83,7 +83,8 @@ struct
     | E_where of exp * block (** local declarations *)
 
     | E_when of exp * clock_exp (** sampling *)
-    | E_split of clock_exp * exp (** splitting (n-ary sampling) *)
+    | E_split of clock_exp * exp * Ast_misc.econstr list
+    (** splitting (n-ary sampling) *)
 
     | E_bmerge of clock_exp * exp * exp (** merge ce (1 -> e) (0 -> e) *)
     | E_merge of clock_exp * merge_clause list (** n-ary merge with patterns *)

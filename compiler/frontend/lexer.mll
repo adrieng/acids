@@ -122,6 +122,7 @@ rule token = parse
 | "with" { WITH }
 | "end" { END }
 | "type" { TYPE }
+| "by" { BY }
 
 | "bool" { BOOL_TY }
 | "int" { INT_TY }

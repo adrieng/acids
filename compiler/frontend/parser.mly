@@ -225,7 +225,7 @@
 %token WHEN SPLIT MERGE
 %token ON BASE
 %token VAL IN IS WITH END
-%token TYPE
+%token TYPE BY
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
 
@@ -261,7 +261,7 @@
 
 %left WHERE
 %left IF
-%left SPLIT
+// %left SPLIT
 %left WHEN
 %right APP
 %left LE GE LT GT
@@ -425,7 +425,9 @@ exp_desc:
             { Acids_parsetree.E_bmerge (ce, e1, e2) }
 | MERGE ce = clock_exp_exp WITH c_l = nonempty_list(merge_clause) END
             { Acids_parsetree.E_merge (ce, c_l) }
-| SPLIT ce = clock_exp_exp e = exp { Acids_parsetree.E_split (ce, e) }
+| SPLIT e = exp
+  WITH ce = clock_exp_exp BY c_l = separated_nonempty_list(COMMA, econstr)
+            { Acids_parsetree.E_split (ce, e, c_l) }
 
 | ce = clock_exp_exp { Acids_parsetree.E_valof ce }
 

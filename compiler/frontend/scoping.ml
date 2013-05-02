@@ -363,10 +363,14 @@ and scope_exp
       let e, acc = scope_exp e acc in
       let ce, acc = scope_clock_exp ce acc in
       Acids_scoped.E_when (e, ce), acc
-    | E_split (ce, e) ->
-      let e, acc = scope_exp e acc in
+    | E_split (ce, e', ec_l) ->
+      let e', acc = scope_exp e' acc in
       let ce, acc = scope_clock_exp ce acc in
-      Acids_scoped.E_split (ce, e), acc
+      let scope_econstr =
+        scope_econstr local_constrs imported_mods e.e_loc
+      in
+      let ec_l, acc = Utils.mapfold scope_econstr ec_l acc in
+      Acids_scoped.E_split (ce, e', ec_l), acc
     | E_bmerge (ce, e1, e2) ->
       let ce, acc = scope_clock_exp ce acc in
       let e1, acc = scope_exp e1 acc in

@@ -75,10 +75,11 @@ struct
       Format.fprintf fmt "@[%a@ when %a@]"
         print_exp e
         print_clock_exp ce
-    | E_split (ce, e) ->
-      Format.fprintf fmt "@[split %a@ %a@]"
-        print_clock_exp ce
+    | E_split (ce, e, ec_l) ->
+      Format.fprintf fmt "@[split %a@ with %a by %a@]"
         print_exp e
+        print_clock_exp ce
+        (Utils.print_list_r Ast_misc.print_econstr ",") ec_l
     | E_bmerge (ce, e1, e2) ->
       Format.fprintf fmt "@[merge %a@ %a@ %a@]"
         print_clock_exp ce

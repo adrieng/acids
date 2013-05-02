@@ -101,13 +101,7 @@ let try_unify_no_conflict loc ty1 ty2 =
   try unify loc ty1 ty2; true
   with Typing_error (Unification_conflict _) -> false
 
-(** {2 High-level utilities} *)
-
-let int_ty = PreTy.Pty_scal Tys_int
-let bool_ty = PreTy.Pty_scal Tys_bool
-let float_ty = PreTy.Pty_scal Tys_float
-let user_ty ln = PreTy.Pty_scal (Tys_user ln)
-let tuple_ty ty_l = PreTy.Pty_prod ty_l
+(** {2 Low-level utilities} *)
 
 let reset_ty, fresh_ty =
   let open PreTy in
@@ -166,6 +160,14 @@ let rec add_fresh_types_for_pat env p =
       (fun _ env -> env)
       w
       env
+
+(** {2 High-level utilities} *)
+
+let int_ty = PreTy.Pty_scal Tys_int
+let bool_ty = PreTy.Pty_scal Tys_bool
+let float_ty = PreTy.Pty_scal Tys_float
+let user_ty ln = PreTy.Pty_scal (Tys_user ln)
+let tuple_ty ty_l = PreTy.Pty_prod ty_l
 
 (** {2 Typing AST nodes} *)
 

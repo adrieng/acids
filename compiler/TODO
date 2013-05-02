@@ -1,4 +1,4 @@
 - Ct variables
-- Properly print "forall"s for type variables
-- consistent naming between P_clock_annot and E_clockannot
-- fix typing for split patterns
+- properly print "forall"s for type variables
+- record type instantiations for future monomorphization
+- consistent naming between P_clock_annot and E_clockannot- fix typing for split patterns

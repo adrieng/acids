@@ -20,3 +20,11 @@ include Nativeint
 let of_char c = of_string (String.make 1 c)
 
 let print fmt i = Format.fprintf fmt "%nd" i
+
+module Env =
+  Map.Make(
+    struct
+      type t = Nativeint.t
+      let compare = Nativeint.compare
+    end
+  )

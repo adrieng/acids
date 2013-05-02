@@ -75,3 +75,26 @@ let rec ty_of_pre_ty pty =
   | Pty_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ty_var i) v
   | Pty_scal tys -> Ty_scal tys
   | Pty_prod ty_l -> Ty_prod (List.map ty_of_pre_ty ty_l)
+
+let instantiate_sig fresh tysig =
+  let find env id =
+    try env, Utils.Int_map.find id env
+    with Not_found ->
+      let ty = fresh () in
+      Utils.Int_map.add id ty env, ty
+  in
+
+  let rec instantiate_ty env ty =
+    let open PreTy in
+    match ty with
+    | Ty_var i -> find env i
+    | Ty_scal tys -> env, Pty_scal tys
+    | Ty_prod ty_l ->
+      let env, pty_l = Utils.mapfold_left instantiate_ty env ty_l in
+      env, Pty_prod pty_l
+  in
+
+  let env = Utils.Int_map.empty in
+  let env, inp_ty = instantiate_ty env tysig.data_sig_input in
+  let _, out_ty = instantiate_ty env tysig.data_sig_output in
+  inp_ty, out_ty

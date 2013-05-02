@@ -182,8 +182,10 @@ struct
   type exp_info = Data_types.VarTy.t
   let print_exp_info = Data_types.VarTy.print
 
-  type app_info = Data_types.VarTy.t list
-  let print_app_info = Utils.print_list_r Data_types.VarTy.print ","
+  (* type app_info = Data_types.VarTy.t list *)
+  (* let print_app_info = Utils.print_list_r Data_types.VarTy.print "," *)
+  type app_info = unit
+  let print_app_info _ () = ()
 
   type block_info = unit
   let print_block_info _ () = ()
@@ -288,8 +290,10 @@ and type_exp env e =
       let e3 = expect_exp env ty e3 in
       M.E_ifthenelse (e1, e2, e3), ty
 
-    | E_app _ ->
-      assert false
+    | E_app (app, e) ->
+      let app, ty_inp, ty_out = type_app env app in
+      let e = expect_exp env ty_inp e in
+      M.E_app (app, e), ty_out
 
     | E_where (e, block) ->
       let block, env = type_block env block in
@@ -349,6 +353,18 @@ and expect_exp env expected_ty e =
   let e, effective_ty = type_exp env e in
   unify e.M.e_loc expected_ty effective_ty;
   e
+
+and type_app env app =
+  (* TODO *)
+  let op = assert false in
+  let inp_ty, out_ty = assert false in
+  {
+    M.a_op = op;
+    M.a_info = ();
+    M.a_loc = app.a_loc;
+  },
+  inp_ty,
+  out_ty
 
 and type_pattern env p =
   let pd, ty =

@@ -97,13 +97,10 @@ struct
 
   and app =
       {
-        a_op : op;
+        a_op : Names.longname;
         a_info : S.app_info;
         a_loc : Loc.t;
       }
-
-  and op =
-    | O_node of Names.longname
 
   and block =
       {

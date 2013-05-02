@@ -99,12 +99,8 @@ struct
       print_dom fmt dom e
 
   and print_app fmt app =
-    let print_op fmt op =
-      match op with
-      | O_node ln -> Names.print_longname fmt ln
-    in
     Format.fprintf fmt "%a%a"
-      print_op app.a_op
+      Names.print_longname app.a_op
       (print_full_info S.print_app_info) app.a_info
 
   and print_block fmt block =

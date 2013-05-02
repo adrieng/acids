@@ -409,16 +409,14 @@ and scope_exp
   acc
 
 and scope_app local_nodes imported_mods app (intf_env, id_env) =
-  let op, acc =
-    match app.a_op with
-    | O_node ln ->
-      let ln, intf_env =
-        scope_node local_nodes imported_mods intf_env ln app.a_loc
-      in
-      Acids_scoped.O_node ln, (intf_env, id_env)
+  let nn, acc =
+    let nn, intf_env =
+      scope_node local_nodes imported_mods intf_env app.a_op app.a_loc
+    in
+    nn, (intf_env, id_env)
   in
   {
-    Acids_scoped.a_op = op;
+    Acids_scoped.a_op = nn;
     Acids_scoped.a_info = app.a_info;
     Acids_scoped.a_loc = app.a_loc;
   },

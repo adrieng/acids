@@ -54,7 +54,7 @@
   let make_app e ln ln_loc =
     let app =
       {
-        Acids_parsetree.a_op = Acids_parsetree.O_node ln;
+        Acids_parsetree.a_op = ln;
         Acids_parsetree.a_info = ();
         Acids_parsetree.a_loc = ln_loc;
       }
@@ -68,7 +68,7 @@
     let ln = Initial.make_longname (string_of_op op) in
     let app =
       {
-        Acids_parsetree.a_op = Acids_parsetree.O_node ln;
+        Acids_parsetree.a_op = ln;
         Acids_parsetree.a_info = ();
         Acids_parsetree.a_loc = Parser_utils.make_loc start stop;
       }

@@ -355,11 +355,10 @@ and expect_exp env expected_ty e =
   e
 
 and type_app env app =
-  (* TODO *)
-  let op = assert false in
-  let inp_ty, out_ty = assert false in
+  let ty_sig = find_node env app.a_op in
+  let inp_ty, out_ty = Data_types.instantiate_sig fresh_ty ty_sig in
   {
-    M.a_op = op;
+    M.a_op = app.a_op;
     M.a_info = ();
     M.a_loc = app.a_loc;
   },

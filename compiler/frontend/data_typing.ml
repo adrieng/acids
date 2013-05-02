@@ -150,6 +150,9 @@ let find_node =
   in
   find_env (fun env -> env.current_nodes) global
 
+let add_fresh_type_for_var env id =
+  { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
+
 let find_ident env id = Ident.Env.find id env.idents
 
 (** {2 Typing AST nodes} *)
@@ -274,8 +277,10 @@ and type_exp env e =
     | E_app _ ->
       assert false
 
-    | E_where _ ->
-      assert false
+    | E_where (e, block) ->
+      let block, env = type_block env block in
+      let e, ty = type_exp env e in
+      M.E_where (e, block), ty
 
     | E_when (e, ce) ->
       let e, ty = type_exp env e in
@@ -330,6 +335,72 @@ and expect_exp env expected_ty e =
   let e, effective_ty = type_exp env e in
   unify e.M.e_loc expected_ty effective_ty;
   e
+
+and type_pattern env p =
+  let pd, ty =
+    match p.p_desc with
+    | P_var id ->
+      M.P_var id, find_ident env id
+
+    | P_tuple p_l ->
+      let p_l, ty_l = List.split (List.map (type_pattern env) p_l) in
+      M.P_tuple p_l, tuple_ty ty_l
+
+    | P_clock_annot (p, ca) ->
+      let p, ty = type_pattern env p in
+      M.P_clock_annot (p, type_clock_annot env ca), ty
+
+    | P_split w ->
+      let expect_exp_int = expect_exp env int_ty in
+      let ty = fresh_ty () in
+      let expect_pat = expect_pat env ty in
+      let w =
+        Ast_misc.map_upword expect_pat expect_exp_int w
+      in
+      M.P_split w, ty
+  in
+  {
+    M.p_desc = pd;
+    M.p_loc = p.p_loc;
+    M.p_info = ty;
+  }, ty
+
+and expect_pat env expected_ty p =
+  let p, effective_ty = type_pattern env p in
+  unify p.M.p_loc expected_ty effective_ty;
+  p
+
+and type_eq env eq =
+  let lhs, ty = type_pattern env eq.eq_lhs in
+  let rhs = expect_exp env ty eq.eq_rhs in
+  {
+    M.eq_lhs = lhs;
+    M.eq_rhs = rhs;
+    M.eq_loc = eq.eq_loc;
+    M.eq_info = ty;
+  }
+
+and type_block env block =
+  let enrich env eq =
+    let rec enrich env p =
+      match p.p_desc with
+      | P_var id -> add_fresh_type_for_var env id
+      | P_tuple p_l -> List.fold_left enrich env p_l
+      | P_clock_annot (p, _) -> enrich env p
+      | P_split w ->
+        Ast_misc.fold_upword (Utils.flip enrich) (fun _ env -> env) w env
+    in
+    enrich env eq.eq_lhs
+  in
+
+  let env = List.fold_left enrich env block.b_body in
+  let body = List.map (type_eq env) block.b_body in
+  {
+    M.b_body = body;
+    M.b_loc = block.b_loc;
+    M.b_info = ();
+  },
+  env
 
 and type_clock_annot env ca =
   match ca with

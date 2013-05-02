@@ -86,6 +86,12 @@ let rec mapfold_power_tree f g pt acc =
     let pt, acc = mapfold_power_tree f g pt acc in
     Power (pt, pw), acc
 
+let rec fold_power_tree f g pt acc =
+  match pt with
+  | Leaf x -> f x acc
+  | Concat pt_l -> List.fold_right (fold_power_tree f g) pt_l acc
+  | Power (pt, pw) -> fold_power_tree f g pt (g pw acc)
+
 let rec iter_power_tree f g pt =
   match pt with
   | Leaf x -> f x
@@ -106,6 +112,9 @@ let mapfold_upword f g { u = u; v = v; } acc =
 let iter_upword f g { u = u; v = v; } =
   iter_power_tree f g u;
   iter_power_tree f g v
+
+let fold_upword f g { u = u; v = v; } acc =
+  fold_power_tree f g v (fold_power_tree f g u acc)
 
 let map_upword f g { u = u; v = v; } =
   { u = map_power_tree f g u; v = map_power_tree f g v; }

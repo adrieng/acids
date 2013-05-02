@@ -1,2 +1,3 @@
 - Ct variables
 - Properly print "forall"s for type variables
+- consistent naming between P_clock_annot and E_clockannot

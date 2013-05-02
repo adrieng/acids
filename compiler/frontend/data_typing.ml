@@ -314,8 +314,10 @@ and type_exp env e =
       let ca = type_clock_annot env ca in
       M.E_clockannot (e, ca), ty
 
-    | E_dom _ ->
-      assert false
+    | E_dom (e, dom) ->
+      let e, ty = type_exp env e in
+      let dom = type_domain env dom in
+      M.E_dom (e, dom), ty
   in
   {
     M.e_desc = ed;
@@ -336,6 +338,12 @@ and type_clock_annot env ca =
     let ca = type_clock_annot env ca in
     let ce, _ = type_clock_exp env ce in
     M.Ca_on (ca, ce)
+
+and type_domain env dom =
+  {
+    M.d_base_clock = Utils.map_opt (type_clock_annot env) dom.d_base_clock;
+    M.d_par = dom.d_par;
+  }
 
 (** {2 Moving from pretypes to types} *)
 

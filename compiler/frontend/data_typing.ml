@@ -305,8 +305,15 @@ and type_exp env e =
       let ce = expect_clock_exp env bool_ty ce in
       M.E_when (e, ce), ty
 
-    | E_split _ ->
-      assert false
+    | E_split (ce, e', ec_l) ->
+      let ce, ce_ty = type_clock_exp env ce in
+      List.iter
+        (fun ec ->
+          let ty = type_econstr env ec in
+          unify e.e_loc ce_ty ty)
+        ec_l;
+      let e', ty = type_exp env e' in
+      M.E_split (ce, e', ec_l), ty
 
     | E_bmerge (ce, e1, e2) ->
       let ce = expect_clock_exp env bool_ty ce in

@@ -491,6 +491,7 @@ data_ty:
 | BOOL_TY { Data_types.Tys_bool }
 | INT_TY { Data_types.Tys_int }
 | FLOAT_TY { Data_types.Tys_float }
+| ln = longname { Data_types.Tys_user ln }
 
 clock_exp_ty:
 | id = IDENT { Clock_types.Ce_var (sig_scope_ident id) }

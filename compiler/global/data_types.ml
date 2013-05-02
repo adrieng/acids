@@ -19,6 +19,7 @@ type data_ty_scal =
   | Tys_bool
   | Tys_int
   | Tys_float
+  | Tys_user of Names.longname
 
 type data_ty =
   | Ty_var of int
@@ -36,6 +37,7 @@ let print_data_ty_scal fmt tys =
   | Tys_bool -> Format.fprintf fmt "bool"
   | Tys_int -> Format.fprintf fmt "int"
   | Tys_float -> Format.fprintf fmt "float"
+  | Tys_user ln -> Names.print_longname fmt ln
 
 let rec print_ty fmt ty =
   match ty with

@@ -84,11 +84,12 @@ let print_error fmt err =
       Loc.print l
       Names.print_shortname shortn
   | Duplicate_constr (constrn, l) ->
-    Format.fprintf fmt "%aconstructor %a has already been used in this module"
+    Format.fprintf fmt
+      "%aConstructor %a has already been declared in this module"
       Loc.print l
       Names.print_shortname constrn
   | Duplicate_type (typen, l) ->
-    Format.fprintf fmt "%atype %a is defined several times in this module"
+    Format.fprintf fmt "%aType %a is defined several times in this module"
       Loc.print l
       Names.print_shortname typen
 

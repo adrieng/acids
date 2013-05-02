@@ -47,6 +47,7 @@
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
 let int = digit+
+let posint = ['1'-'9'] digit*
 let exponent = ('e' | 'E') ('+' | '-')? digit+
 let float = digit+ '.' digit* exponent?
           | digit* '.'digit+ exponent?
@@ -133,7 +134,10 @@ rule token = parse
 
 | '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
 
-| "'s"(int as i) { STVAR (int_of_string i) }
+| "'a"(posint as i) { STVAR (int_of_string i) }
+| "'a"              { STVAR 0 }
+| "'x"(posint as i) { TYVAR (int_of_string i) }
+| "'x"              { TYVAR 0 }
 
 | lident as s { IDENT s }
 | uident as s { UIDENT s }

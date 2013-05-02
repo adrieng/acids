@@ -237,6 +237,7 @@
 %token<string> UIDENT
 %token<string> OP
 %token<int> STVAR
+%token<int> TYVAR
 
 %token<bool> BOOL
 %token<Int.t> INT
@@ -316,8 +317,20 @@ signature(ty):
 | s = IDENT { s }
 | s = OP { string_of_op s }
 
+op:
+| OP { $1 }
+| PLUS { "+" }
+| MINUS { "-" }
+| TIMES { "*" }
+| DIV { "/" }
+| LE { "<=" }
+| LT { "<" }
+| GE { ">=" }
+| GT { ">" }
+| EQUAL { "=" }
+
 %inline nodename:
-| s = IDENT | s = parens(OP) { s }
+| s = IDENT | s = parens(op) { s }
 
 %inline longname:
 | n = name { Initial.make_longname n }

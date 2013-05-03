@@ -124,6 +124,14 @@ type typing_env =
     idents : Data_types.VarTy.t Ident.Env.t;
   }
 
+let initial_typing_env info =
+  {
+    intf_env = info#interfaces;
+    current_constr = Names.ShortEnv.empty;
+    current_nodes = Names.ShortEnv.empty;
+    idents = Ident.Env.empty;
+  }
+
 let find_env local global env ln =
   let open Names in
   match ln.modn with
@@ -137,6 +145,13 @@ let find_constr env ln =
   let tyn = find_env (fun env -> env.current_constr) global env ln in
   Names.make_longname ln.Names.modn tyn
 
+let add_type_constrs env tyn constr_l =
+  let add constr_env constr = Names.ShortEnv.add constr tyn constr_env in
+  {
+    env with
+      current_constr = List.fold_left add env.current_constr constr_l;
+  }
+
 let find_node =
   let global shortn intf =
     let open Interface in
@@ -144,7 +159,12 @@ let find_node =
   in
   find_env (fun env -> env.current_nodes) global
 
+let add_node env nn dsig =
+  { env with current_nodes = Names.ShortEnv.add nn dsig env.current_nodes; }
+
 let find_ident env id = Ident.Env.find id env.idents
+
+let reset_idents env = { env with idents = Ident.Env.empty; }
 
 let add_fresh_type_for_var env id =
   { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
@@ -169,41 +189,73 @@ let float_ty = PreTy.Pty_scal Tys_float
 let user_ty ln = PreTy.Pty_scal (Tys_user ln)
 let tuple_ty ty_l = PreTy.Pty_prod ty_l
 
-(** {2 Typing AST nodes} *)
-
 module Info =
 struct
-  type var = Ident.t
-  let print_var = Ident.print
+  module A = Acids_scoped.Info
+  module B = Acids_typed.Info
 
-  type clock_exp_info = Data_types.VarTy.t
-  let print_clock_exp_info = Data_types.VarTy.print
+  type new_annot =
+    | Exp of Data_types.VarTy.t
+    | Node of Data_types.VarTy.t * Data_types.VarTy.t
 
-  type exp_info = Data_types.VarTy.t
-  let print_exp_info = Data_types.VarTy.print
+  let print_new_annot fmt na =
+    match na with
+    | Exp ty -> Data_types.VarTy.print fmt ty
+    | Node (ty1, ty2) ->
+      Format.fprintf fmt "%a -> %a"
+        Data_types.VarTy.print ty1
+        Data_types.VarTy.print ty2
 
-  (* type app_info = Data_types.VarTy.t list *)
-  (* let print_app_info = Utils.print_list_r Data_types.VarTy.print "," *)
-  type app_info = unit
-  let print_app_info _ () = ()
+  let update_clock_exp_info () na =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = Data_types.ty_of_pre_ty pty in
+      (
+        match ty with
+        | Ty_scal tys ->
+          object method ci_data = tys end
+        | _ -> invalid_arg "update_clock_exp_info"
+      )
 
-  type block_info = unit
-  let print_block_info _ () = ()
+  let update_exp_info () na =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = Data_types.ty_of_pre_ty pty in
+      object method ei_data = ty end
 
-  type pat_info = Data_types.VarTy.t
-  let print_pat_info = Data_types.VarTy.print
+  let update_app_info () _ = ()
 
-  type eq_info = Data_types.VarTy.t
-  let print_eq_info = Data_types.VarTy.print
+  let update_block_info () _ = ()
 
-  type node_info = Data_types.VarTy.t * Data_types.VarTy.t
-  let print_node_info fmt (inp, out) =
-    Format.fprintf fmt "%a -> %a"
-      Data_types.VarTy.print inp
-      Data_types.VarTy.print out
+  let update_pat_info () na =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = Data_types.ty_of_pre_ty pty in
+      object method pi_data = ty end
+
+  let update_eq_info () _ = ()
+
+  let update_node_info () na =
+    match na with
+    | Exp _ -> invalid_arg "update_node_info"
+    | Node (inp, out) ->
+      object method ni_data = Data_types.generalize_sig inp out end
 end
 
-module M = MakeAst(Info)
+module M = Acids_utils.MakeAnnot(Info)
+
+let annotate_exp info ty = M.annotate info (Info.Exp ty)
+
+let annotate_node info inp_ty out_ty =
+  M.annotate info (Info.Node (inp_ty, out_ty))
+
+let annotate_dummy info =
+  M.annotate info (Info.Exp bool_ty)
+
+(** {2 Typing AST nodes} *)
 
 let rec type_econstr env ec =
   let open Ast_misc in
@@ -243,7 +295,7 @@ and type_clock_exp env ce =
   {
     M.ce_desc = ced;
     M.ce_loc = ce.ce_loc;
-    M.ce_info = ty;
+    M.ce_info = annotate_exp ce.ce_info ty;
   },
   ty
 
@@ -352,7 +404,7 @@ and type_exp env e =
   {
     M.e_desc = ed;
     M.e_loc = e.e_loc;
-    M.e_info = ty;
+    M.e_info = annotate_exp e.e_info ty;
   },
   ty
 
@@ -366,7 +418,7 @@ and type_app env app =
   let inp_ty, out_ty = Data_types.instantiate_sig fresh_ty ty_sig in
   {
     M.a_op = app.a_op;
-    M.a_info = ();
+    M.a_info = annotate_dummy app.a_info;
     M.a_loc = app.a_loc;
   },
   inp_ty,
@@ -398,7 +450,7 @@ and type_pattern env p =
   {
     M.p_desc = pd;
     M.p_loc = p.p_loc;
-    M.p_info = ty;
+    M.p_info = annotate_exp p.p_info ty;
   }, ty
 
 and expect_pat env expected_ty p =
@@ -413,7 +465,7 @@ and type_eq env eq =
     M.eq_lhs = lhs;
     M.eq_rhs = rhs;
     M.eq_loc = eq.eq_loc;
-    M.eq_info = ty;
+    M.eq_info = annotate_dummy eq.eq_info;
   }
 
 and type_block env block =
@@ -424,7 +476,7 @@ and type_block env block =
   {
     M.b_body = body;
     M.b_loc = block.b_loc;
-    M.b_info = ();
+    M.b_info = annotate_dummy block.b_info;
   },
   env
 
@@ -442,12 +494,75 @@ and type_domain env dom =
     M.d_par = dom.d_par;
   }
 
+let type_node_def env nd =
+  let env = add_fresh_types_for_pat env nd.n_input in
+  let p, inp_ty = type_pattern env nd.n_input in
+  let e, out_ty = type_exp env nd.n_body in
+  let ty_sig = Data_types.generalize_sig inp_ty out_ty in
+  {
+    M.n_name = nd.n_name;
+    M.n_input = p;
+    M.n_body = e;
+    M.n_pragma = nd.n_pragma;
+    M.n_static = nd.n_static;
+    M.n_loc = nd.n_loc;
+    M.n_info = annotate_node nd.n_info inp_ty out_ty;
+  },
+  add_node env nd.n_name ty_sig
+
+let type_node_decl env nd =
+  {
+    M.decl_name = nd.decl_name;
+    M.decl_data = nd.decl_data;
+    M.decl_static = nd.decl_static;
+    M.decl_interv = nd.decl_interv;
+    M.decl_clock = nd.decl_clock;
+    M.decl_loc = nd.decl_loc;
+  },
+  add_node env nd.decl_name nd.decl_data
+
+let type_type_def env td =
+  {
+    M.ty_name = td.ty_name;
+    M.ty_body = td.ty_body;
+    M.ty_loc = td.ty_loc;
+  },
+  add_type_constrs env td.ty_name td.ty_body
+
+let type_phrase env phr =
+  match phr with
+  | Phr_node_def nd ->
+    let nd, env = type_node_def env nd in
+    env, M.Phr_node_def nd
+  | Phr_node_decl nd ->
+    let nd, env = type_node_decl env nd in
+    env, M.Phr_node_decl nd
+  | Phr_type_def td ->
+    let td, env = type_type_def env td in
+    env, M.Phr_type_def td
+
+let type_file file =
+  let _, body =
+    Utils.mapfold_left type_phrase (initial_typing_env file.f_info) file.f_body
+  in
+  {
+    M.f_name = file.f_name;
+    M.f_imports = file.f_imports;
+    M.f_info = file.f_info;
+    M.f_body = body;
+  }
+
 (** {2 Moving from pretypes to types} *)
 
 let type_file
-    ctx
-    (file : < interfaces : Interface.t Names.ShortEnv.t > Acids_scoped.file)
-    = ctx, file
+    (ctx : Pass_manager.ctx)
+    (file : < interfaces : Interface.t Names.ShortEnv.t > Acids_scoped.file) =
+  let intermediate_file = type_file file in
+  let final_file = M.extract_file intermediate_file in
+  ignore (ctx, final_file);
+  (assert false :
+     Pass_manager.ctx
+   * < interfaces : Interface.t Names.ShortEnv.t > Acids_typed.file)
 
 (** {2 Putting it all together} *)
 
@@ -455,6 +570,6 @@ let type_ =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
-       ~print_out:Acids_scoped.print_file
+       ~print_out:Acids_typed.print_file
        "typing"
        type_file)

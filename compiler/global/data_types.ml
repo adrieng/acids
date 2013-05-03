@@ -98,3 +98,9 @@ let instantiate_sig fresh tysig =
   let env, inp_ty = instantiate_ty env tysig.data_sig_input in
   let _, out_ty = instantiate_ty env tysig.data_sig_output in
   inp_ty, out_ty
+
+let generalize_sig inp_ty out_ty =
+  {
+    data_sig_input = ty_of_pre_ty inp_ty;
+    data_sig_output = ty_of_pre_ty out_ty;
+  }

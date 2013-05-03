@@ -98,8 +98,8 @@ struct
   and app =
       {
         a_op : Names.longname;
-        a_info : S.app_info;
         a_loc : Loc.t;
+        a_info : S.app_info;
       }
 
   and block =

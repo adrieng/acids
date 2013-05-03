@@ -42,33 +42,127 @@ sig
   val print_node_info : Format.formatter -> node_info -> unit
 end
 
+module type A =
+sig
+  module I : S
+
+  type clock_exp = {
+    ce_desc : clock_exp_desc;
+    ce_loc : Loc.t;
+    ce_info : I.clock_exp_info;
+  }
+  and clock_exp_desc =
+    Ce_var of I.var
+  | Ce_pword of (exp, exp) Ast_misc.upword
+  | Ce_equal of clock_exp * exp
+  | Ce_iter of clock_exp
+  and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
+  and exp = { e_desc : exp_desc; e_loc : Loc.t; e_info : I.exp_info; }
+  and exp_desc =
+    E_var of I.var
+  | E_const of Ast_misc.const
+  | E_fst of exp
+  | E_snd of exp
+  | E_tuple of exp list
+  | E_fby of exp * exp
+  | E_ifthenelse of exp * exp * exp
+  | E_app of app * exp
+  | E_where of exp * block
+  | E_when of exp * clock_exp
+  | E_split of clock_exp * exp * Ast_misc.econstr list
+  | E_bmerge of clock_exp * exp * exp
+  | E_merge of clock_exp * merge_clause list
+  | E_valof of clock_exp
+  | E_clockannot of exp * clock_annot
+  | E_dom of exp * domain
+  and app = {
+    a_op : Names.longname;
+    a_loc : Loc.t;
+    a_info : I.app_info;
+  }
+  and block = { b_body : eq list; b_loc : Loc.t; b_info : I.block_info; }
+  and eq = {
+    eq_lhs : pat;
+    eq_rhs : exp;
+    eq_loc : Loc.t;
+    eq_info : I.eq_info;
+  }
+  and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
+  and pat_desc =
+    P_var of I.var
+  | P_tuple of pat list
+  | P_clock_annot of pat * clock_annot
+  | P_split of (pat, exp) Ast_misc.upword
+  and merge_clause = {
+    c_sel : Ast_misc.econstr;
+    c_body : exp;
+    c_loc : Loc.t;
+  }
+  and domain = { d_base_clock : clock_annot option; d_par : bool; }
+  type node_def = {
+    n_name : Names.shortname;
+    n_input : pat;
+    n_body : exp;
+    n_pragma : Pragma.t option;
+    n_static : bool;
+    n_loc : Loc.t;
+    n_info : I.node_info;
+  }
+  type node_decl = {
+    decl_name : Names.shortname;
+    decl_data : Data_types.data_sig;
+    decl_static : Static_types.static_sig;
+    decl_interv : Interval_types.interval_sig;
+    decl_clock : Clock_types.clock_sig;
+    decl_loc : Loc.t;
+  }
+  type type_def = {
+    ty_name : Names.shortname;
+    ty_body : Names.shortname list;
+    ty_loc : Loc.t;
+  }
+  type phrase =
+    Phr_node_def of node_def
+  | Phr_node_decl of node_decl
+  | Phr_type_def of type_def
+  type 'a file = {
+    f_name : Names.modname;
+    f_imports : Names.modname list;
+    f_info : 'a;
+    f_body : phrase list;
+  }
+end
+
 module Make = functor (S : S) ->
-struct
-  type clock_exp =
+((
+  struct
+    module I = S
+
+    type clock_exp =
       {
         ce_desc : clock_exp_desc;
         ce_loc : Loc.t;
         ce_info : S.clock_exp_info;
       }
 
-  and clock_exp_desc =
+    and clock_exp_desc =
     | Ce_var of S.var
     | Ce_pword of (exp, exp) Ast_misc.upword
     | Ce_equal of clock_exp * exp
     | Ce_iter of clock_exp
 
-  and clock_annot =
+    and clock_annot =
     | Ca_var of int
     | Ca_on of clock_annot * clock_exp
 
-  and exp =
+    and exp =
       {
         e_desc : exp_desc;
         e_loc : Loc.t;
         e_info : S.exp_info;
       }
 
-  and exp_desc =
+    and exp_desc =
     | E_var of S.var (** variables *)
     | E_const of Ast_misc.const (** constants *)
 
@@ -82,12 +176,11 @@ struct
     | E_app of app * exp (** application *)
     | E_where of exp * block (** local declarations *)
 
-    | E_when of exp * clock_exp (** sampling *)
-    | E_split of clock_exp * exp * Ast_misc.econstr list
-    (** splitting (n-ary sampling) *)
+    | E_when of exp * clock_exp (** binary sampling *)
+    | E_split of clock_exp * exp * Ast_misc.econstr list (** n-ary sampling *)
 
-    | E_bmerge of clock_exp * exp * exp (** merge ce (1 -> e) (0 -> e) *)
-    | E_merge of clock_exp * merge_clause list (** n-ary merge with patterns *)
+    | E_bmerge of clock_exp * exp * exp (** binary merge (1, 0) *)
+    | E_merge of clock_exp * merge_clause list (** n-ary merge *)
 
     | E_valof of clock_exp (** evaluating clock exps *)
 
@@ -95,21 +188,21 @@ struct
 
     | E_dom of exp * domain (** clock domain *)
 
-  and app =
+    and app =
       {
         a_op : Names.longname;
         a_loc : Loc.t;
         a_info : S.app_info;
       }
 
-  and block =
+    and block =
       {
         b_body : eq list;
         b_loc : Loc.t;
         b_info : S.block_info;
       }
 
-  and eq =
+    and eq =
       {
         eq_lhs : pat;
         eq_rhs : exp;
@@ -117,33 +210,33 @@ struct
         eq_info : S.eq_info;
       }
 
-  and pat =
+    and pat =
       {
         p_desc : pat_desc;
         p_loc : Loc.t;
         p_info : S.pat_info;
       }
 
-  and pat_desc =
+    and pat_desc =
     | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_split of (pat, exp) Ast_misc.upword
 
-  and merge_clause =
-    {
-      c_sel : Ast_misc.econstr;
-      c_body : exp;
-      c_loc : Loc.t;
-    }
+    and merge_clause =
+      {
+        c_sel : Ast_misc.econstr;
+        c_body : exp;
+        c_loc : Loc.t;
+      }
 
-  and domain =
+    and domain =
       {
         d_base_clock : clock_annot option;
         d_par : bool;
       }
 
-  type node_def =
+    type node_def =
       {
         n_name : Names.shortname;
         n_input : pat;
@@ -154,7 +247,7 @@ struct
         n_info : S.node_info;
       }
 
-  type node_decl =
+    type node_decl =
       {
         decl_name : Names.shortname;
         decl_data : Data_types.data_sig;
@@ -164,23 +257,24 @@ struct
         decl_loc : Loc.t;
       }
 
-  type type_def =
-    {
-      ty_name : Names.shortname;
-      ty_body : Names.shortname list;
-      ty_loc : Loc.t;
-    }
+    type type_def =
+      {
+        ty_name : Names.shortname;
+        ty_body : Names.shortname list;
+        ty_loc : Loc.t;
+      }
 
-  type phrase =
+    type phrase =
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
     | Phr_type_def of type_def
 
-  type 'a file =
+    type 'a file =
       {
         f_name : Names.modname;
         f_imports : Names.modname list;
         f_info : 'a;
         f_body : phrase list;
       }
-end
+  end
+ ) : A with module I = S)

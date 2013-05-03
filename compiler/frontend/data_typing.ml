@@ -189,11 +189,8 @@ let float_ty = PreTy.Pty_scal Tys_float
 let user_ty ln = PreTy.Pty_scal (Tys_user ln)
 let tuple_ty ty_l = PreTy.Pty_prod ty_l
 
-module Info =
+module A =
 struct
-  module A = Acids_scoped.Info
-  module B = Acids_typed.Info
-
   type new_annot =
     | Exp of Data_types.VarTy.t
     | Node of Data_types.VarTy.t * Data_types.VarTy.t
@@ -205,8 +202,29 @@ struct
       Format.fprintf fmt "%a -> %a"
         Data_types.VarTy.print ty1
         Data_types.VarTy.print ty2
+end
 
-  let update_clock_exp_info () na =
+module ANN_INFO = Acids_utils.MakeAnnot(Acids_scoped)(A)
+module M = Acids.Make(ANN_INFO)
+
+let annotate_exp info ty =
+  ANN_INFO.annotate info (A.Exp ty)
+
+let annotate_node info inp_ty out_ty =
+  ANN_INFO.annotate info (A.Node (inp_ty, out_ty))
+
+let annotate_dummy info =
+  ANN_INFO.annotate info (A.Exp bool_ty)
+
+module MORPH =
+struct
+  module IN_INFO = M.I
+  module OUT_INFO = Acids_typed.Info
+
+  open ANN_INFO
+  open A
+
+  let update_clock_exp_info { new_annot = na; old_annot = (); } =
     match na with
     | Node _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
@@ -218,42 +236,34 @@ struct
         | _ -> invalid_arg "update_clock_exp_info"
       )
 
-  let update_exp_info () na =
+  let update_exp_info { new_annot = na; old_annot = (); } =
     match na with
     | Node _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
       let ty = Data_types.ty_of_pre_ty pty in
       object method ei_data = ty end
 
-  let update_app_info () _ = ()
+  let update_app_info _ = ()
 
-  let update_block_info () _ = ()
+  let update_block_info _ = ()
 
-  let update_pat_info () na =
+  let update_pat_info { new_annot = na; old_annot = (); } =
     match na with
     | Node _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
       let ty = Data_types.ty_of_pre_ty pty in
       object method pi_data = ty end
 
-  let update_eq_info () _ = ()
+  let update_eq_info _ = ()
 
-  let update_node_info () na =
+  let update_node_info  { new_annot = na; old_annot = (); } =
     match na with
     | Exp _ -> invalid_arg "update_node_info"
     | Node (inp, out) ->
       object method ni_data = Data_types.generalize_sig inp out end
 end
 
-module M = Acids_utils.MakeAnnot(Info)
-
-let annotate_exp info ty = M.annotate info (Info.Exp ty)
-
-let annotate_node info inp_ty out_ty =
-  M.annotate info (Info.Node (inp_ty, out_ty))
-
-let annotate_dummy info =
-  M.annotate info (Info.Exp bool_ty)
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_typed)(MORPH)
 
 (** {2 Typing AST nodes} *)
 
@@ -555,14 +565,11 @@ let type_file file =
 (** {2 Moving from pretypes to types} *)
 
 let type_file
-    (ctx : Pass_manager.ctx)
+    ctx
     (file : < interfaces : Interface.t Names.ShortEnv.t > Acids_scoped.file) =
   let intermediate_file = type_file file in
-  let final_file = M.extract_file intermediate_file in
-  ignore (ctx, final_file);
-  (assert false :
-     Pass_manager.ctx
-   * < interfaces : Interface.t Names.ShortEnv.t > Acids_typed.file)
+  let final_file = EXTRACT.extract_file intermediate_file in
+  ctx, final_file
 
 (** {2 Putting it all together} *)
 

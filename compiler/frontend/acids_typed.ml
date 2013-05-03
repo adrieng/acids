@@ -57,5 +57,5 @@ end
 module Ast = Acids.Make(Info)
 include Ast
 
-module Printer = Acids_printer.Make(Info)
+module Printer = Acids_printer.Make(Ast)
 include Printer

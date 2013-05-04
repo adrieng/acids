@@ -1,5 +1,5 @@
 (*
-  COMMAND=asc -check
+  COMMAND=asc -check -nopervasives
   EXIT=0
 *)
 

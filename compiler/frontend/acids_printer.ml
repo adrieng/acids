@@ -25,7 +25,7 @@ struct
     else ()
 
   let rec print_clock_exp fmt ce =
-    Format.fprintf fmt "%a%a"
+    Format.fprintf fmt "@[%a%a@]"
       print_clock_exp_desc ce.ce_desc
       (print_full_info I.print_clock_exp_info) ce.ce_info
 
@@ -42,7 +42,7 @@ struct
       Format.fprintf fmt "iter %a" print_clock_exp ce
 
   and print_exp fmt e =
-    Format.fprintf fmt "%a%a"
+    Format.fprintf fmt "@[%a%a@]"
       print_exp_desc e.e_desc
       (print_full_info I.print_exp_info) e.e_info
 
@@ -98,7 +98,7 @@ struct
       print_dom fmt dom e
 
   and print_app fmt app =
-    Format.fprintf fmt "%a%a"
+    Format.fprintf fmt "@[%a%a@]"
       Names.print_longname app.a_op
       (print_full_info I.print_app_info) app.a_info
 
@@ -114,7 +114,7 @@ struct
       (print_full_info I.print_eq_info) eq.eq_info
 
   and print_pat fmt p =
-    Format.fprintf fmt "%a%a"
+    Format.fprintf fmt "@[%a%a@]"
       print_pat_desc p.p_desc
       (print_full_info I.print_pat_info) p.p_info
 
@@ -132,7 +132,7 @@ struct
       Ast_misc.print_upword print_pat print_exp fmt p_t
 
   and print_clause fmt clause =
-    Format.fprintf fmt "| %a -> %a"
+    Format.fprintf fmt "| @[%a -> %a@]"
       Ast_misc.print_econstr clause.c_sel
       print_exp clause.c_body
 
@@ -154,12 +154,12 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   let print_node_def fmt nd =
-    Format.fprintf fmt "@[let %snode@ %a@ %a =@ %a%a@]"
+    Format.fprintf fmt "@[<hov 2>let %snode@ %a@ %a %a=@ %a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
       print_pat nd.n_input
-      print_exp nd.n_body
       (print_full_info I.print_node_info) nd.n_info
+      print_exp nd.n_body
 
   let print_node_decl fmt decl =
     Format.fprintf fmt

@@ -271,6 +271,7 @@ let eval p ctx x =
           then
             (
               Format.eprintf "Rerunning in debug mode.@.";
+              Printexc.record_backtrace true;
               ignore (aux p (ctx_set_attr ctx ("debug", true)) x)
             );
           Compiler.internal_error "uncaught exception"

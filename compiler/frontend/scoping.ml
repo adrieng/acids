@@ -350,7 +350,7 @@ and scope_exp
       let e3, acc = scope_exp e3 acc in
       Acids_scoped.E_ifthenelse (e1, e2, e3), acc
     | E_app (app, e) ->
-      let app, acc = scope_app local_constrs imported_mods app acc in
+      let app, acc = scope_app local_nodes imported_mods app acc in
       let e, acc = scope_exp e acc in
       Acids_scoped.E_app (app, e), acc
     | E_where (e, block) ->

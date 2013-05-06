@@ -59,6 +59,7 @@ let flow =
   Parsing_pass.parse
   +>+ Scoping.scope
   +>+ Data_typing.type_
+  +>+ Interval_typing.type_
 
 (*****************************************************************************)
 (* File handling *)

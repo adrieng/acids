@@ -15,8 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module MakeAst = Acids.Make
-
 open Acids_scoped
 open Data_types
 

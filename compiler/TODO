@@ -3,5 +3,4 @@
 - record type instantiations for future monomorphization
 - consistent naming between P_clock_annot and E_clockannot- fix typing for split
   patterns
-- domains: d_info
 - more consistent naming of modules: ALL CAPS

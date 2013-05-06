@@ -40,6 +40,9 @@ struct
   type eq_info = unit
   let print_eq_info = print_no_info
 
+  type domain_info = unit
+  let print_domain_info _ () = ()
+
   type node_info = unit
   let print_node_info = print_no_info
 end

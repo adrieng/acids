@@ -53,6 +53,9 @@ struct
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
 
+  type domain_info = unit
+  let print_domain_info _ () = ()
+
   type node_info =
       <
         ni_data : Data_types.data_sig;

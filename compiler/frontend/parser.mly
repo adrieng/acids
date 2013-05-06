@@ -40,6 +40,7 @@
       {
         Acids_parsetree.d_base_clock = base;
         Acids_parsetree.d_par = par;
+        Acids_parsetree.d_info = ();
       }
     in
     Acids_parsetree.E_dom (e, d)

@@ -525,6 +525,7 @@ and scope_domain local_nodes local_constrs imported_mods id_env dom intf_env =
   {
     Acids_scoped.d_base_clock = base_clock;
     Acids_scoped.d_par = dom.d_par;
+    Acids_scoped.d_info = dom.d_info;
   },
   intf_env
 

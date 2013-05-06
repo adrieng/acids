@@ -38,6 +38,9 @@ sig
   type eq_info
   val print_eq_info : Format.formatter -> eq_info -> unit
 
+  type domain_info
+  val print_domain_info : Format.formatter -> domain_info -> unit
+
   type node_info
   val print_node_info : Format.formatter -> node_info -> unit
 end
@@ -98,7 +101,11 @@ sig
     c_body : exp;
     c_loc : Loc.t;
   }
-  and domain = { d_base_clock : clock_annot option; d_par : bool; }
+  and domain = {
+    d_base_clock : clock_annot option;
+    d_par : bool;
+    d_info : I.domain_info;
+  }
   type node_def = {
     n_name : Names.shortname;
     n_input : pat;
@@ -234,6 +241,7 @@ module Make = functor (S : S) ->
       {
         d_base_clock : clock_annot option;
         d_par : bool;
+        d_info : S.domain_info;
       }
 
     type node_def =

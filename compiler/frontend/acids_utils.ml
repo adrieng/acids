@@ -56,6 +56,9 @@ struct
   type node_info = A.I.node_info annot
   let print_node_info = print_annot A.I.print_node_info
 
+  type domain_info = A.I.domain_info annot
+  let print_domain_info = print_annot A.I.print_domain_info
+
   let annotate olda newa = { new_annot = newa; old_annot = olda; }
 end
 
@@ -70,6 +73,7 @@ sig
   val update_block_info : IN_INFO.block_info -> OUT_INFO.block_info
   val update_pat_info : IN_INFO.pat_info -> OUT_INFO.pat_info
   val update_eq_info : IN_INFO.eq_info -> OUT_INFO.eq_info
+  val update_domain_info : IN_INFO.domain_info -> OUT_INFO.domain_info
   val update_node_info : IN_INFO.node_info -> OUT_INFO.node_info
 end
 
@@ -185,6 +189,7 @@ struct
     {
       OUT.d_base_clock = Utils.map_opt extract_clock_annot dom.d_base_clock;
       OUT.d_par = dom.d_par;
+      OUT.d_info = M.update_domain_info dom.d_info;
     }
 
   and extract_node_def nd =

@@ -25,6 +25,7 @@ let error_is_internal exn =
   | Parser_utils.Parse_error _
   | Scoping.Scoping_error _
   | Interface.Interface_error _
+  | Data_typing.Typing_error _
     ->
     false
   | _
@@ -41,10 +42,12 @@ let print_error _ fmt exn =
   | Parser_utils.Parse_error reason ->
     Loc.print fmt reason;
     Format.fprintf fmt "Syntax error"
-  | Interface.Interface_error err ->
-    Interface.print_error fmt err
   | Scoping.Scoping_error err ->
     Scoping.print_error fmt err
+  | Interface.Interface_error err ->
+    Interface.print_error fmt err
+  | Data_typing.Typing_error err ->
+    Data_typing.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 

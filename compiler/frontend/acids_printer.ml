@@ -94,6 +94,10 @@ struct
       Format.fprintf fmt "(%a :: %a)"
         print_exp e
         print_clock_annot ck
+    | E_type_annot (e, ty) ->
+      Format.fprintf fmt "(%a : %a)"
+        print_exp e
+        Data_types.print_ty ty
     | E_dom (e, dom) ->
       print_dom fmt dom e
 

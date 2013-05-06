@@ -436,6 +436,11 @@ and type_exp env e =
       let ca = type_clock_annot env ca in
       M.E_clock_annot (e, ca), ty
 
+    | E_type_annot (e, ta) ->
+      let env, ty = pre_ty_of_ty_annotation env ta in
+      let e = expect_exp env ty e in
+      M.E_type_annot (e, ta), ty
+
     | E_dom (e, dom) ->
       let e, ty = type_exp env e in
       let dom = type_domain env dom in

@@ -77,6 +77,7 @@ sig
   | E_merge of clock_exp * merge_clause list
   | E_valof of clock_exp
   | E_clock_annot of exp * clock_annot
+  | E_type_annot of exp * Data_types.data_ty
   | E_dom of exp * domain
   and app = {
     a_op : Names.longname;
@@ -194,6 +195,8 @@ module Make = functor (S : S) ->
     | E_valof of clock_exp (** evaluating clock exps *)
 
     | E_clock_annot of exp * clock_annot (** annotations for clock inference *)
+    | E_type_annot of exp * Data_types.data_ty
+    (** annotations for type inference *)
 
     | E_dom of exp * domain (** clock domain *)
 

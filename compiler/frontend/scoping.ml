@@ -341,7 +341,7 @@ and scope_clock_exp ctx id_env ce intf_env =
   intf_env
 
 and scope_exp
-    ((local_nodes, local_constrs, _, imported_mods) as ctx)
+    ((local_nodes, local_constrs, local_types, imported_mods) as ctx)
     id_env
     e
     intf_env =
@@ -416,6 +416,14 @@ and scope_exp
       let e, intf_env = scope_exp' e intf_env in
       let cka, intf_env = scope_clock_annot ctx id_env cka intf_env in
       Acids_scoped.E_clock_annot (e, cka), intf_env
+
+    | E_type_annot (e, ty) ->
+      let e, intf_env = scope_exp' e intf_env in
+      let intf_env, ty =
+        scope_type local_types imported_mods e.Acids_scoped.e_loc intf_env ty
+      in
+      Acids_scoped.E_type_annot (e, ty), intf_env
+
     | E_dom (e, dom) ->
       let e, intf_env = scope_exp' e intf_env in
       let dom, intf_env = scope_domain ctx id_env dom intf_env in

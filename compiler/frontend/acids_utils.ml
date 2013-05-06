@@ -126,6 +126,8 @@ struct
         OUT.E_valof (extract_clock_exp ce)
       | E_clock_annot (e, ca) ->
         OUT.E_clock_annot (extract_exp e, extract_clock_annot ca)
+      | E_type_annot (e, ty) ->
+        OUT.E_type_annot (extract_exp e, ty)
       | E_dom (e, dom) ->
         OUT.E_dom (extract_exp e, extract_domain dom)
     in

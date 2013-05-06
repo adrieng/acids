@@ -124,8 +124,8 @@ struct
         OUT.E_merge (extract_clock_exp ce, List.map extract_merge_clause c_l)
       | E_valof ce ->
         OUT.E_valof (extract_clock_exp ce)
-      | E_clockannot (e, ca) ->
-        OUT.E_clockannot (extract_exp e, extract_clock_annot ca)
+      | E_clock_annot (e, ca) ->
+        OUT.E_clock_annot (extract_exp e, extract_clock_annot ca)
       | E_dom (e, dom) ->
         OUT.E_dom (extract_exp e, extract_domain dom)
     in

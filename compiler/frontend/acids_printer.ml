@@ -90,7 +90,7 @@ struct
         (Utils.print_list_r print_clause "") c_l
     | E_valof ce ->
       Format.fprintf fmt "?%a" print_clock_exp ce
-    | E_clockannot (e, ck) ->
+    | E_clock_annot (e, ck) ->
       Format.fprintf fmt "(%a :: %a)"
         print_exp e
         print_clock_annot ck

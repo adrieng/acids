@@ -408,10 +408,10 @@ and type_exp env e =
       let ce, ty = type_clock_exp env ce in
       M.E_valof ce, ty
 
-    | E_clockannot (e, ca) ->
+    | E_clock_annot (e, ca) ->
       let e, ty = type_exp env e in
       let ca = type_clock_annot env ca in
-      M.E_clockannot (e, ca), ty
+      M.E_clock_annot (e, ca), ty
 
     | E_dom (e, dom) ->
       let e, ty = type_exp env e in

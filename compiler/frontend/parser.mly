@@ -383,7 +383,7 @@ simple_exp_desc:
 | ed = trivial_exp_desc { ed }
 | ed = parens(exp_desc) { ed }
 | LPAREN e = exp DCOLON ck = clock_annot RPAREN
-                        { Acids_parsetree.E_clockannot (e, ck) }
+                        { Acids_parsetree.E_clock_annot (e, ck) }
 
 %inline simple_exp:
 | ed = with_loc(simple_exp_desc) { make_located make_exp ed }

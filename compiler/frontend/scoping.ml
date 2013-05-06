@@ -397,13 +397,13 @@ and scope_exp
     | E_valof ce ->
       let ce, intf_env = scope_clock_exp ce intf_env in
       Acids_scoped.E_valof ce, intf_env
-    | E_clockannot (e, cka) ->
+    | E_clock_annot (e, cka) ->
       let e, intf_env = scope_exp' e intf_env in
       let cka, intf_env =
         scope_clock_annot
           local_nodes local_constrs imported_mods id_env cka intf_env
       in
-      Acids_scoped.E_clockannot (e, cka), intf_env
+      Acids_scoped.E_clock_annot (e, cka), intf_env
     | E_dom (e, dom) ->
       let e, intf_env = scope_exp' e intf_env in
       let dom, intf_env =

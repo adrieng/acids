@@ -132,6 +132,14 @@ let initial_typing_env info =
     idents = Ident.Env.empty;
   }
 
+let print_env fmt env =
+  Format.fprintf fmt "Ident env:@\n";
+  Ident.Env.iter
+    (fun k ty ->
+      Format.fprintf fmt " %a -> %a@\n"
+        Ident.print k
+        VarTy.print ty) env.idents
+
 let find_env local global env ln =
   let open Names in
   match ln.modn with

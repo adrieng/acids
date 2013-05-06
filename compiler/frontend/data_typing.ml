@@ -28,7 +28,7 @@ open Data_types
 
 type error =
   | Unification_conflict of Loc.t * VarTy.t * VarTy.t
-  | Unification_occur of Loc.t * int * VarTy.t
+  | Unification_occur of Loc.t * VarTy.t
 
 exception Typing_error of error
 
@@ -39,17 +39,16 @@ let print_error fmt err =
       Loc.print l
       VarTy.print ty1
       VarTy.print ty2
-  | Unification_occur (l, id, ty) ->
-    Format.fprintf fmt "%aType variable %d occurs in %a"
+  | Unification_occur (l, ty) ->
+    Format.fprintf fmt "%aType %a is cyclic"
       Loc.print l
-      id
       VarTy.print ty
 
 let unification_conflict loc ty1 ty2 =
   raise (Typing_error (Unification_conflict (loc, ty1, ty2)))
 
-let unification_occur loc id ty =
-  raise (Typing_error (Unification_occur (loc, id, ty)))
+let unification_occur loc ty =
+  raise (Typing_error (Unification_occur (loc, ty)))
 
 (** {2 Unification} *)
 
@@ -60,7 +59,7 @@ let occur_check loc id ty =
     match ty with
     | Pty_var { v_link = Some ty; } -> walk ty
     | Pty_var { v_link = None; v_id = id'; } ->
-      if id = id' then unification_occur loc id ty
+      if id = id' then unification_occur loc ty
     | Pty_scal _ -> ()
     | Pty_prod ty_l -> List.iter walk ty_l
   in

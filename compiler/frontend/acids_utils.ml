@@ -158,6 +158,8 @@ struct
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
       | P_interval_annot (p, it) ->
         OUT.P_interval_annot (extract_pattern p, it)
+      | P_type_annot (p, ty) ->
+        OUT.P_type_annot (extract_pattern p, ty)
       | P_split w ->
         OUT.P_split (Ast_misc.map_upword extract_pattern extract_exp w)
     in

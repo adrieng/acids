@@ -119,6 +119,8 @@ type typing_env =
     current_nodes : Data_types.data_sig Names.ShortEnv.t;
     (** maps current idents to (pre)types *)
     idents : Data_types.VarTy.t Ident.Env.t;
+    (** maps existential (annotation) variables to types *)
+    exists : Data_types.VarTy.t Utils.Int_map.t;
   }
 
 let initial_typing_env info =
@@ -127,6 +129,7 @@ let initial_typing_env info =
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
+    exists = Utils.Int_map.empty;
   }
 
 let print_env fmt env =
@@ -169,7 +172,12 @@ let add_node env nn dsig =
 
 let find_ident env id = Ident.Env.find id env.idents
 
-let reset_idents env = { env with idents = Ident.Env.empty; }
+let reset_env env =
+  {
+    env with
+      idents = Ident.Env.empty;
+      exists = Utils.Int_map.empty;
+  }
 
 let add_fresh_type_for_var env id =
   { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
@@ -178,7 +186,7 @@ let rec add_fresh_types_for_pat env p =
   match p.p_desc with
   | P_var id -> add_fresh_type_for_var env id
   | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
-  | P_clock_annot (p, _) | P_interval_annot (p, _) ->
+  | P_clock_annot (p, _) | P_type_annot (p, _) | P_interval_annot (p, _) ->
     add_fresh_types_for_pat env p
   | P_split w ->
     Ast_misc.fold_upword
@@ -186,6 +194,20 @@ let rec add_fresh_types_for_pat env p =
       (fun _ env -> env)
       w
       env
+
+let rec pre_ty_of_ty_annotation env ty =
+  match ty with
+  | Ty_var i ->
+    (
+      try env, Utils.Int_map.find i env.exists
+      with Not_found ->
+        let ty = fresh_ty () in
+        { env with exists = Utils.Int_map.add i ty env.exists; }, ty
+    )
+  | Ty_scal tys -> env, PreTy.Pty_scal tys
+  | Ty_prod ty_l ->
+    let env, pty_l = Utils.mapfold_left pre_ty_of_ty_annotation env ty_l in
+    env, PreTy.Pty_prod pty_l
 
 (** {2 High-level utilities} *)
 
@@ -442,47 +464,57 @@ and type_app env app =
   inp_ty,
   out_ty
 
-and type_pattern env p =
-  let pd, ty =
+and type_pattern p env =
+  let pd, ty, env =
     match p.p_desc with
     | P_var id ->
-      M.P_var id, find_ident env id
+      M.P_var id, find_ident env id, env
 
     | P_tuple p_l ->
-      let p_l, ty_l = List.split (List.map (type_pattern env) p_l) in
-      M.P_tuple p_l, tuple_ty ty_l
+      let pty_l, env = Utils.mapfold type_pattern p_l env in
+      let p_l, ty_l = List.split pty_l in
+      M.P_tuple p_l, tuple_ty ty_l, env
 
     | P_clock_annot (p, ca) ->
-      let p, ty = type_pattern env p in
-      M.P_clock_annot (p, type_clock_annot env ca), ty
+      let (p, ty), env = type_pattern p env in
+      M.P_clock_annot (p, type_clock_annot env ca), ty, env
+
+    | P_type_annot (p, ta) ->
+      let env, ty = pre_ty_of_ty_annotation env ta in
+      let p, env = expect_pat ty p env in
+      M.P_type_annot (p, ta), ty, env
 
     | P_interval_annot (p, it) ->
-      let p = expect_pat env int_ty p in
-      M.P_interval_annot (p, it), int_ty
+      let p, env = expect_pat int_ty p env in
+      M.P_interval_annot (p, it), int_ty, env
 
     | P_split w ->
-      let expect_exp_int = expect_exp env int_ty in
       let ty = fresh_ty () in
-      let expect_pat = expect_pat env ty in
-      let w =
-        Ast_misc.map_upword expect_pat expect_exp_int w
+      let expect_pat = expect_pat ty in
+      let expect_exp_int e env = expect_exp env int_ty e, env in
+      let w, env =
+        Ast_misc.mapfold_upword expect_pat expect_exp_int w env
       in
-      M.P_split w, ty
+      M.P_split w, ty, env
   in
-  {
-    M.p_desc = pd;
-    M.p_loc = p.p_loc;
-    M.p_info = annotate_exp p.p_info ty;
-  }, ty
+  (
+    {
+      M.p_desc = pd;
+      M.p_loc = p.p_loc;
+      M.p_info = annotate_exp p.p_info ty;
+    },
+    ty),
+  env
 
-and expect_pat env expected_ty p =
-  let p, effective_ty = type_pattern env p in
+and expect_pat expected_ty p env =
+  let (p, effective_ty), env = type_pattern p env in
   unify p.M.p_loc expected_ty effective_ty;
-  p
+  p, env
 
 and type_eq env eq =
-  let lhs, ty = type_pattern env eq.eq_lhs in
+  let (lhs, ty), env = type_pattern eq.eq_lhs env in
   let rhs = expect_exp env ty eq.eq_rhs in
+  env,
   {
     M.eq_lhs = lhs;
     M.eq_rhs = rhs;
@@ -492,9 +524,8 @@ and type_eq env eq =
 
 and type_block env block =
   let enrich env eq = add_fresh_types_for_pat env eq.eq_lhs in
-
   let env = List.fold_left enrich env block.b_body in
-  let body = List.map (type_eq env) block.b_body in
+  let env, body = Utils.mapfold_left type_eq env block.b_body in
   {
     M.b_body = body;
     M.b_loc = block.b_loc;
@@ -519,7 +550,7 @@ and type_domain env dom =
 
 let type_node_def env nd =
   let env = add_fresh_types_for_pat env nd.n_input in
-  let p, inp_ty = type_pattern env nd.n_input in
+  let (p, inp_ty), env = type_pattern nd.n_input env in
   let e, out_ty = type_exp env nd.n_body in
   let ty_sig = Data_types.generalize_sig inp_ty out_ty in
   {

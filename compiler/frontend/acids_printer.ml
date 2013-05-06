@@ -128,6 +128,10 @@ struct
       Format.fprintf fmt "(%a :: %a)"
         print_pat p
         print_clock_annot ck
+    | P_type_annot (p, ty) ->
+      Format.fprintf fmt "(%a : %a)"
+        print_pat p
+        Data_types.print_ty ty
     | P_interval_annot (p, it) ->
       Format.fprintf fmt "(%a in %a)"
         print_pat p

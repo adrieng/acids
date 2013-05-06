@@ -38,8 +38,10 @@
 type error =
   | Unknown_node of Names.shortname * Loc.t
   | Unknown_constr of Names.shortname * Loc.t
+  | Unknown_type of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Constr_not_found of Names.modname * Names.shortname * Loc.t
+  | Type_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
@@ -59,6 +61,10 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown constructor %a"
       Loc.print l
       Names.print_shortname shortn
+  | Unknown_type (shortn, l) ->
+    Format.fprintf fmt "%aUnknown type %a"
+      Loc.print l
+      Names.print_shortname shortn
   | Node_not_found (modn, shortn, l) ->
     Format.fprintf fmt "%aNode %a not found in module %a"
       Loc.print l
@@ -66,6 +72,11 @@ let print_error fmt err =
       Names.print_modname modn
   | Constr_not_found (modn, constrn, l) ->
     Format.fprintf fmt "%aConstructor %a not found in module %a"
+      Loc.print l
+      Names.print_shortname constrn
+      Names.print_modname modn
+  | Type_not_found (modn, constrn, l) ->
+    Format.fprintf fmt "%aType %a not found in module %a"
       Loc.print l
       Names.print_shortname constrn
       Names.print_modname modn
@@ -98,11 +109,17 @@ let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 let unknown_constr shortn loc =
   raise (Scoping_error (Unknown_constr (shortn, loc)))
 
+let unknown_type shortn loc =
+  raise (Scoping_error (Unknown_type (shortn, loc)))
+
 let node_not_found modn shortn loc =
   raise (Scoping_error (Node_not_found (modn, shortn, loc)))
 
 let constr_not_found modn shortn loc =
   raise (Scoping_error (Constr_not_found (modn, shortn, loc)))
+
+let type_not_found modn shortn loc =
+  raise (Scoping_error (Type_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
 
@@ -148,6 +165,9 @@ let find_module_with_node =
 let find_module_with_constr =
   find_module_with_shortname (fun i -> i.Interface.i_constrs) unknown_constr
 
+let find_module_with_type_name =
+  find_module_with_shortname (fun i -> i.Interface.i_types) unknown_type
+
 (** Check if the given module name holds the item designated by shortn.
     Works for both node and constructor names. This function loads module as
     needed.
@@ -176,6 +196,9 @@ let check_module_with_node =
 let check_module_with_constr =
   check_module_with_name (fun i -> i.Interface.i_constrs) constr_not_found
 
+let check_module_with_type_name =
+  check_module_with_name (fun i -> i.Interface.i_types) type_not_found
+
 (** Scope a name in the proper name-space (nodes or constructors) *)
 let scope_longname find check locals imported_mods intf_env ln loc =
   let open Names in
@@ -197,6 +220,9 @@ let scope_node = scope_longname find_module_with_node check_module_with_node
 
 let scope_constr =
   scope_longname find_module_with_constr check_module_with_constr
+
+let scope_type_name =
+  scope_longname find_module_with_type_name check_module_with_type_name
 
 let add_var id_env v =
   let id = Ident.make_source v in
@@ -223,7 +249,8 @@ let check_pattern block_loc block_env p =
         then multiple_binding_block s block_loc;
         Utils.String_set.add s pat_env
     | P_tuple p_l -> List.fold_left walk pat_env p_l
-    | P_clock_annot (p, _) | P_interval_annot (p, _) -> walk pat_env p
+    | P_clock_annot (p, _) | P_type_annot (p, _) | P_interval_annot (p, _) ->
+      walk pat_env p
     | P_split pw ->
         let rec walk_ptree pat_env pt =
           match pt with
@@ -274,14 +301,9 @@ and scope_const local_constrs imported_mods loc c intf_env =
     Ast_misc.Cconstr ec, intf_env
   | Ast_misc.Cfloat _ | Ast_misc.Cword _ -> c, intf_env
 
-and scope_clock_annot
-    local_nodes local_constrs imported_mods id_env cka intf_env =
-  let scope_clock_exp =
-    scope_clock_exp local_nodes local_constrs imported_mods id_env
-  in
-  let scope_clock_annot =
-    scope_clock_annot local_nodes local_constrs imported_mods id_env
-  in
+and scope_clock_annot ctx id_env cka intf_env =
+  let scope_clock_exp = scope_clock_exp ctx id_env in
+  let scope_clock_annot = scope_clock_annot ctx id_env in
   match cka with
   | Ca_var i ->
     Acids_scoped.Ca_var i, intf_env
@@ -290,12 +312,9 @@ and scope_clock_annot
     let cka, intf_env = scope_clock_annot cka intf_env in
     Acids_scoped.Ca_on (cka, ce), intf_env
 
-and scope_clock_exp
-    local_nodes local_constrs imported_mods id_env ce intf_env =
-  let scope_exp = scope_exp local_nodes local_constrs imported_mods id_env in
-  let scope_clock_exp =
-    scope_clock_exp local_nodes local_constrs imported_mods id_env
-  in
+and scope_clock_exp ctx id_env ce intf_env =
+  let scope_exp = scope_exp ctx id_env in
+  let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
     match ce.ce_desc with
     | Ce_var v ->
@@ -322,11 +341,12 @@ and scope_clock_exp
   intf_env
 
 and scope_exp
-    local_nodes local_constrs imported_mods id_env e intf_env =
-  let scope_exp' = scope_exp local_nodes local_constrs imported_mods id_env in
-  let scope_clock_exp =
-    scope_clock_exp local_nodes local_constrs imported_mods id_env
-  in
+    ((local_nodes, local_constrs, _, imported_mods) as ctx)
+    id_env
+    e
+    intf_env =
+  let scope_exp' = scope_exp ctx id_env in
+  let scope_clock_exp = scope_clock_exp ctx id_env in
   let ed, intf_env =
     match e.e_desc with
     | E_var v ->
@@ -360,13 +380,8 @@ and scope_exp
       let e, intf_env = scope_exp' e intf_env in
       Acids_scoped.E_app (app, e), intf_env
     | E_where (e, block) ->
-      let block, id_env, intf_env =
-        scope_block
-          local_nodes local_constrs imported_mods block (id_env, intf_env)
-      in
-      let e, intf_env =
-        scope_exp local_nodes local_constrs imported_mods id_env e intf_env
-      in
+      let block, id_env, intf_env = scope_block ctx block (id_env, intf_env) in
+      let e, intf_env = scope_exp ctx id_env e intf_env in
       Acids_scoped.E_where (e, block), intf_env
     | E_when (e, ce) ->
       let e, intf_env = scope_exp' e intf_env in
@@ -389,7 +404,7 @@ and scope_exp
       let ce, intf_env = scope_clock_exp ce intf_env in
       let c_l, intf_env =
         Utils.mapfold
-          (scope_merge_clause local_nodes local_constrs imported_mods id_env)
+          (scope_merge_clause ctx id_env)
           c_l
           intf_env
       in
@@ -399,16 +414,11 @@ and scope_exp
       Acids_scoped.E_valof ce, intf_env
     | E_clock_annot (e, cka) ->
       let e, intf_env = scope_exp' e intf_env in
-      let cka, intf_env =
-        scope_clock_annot
-          local_nodes local_constrs imported_mods id_env cka intf_env
-      in
+      let cka, intf_env = scope_clock_annot ctx id_env cka intf_env in
       Acids_scoped.E_clock_annot (e, cka), intf_env
     | E_dom (e, dom) ->
       let e, intf_env = scope_exp' e intf_env in
-      let dom, intf_env =
-        scope_domain local_nodes local_constrs imported_mods id_env dom intf_env
-      in
+      let dom, intf_env = scope_domain ctx id_env dom intf_env in
       Acids_scoped.E_dom (e, dom), intf_env
   in
   {
@@ -429,19 +439,17 @@ and scope_app local_nodes imported_mods app intf_env =
   },
   intf_env
 
-and scope_block local_nodes local_constrs imported_mods block acc =
+and scope_block ctx block acc =
   check_block block;
 
   let p_l, (id_env, intf_env) =
-    let scope_eq_pat eq acc =
-      scope_pattern local_nodes local_constrs imported_mods eq.eq_lhs acc
-    in
+    let scope_eq_pat eq acc = scope_pattern ctx eq.eq_lhs acc in
     Utils.mapfold scope_eq_pat block.b_body acc
   in
 
   let body, intf_env =
     Utils.mapfold
-      (scope_eq local_nodes local_constrs imported_mods id_env)
+      (scope_eq ctx id_env)
       (List.combine p_l block.b_body)
       intf_env
   in
@@ -453,10 +461,8 @@ and scope_block local_nodes local_constrs imported_mods block acc =
   id_env,
   intf_env
 
-and scope_eq local_nodes local_constrs imported_mods id_env (p, eq) intf_env =
-  let e, intf_env =
-    scope_exp local_nodes local_constrs imported_mods id_env eq.eq_rhs intf_env
-  in
+and scope_eq ctx id_env (p, eq) intf_env =
+  let e, intf_env = scope_exp ctx id_env eq.eq_rhs intf_env in
   {
     Acids_scoped.eq_lhs = p;
     Acids_scoped.eq_rhs = e;
@@ -466,13 +472,15 @@ and scope_eq local_nodes local_constrs imported_mods id_env (p, eq) intf_env =
   intf_env
 
 and scope_merge_clause
-    local_nodes local_constrs imported_mods id_env c intf_env =
+    ((_, local_constrs, _, imported_mods) as ctx)
+    id_env
+    c
+    intf_env
+    =
   let ec, intf_env =
     scope_econstr local_constrs imported_mods c.c_loc c.c_sel intf_env
   in
-  let e, intf_env =
-    scope_exp local_nodes local_constrs imported_mods id_env c.c_body intf_env
-  in
+  let e, intf_env = scope_exp ctx id_env c.c_body intf_env in
   {
     Acids_scoped.c_sel = ec;
     Acids_scoped.c_body = e;
@@ -480,9 +488,39 @@ and scope_merge_clause
   },
   intf_env
 
+and scope_type_scal local_types imported_mods loc intf_env tys =
+  let open Data_types in
+  match tys with
+  | Tys_bool | Tys_int | Tys_float -> intf_env, tys
+  | Tys_user ln ->
+    let ln, intf_env =
+      scope_type_name local_types imported_mods intf_env ln loc
+    in
+    intf_env, Tys_user ln
+
+and scope_type local_types imported_mods loc intf_env ty =
+  let open Data_types in
+  match ty with
+  | Ty_var i -> intf_env, Ty_var i
+  | Ty_scal tys ->
+    let intf_env, tys =
+      scope_type_scal local_types imported_mods loc intf_env tys
+    in
+    intf_env, Ty_scal tys
+  | Ty_prod ty_l ->
+    let intf_env, ty_l =
+      Utils.mapfold_left
+        (scope_type local_types imported_mods loc)
+        intf_env
+        ty_l
+    in
+    intf_env, Ty_prod ty_l
+
 and scope_pattern
-    local_nodes local_constrs imported_mods p ((id_env, intf_env) as acc) =
-  let scope_pattern = scope_pattern local_nodes local_constrs imported_mods in
+    ((imported_mods, _, _, local_types) as ctx)
+    p
+    ((id_env, intf_env) as acc) =
+  let scope_pattern = scope_pattern ctx in
   let pd, acc =
     match p.p_desc with
     | P_var v ->
@@ -492,20 +530,21 @@ and scope_pattern
       let p_l, acc = Utils.mapfold scope_pattern p_l acc in
       Acids_scoped.P_tuple p_l, acc
     | P_clock_annot (p, cka) ->
-      let cka, intf_env =
-        scope_clock_annot
-          local_nodes local_constrs imported_mods id_env cka intf_env
-      in
+      let cka, intf_env = scope_clock_annot ctx id_env cka intf_env in
       let p, acc = scope_pattern p (id_env, intf_env) in
       Acids_scoped.P_clock_annot (p, cka), acc
+    | P_type_annot (p, ty) ->
+      let p, (id_env, intf_env) = scope_pattern p acc in
+      let intf_env, ty =
+        scope_type imported_mods local_types p.Acids_scoped.p_loc intf_env ty
+      in
+      Acids_scoped.P_type_annot (p, ty), (id_env, intf_env)
     | P_interval_annot (p, it) ->
       let p, acc = scope_pattern p acc in
       Acids_scoped.P_interval_annot (p, it), acc
     | P_split upw ->
       let scope_exp e (id_env, intf_env) =
-        let e, intf_env =
-          scope_exp local_nodes local_constrs imported_mods id_env e intf_env
-        in
+        let e, intf_env = scope_exp ctx id_env e intf_env in
         e, (id_env, intf_env)
       in
       let p_l, acc = Ast_misc.mapfold_upword scope_pattern scope_exp upw acc in
@@ -518,10 +557,8 @@ and scope_pattern
   },
   acc
 
-and scope_domain local_nodes local_constrs imported_mods id_env dom intf_env =
-  let scope_clock_annot =
-    scope_clock_annot local_nodes local_constrs imported_mods id_env
-  in
+and scope_domain ctx id_env dom intf_env =
+  let scope_clock_annot = scope_clock_annot ctx id_env in
   let base_clock, intf_env =
     Utils.mapfold_opt scope_clock_annot dom.d_base_clock intf_env
   in
@@ -537,18 +574,11 @@ let scope_node_def
   check_node_name local_nodes node.n_name node.n_loc;
   check_pattern node.n_input;
   Ident.reset ();
+  let ctx = (local_nodes, local_constrs, local_types, imported_mods) in
   let inp, (id_env, intf_env) =
-    scope_pattern
-      local_nodes
-      local_constrs
-      imported_mods
-      node.n_input
-      (Utils.String_map.empty, intf_env)
+    scope_pattern ctx node.n_input (Utils.String_map.empty, intf_env)
   in
-  let body, intf_env =
-    scope_exp
-      local_nodes local_constrs imported_mods id_env node.n_body intf_env
-  in
+  let body, intf_env = scope_exp ctx id_env node.n_body intf_env in
   let node =
     {
       Acids_scoped.n_name = node.n_name;
@@ -563,13 +593,32 @@ let scope_node_def
   let local_nodes = Names.ShortSet.add node.Acids_scoped.n_name local_nodes in
   node, (local_nodes, local_constrs, local_types, intf_env)
 
+let scope_data_sig local_types imported_mods loc intf_env dsig =
+  let open Data_types in
+  let intf_env, inp_ty =
+    scope_type local_types imported_mods loc intf_env dsig.data_sig_input
+  in
+  let intf_env, out_ty =
+    scope_type local_types imported_mods loc intf_env dsig.data_sig_output
+  in
+  { data_sig_input = inp_ty; data_sig_output = out_ty; },
+  intf_env
+
 let scope_node_decl
-    decl (local_nodes, local_constrs, local_types, intf_env) =
+    imported_mods decl (local_nodes, local_constrs, local_types, intf_env) =
   check_node_name local_nodes decl.decl_name decl.decl_loc;
+  let dsig, intf_env =
+    scope_data_sig
+      local_types
+      imported_mods
+      decl.decl_loc
+      intf_env
+      decl.decl_data
+  in
   let decl =
     {
       Acids_scoped.decl_name = decl.decl_name;
-      Acids_scoped.decl_data = decl.decl_data;
+      Acids_scoped.decl_data = dsig;
       Acids_scoped.decl_static = decl.decl_static;
       Acids_scoped.decl_interv = decl.decl_interv;
       Acids_scoped.decl_clock = decl.decl_clock;
@@ -612,7 +661,7 @@ let scope_phrase imported_mods acc phr =
     let def, acc = scope_node_def imported_mods def acc in
     acc, Acids_scoped.Phr_node_def def
   | Phr_node_decl decl ->
-    let decl, acc = scope_node_decl decl acc in
+    let decl, acc = scope_node_decl imported_mods decl acc in
     acc, Acids_scoped.Phr_node_decl decl
   | Phr_type_def td ->
     let td, acc = scope_type_def td acc in

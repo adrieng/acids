@@ -178,7 +178,8 @@ let rec add_fresh_types_for_pat env p =
   match p.p_desc with
   | P_var id -> add_fresh_type_for_var env id
   | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
-  | P_clock_annot (p, _) -> add_fresh_types_for_pat env p
+  | P_clock_annot (p, _) | P_interval_annot (p, _) ->
+    add_fresh_types_for_pat env p
   | P_split w ->
     Ast_misc.fold_upword
       (Utils.flip add_fresh_types_for_pat)
@@ -454,6 +455,10 @@ and type_pattern env p =
     | P_clock_annot (p, ca) ->
       let p, ty = type_pattern env p in
       M.P_clock_annot (p, type_clock_annot env ca), ty
+
+    | P_interval_annot (p, it) ->
+      let p = expect_pat env int_ty p in
+      M.P_interval_annot (p, it), int_ty
 
     | P_split w ->
       let expect_exp_int = expect_exp env int_ty in

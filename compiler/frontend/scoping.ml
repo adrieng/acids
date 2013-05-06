@@ -223,7 +223,7 @@ let check_pattern block_loc block_env p =
         then multiple_binding_block s block_loc;
         Utils.String_set.add s pat_env
     | P_tuple p_l -> List.fold_left walk pat_env p_l
-    | P_clock_annot (p, _) -> walk pat_env p
+    | P_clock_annot (p, _) | P_interval_annot (p, _) -> walk pat_env p
     | P_split pw ->
         let rec walk_ptree pat_env pt =
           match pt with
@@ -498,6 +498,9 @@ and scope_pattern
       in
       let p, acc = scope_pattern p (id_env, intf_env) in
       Acids_scoped.P_clock_annot (p, cka), acc
+    | P_interval_annot (p, it) ->
+      let p, acc = scope_pattern p acc in
+      Acids_scoped.P_interval_annot (p, it), acc
     | P_split upw ->
       let scope_exp e (id_env, intf_env) =
         let e, intf_env =

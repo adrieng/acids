@@ -95,6 +95,7 @@ sig
     P_var of I.var
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
+  | P_interval_annot of pat * Interval_types.interval_ty_scal
   | P_split of (pat, exp) Ast_misc.upword
   and merge_clause = {
     c_sel : Ast_misc.econstr;
@@ -228,6 +229,7 @@ module Make = functor (S : S) ->
     | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
+    | P_interval_annot of pat * Interval_types.interval_ty_scal
     | P_split of (pat, exp) Ast_misc.upword
 
     and merge_clause =

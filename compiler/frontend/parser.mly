@@ -473,6 +473,8 @@ pat_desc:
 | ps = parens(upword(pat, simple_exp, chevrons)) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
         { Acids_parsetree.P_clock_annot (p, ck) }
+| LPAREN p = pat COLON it = interval_ty RPAREN
+        { Acids_parsetree.P_interval_annot (p, it) }
 
 pat:
 | pd = with_loc(pat_desc) { make_located make_pat pd }

@@ -156,6 +156,8 @@ struct
       | P_tuple p_l -> OUT.P_tuple (List.map extract_pattern p_l)
       | P_clock_annot (p, ca) ->
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
+      | P_interval_annot (p, it) ->
+        OUT.P_interval_annot (extract_pattern p, it)
       | P_split w ->
         OUT.P_split (Ast_misc.map_upword extract_pattern extract_exp w)
     in

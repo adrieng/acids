@@ -75,3 +75,9 @@ let rec ty_of_pre_ty pty =
     It_scal Is_bot
   | Pit_scal is -> It_scal is
   | Pit_prod pty_l -> It_prod (List.map ty_of_pre_ty pty_l)
+
+let generalize_sig inp out =
+  {
+    interval_sig_input = ty_of_pre_ty inp;
+    interval_sig_output = ty_of_pre_ty out;
+  }

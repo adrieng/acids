@@ -40,7 +40,164 @@ let print_error fmt err =
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
 
-(** {2 Moving from pretypes to types} *)
+(** {2 Unification} *)
+
+(* let occur_check loc id ty = *)
+(*   let open PreTy in *)
+(*   let open VarTy in *)
+(*   let rec walk ty = *)
+(*     match ty with *)
+(*     | Pit_var { v_link = Some ty; } -> walk ty *)
+(*     | Pit_var { v_link = None; v_id = id'; } -> *)
+(*       if id = id' then unification_occur loc ty *)
+(*     | Pit_scal _ -> () *)
+(*     | Pit_prod ty_l -> List.iter walk ty_l *)
+(*   in *)
+(*   match ty with *)
+(*   | Pit_var { v_link = None; } -> () *)
+(*   | _ -> walk ty *)
+
+(* let unify loc ty1 ty2 = *)
+(*   let open PreTy in *)
+(*   let open VarTy in *)
+
+(*   let rec u ty1 ty2 = *)
+(*     match ty1, ty2 with *)
+(*     (\** traverse links *\) *)
+(*     | Pit_var { v_link = Some ty1; }, ty2 *)
+(*     | ty1, Pit_var { v_link = Some ty2; } -> u ty1 ty2 *)
+
+(*     (\** in-place unification *\) *)
+(*     | Pit_var ({ v_link = None; v_id = id; } as r), ty *)
+(*     | ty, Pit_var ({ v_link = None; v_id = id; } as r) -> *)
+(*       occur_check loc id ty; *)
+(*       r.v_link <- Some ty *)
+
+(*     | Pit_scal Tys_top,  *)
+
+(*     | Pit_scal Tys_top, Pit_scal Tys_top *)
+(*     | Pit_scal Tys_int, Pit_scal Tys_int *)
+(*     | Pit_scal Tys_float, Pit_scal Tys_float -> *)
+(*       () *)
+
+(*     | Pit_prod ty_l1, Pit_prod ty_l2 -> *)
+(*       List.iter2 u ty_l1 ty_l2 *)
+
+(*     | _ -> *)
+(*       unification_conflict loc ty1 ty2 *)
+(*   in *)
+(*   u ty1 ty2 *)
+
+(* {2 Typing environments} *)
+
+type typing_env =
+  {
+    intf_env : Interface.t Names.ShortEnv.t;
+    current_types : Names.shortname list Names.ShortEnv.t;
+    current_nodes : interval_sig Names.ShortEnv.t;
+    idents : VarTy.t Ident.Env.t;
+  }
+
+let initial_typing_env info =
+  {
+    intf_env = info#interfaces;
+    current_types = Names.ShortEnv.empty;
+    current_nodes = Names.ShortEnv.empty;
+    idents = Ident.Env.empty;
+  }
+
+(** {2 High-level utilities} *)
+
+let top_ty = PreTy.Pit_scal Is_top
+let bot_ty = PreTy.Pit_scal Is_bot
+let bounded_ty max = PreTy.Pit_scal (Is_inter (Interval.make 0n max))
+
+module A =
+struct
+  type new_annot =
+  | Exp of VarTy.t
+  | Node of VarTy.t * VarTy.t
+
+  let print_new_annot fmt na =
+    match na with
+    | Exp ty -> VarTy.print fmt ty
+    | Node (ty1, ty2) ->
+      Format.fprintf fmt "%a -> %a"
+        VarTy.print ty1
+        VarTy.print ty2
+end
+
+module ANN_INFO = Acids_utils.MakeAnnot(Acids_typed)(A)
+module M = Acids.Make(ANN_INFO)
+
+let annotate_exp info ty =
+  ANN_INFO.annotate info (A.Exp ty)
+
+let annotate_node info inp_ty out_ty =
+  ANN_INFO.annotate info (A.Node (inp_ty, out_ty))
+
+let annotate_dummy info =
+  ANN_INFO.annotate info (A.Exp top_ty)
+
+module MORPH =
+struct
+  module IN_INFO = M.I
+  module OUT_INFO = Acids_interval.Info
+
+  open ANN_INFO
+  open A
+
+  let update_clock_exp_info { new_annot = na; old_annot = d; } =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = ty_of_pre_ty pty in
+      object
+        method ci_data = d#ci_data
+        method ci_interv = ty
+      end
+
+  let update_exp_info { new_annot = na; old_annot = d; } =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = ty_of_pre_ty pty in
+      object
+        method ei_data = d#ei_data
+        method ei_interv = ty
+      end
+
+  let update_app_info _ = ()
+
+  let update_block_info _ = ()
+
+  let update_pat_info { new_annot = na; old_annot = d; } =
+    match na with
+    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = ty_of_pre_ty pty in
+      object
+        method pi_data = d#pi_data
+        method pi_interv = ty
+      end
+
+  let update_eq_info _ = ()
+
+  let update_domain_info _ = ()
+
+  let update_node_info  { new_annot = na; old_annot = d; } =
+    match na with
+    | Exp _ -> invalid_arg "update_node_info"
+    | Node (inp, out) ->
+      object
+        method ni_data = d#ni_data
+        method ni_interv = Interval_types.generalize_sig inp out
+      end
+end
+
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_interval)(MORPH)
+
+(** {2 Typing AST nodes} *)
 
 let type_file
     ctx

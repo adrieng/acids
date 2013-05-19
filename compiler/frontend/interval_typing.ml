@@ -40,7 +40,60 @@ let print_error fmt err =
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
 
-(** {2 Unification} *)
+(** {2 Constraints and unification} *)
+
+type it_exp =
+  | Ty of VarTy.t
+  | Plus of it_exp * it_exp
+  | Minus of it_exp * it_exp
+  | Times of it_exp * it_exp
+  | Div of it_exp * it_exp
+  | Union of it_exp * it_exp
+
+type it_constr =
+  | Equal of it_exp * it_exp
+  | Included of it_exp * it_exp
+
+type it_system = it_constr list
+
+let rec print_it_exp fmt ie =
+  match ie with
+  | Ty ty -> VarTy.print fmt ty
+  | Plus (e1, e2) ->
+    Format.fprintf fmt "@[%a@ + %a@]"
+      print_it_exp e1
+      print_it_exp e2
+  | Minus (e1, e2) ->
+    Format.fprintf fmt "@[%a@ - %a@]"
+      print_it_exp e1
+      print_it_exp e2
+  | Times (e1, e2) ->
+    Format.fprintf fmt "@[%a@ * %a@]"
+      print_it_exp e1
+      print_it_exp e2
+  | Div (e1, e2) ->
+    Format.fprintf fmt "@[%a@ / %a@]"
+      print_it_exp e1
+      print_it_exp e2
+  | Union (e1, e2) ->
+    Format.fprintf fmt "@[%a@ U %a@]"
+      print_it_exp e1
+      print_it_exp e2
+
+let print_it_constr fmt ic =
+  match ic with
+  | Equal (e1, e2) ->
+    Format.fprintf fmt "@[%a = %a@]"
+      print_it_exp e1
+      print_it_exp e2
+  | Included (e1, e2) ->
+    Format.fprintf fmt "@[%a [= %a@]"
+      print_it_exp e1
+      print_it_exp e2
+
+let print_it_system fmt (sys : it_system) =
+  Format.fprintf fmt "@[<v 2>{@ @[%a@]@\n@ }@]"
+    (Utils.print_list_eol print_it_constr) sys
 
 (* let occur_check loc id ty = *)
 (*   let open PreTy in *)
@@ -88,6 +141,13 @@ let non_exhaustive_pattern loc ec =
 (*   in *)
 (*   u ty1 ty2 *)
 
+let reset_ty, fresh_ty =
+  let open PreTy in
+  let open VarTy in
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () -> incr r; Pit_var { v_link = None; v_id = !r; })
+
 (* {2 Typing environments} *)
 
 type typing_env =
@@ -96,6 +156,7 @@ type typing_env =
     current_types : Names.shortname list Names.ShortEnv.t;
     current_nodes : interval_sig Names.ShortEnv.t;
     idents : VarTy.t Ident.Env.t;
+    constr : it_system;
   }
 
 let initial_typing_env info =
@@ -104,7 +165,10 @@ let initial_typing_env info =
     current_types = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
+    constr = [];
   }
+
+let find_ident env id = Ident.Env.find id env.idents
 
 (** {2 High-level utilities} *)
 
@@ -198,6 +262,31 @@ end
 module EXTRACT = Acids_utils.MakeMap(M)(Acids_interval)(MORPH)
 
 (** {2 Typing AST nodes} *)
+
+let make_union l = List.fold_left (fun l x -> Union (l, x)) (Ty bot_ty) l
+
+let rec type_clock_exp ce env =
+  let open Ast_misc in
+  let ced, ty =
+    match ce.ce_desc with
+    | Ce_var v -> M.Ce_var v, find_ident env v
+    | Ce_pword w ->
+      let w, env = mapfold_upword type_exp type_exp w env in
+      let ty = fresh_ty () in
+      let cstr = Equal (Ty ty, make_union []) in
+      assert false
+    | _ ->
+       assert false
+  in
+  {
+    M.ce_desc = ced;
+    M.ce_loc = ce.ce_loc;
+    M.ce_info = annotate_exp ce.ce_info ty;
+  },
+  ty
+
+and type_exp e env =
+  assert false
 
 let type_file
     ctx

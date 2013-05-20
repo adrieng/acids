@@ -40,19 +40,62 @@ let print_error fmt err =
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
 
-(** {2 Constraints and unification} *)
+(** {2 High-level utilities} *)
 
-(* {2 Typing environments} *)
+let ty_top = It_scal Is_top
+
+let ty_inter it = It_scal (Is_inter it)
+
+let union_scal ty1 ty2 =
+  match ty1, ty2 with
+  | Is_top, _ | _, Is_top -> Is_top
+  | Is_inter i1, Is_inter i2 -> Is_inter (Interval.join i1 i2)
+
+let rec union ty1 ty2 =
+  match ty1, ty2 with
+  | It_scal ty1, It_scal ty2 -> It_scal (union_scal ty1 ty2)
+  | It_prod ty_l1, It_prod ty_l2 -> It_prod (List.map2 union ty_l1 ty_l2)
+  | _ -> assert false (* TODO proper error message *)
+
+(** {2 Typing environments} *)
 
 type typing_env =
   {
     intf_env : Interface.t Names.ShortEnv.t;
     current_types : Names.shortname list Names.ShortEnv.t;
-    current_nodes : interval_sig Names.ShortEnv.t;
-    idents : unit Ident.Env.t;
+    current_nodes : ty_sig Names.ShortEnv.t;
+    idents : ty Ident.Env.t;
   }
 
+let find_ident env v = Ident.Env.find v env.idents
+
+let add_ident env v ty = { env with idents = Ident.Env.add v ty env.idents; }
+
 (** {2 Typing AST nodes} *)
+
+(** The algorithm proceeds in one pass: all variables have to be explicitely
+    tagged with their intervals if the user wishes to. *)
+
+let rec type_pat p env =
+  let p, ty, env =
+    match p.p_desc with
+    | P_var (v, info) ->
+      let ty =
+        match info with
+        | None -> ty_top
+        | Some it -> ty_inter it
+      in
+      Acids_interval.P_var (v, info), ty, add_ident env v ty
+
+    | P_tuple p_l ->
+      let p_l, env = Utils.mapfold type_pat p_l env in
+      let ty_l = List.map (fun p -> p.Acids_interval.p_info#pi_interv) p_l in
+      Acids_interval.P_tuple p_l, It_prod ty_l, env
+
+    | _ ->
+      assert false
+  in
+  assert false
 
 let type_file
     ctx

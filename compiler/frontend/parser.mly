@@ -153,8 +153,8 @@
     let mk_scal ty = Interval_types.It_scal ty in
     let mk_sig inp out =
       {
-        Interval_types.interval_sig_input = inp;
-        Interval_types.interval_sig_output = out;
+        Interval_types.input = inp;
+        Interval_types.output = out;
       }
     in
     mk_s mk_sig (mk_prod, mk_scal)

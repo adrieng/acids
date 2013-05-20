@@ -15,33 +15,29 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type interval_ty_scal =
+type ty_scal =
   | Is_top
   | Is_inter of Interval.t
 
-type interval_ty =
-  | It_scal of interval_ty_scal
-  | It_prod of interval_ty list
+type ty =
+  | It_scal of ty_scal
+  | It_prod of ty list
 
-type interval_sig =
-  {
-    interval_sig_input : interval_ty;
-    interval_sig_output : interval_ty;
-  }
+type ty_sig = { input : ty; output : ty; }
 
-let print_interval_ty_scal fmt is =
+let print_ty_scal fmt is =
   match is with
   | Is_top -> Format.fprintf fmt "T"
   | Is_inter it -> Interval.print fmt it
 
-let rec print_interval_ty fmt ity =
+let rec print_ty fmt ity =
   match ity with
-  | It_scal is -> print_interval_ty_scal fmt is
+  | It_scal is -> print_ty_scal fmt is
   | It_prod ity_l ->
     Format.fprintf fmt "(@[%a@])"
-      (Utils.print_list_r print_interval_ty " *") ity_l
+      (Utils.print_list_r print_ty " *") ity_l
 
 let print_sig fmt cs =
   Format.fprintf fmt "@[%a -> %a@]"
-    print_interval_ty cs.interval_sig_input
-    print_interval_ty cs.interval_sig_output
+    print_ty cs.input
+    print_ty cs.output

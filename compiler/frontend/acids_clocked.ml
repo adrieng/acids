@@ -24,7 +24,7 @@ struct
       <
         ci_data : Data_types.data_ty_scal;
         ci_static : Static_types.static_ty_scal;
-        ci_interv : Interval_types.interval_ty_scal;
+        ci_interv : Interval_types.ty_scal;
         ci_clock : Clock_types.stream_type;
       >
   let print_clock_exp_info (_ : Format.formatter) _ = ()
@@ -33,7 +33,7 @@ struct
       <
         ei_data : Data_types.data_ty;
         ei_static : Static_types.static_ty;
-        ei_interv : Interval_types.interval_ty;
+        ei_interv : Interval_types.ty;
         ei_clock : Clock_types.clock_type;
       >
   let print_exp_info (_ : Format.formatter) _ = ()
@@ -48,7 +48,7 @@ struct
       <
         pi_data : Data_types.data_ty;
         pi_static : Static_types.static_ty;
-        pi_interv : Interval_types.interval_ty;
+        pi_interv : Interval_types.ty;
         pi_clock : Clock_types.clock_type;
       >
   let print_pat_info (_ : Format.formatter) _ = ()
@@ -63,7 +63,7 @@ struct
       <
         ni_data : Data_types.data_sig;
         ni_static : Static_types.static_sig;
-        ni_interv : Interval_types.interval_sig;
+        ni_interv : Interval_types.ty_sig;
         ni_clock : Clock_types.clock_sig;
       >
   let print_node_info (_ : Format.formatter) _ = ()

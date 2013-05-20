@@ -239,5 +239,4 @@ struct
       OUT.f_info = f.f_info;
       OUT.f_body = List.map extract_phrase f.f_body;
     }
-
 end

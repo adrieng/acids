@@ -26,6 +26,8 @@ open Interval_types
 
 type error =
   | Non_exhaustive_pattern of Loc.t * Ast_misc.econstr
+  | Unification_error of Loc.t * VarTy.t * VarTy.t
+  | Unification_occur of Loc.t * VarTy.t
 
 exception Typing_error of error
 
@@ -36,110 +38,73 @@ let print_error fmt err =
       Loc.print l;
     Format.fprintf fmt "Here is an example of a value that is not matched:@\n%a"
       Ast_misc.print_econstr ec
+  | Unification_error (l, ty1, ty2) ->
+    Format.fprintf fmt "%aCould not unify %a with %a"
+      Loc.print l
+      VarTy.print ty1
+      VarTy.print ty2
+  | Unification_occur (l, ty) ->
+    Format.fprintf fmt "%aType %a is cyclic"
+      Loc.print l
+      VarTy.print ty
 
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
 
+let unification_error loc ty1 ty2 =
+  raise (Typing_error (Unification_error (loc, ty1, ty2)))
+
+let unification_occur loc ty =
+  raise (Typing_error (Unification_occur (loc, ty)))
+
 (** {2 Constraints and unification} *)
 
-type it_exp =
-  | Ty of VarTy.t
-  | Plus of it_exp * it_exp
-  | Minus of it_exp * it_exp
-  | Times of it_exp * it_exp
-  | Div of it_exp * it_exp
-  | Union of it_exp * it_exp
+let occur_check loc id ty =
+  let open PreTy in
+  let open VarTy in
+  let rec walk ty =
+    match ty with
+    | Pit_var { v_link = Some ty; } -> walk ty
+    | Pit_var { v_link = None; v_id = id'; } ->
+      if id = id' then unification_occur loc ty
+    | Pit_scal _ -> ()
+    | Pit_prod ty_l -> List.iter walk ty_l
+  in
+  match ty with
+  | Pit_var { v_link = None; } -> ()
+  | _ -> walk ty
 
-type it_constr =
-  | Equal of it_exp * it_exp
-  | Included of it_exp * it_exp
+let unify loc ty1 ty2 =
+  let open PreTy in
+  let open VarTy in
 
-type it_system = it_constr list
+  let rec u ty1 ty2 =
+    match ty1, ty2 with
+    (** traverse links *)
+    | Pit_var { v_link = Some ty1; }, ty2
+    | ty1, Pit_var { v_link = Some ty2; } -> u ty1 ty2
 
-let rec print_it_exp fmt ie =
-  match ie with
-  | Ty ty -> VarTy.print fmt ty
-  | Plus (e1, e2) ->
-    Format.fprintf fmt "@[%a@ + %a@]"
-      print_it_exp e1
-      print_it_exp e2
-  | Minus (e1, e2) ->
-    Format.fprintf fmt "@[%a@ - %a@]"
-      print_it_exp e1
-      print_it_exp e2
-  | Times (e1, e2) ->
-    Format.fprintf fmt "@[%a@ * %a@]"
-      print_it_exp e1
-      print_it_exp e2
-  | Div (e1, e2) ->
-    Format.fprintf fmt "@[%a@ / %a@]"
-      print_it_exp e1
-      print_it_exp e2
-  | Union (e1, e2) ->
-    Format.fprintf fmt "@[%a@ U %a@]"
-      print_it_exp e1
-      print_it_exp e2
+    (** in-place unification *)
+    | Pit_var ({ v_link = None; v_id = id; } as r), ty
+    | ty, Pit_var ({ v_link = None; v_id = id; } as r) ->
+      occur_check loc id ty;
+      r.v_link <- Some ty
 
-let print_it_constr fmt ic =
-  match ic with
-  | Equal (e1, e2) ->
-    Format.fprintf fmt "@[%a = %a@]"
-      print_it_exp e1
-      print_it_exp e2
-  | Included (e1, e2) ->
-    Format.fprintf fmt "@[%a [= %a@]"
-      print_it_exp e1
-      print_it_exp e2
+    | Pit_scal Is_top, Pit_scal Is_top
+    | Pit_scal Is_bot, Pit_scal Is_bot ->
+      ()
+    | Pit_scal (Is_inter it1), Pit_scal (Is_inter it2) ->
+      if Interval.compare it1 it2 = 0
+      then ()
+      else unification_error loc ty1 ty2
 
-let print_it_system fmt (sys : it_system) =
-  Format.fprintf fmt "@[<v 2>{@ @[%a@]@\n@ }@]"
-    (Utils.print_list_eol print_it_constr) sys
+    | Pit_prod ty_l1, Pit_prod ty_l2 ->
+      List.iter2 u ty_l1 ty_l2
 
-(* let occur_check loc id ty = *)
-(*   let open PreTy in *)
-(*   let open VarTy in *)
-(*   let rec walk ty = *)
-(*     match ty with *)
-(*     | Pit_var { v_link = Some ty; } -> walk ty *)
-(*     | Pit_var { v_link = None; v_id = id'; } -> *)
-(*       if id = id' then unification_occur loc ty *)
-(*     | Pit_scal _ -> () *)
-(*     | Pit_prod ty_l -> List.iter walk ty_l *)
-(*   in *)
-(*   match ty with *)
-(*   | Pit_var { v_link = None; } -> () *)
-(*   | _ -> walk ty *)
-
-(* let unify loc ty1 ty2 = *)
-(*   let open PreTy in *)
-(*   let open VarTy in *)
-
-(*   let rec u ty1 ty2 = *)
-(*     match ty1, ty2 with *)
-(*     (\** traverse links *\) *)
-(*     | Pit_var { v_link = Some ty1; }, ty2 *)
-(*     | ty1, Pit_var { v_link = Some ty2; } -> u ty1 ty2 *)
-
-(*     (\** in-place unification *\) *)
-(*     | Pit_var ({ v_link = None; v_id = id; } as r), ty *)
-(*     | ty, Pit_var ({ v_link = None; v_id = id; } as r) -> *)
-(*       occur_check loc id ty; *)
-(*       r.v_link <- Some ty *)
-
-(*     | Pit_scal Tys_top,  *)
-
-(*     | Pit_scal Tys_top, Pit_scal Tys_top *)
-(*     | Pit_scal Tys_int, Pit_scal Tys_int *)
-(*     | Pit_scal Tys_float, Pit_scal Tys_float -> *)
-(*       () *)
-
-(*     | Pit_prod ty_l1, Pit_prod ty_l2 -> *)
-(*       List.iter2 u ty_l1 ty_l2 *)
-
-(*     | _ -> *)
-(*       unification_conflict loc ty1 ty2 *)
-(*   in *)
-(*   u ty1 ty2 *)
+    | _ ->
+      unification_error loc ty1 ty2
+  in
+  u ty1 ty2
 
 let reset_ty, fresh_ty =
   let open PreTy in
@@ -156,7 +121,6 @@ type typing_env =
     current_types : Names.shortname list Names.ShortEnv.t;
     current_nodes : interval_sig Names.ShortEnv.t;
     idents : VarTy.t Ident.Env.t;
-    constr : it_system;
   }
 
 let initial_typing_env info =
@@ -165,7 +129,6 @@ let initial_typing_env info =
     current_types = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
-    constr = [];
   }
 
 let find_ident env id = Ident.Env.find id env.idents
@@ -175,6 +138,29 @@ let find_ident env id = Ident.Env.find id env.idents
 let top_ty = PreTy.Pit_scal Is_top
 let bot_ty = PreTy.Pit_scal Is_bot
 let bounded_ty max = PreTy.Pit_scal (Is_inter (Interval.make 0n max))
+
+let rec union loc ty1 ty2 =
+  match ty1, ty2 with
+  | PreTy.Pit_var _, _ | _, PreTy.Pit_var _ ->
+    unify loc ty1 ty2;
+    ty1
+
+  | PreTy.Pit_scal _, PreTy.Pit_prod _
+  | PreTy.Pit_prod _, PreTy.Pit_scal _ ->
+    unification_error loc ty1 ty2
+
+  | PreTy.Pit_prod pty_l1, PreTy.Pit_prod pty_l2 ->
+    let pty_l = List.map2 (union loc) pty_l1 pty_l2 in
+    PreTy.Pit_prod pty_l
+
+  | PreTy.Pit_scal Is_bot, ty | ty, PreTy.Pit_scal Is_bot ->
+    ty
+
+  | PreTy.Pit_scal Is_top, _ | _, PreTy.Pit_scal Is_top ->
+    PreTy.Pit_scal Is_top
+
+  | PreTy.Pit_scal (Is_inter i1), PreTy.Pit_scal (Is_inter i2) ->
+    PreTy.Pit_scal (Is_inter (Interval.join i1 i2))
 
 module A =
 struct
@@ -263,20 +249,31 @@ module EXTRACT = Acids_utils.MakeMap(M)(Acids_interval)(MORPH)
 
 (** {2 Typing AST nodes} *)
 
-let make_union l = List.fold_left (fun l x -> Union (l, x)) (Ty bot_ty) l
-
-let rec type_clock_exp ce env =
+let rec type_clock_exp env ce =
   let open Ast_misc in
   let ced, ty =
     match ce.ce_desc with
-    | Ce_var v -> M.Ce_var v, find_ident env v
+    | Ce_var v ->
+      M.Ce_var v, find_ident env v
+
     | Ce_pword w ->
-      let w, env = mapfold_upword type_exp type_exp w env in
-      let ty = fresh_ty () in
-      let cstr = Equal (Ty ty, make_union []) in
-      assert false
-    | _ ->
-       assert false
+      let w, ty_l =
+        let type_exp e ty_l =
+          let e, ty = type_exp env e in
+          e, ty :: ty_l
+        in
+        mapfold_upword type_exp type_exp w []
+      in
+      M.Ce_pword w, List.fold_left (union ce.ce_loc) bot_ty ty_l
+
+    | Ce_equal (ce, e) ->
+      let ce, ce_ty = type_clock_exp env ce in
+      let e, e_ty = type_exp env e in
+      M.Ce_equal (ce, e), bot_ty
+
+    | Ce_iter ce ->
+      let ce, ty = type_clock_exp env ce in
+      M.Ce_iter ce, assert false
   in
   {
     M.ce_desc = ced;
@@ -285,7 +282,7 @@ let rec type_clock_exp ce env =
   },
   ty
 
-and type_exp e env =
+and type_exp env e =
   assert false
 
 let type_file

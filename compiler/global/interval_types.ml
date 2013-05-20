@@ -17,7 +17,6 @@
 
 type interval_ty_scal =
   | Is_top
-  | Is_bot
   | Is_inter of Interval.t
 
 type interval_ty =
@@ -33,7 +32,6 @@ type interval_sig =
 let print_interval_ty_scal fmt is =
   match is with
   | Is_top -> Format.fprintf fmt "T"
-  | Is_bot -> Format.fprintf fmt "B"
   | Is_inter it -> Interval.print fmt it
 
 let rec print_interval_ty fmt ity =
@@ -47,37 +45,3 @@ let print_sig fmt cs =
   Format.fprintf fmt "@[%a -> %a@]"
     print_interval_ty cs.interval_sig_input
     print_interval_ty cs.interval_sig_output
-
-module PreTy =
-struct
-  type 'a pre_ty =
-    | Pit_var of 'a
-    | Pit_scal of interval_ty_scal
-    | Pit_prod of 'a pre_ty list
-
-  let rec print print_var fmt pty =
-    match pty with
-    | Pit_var v -> print_var fmt v
-    | Pit_scal is -> print_interval_ty_scal fmt is
-    | Pit_prod pty_l ->
-      Format.fprintf fmt "(@[%a@])"
-        (Utils.print_list_r (print print_var) " *") pty_l
-end
-module VarTy = Ast_misc.MakeVar(PreTy)
-
-let rec ty_of_pre_ty pty =
-  let open PreTy in
-  let open VarTy in
-  match pty with
-  | Pit_var { v_link = Some pty } -> ty_of_pre_ty pty
-  | Pit_var { v_link = None; } ->
-    (* type variables default to bot *)
-    It_scal Is_bot
-  | Pit_scal is -> It_scal is
-  | Pit_prod pty_l -> It_prod (List.map ty_of_pre_ty pty_l)
-
-let generalize_sig inp out =
-  {
-    interval_sig_input = ty_of_pre_ty inp;
-    interval_sig_output = ty_of_pre_ty out;
-  }

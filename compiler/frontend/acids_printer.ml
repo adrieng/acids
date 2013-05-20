@@ -124,7 +124,11 @@ struct
 
   and print_pat_desc fmt pd =
     match pd with
-    | P_var v -> I.print_var fmt v
+    | P_var (v, None) -> I.print_var fmt v
+    | P_var (v, Some it) ->
+      Format.fprintf fmt "%a in %a"
+        I.print_var v
+        Interval.print it
     | P_tuple p_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r print_pat ",") p_l
@@ -136,10 +140,6 @@ struct
       Format.fprintf fmt "(%a : %a)"
         print_pat p
         Data_types.print_ty ty
-    | P_interval_annot (p, it) ->
-      Format.fprintf fmt "(%a in %a)"
-        print_pat p
-        Interval_types.print_interval_ty_scal it
     | P_split p_t ->
       Ast_misc.print_upword print_pat print_exp fmt p_t
 

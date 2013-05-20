@@ -242,14 +242,14 @@ let check_pattern block_loc block_env p =
   let pat_loc = p.p_loc in
   let rec walk pat_env p =
     match p.p_desc with
-    | P_var s ->
+    | P_var (s, _) ->
         if Utils.String_set.mem s pat_env
         then multiple_binding_pattern s pat_loc;
         if Utils.String_set.mem s block_env
         then multiple_binding_block s block_loc;
         Utils.String_set.add s pat_env
     | P_tuple p_l -> List.fold_left walk pat_env p_l
-    | P_clock_annot (p, _) | P_type_annot (p, _) | P_interval_annot (p, _) ->
+    | P_clock_annot (p, _) | P_type_annot (p, _) ->
       walk pat_env p
     | P_split pw ->
         let rec walk_ptree pat_env pt =
@@ -531,9 +531,9 @@ and scope_pattern
   let scope_pattern = scope_pattern ctx in
   let pd, acc =
     match p.p_desc with
-    | P_var v ->
+    | P_var (v, info) ->
       let id, id_env = add_var id_env v in
-      Acids_scoped.P_var id, (id_env, intf_env)
+      Acids_scoped.P_var (id, info), (id_env, intf_env)
     | P_tuple p_l ->
       let p_l, acc = Utils.mapfold scope_pattern p_l acc in
       Acids_scoped.P_tuple p_l, acc
@@ -547,9 +547,6 @@ and scope_pattern
         scope_type imported_mods local_types p.Acids_scoped.p_loc intf_env ty
       in
       Acids_scoped.P_type_annot (p, ty), (id_env, intf_env)
-    | P_interval_annot (p, it) ->
-      let p, acc = scope_pattern p acc in
-      Acids_scoped.P_interval_annot (p, it), acc
     | P_split upw ->
       let scope_exp e (id_env, intf_env) =
         let e, intf_env = scope_exp ctx id_env e intf_env in

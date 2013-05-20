@@ -154,12 +154,10 @@ struct
   and extract_pattern p =
     let pd =
       match p.p_desc with
-      | P_var id -> OUT.P_var id
+      | P_var (id, info) -> OUT.P_var (id, info)
       | P_tuple p_l -> OUT.P_tuple (List.map extract_pattern p_l)
       | P_clock_annot (p, ca) ->
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
-      | P_interval_annot (p, it) ->
-        OUT.P_interval_annot (extract_pattern p, it)
       | P_type_annot (p, ty) ->
         OUT.P_type_annot (extract_pattern p, ty)
       | P_split w ->

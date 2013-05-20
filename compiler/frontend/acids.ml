@@ -55,14 +55,14 @@ sig
     ce_info : I.clock_exp_info;
   }
   and clock_exp_desc =
-    Ce_var of I.var
+  | Ce_var of I.var
   | Ce_pword of (exp, exp) Ast_misc.upword
   | Ce_equal of clock_exp * exp
   | Ce_iter of clock_exp
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
   and exp = { e_desc : exp_desc; e_loc : Loc.t; e_info : I.exp_info; }
   and exp_desc =
-    E_var of I.var
+  | E_var of I.var
   | E_const of Ast_misc.const
   | E_fst of exp
   | E_snd of exp
@@ -93,10 +93,9 @@ sig
   }
   and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
   and pat_desc =
-    P_var of I.var
+  | P_var of I.var * Interval.t option
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
-  | P_interval_annot of pat * Interval_types.interval_ty_scal
   | P_type_annot of pat * Data_types.data_ty
   | P_split of (pat, exp) Ast_misc.upword
   and merge_clause = {
@@ -230,10 +229,9 @@ module Make = functor (S : S) ->
       }
 
     and pat_desc =
-    | P_var of S.var
+    | P_var of S.var * Interval.t option
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
-    | P_interval_annot of pat * Interval_types.interval_ty_scal
     | P_type_annot of pat * Data_types.data_ty
     | P_split of (pat, exp) Ast_misc.upword
 

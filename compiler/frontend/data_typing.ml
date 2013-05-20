@@ -184,9 +184,9 @@ let add_fresh_type_for_var env id =
 
 let rec add_fresh_types_for_pat env p =
   match p.p_desc with
-  | P_var id -> add_fresh_type_for_var env id
+  | P_var (id, _) -> add_fresh_type_for_var env id
   | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
-  | P_clock_annot (p, _) | P_type_annot (p, _) | P_interval_annot (p, _) ->
+  | P_clock_annot (p, _) | P_type_annot (p, _) ->
     add_fresh_types_for_pat env p
   | P_split w ->
     Ast_misc.fold_upword
@@ -472,8 +472,14 @@ and type_app env app =
 and type_pattern p env =
   let pd, ty, env =
     match p.p_desc with
-    | P_var id ->
-      M.P_var id, find_ident env id, env
+    | P_var (id, info) ->
+      let ty = find_ident env id in
+      (
+        match info with
+        | None -> ()
+        | Some _ -> unify p.p_loc ty int_ty
+      );
+      M.P_var (id, info), find_ident env id, env
 
     | P_tuple p_l ->
       let pty_l, env = Utils.mapfold type_pattern p_l env in
@@ -488,10 +494,6 @@ and type_pattern p env =
       let env, ty = pre_ty_of_ty_annotation env ta in
       let p, env = expect_pat ty p env in
       M.P_type_annot (p, ta), ty, env
-
-    | P_interval_annot (p, it) ->
-      let p, env = expect_pat int_ty p env in
-      M.P_interval_annot (p, it), int_ty, env
 
     | P_split w ->
       let ty = fresh_ty () in

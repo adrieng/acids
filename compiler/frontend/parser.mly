@@ -468,13 +468,13 @@ pat_tuple:
 | p_l = separated_list(COMMA, pat) { p_l }
 
 pat_desc:
-| IDENT { Acids_parsetree.P_var $1 }
+| id = IDENT { Acids_parsetree.P_var (id, None) }
+| LPAREN id = IDENT COLON it = interval RPAREN
+        { Acids_parsetree.P_var (id, Some it) }
 | parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
 | ps = parens(upword(pat, simple_exp, chevrons)) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
         { Acids_parsetree.P_clock_annot (p, ck) }
-| LPAREN p = pat COLON it = interval_ty RPAREN
-        { Acids_parsetree.P_interval_annot (p, it) }
 
 pat:
 | pd = with_loc(pat_desc) { make_located make_pat pd }
@@ -514,7 +514,6 @@ static_ty:
 
 interval_ty:
 | TOP_TY { Interval_types.Is_top }
-| BOT_TY { Interval_types.Is_bot }
 | i = interval { Interval_types.Is_inter i }
 
 placeholder_sig_init:

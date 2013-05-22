@@ -55,6 +55,7 @@ type error =
   | Not_subset of Acids_interval.pat * Acids_interval.exp
   | Bad_annot of Loc.t * Ident.t
   | Exp_not_inter of Acids_interval.exp
+  | Bad_application of Acids_typed.exp * Interval_types.ty * Interval_types.ty
 
 exception Typing_error of error
 
@@ -82,6 +83,13 @@ let print_error fmt err =
       "%aThe expression %a appears in a clock and has no interval annotation"
       Loc.print e.Acids_interval.e_loc
       Acids_interval.print_exp e
+  | Bad_application (e, ty_exp, ty_actual) ->
+    Format.fprintf fmt
+      "%aThe application %a expects %a but was applied to %a"
+      Loc.print e.Acids_typed.e_loc
+      Acids_typed.print_exp e
+      print_ty ty_exp
+      print_ty ty_actual
 
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
@@ -94,6 +102,9 @@ let bad_annot loc v =
 
 let exp_not_inter e =
   raise (Typing_error (Exp_not_inter e))
+
+let bad_application e ty_exp ty_actual =
+  raise (Typing_error (Bad_application (e, ty_exp, ty_actual)))
 
 (** {2 High-level utilities} *)
 
@@ -127,11 +138,23 @@ type typing_env =
     idents : ty Ident.Env.t;
   }
 
+let find_all_constructors env constr = assert false
+
 let find_width_for_constructor env constr = assert false
 
 let find_ident env v = Ident.Env.find v env.idents
 
 let add_ident env v ty = { env with idents = Ident.Env.add v ty env.idents; }
+
+let find_sig env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    Names.ShortEnv.find ln.shortn env.current_nodes
+  | Module modn ->
+    let intf = Names.ShortEnv.find modn env.intf_env in
+    let node = Interface.find_node intf ln.shortn in
+    Interface.interval_signature_of_node_item node
 
 (** {2 Typing AST nodes} *)
 
@@ -210,7 +233,7 @@ and type_clock_annot env cka =
   | Ca_on (cka, ce) ->
     let cka = type_clock_annot env cka in
     let ce = type_clock_exp env ce in
-    Acids_interval.Ca_on (cka, ce) (* TODO wrong *)
+    Acids_interval.Ca_on (cka, ce)
 
 and type_exp env e =
   let ed, ty =
@@ -244,7 +267,20 @@ and type_exp env e =
       let e2 = type_exp env e2 in
       Acids_interval.E_fby (e1, e2), join (exp_type e1) (exp_type e2)
 
-    | E_app _ -> assert false (* TODO *)
+    | E_app (app, e') ->
+      let isig = find_sig env app.a_op in
+      let e' = type_exp env e' in
+      let app =
+        {
+          Acids_interval.a_op = app.a_op;
+          Acids_interval.a_loc = app.a_loc;
+          Acids_interval.a_info = app.a_info;
+        }
+      in
+      Acids_interval.E_app (app, e'),
+      if not (subset (exp_type e') isig.input)
+      then bad_application e isig.input (exp_type e')
+      else isig.output
 
     | E_where (e, block) ->
       let block, env = type_block block env in

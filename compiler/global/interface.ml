@@ -99,6 +99,8 @@ let interval_signature_of_node_item ni =
 
 let find_node intf shortn = Names.ShortEnv.find shortn intf.i_nodes
 
+let find_type intf shortn = Names.ShortEnv.find shortn intf.i_types
+
 (** {2 Consistency check and recovery functions} *)
 
 let check_type_and_constrs intf =

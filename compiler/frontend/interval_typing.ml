@@ -58,7 +58,10 @@ let node_annotate nd ty =
 
 type error =
   | Non_exhaustive_pattern of Loc.t * Ast_misc.econstr
-  | Not_subset of Acids_interval.pat * Acids_interval.exp
+  | Unexpected_pattern of Loc.t * Ast_misc.econstr * Ast_misc.econstr list
+  | Duplicate_pattern of Loc.t * Ast_misc.econstr
+  | Not_subset_pat of Acids_interval.pat * Acids_interval.exp
+  | Not_subset_ce of Acids_interval.clock_exp * Interval.t
   | Bad_annot of Loc.t * Ident.t
   | Exp_not_inter of Acids_interval.exp
   | Bad_application of Acids_typed.exp * Interval_types.ty * Interval_types.ty
@@ -72,7 +75,17 @@ let print_error fmt err =
       Loc.print l;
     Format.fprintf fmt "Here is an example of a value that is not matched:@\n%a"
       Ast_misc.print_econstr ec
-  | Not_subset (p, e) ->
+  | Unexpected_pattern (l, ec, exp) ->
+    Format.fprintf fmt "%aThe pattern %a was unexpected@\n"
+      Loc.print l
+      Ast_misc.print_econstr ec;
+    Format.fprintf fmt "Expected patterns are: @[%a@]"
+      (Utils.print_list_r Ast_misc.print_econstr ",") exp
+  | Duplicate_pattern (l, ec) ->
+    Format.fprintf fmt "%aDuplicate pattern %a"
+      Loc.print l
+      Ast_misc.print_econstr ec
+  | Not_subset_pat (p, e) ->
     Format.fprintf fmt
       "%aThe declared value range for %a (%a) is smaller than the inferred value range of %a (%a)"
       Loc.print p.Acids_interval.p_loc
@@ -80,6 +93,12 @@ let print_error fmt err =
       print_ty (pat_type p)
       Acids_interval.print_exp e
       print_ty (exp_type e)
+  | Not_subset_ce (ce, it) ->
+    Format.fprintf fmt
+      "%aThe inferred value range for clock expression %a is not included in %a"
+      Loc.print ce.Acids_interval.ce_loc
+      Acids_interval.print_clock_exp ce
+      Interval.print it
   | Bad_annot (l, id) ->
     Format.fprintf fmt "%aThe clock variable %a has no interval annotation"
       Loc.print l
@@ -100,8 +119,17 @@ let print_error fmt err =
 let non_exhaustive_pattern loc ec =
   raise (Typing_error (Non_exhaustive_pattern (loc, ec)))
 
-let not_subset p e =
-  raise (Typing_error (Not_subset (p, e)))
+let unexpected_pattern loc ec exp =
+  raise (Typing_error (Unexpected_pattern (loc, ec, exp)))
+
+let duplicate_pattern loc ec =
+  raise (Typing_error (Duplicate_pattern (loc, ec)))
+
+let not_subset_pat p e =
+  raise (Typing_error (Not_subset_pat (p, e)))
+
+let not_subset_ce ce it =
+  raise (Typing_error (Not_subset_ce (ce, it)))
 
 let bad_annot loc v =
   raise (Typing_error (Bad_annot (loc, v)))
@@ -158,9 +186,16 @@ let find_ident env v = Ident.Env.find v env.idents
 
 let add_ident env v ty = { env with idents = Ident.Env.add v ty env.idents; }
 
-let find_all_constructors env constr = assert false
-
-let find_width_for_constructor env constr = assert false
+let find_constructors_for_type env ln =
+  let open Names in
+  let sn_l =
+    match ln.modn with
+    | LocalModule -> Names.ShortEnv.find ln.shortn env.current_types
+    | Module modn ->
+      let intf = Names.ShortEnv.find modn env.intf_env in
+      (Interface.find_type intf ln.shortn).Interface.td_constr
+  in
+  List.map (fun sn -> { ln with shortn = sn; }) sn_l
 
 let add_type_constructors env name constructors =
   {
@@ -192,6 +227,36 @@ let rec free_type_for_data_type ty =
   | Ty_var _ -> ty_top (* unsure *)
   | Ty_scal _ -> ty_top
   | Ty_prod ty_l -> It_prod (List.map free_type_for_data_type ty_l)
+
+let check_pattern_range env loc ty c_l =
+  let open Data_types in
+  let open Ast_misc in
+  let it, ec_l =
+    match ty with
+    | Tys_float -> invalid_arg "check_pattern_range: float"
+    | Tys_bool -> Interval.bool, [Ec_bool true; Ec_bool false]
+    | Tys_int ->
+      let max = List.length c_l - 1 in
+      Interval.make_0_n (Int.of_int max),
+      List.map (fun i -> Ec_int (Int.of_int i)) (Utils.range max)
+    | Tys_user ln ->
+      let ec_l = find_constructors_for_type env ln in
+      Interval.make_0_n (Int.of_int (List.length ec_l)),
+      List.map (fun constr -> Ec_constr constr) ec_l
+  in
+
+  let rec check_exhaustive expected seen actual =
+    match actual with
+    | [] -> ()
+    | ec :: actual ->
+      if not (List.mem ec expected)
+      then unexpected_pattern loc ec expected;
+      if List.mem ec seen
+      then duplicate_pattern loc ec;
+      check_exhaustive expected (ec :: seen) actual
+  in
+  check_exhaustive ec_l [] c_l;
+  it
 
 let rec enrich_env_pat env p =
   match p.p_desc with
@@ -264,7 +329,7 @@ and type_exp env e =
   let ed, ty =
     match e.e_desc with
     | E_const c ->
-      Acids_interval.E_const c, type_const env c
+      Acids_interval.E_const c, type_const env e.e_info#ei_data c
 
     | E_var v ->
       Acids_interval.E_var v, find_ident env v
@@ -325,16 +390,32 @@ and type_exp env e =
 
     | E_merge (ce, c_l) ->
       let ce = type_clock_exp env ce in
+      let it =
+        check_pattern_range
+          env
+          e.e_loc
+          ce.Acids_interval.ce_info#ci_data
+          (List.map (fun c -> c.c_sel) c_l)
+      in
+      if not (Interval.subset (clock_exp_type ce) it)
+      then not_subset_ce ce it;
       let c_l = List.map (type_merge_clause env) c_l in
       let ty_l = List.map (fun c -> exp_type c.Acids_interval.c_body) c_l in
-      (* TODO range *)
       Acids_interval.E_merge (ce, c_l), join_l ty_l
 
-    | E_split (ce, e, ec_l) ->
+    | E_split (ce, e', ec_l) ->
       let ce = type_clock_exp env ce in
-      let e = type_exp env e in
-      (* TODO range *)
-      Acids_interval.E_split (ce, e, ec_l), exp_type e
+      let it =
+        check_pattern_range
+          env
+          e.e_loc
+          ce.Acids_interval.ce_info#ci_data
+          ec_l
+      in
+      if not (Interval.subset (clock_exp_type ce) it)
+      then not_subset_ce ce it;
+      let e' = type_exp env e' in
+      Acids_interval.E_split (ce, e', ec_l), exp_type e'
 
     | E_valof ce ->
       let ce = type_clock_exp env ce in
@@ -376,10 +457,10 @@ and type_domain env dom =
     Acids_interval.d_info = dom.d_info;
   }
 
-and type_const env c =
+and type_const env ty c =
   let open Ast_misc in
   match c with
-  | Cconstr ec -> type_econstr env ec
+  | Cconstr ec -> type_econstr env ty ec
   | Cfloat _ -> It_scal Is_top
   | Cword i_l ->
     let ty_l =
@@ -387,14 +468,20 @@ and type_const env c =
     in
     Utils.fold_left_1 join ty_l
 
-and type_econstr env ec =
+and type_econstr env ty ec =
   let open Ast_misc in
   match ec with
   | Ec_bool b -> It_scal (Is_inter (Interval.singleton (if b then 1n else 0n)))
   | Ec_int i -> It_scal (Is_inter (Interval.singleton i))
-  | Ec_constr cstr ->
-    let w = find_width_for_constructor env cstr in
-    It_scal (Is_inter (Interval.make_0_n w))
+  | Ec_constr _ ->
+    let ln =
+      let open Data_types in
+      match ty with
+      | Ty_scal (Tys_user ln) -> ln
+      | _ -> invalid_arg "type_econstr"
+    in
+    let c_l = find_constructors_for_type env ln in
+    It_scal (Is_inter (Interval.make_0_n (Int.of_int (List.length c_l - 1))))
 
 and type_clock_exp env ce =
   let exp_type_inter e =
@@ -448,7 +535,7 @@ and type_block block env =
     let e = type_exp env eq.eq_rhs in
     let ty_e = exp_type e in
     let ty_p = pat_type p in
-    if subset ty_e ty_p then not_subset p e;
+    if subset ty_e ty_p then not_subset_pat p e;
     {
       Acids_interval.eq_lhs = p;
       Acids_interval.eq_rhs = e;

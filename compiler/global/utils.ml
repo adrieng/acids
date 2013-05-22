@@ -31,6 +31,12 @@ let repeat n x =
   in
   walk n []
 
+let range n =
+  let rec walk acc n =
+    if n <= 0 then List.rev acc else walk (n :: acc) (n - 1)
+  in
+  walk [] n
+
 let fold_left_1 f l =
   match l with
   | x :: l -> List.fold_left f x l

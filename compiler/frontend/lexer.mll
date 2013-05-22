@@ -39,7 +39,7 @@
     let rec add i l =
       if i >= String.length w
       then List.rev l
-      else add (i + 1) (int_of_string (String.make 1 w.[i]) :: l)
+      else add (i + 1) (Int.of_string (String.make 1 w.[i]) :: l)
     in
     add 0 []
 }

@@ -41,3 +41,34 @@ let print_sig fmt cs =
   Format.fprintf fmt "@[%a -> %a@]"
     print_ty cs.input
     print_ty cs.output
+
+let join_scal ts1 ts2 =
+  match ts1, ts2 with
+  | Is_top, _ | _, Is_top -> Is_top
+  | Is_inter i1, Is_inter i2 -> Is_inter (Interval.join i1 i2)
+
+exception Ill_typed
+
+let rec join ty1 ty2 =
+  match ty1, ty2 with
+  | It_scal ts1, It_scal ts2 -> It_scal (join_scal ts1 ts2)
+  | It_prod ty_l1, It_prod ty_l2 -> It_prod (List.map2 join ty_l1 ty_l2)
+  | It_scal _, It_prod _ | It_prod _, It_scal _ -> raise Ill_typed
+
+exception Not_subset
+
+let subset_scal ts1 ts2 =
+  match ts1, ts2 with
+  | _, Is_top -> ()
+  | Is_inter i1, Is_inter i2 ->
+    if not (Interval.subset i1 i2) then raise Not_subset
+  | Is_top, Is_inter _ -> raise Not_subset
+
+let rec subset ty1 ty2 =
+  match ty1, ty2 with
+  | It_scal ts1, It_scal ts2 -> subset_scal ts1 ts2
+  | It_prod ty_l1, It_prod ty_l2 ->
+    List.iter2 subset ty_l1 ty_l2
+  | It_scal _, It_prod _ | It_prod _, It_scal _ -> raise Ill_typed
+
+let subset ty1 ty2 = try subset ty1 ty2; true with Not_subset -> false

@@ -23,7 +23,7 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
-        ci_interv : Interval_types.ty_scal;
+        ci_interv : Interval.t;
       >
   let print_clock_exp_info (_ : Format.formatter) _ = ()
 

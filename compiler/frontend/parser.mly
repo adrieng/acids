@@ -243,7 +243,7 @@
 %token<bool> BOOL
 %token<Int.t> INT
 %token<float> FLOAT
-%token<int list> WORD
+%token<Int.t list> WORD
 
 /* Misc */
 

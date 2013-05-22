@@ -15,19 +15,21 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type t = private { l : Nativeint.t; u : Nativeint.t }
+type t = private { l : Int.t; u : Int.t }
 
-val make : Nativeint.t -> Nativeint.t -> t
+val make : Int.t -> Int.t -> t
+
+val make_0_n : Int.t -> t
 
 val print : Format.formatter -> t -> unit
 
-val width : t -> Nativeint.t
+val width : t -> Int.t
 
-val singleton : Nativeint.t -> t
+val singleton : Int.t -> t
 
-val is_singleton : t -> Nativeint.t option
+val is_singleton : t -> Int.t option
 
-val range : t -> Nativeint.t list
+val range : t -> Int.t list
 
 val bool : t
 

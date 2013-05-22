@@ -15,20 +15,22 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let ( + ) = Nativeint.add
-let ( - ) = Nativeint.sub
-let ( * ) = Nativeint.mul
-let ( / ) = Nativeint.div
+let ( + ) = Int.add
+let ( - ) = Int.sub
+let ( * ) = Int.mul
+let ( / ) = Int.div
 
-type t = { l : Nativeint.t; u : Nativeint.t; }
+type t = { l : Int.t; u : Int.t; }
 
 let make l u =
   assert (l <= u);
   { l = l; u = u; }
 
+let make_0_n u = make 0n u
+
 let print fmt { l; u; } = Format.fprintf fmt "[%nd, %nd]" l u
 
-let width { l; u; } = Nativeint.abs ((u - l) + 1n)
+let width { l; u; } = Int.abs ((u - l) + 1n)
 
 let singleton i = { l = i; u = i; }
 
@@ -36,7 +38,7 @@ let is_singleton { l; u; } = if l = u then Some l else None
 
 let range { l = l; u = u; } =
   let rec walk i j acc =
-    if i > j then acc else walk (Nativeint.succ i) j (i :: acc)
+    if i > j then acc else walk (Int.succ i) j (i :: acc)
   in
   List.rev (walk l u [])
 
@@ -44,7 +46,7 @@ let range { l = l; u = u; } =
 
 let bool = { l = 0n; u = 1n; }
 
-let int = { l = Nativeint.min_int; u = Nativeint.max_int; }
+let int = { l = Int.min_int; u = Int.max_int; }
 
 (** Abstract operators *)
 

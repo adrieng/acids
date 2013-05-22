@@ -48,6 +48,12 @@ let clock_exp_annotate ce ty =
     method ci_interv = ty
   end
 
+let node_annotate nd ty =
+  object
+    method ni_data = nd.n_info#ni_data
+    method ni_interv = ty
+  end
+
 (** {2 Errors} *)
 
 type error =
@@ -138,15 +144,31 @@ type typing_env =
     idents : ty Ident.Env.t;
   }
 
-let find_all_constructors env constr = assert false
+let initial_typing_env intf_env =
+  {
+    intf_env = intf_env;
+    current_types = Names.ShortEnv.empty;
+    current_nodes = Names.ShortEnv.empty;
+    idents = Ident.Env.empty;
+  }
 
-let find_width_for_constructor env constr = assert false
+let reset_idents env = { env with idents = Ident.Env.empty; }
 
 let find_ident env v = Ident.Env.find v env.idents
 
 let add_ident env v ty = { env with idents = Ident.Env.add v ty env.idents; }
 
-let find_sig env ln =
+let find_all_constructors env constr = assert false
+
+let find_width_for_constructor env constr = assert false
+
+let add_type_constructors env name constructors =
+  {
+    env with
+      current_types = Names.ShortEnv.add name constructors env.current_types;
+  }
+
+let find_signature env ln =
   let open Names in
   match ln.modn with
   | LocalModule ->
@@ -155,6 +177,9 @@ let find_sig env ln =
     let intf = Names.ShortEnv.find modn env.intf_env in
     let node = Interface.find_node intf ln.shortn in
     Interface.interval_signature_of_node_item node
+
+let add_local_signature env sn isig =
+  { env with current_nodes = Names.ShortEnv.add sn isig env.current_nodes; }
 
 (** {2 Typing AST nodes} *)
 
@@ -268,7 +293,7 @@ and type_exp env e =
       Acids_interval.E_fby (e1, e2), join (exp_type e1) (exp_type e2)
 
     | E_app (app, e') ->
-      let isig = find_sig env app.a_op in
+      let isig = find_signature env app.a_op in
       let e' = type_exp env e' in
       let app =
         {
@@ -365,7 +390,7 @@ and type_const env c =
 and type_econstr env ec =
   let open Ast_misc in
   match ec with
-  | Ec_bool b -> It_scal (Is_inter Interval.bool)
+  | Ec_bool b -> It_scal (Is_inter (Interval.singleton (if b then 1n else 0n)))
   | Ec_int i -> It_scal (Is_inter (Interval.singleton i))
   | Ec_constr cstr ->
     let w = find_width_for_constructor env cstr in
@@ -438,13 +463,68 @@ and type_block block env =
   },
   env
 
+let type_node_def env nd =
+  let env = reset_idents env in
+  let env = enrich_env_pat env nd.n_input in
+  let input = type_pat env nd.n_input in
+  let body = type_exp env nd.n_body in
+  let isig = { input = pat_type input; output = exp_type body; } in
+  add_local_signature env nd.n_name isig,
+  {
+    Acids_interval.n_name = nd.n_name;
+    Acids_interval.n_input = input;
+    Acids_interval.n_body = body;
+    Acids_interval.n_pragma = nd.n_pragma;
+    Acids_interval.n_static = nd.n_static;
+    Acids_interval.n_loc = nd.n_loc;
+    Acids_interval.n_info = node_annotate nd isig;
+  }
+
+let type_node_decl env ndecl =
+  add_local_signature env ndecl.decl_name ndecl.decl_interv,
+  {
+    Acids_interval.decl_name = ndecl.decl_name;
+    Acids_interval.decl_data = ndecl.decl_data;
+    Acids_interval.decl_static = ndecl.decl_static;
+    Acids_interval.decl_interv = ndecl.decl_interv;
+    Acids_interval.decl_clock = ndecl.decl_clock;
+    Acids_interval.decl_loc = ndecl.decl_loc;
+  }
+
+let type_type_def env tdef =
+  add_type_constructors env tdef.ty_name tdef.ty_body,
+  {
+    Acids_interval.ty_name = tdef.ty_name;
+    Acids_interval.ty_body = tdef.ty_body;
+    Acids_interval.ty_loc = tdef.ty_loc;
+  }
+
+let type_phrase env phr =
+  match phr with
+  | Phr_node_def nd ->
+    let env, nd = type_node_def env nd in
+    env, Acids_interval.Phr_node_def nd
+  | Phr_node_decl ndecl ->
+    let env, ndecl = type_node_decl env ndecl in
+    env, Acids_interval.Phr_node_decl ndecl
+  | Phr_type_def tdef ->
+    let env, tdef = type_type_def env tdef in
+    env, Acids_interval.Phr_type_def tdef
+
+let type_file file =
+  let env = initial_typing_env file.f_info#interfaces in
+  let _, body = Utils.mapfold_left type_phrase env file.f_body in
+  {
+    Acids_interval.f_name = file.f_name;
+    Acids_interval.f_imports = file.f_imports;
+    Acids_interval.f_info = file.f_info;
+    Acids_interval.f_body = body;
+  }
+
 let type_file
     ctx
     (file : < interfaces : Interface.t Names.ShortEnv.t > Acids_typed.file) =
-  (assert false
-     :
-     Pass_manager.ctx
-     * < interfaces : Interface.t Names.ShortEnv.t > Acids_interval.file)
+  ctx, type_file file
 
 (** {2 Putting it all together} *)
 

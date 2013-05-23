@@ -142,8 +142,8 @@
     let mk_scal ty = Static_types.Sy_scal ty in
     let mk_sig inp out =
       {
-        Static_types.static_sig_input = inp;
-        Static_types.static_sig_output = out;
+        Static_types.input = inp;
+        Static_types.output = out;
       }
     in
     mk_s mk_sig (mk_prod, mk_scal)

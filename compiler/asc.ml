@@ -63,6 +63,7 @@ let flow =
   +>+ Scoping.scope
   +>+ Data_typing.type_
   +>+ Interval_typing.type_
+  +>+ Static_typing.type_
 
 (*****************************************************************************)
 (* File handling *)

@@ -120,7 +120,7 @@ sig
   type node_decl = {
     decl_name : Names.shortname;
     decl_data : Data_types.data_sig;
-    decl_static : Static_types.static_sig;
+    decl_static : Static_types.ty_sig;
     decl_interv : Interval_types.ty_sig;
     decl_clock : Clock_types.clock_sig;
     decl_loc : Loc.t;
@@ -264,7 +264,7 @@ module Make = functor (S : S) ->
       {
         decl_name : Names.shortname;
         decl_data : Data_types.data_sig;
-        decl_static : Static_types.static_sig;
+        decl_static : Static_types.ty_sig;
         decl_interv : Interval_types.ty_sig;
         decl_clock : Clock_types.clock_sig;
         decl_loc : Loc.t;

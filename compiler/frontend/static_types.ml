@@ -15,19 +15,15 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type static_ty_scal =
+type ty_scal =
   | S_static
   | S_dynamic
 
-type static_ty =
-  | Sy_scal of static_ty_scal
-  | Sy_prod of static_ty list
+type ty =
+  | Sy_scal of ty_scal
+  | Sy_prod of ty list
 
-type static_sig =
-  {
-    static_sig_input : static_ty;
-    static_sig_output : static_ty;
-  }
+type ty_sig = { input : ty; output : ty; }
 
 let print_static_ty_scal fmt ss =
   match ss with
@@ -43,20 +39,20 @@ let rec print_static_ty fmt sty =
 
 let print_sig fmt csig =
   Format.fprintf fmt "@[%a -> %a@]"
-    print_static_ty csig.static_sig_input
-    print_static_ty csig.static_sig_output
+    print_static_ty csig.input
+    print_static_ty csig.output
 
 module PreTy =
 struct
   type 'a pre_ty =
     | Psy_var of 'a
-    | Psy_scal of static_ty_scal
+    | Psy_scal of ty_scal ref
     | Psy_prod of 'a pre_ty list
 
   let rec print print_var fmt pty =
     match pty with
     | Psy_var v -> print_var fmt v
-    | Psy_scal ss -> print_static_ty_scal fmt ss
+    | Psy_scal ss -> print_static_ty_scal fmt (! ss)
     | Psy_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
@@ -69,7 +65,7 @@ let rec ty_of_pre_ty pty =
   | Psy_var v ->
     (* type variables default to dynamic since its more modular *)
     VarTy.ty_of_ty_var ty_of_pre_ty (fun _ -> Sy_scal S_dynamic) v
-  | Psy_scal ss -> Sy_scal ss
+  | Psy_scal ss -> Sy_scal (! ss)
   | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
 
 let rec is_static st =
@@ -78,5 +74,4 @@ let rec is_static st =
   | Sy_scal S_dynamic -> true
   | Sy_prod st_l -> List.exists is_static st_l
 
-let is_static_signature ssig =
-  is_static ssig.static_sig_input || is_static ssig.static_sig_output
+let is_static_signature ssig = is_static ssig.input || is_static ssig.output

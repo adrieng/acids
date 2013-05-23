@@ -42,6 +42,11 @@ let print_sig fmt csig =
     print_static_ty csig.input
     print_static_ty csig.output
 
+let join ts1 ts2 =
+  match ts1, ts2 with
+  | S_static, _ | _, S_static -> S_static
+  | S_dynamic, _ -> S_dynamic
+
 module PreTy =
 struct
   type 'a pre_ty =

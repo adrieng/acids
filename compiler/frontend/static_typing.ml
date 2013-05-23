@@ -17,22 +17,85 @@
 
 (** {1 Static typing} *)
 
+open Acids_interval
+open Static_types
+
 (** Static typing is a very simple (two-element) type system used to distinguish
     which nodes have to be inlined. It drives static evaluation later on. *)
 
 (** {2 Errors} *)
 
-type error = unit
+type error =
+  | Unification_conflict of Loc.t * VarTy.t * VarTy.t
+  | Unification_occur of Loc.t * VarTy.t
 
 exception Typing_error of error
 
 let print_error fmt err =
   match err with
-  | () -> ()
+  | Unification_conflict (l, ty1, ty2) ->
+    Format.fprintf fmt "%aCould not unify %a with %a"
+      Loc.print l
+      VarTy.print ty1
+      VarTy.print ty2
+  | Unification_occur (l, ty) ->
+    Format.fprintf fmt "%aType %a is cyclic"
+      Loc.print l
+      VarTy.print ty
+
+let unification_conflict loc ty1 ty2 =
+  raise (Typing_error (Unification_conflict (loc, ty1, ty2)))
+
+let unification_occur loc ty =
+  raise (Typing_error (Unification_occur (loc, ty)))
 
 (** {2 Unification} *)
 
+let occur_check loc id ty =
+  let open PreTy in
+  let open VarTy in
+  let rec walk ty =
+    match ty with
+    | Psy_var { v_link = Some ty; } -> walk ty
+    | Psy_var { v_link = None; v_id = id'; } ->
+      if id = id' then unification_occur loc ty
+    | Psy_scal _ -> ()
+    | Psy_prod ty_l -> List.iter walk ty_l
+  in
+  match ty with
+  | Psy_var { v_link = None; } -> ()
+  | _ -> walk ty
 
+let unify loc ty1 ty2 =
+  let open PreTy in
+  let open VarTy in
+
+  let rec u ty1 ty2 =
+    match ty1, ty2 with
+    (** traverse links *)
+    | Psy_var { v_link = Some ty1; }, ty2
+    | ty1, Psy_var { v_link = Some ty2; } -> u ty1 ty2
+
+    (** in-place unification *)
+    | Psy_var ({ v_link = None; v_id = id; } as r), ty
+    | ty, Psy_var ({ v_link = None; v_id = id; } as r) ->
+      occur_check loc id ty;
+      r.v_link <- Some ty
+
+    (** in-place join for scalars *)
+    | Psy_scal r1, Psy_scal r2 ->
+      let lub = join !r1 !r2 in
+      r1 := lub;
+      r2 := lub
+
+    | Psy_prod ty_l1, Psy_prod ty_l2 ->
+      (try List.iter2 u ty_l1 ty_l2
+       with Invalid_argument _ -> unification_conflict loc ty1 ty2)
+
+    | _ ->
+      unification_conflict loc ty1 ty2
+  in
+  u ty1 ty2
 
 (** {2 Moving from pretypes to types} *)
 

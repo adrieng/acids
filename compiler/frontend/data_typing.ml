@@ -87,7 +87,8 @@ let unify loc ty1 ty2 =
       ()
 
     | Pty_prod ty_l1, Pty_prod ty_l2 ->
-      List.iter2 u ty_l1 ty_l2
+      (try List.iter2 u ty_l1 ty_l2
+       with Invalid_argument _ -> unification_conflict loc ty1 ty2)
 
     | _ ->
       unification_conflict loc ty1 ty2

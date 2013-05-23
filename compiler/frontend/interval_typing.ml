@@ -620,7 +620,7 @@ let type_ =
   P_transform
     (Frontend_utils.make_transform
        ~print_out:Acids_interval.print_file
-       "intervals"
+       "interval_typing"
        type_file)
 
 

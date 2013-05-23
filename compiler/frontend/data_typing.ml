@@ -628,5 +628,5 @@ let type_ =
   P_transform
     (Frontend_utils.make_transform
        ~print_out:Acids_typed.print_file
-       "typing"
+       "data_typing"
        type_file)

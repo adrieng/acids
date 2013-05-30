@@ -66,7 +66,7 @@ let occur_check loc id ty =
   | Psy_var { v_link = None; } -> ()
   | _ -> walk ty
 
-let unify loc ty1 ty2 =
+let unify_param unify_scal loc ty1 ty2 =
   let open PreTy in
   let open VarTy in
 
@@ -84,7 +84,7 @@ let unify loc ty1 ty2 =
 
     (** in-place join for scalars *)
     | Psy_scal r1, Psy_scal r2 ->
-      let lub = join !r1 !r2 in
+      let lub = unify_scal !r1 !r2 in
       r1 := lub;
       r2 := lub
 
@@ -386,7 +386,7 @@ and type_exp env e =
 
 and expect_exp env expected_ty e =
   let e, actual_ty = type_exp env e in
-  unify e.M.e_loc expected_ty actual_ty;
+  unify_param meet e.M.e_loc expected_ty actual_ty;
   e
 
 and type_merge_clause env c =

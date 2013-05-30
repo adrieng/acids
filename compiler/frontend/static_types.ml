@@ -47,6 +47,11 @@ let join ts1 ts2 =
   | S_static, _ | _, S_static -> S_static
   | S_dynamic, _ -> S_dynamic
 
+let meet ts1 ts2 =
+  match ts1, ts2 with
+  | S_dynamic, _ | _, S_dynamic -> S_dynamic
+  | S_static, _ -> S_static
+
 module PreTy =
 struct
   type 'a pre_ty =

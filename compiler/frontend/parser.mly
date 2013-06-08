@@ -227,6 +227,7 @@
 %token ON BASE
 %token VAL IN IS WITH END
 %token TYPE BY
+%token BUFFER
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
 
@@ -265,6 +266,7 @@
 // %left SPLIT
 %left WHEN
 %right APP
+%nonassoc BUFFER
 %left LE GE LT GT
 %left PLUS MINUS
 %left TIMES DIV
@@ -435,6 +437,7 @@ exp_desc:
 | e = exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
 | par = DOM e = simple_exp ba = option(base_annot)
                               { make_domain par ba e }
+| BUFFER e = exp { Acids_parsetree.E_buffer e }
 
 %inline exp:
 | ed = with_loc(exp_desc) { make_located make_exp ed }

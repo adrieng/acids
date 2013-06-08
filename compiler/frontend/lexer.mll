@@ -116,6 +116,8 @@ rule token = parse
 | "dom" { DOM false }
 | "pardom" { DOM true }
 
+| "buffer" { BUFFER }
+
 | "val" { VAL }
 | "in" { IN }
 | "is" { IS }

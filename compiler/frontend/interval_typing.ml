@@ -435,6 +435,10 @@ and type_exp env e =
       let dom = type_domain env dom in
       Acids_interval.E_dom (e, dom), exp_type e
 
+    | E_buffer e ->
+      let e = type_exp env e in
+      Acids_interval.E_buffer e, exp_type e
+
   in
   {
     Acids_interval.e_desc = ed;

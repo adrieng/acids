@@ -376,6 +376,11 @@ and type_exp env e =
       let e, ty = type_exp env e in
       let dom = type_domain env dom in
       M.E_dom (e, dom), ty
+
+    | E_buffer e ->
+      let e, ty = type_exp env e in
+      M.E_buffer e, ty
+
   in
   {
     M.e_desc = ed;

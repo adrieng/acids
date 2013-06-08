@@ -100,6 +100,9 @@ struct
         Data_types.print_ty ty
     | E_dom (e, dom) ->
       print_dom fmt dom e
+    | E_buffer e ->
+      Format.fprintf fmt "@[buffer@ %a@]"
+        print_exp e
 
   and print_app fmt app =
     Format.fprintf fmt "@[%a%a@]"

@@ -79,6 +79,7 @@ sig
   | E_clock_annot of exp * clock_annot
   | E_type_annot of exp * Data_types.data_ty
   | E_dom of exp * domain
+  | E_buffer of exp
   and app = {
     a_op : Names.longname;
     a_loc : Loc.t;
@@ -198,6 +199,7 @@ module Make = functor (S : S) ->
     (** annotations for type inference *)
 
     | E_dom of exp * domain (** clock domain *)
+    | E_buffer of exp
 
     and app =
       {

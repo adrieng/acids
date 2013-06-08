@@ -130,6 +130,8 @@ struct
         OUT.E_type_annot (extract_exp e, ty)
       | E_dom (e, dom) ->
         OUT.E_dom (extract_exp e, extract_domain dom)
+      | E_buffer e ->
+        OUT.E_buffer (extract_exp e)
     in
     {
       OUT.e_desc = ed;

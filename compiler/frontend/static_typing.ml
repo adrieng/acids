@@ -26,104 +26,18 @@ open Static_types
 (** {2 Errors} *)
 
 type error =
-  | Unification_conflict of Loc.t * VarTy.t * VarTy.t
-  | Unification_occur of Loc.t * VarTy.t
+  | Unification_error of Static_types.error
 
 exception Typing_error of error
 
-let print_error fmt err =
-  match err with
-  | Unification_conflict (l, ty1, ty2) ->
-    Format.fprintf fmt "%aCould not unify %a with %a"
-      Loc.print l
-      VarTy.print ty1
-      VarTy.print ty2
-  | Unification_occur (l, ty) ->
-    Format.fprintf fmt "%aType %a is cyclic"
-      Loc.print l
-      VarTy.print ty
-
-let unification_conflict loc ty1 ty2 =
-  raise (Typing_error (Unification_conflict (loc, ty1, ty2)))
-
-let unification_occur loc ty =
-  raise (Typing_error (Unification_occur (loc, ty)))
+let unification_error err =
+  raise (Typing_error (Unification_error err))
 
 (** {2 Unification} *)
 
-let occur_check loc id ty =
-  let open PreTy in
-  let open VarTy in
-  let rec walk ty =
-    match ty with
-    | Psy_var { v_link = Some ty; } -> walk ty
-    | Psy_var { v_link = None; v_id = id'; } ->
-      if id = id' then unification_occur loc ty
-    | Psy_scal _ -> ()
-    | Psy_prod ty_l -> List.iter walk ty_l
-  in
-  match ty with
-  | Psy_var { v_link = None; } -> ()
-  | _ -> walk ty
-
-let unify_param unify_scal loc ty1 ty2 =
-  let open PreTy in
-  let open VarTy in
-
-  let rec u ty1 ty2 =
-    match ty1, ty2 with
-    (** traverse links *)
-    | Psy_var { v_link = Some ty1; }, ty2
-    | ty1, Psy_var { v_link = Some ty2; } -> u ty1 ty2
-
-    (** in-place unification *)
-    | Psy_var ({ v_link = None; v_id = id; } as r), ty
-    | ty, Psy_var ({ v_link = None; v_id = id; } as r) ->
-      occur_check loc id ty;
-      r.v_link <- Some ty
-
-    (** in-place join for scalars *)
-    | Psy_scal r1, Psy_scal r2 ->
-      let lub = unify_scal !r1 !r2 in
-      r1 := lub;
-      r2 := lub
-
-    | Psy_prod ty_l1, Psy_prod ty_l2 ->
-      (try List.iter2 u ty_l1 ty_l2
-       with Invalid_argument _ -> unification_conflict loc ty1 ty2)
-
-    | _ ->
-      unification_conflict loc ty1 ty2
-  in
-  u ty1 ty2
-
-let join_ty loc ty1 ty2 =
-  let open PreTy in
-  let open VarTy in
-
-  let rec j ty1 ty2 =
-    match ty1, ty2 with
-    (** traverse links *)
-    | Psy_var { v_link = Some ty1; }, ty2
-    | ty1, Psy_var { v_link = Some ty2; } -> j ty1 ty2
-
-    (** in-place unification *)
-    | Psy_var { v_link = None }, ty
-    | ty, Psy_var { v_link = None } ->
-      ty
-
-    (** in-place join for scalars *)
-    | Psy_scal r1, Psy_scal r2 ->
-      Psy_scal (ref (join !r1 !r2))
-
-    | Psy_prod ty_l1, Psy_prod ty_l2 ->
-      (try Psy_prod (List.map2 j ty_l1 ty_l2)
-       with Invalid_argument _ -> unification_conflict loc ty1 ty2)
-
-    | _ ->
-      unification_conflict loc ty1 ty2
-  in
-  j ty1 ty2
+let unify loc ty1 ty2 =
+  try Static_types.unify loc ty1 ty2
+  with Static_types.Unification_error err -> unification_error err
 
 (** {2 Low-level utilities} *)
 
@@ -146,6 +60,8 @@ type typing_env =
     current_nodes : ty_sig Names.ShortEnv.t;
     (** maps current idents to (pre)types *)
     idents : VarTy.t Ident.Env.t;
+    (** subtyping constraint system *)
+    mutable constr : Static_types.constr list;
   }
 
 let initial_typing_env info =
@@ -154,6 +70,7 @@ let initial_typing_env info =
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
+    constr = [];
   }
 
 let reset_env env = { env with idents = Ident.Env.empty; }
@@ -163,10 +80,12 @@ let find_ident env id = Ident.Env.find id env.idents
 let add_fresh_type_for_var env id =
   { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
 
+let add_constraint env c = env.constr <- c :: env.constr
+
 (** {2 High-level utilities} *)
 
-let static_ty () = PreTy.Psy_scal (ref S_static)
-let dynamic_ty () = PreTy.Psy_scal (ref S_dynamic)
+let static_ty = PreTy.Psy_scal S_static
+let dynamic_ty = PreTy.Psy_scal S_dynamic
 let tuple_ty ty_l = PreTy.Psy_prod ty_l
 
 module A =
@@ -192,7 +111,7 @@ let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
   ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
 let annotate_dummy dom =
-  ANN_INFO.annotate dom.d_info (A.Exp (static_ty ()))
+  ANN_INFO.annotate dom.d_info (A.Exp static_ty)
 
 module MORPH =
 struct
@@ -268,21 +187,25 @@ let exp_type e = e.M.e_info.ANN_INFO.new_annot
 (** {2 Typing AST nodes} *)
 
 let rec type_clock_exp env ce =
+  let loc = ce.ce_loc in
   let ced, ty =
     match ce.ce_desc with
     | Ce_var id ->
       M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
-      let ty = static_ty () in
-      let expect = expect_exp env ty in
+      let expect = expect_exp loc env static_ty in
       let w = Ast_misc.map_upword expect expect w in
+      let ty =
+        if Ast_misc.is_constant_pword w
+        then static_ty
+        else dynamic_ty
+      in
       M.Ce_pword w, ty
 
     | Ce_equal (ce, e) ->
-      let ce, _ = type_clock_exp env ce in
-      let ty = static_ty () in
-      let e = expect_exp env ty e in
+      let ce, ty = type_clock_exp env ce in
+      let e = expect_exp loc env static_ty e in
       M.Ce_equal (ce, e), ty
 
     | Ce_iter ce ->
@@ -297,24 +220,25 @@ let rec type_clock_exp env ce =
   ty
 
 and type_exp env e =
+  let loc = e.e_loc in
   let ed, ty =
     match e.e_desc with
     | E_var v ->
       M.E_var v, find_ident env v
 
     | E_const c ->
-      M.E_const c, static_ty ()
+      M.E_const c, fresh_ty ()
 
     | E_fst e ->
-      let ty_l = dynamic_ty () in
-      let ty_r = dynamic_ty () in
-      let e = expect_exp env (tuple_ty [ty_l; ty_r]) e in
+      let ty_l = fresh_ty () in
+      let ty_r = fresh_ty () in
+      let e = expect_exp loc env (tuple_ty [ty_l; ty_r]) e in
       M.E_fst e, ty_l
 
     | E_snd e ->
-      let ty_l = dynamic_ty () in
-      let ty_r = dynamic_ty () in
-      let e = expect_exp env (tuple_ty [ty_l; ty_r]) e in
+      let ty_l = fresh_ty () in
+      let ty_r = fresh_ty () in
+      let e = expect_exp loc env (tuple_ty [ty_l; ty_r]) e in
       M.E_snd e, ty_r
 
     | E_tuple e_l ->
@@ -323,15 +247,15 @@ and type_exp env e =
       M.E_tuple e_l, tuple_ty ty_l
 
     | E_fby (e1, e2) ->
-      let e1, ty1 = type_exp env e1 in
-      let e2, ty2 = type_exp env e2 in
-      M.E_fby (e1, e2), join_ty e.e_loc ty1 ty2
+      let e1, _ = type_exp env e1 in
+      let e2, _ = type_exp env e2 in
+      M.E_fby (e1, e2), dynamic_ty
 
     | E_ifthenelse (e1, e2, e3) ->
-      let e1, _ = type_exp env e1 in
-      let e2, ty2 = type_exp env e2 in
-      let e3, ty3 = type_exp env e3 in
-      M.E_ifthenelse (e1, e2, e3), join_ty e.e_loc ty2 ty3
+      let e1, ty = type_exp env e1 in
+      let e2 = expect_exp loc env ty e2 in
+      let e3 = expect_exp loc env ty e3 in
+      M.E_ifthenelse (e1, e2, e3), ty
 
     | E_app _ -> assert false (* TODO *)
 
@@ -348,16 +272,25 @@ and type_exp env e =
       M.E_split (ce, e, ec_l), ty
 
     | E_bmerge (ce, e1, e2) ->
-      let ce, _ = type_clock_exp env ce in
-      let e1, ty1 = type_exp env e1 in
-      let e2, ty2 = type_exp env e2 in
-      M.E_bmerge (ce, e1, e2), join_ty e.e_loc ty1 ty2
+      let ce, ty = type_clock_exp env ce in
+      let e1 = expect_exp loc env ty e1 in
+      let e2 = expect_exp loc env ty e2 in
+      M.E_bmerge (ce, e1, e2), ty
 
     | E_merge (ce, c_l) ->
-      let ce, _ = type_clock_exp env ce in
-      let cty_l = List.map (type_merge_clause env) c_l in
-      let c_l, ty_l = List.split cty_l in
-      M.E_merge (ce, c_l), Utils.fold_left_1 (join_ty e.e_loc) ty_l
+      let ce, ty = type_clock_exp env ce in
+      let c_l =
+        List.map
+          (fun ec ->
+            let e = expect_exp loc env ty ec.c_body in
+            {
+              M.c_sel = ec.c_sel;
+              M.c_body = e;
+              M.c_loc = ec.c_loc;
+            })
+          c_l
+      in
+      M.E_merge (ce, c_l), ty
 
     | E_valof ce ->
       let ce, ty = type_clock_exp env ce in
@@ -389,9 +322,9 @@ and type_exp env e =
   },
   ty
 
-and expect_exp env expected_ty e =
+and expect_exp loc env expected_ty e =
   let e, actual_ty = type_exp env e in
-  unify_param meet e.M.e_loc expected_ty actual_ty;
+  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
   e
 
 and type_merge_clause env c =

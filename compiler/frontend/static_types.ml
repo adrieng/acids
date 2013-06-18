@@ -85,3 +85,72 @@ let rec is_static st =
   | Sy_prod st_l -> List.exists is_static st_l
 
 let is_static_signature ssig = is_static ssig.input || is_static ssig.output
+
+(** {2 Type constraints} *)
+
+let rec unalias ty =
+  let open PreTy in
+  let open VarTy in
+  match ty with
+  | Psy_var { v_link = Some ty; } -> unalias ty
+  | Psy_var { v_link = None; } | Psy_scal _ -> ty
+  | Psy_prod ty_l -> Psy_prod (List.map unalias ty_l)
+
+(** Sub-typing constraint *)
+
+open PreTy
+open VarTy
+
+type constr =
+  {
+    lhs : t;
+    rhs : t;
+    loc : Loc.t;
+  }
+
+type constr_system =
+  {
+    worklist : constr list;
+    idle : constr list Utils.Int_map.t; (* TODO: do not duplicate constr *)
+  }
+
+let print_constr fmt c =
+  Format.fprintf fmt "@[%a <: %a@]"
+    VarTy.print c.lhs
+    VarTy.print c.rhs
+
+let print_constr_system fmt cs =
+  Format.fprintf fmt "@[<v 2>Worklist: %a@]"
+    (Utils.print_list_r print_constr ",") cs;
+  Format.fprintf fmt "@\nIdle queues:@\n";
+  Utils.Int_map.print Utils.print_int print_constr
+
+let take_var_idle_const idle i =
+  try Utils.Int_map.find i idle, Utils.Int_map.remove i idle
+  with Not_found -> [], idle
+
+let awake_if_var idle ty =
+  match unalias ty with
+  | Psy_var { v_id = i; } -> take_var_idle_const idle i
+  | Psy_scal _ -> [], idle
+  | _ -> assert false (* TODO *)
+
+let add_constr idle c v1 v2 =
+  let v1_idles, _ = take_var_idle_const idle v1 in
+  let v2_idles, _ = take_var_idle_const idle v2 in
+  let idle = Utils.Int_map.add v1 (c :: v1_idles) idle in
+  Utils.Int_map.add v2 (c :: v2_idles) idle
+
+let rec solve worklist idle =
+  match worklist with
+  | [] -> ()
+  | c :: worklist ->
+    (
+      match unalias c.lhs, unalias c.rhs with
+      | Psy_var { v_id = v1; }, Psy_var { v_id = v2; } ->
+        solve worklist (add_constr idle c v1 v2)
+      | lhs, rhs ->
+        let new_work_from_lhs, idle = awake_if_var idle lhs in
+        let new_work_from_rhs, idle = awake_if_var idle rhs in
+        solve (new_work_from_lhs @ new_work_from_rhs @ worklist) idle
+    )

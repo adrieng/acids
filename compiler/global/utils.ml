@@ -156,12 +156,26 @@ let rec gcd a b = if b = 0 then a else gcd b (a mod b)
 
 let lcm a b = (a * b) / gcd a b
 
+module MyMap(S : Map.OrderedType) =
+struct
+  module M = Map.Make(S)
+  include M
+  let print print_key print_value fmt map =
+    Format.fprintf fmt "@[";
+    iter
+      (fun k v ->
+        Format.fprintf fmt "%a -> %a;@ "
+          print_key k
+          print_value v)
+      map
+end
+
 module String_set =
   Set.Make(struct type t = string let compare = Pervasives.compare end)
 module Int_set = Set.Make(struct type t = int let compare = int_compare end)
-module Int_map = Map.Make(struct type t = int let compare = int_compare end)
+module Int_map = MyMap(struct type t = int let compare = int_compare end)
 module Pint_set = Set.Make(struct type t = int let compare x y = x - y end)
-module String_map = Map.Make(struct
+module String_map = MyMap(struct
   type t = string
   let compare = Pervasives.compare
 end)

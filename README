@@ -1,0 +1,2 @@
+This project uses the OCaml Union-Find implemenetation from Pottier, Rémy and
+Régis-Gianas. See global/UnionFind.ml{,i}

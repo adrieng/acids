@@ -55,8 +55,8 @@ let ill_formed_interface intfn =
 
 type static_node_decl =
   {
-    sn_info : Acids_interval.Info.node_info;
-    sn_body : Acids_interval.node_def;
+    sn_info : Acids_preclock.Info.node_info;
+    sn_body : Acids_preclock.node_def;
   }
 
 type dynamic_node_decl =
@@ -96,6 +96,11 @@ let interval_signature_of_node_item ni =
   match ni with
   | I_static snd -> snd.sn_info#ni_interv
   | I_dynamic dnd -> dnd.dn_info#ni_interv
+
+let static_signature_of_node_item ni =
+  match ni with
+  | I_static snd -> snd.sn_info#ni_static
+  | I_dynamic dnd -> dnd.dn_info#ni_static
 
 let find_node intf shortn = Names.ShortEnv.find shortn intf.i_nodes
 

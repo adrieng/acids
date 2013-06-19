@@ -73,7 +73,7 @@ let initial_typing_env info =
     constr = [];
   }
 
-let reset_env env = { env with idents = Ident.Env.empty; }
+let reset_env env = { env with idents = Ident.Env.empty; constr = []; }
 
 let find_ident env id = Ident.Env.find id env.idents
 
@@ -81,6 +81,15 @@ let add_fresh_type_for_var env id =
   { env with idents = Ident.Env.add id (fresh_ty ()) env.idents; }
 
 let add_constraint env c = env.constr <- c :: env.constr
+
+let find_node_signature env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.current_nodes
+  | Module modn ->
+    let intf = Names.ShortEnv.find modn env.intf_env in
+    let ni = Interface.find_node intf ln.shortn in
+    Interface.static_signature_of_node_item ni
 
 (** {2 High-level utilities} *)
 
@@ -108,10 +117,10 @@ module M = Acids.Make(ANN_INFO)
 
 let annotate_exp e ty = ANN_INFO.annotate e.e_info (A.Exp ty)
 let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
+let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
   ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
-let annotate_dummy dom =
-  ANN_INFO.annotate dom.d_info (A.Exp static_ty)
+let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
 
 module MORPH =
 struct
@@ -128,7 +137,7 @@ struct
       let ty = ty_of_pre_ty pty in
       (
         match ty with
-        | Sy_scal tys ->
+        | Sy_scal _ ->
           object
             method ci_data = info#ci_data
             method ci_interv = info#ci_interv
@@ -185,6 +194,20 @@ end
 let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
 (** {2 Typing AST nodes} *)
+
+let rec enrich_pat env p =
+  match p.p_desc with
+  | P_var (v, _) ->
+    add_fresh_type_for_var env v
+  | P_tuple p_l ->
+    List.fold_left enrich_pat env p_l
+  | P_clock_annot (p, _) | P_type_annot (p, _) -> enrich_pat env p
+  | P_split pt ->
+    Ast_misc.fold_upword
+      (fun p env -> enrich_pat env p)
+      (fun _ env -> env)
+      pt
+      env
 
 let rec type_clock_exp env ce =
   let loc = ce.ce_loc in
@@ -257,9 +280,28 @@ and type_exp env e =
       let e3 = expect_exp loc env ty e3 in
       M.E_ifthenelse (e1, e2, e3), ty
 
-    | E_app _ -> assert false (* TODO *)
+    | E_app (app, e) ->
+      let ssig = find_node_signature env app.a_op in
+      let inp, out = Static_types.instantiate_ty_sig ssig in
+      let e = expect_exp loc env inp e in
+      let app =
+        {
+          M.a_op = app.a_op;
+          M.a_loc = app.a_loc;
+          M.a_info = annotate_dummy app.a_info;
+        }
+      in
+      M.E_app (app, e), out
 
-    | E_where _ -> assert false (* TODO *)
+    | E_where (e, block) ->
+      let block, new_env = type_block env block in
+      let e, ty = type_exp env e in
+
+      (* /!\ since we are dropping new_env, update the current list of
+         constraints with those gathered from the block /!\ *)
+      env.constr <- new_env.constr;
+
+      M.E_where (e, block), ty
 
     | E_when (e, ce) ->
       let e, ty = type_exp env e in
@@ -322,6 +364,11 @@ and type_exp env e =
   },
   ty
 
+and expect_clock_exp loc env expected_ty ce =
+  let ce, actual_ty = type_clock_exp env ce in
+  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
+  ce
+
 and expect_exp loc env expected_ty e =
   let e, actual_ty = type_exp env e in
   add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
@@ -348,8 +395,85 @@ and type_domain env dom =
   {
     M.d_base_clock = Utils.map_opt (type_clock_annot env) dom.d_base_clock;
     M.d_par = dom.d_par;
-    M.d_info = annotate_dummy dom;
+    M.d_info = annotate_dummy dom.d_info;
   }
+
+and type_pat env p =
+  let loc = p.p_loc in
+  let pd, ty =
+    match p.p_desc with
+    | P_var (id, ann) -> M.P_var (id, ann), find_ident env id
+    | P_tuple p_l ->
+      let pty_l = List.map (type_pat env) p_l in
+      let p_l, ty_l = List.split pty_l in
+      M.P_tuple p_l, tuple_ty ty_l
+    | P_clock_annot (p, cka) ->
+      let p, ty = type_pat env p in
+      let cka = type_clock_annot env cka in
+      M.P_clock_annot (p, cka), ty
+    | P_type_annot (p, tya) ->
+      let p, ty = type_pat env p in
+      M.P_type_annot (p, tya), ty
+    | P_split pt ->
+      let ty = fresh_ty () in
+      let pt =
+        Ast_misc.map_upword
+          (expect_pat loc env ty)
+          (expect_exp loc env ty)
+          pt
+      in
+      M.P_split pt, ty
+  in
+  {
+    M.p_desc = pd;
+    M.p_loc = loc;
+    M.p_info = annotate_pat p ty;
+  },
+  ty
+
+and expect_pat loc env expected_ty p =
+  let p, actual_ty = type_pat env p in
+  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
+  p
+
+and type_eq env eq =
+  let e, ty = type_exp env eq.eq_rhs in
+  let p = expect_pat eq.eq_rhs.e_loc env ty eq.eq_lhs in
+  {
+    M.eq_rhs = e;
+    M.eq_lhs = p;
+    M.eq_loc = eq.eq_loc;
+    M.eq_info = annotate_dummy eq.eq_info;
+  }
+
+and type_block env block =
+  let new_env =
+    List.fold_left (fun env eq -> enrich_pat env eq.eq_lhs) env block.b_body
+  in
+
+  let body = List.map (type_eq env) block.b_body in
+
+  {
+    M.b_body = body;
+    M.b_info = annotate_dummy block.b_info;
+    M.b_loc = block.b_loc;
+  },
+  new_env
+
+let type_node_def env nd =
+  let env = reset_env env in
+  (* TODO *)
+  (* let env = enrich_pat env p in *)
+
+  (* let p, inp_ty = type_pat env p in *)
+  (* let e, out_ty = type_exp env e in *)
+
+  assert false
+
+  (* { *)
+  (*   M.n_name = nd.n_name; *)
+
+  (* } *)
 
 (** {2 Moving from pretypes to types} *)
 

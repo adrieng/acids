@@ -42,16 +42,6 @@ let print_sig fmt csig =
     print_static_ty csig.input
     print_static_ty csig.output
 
-let join ts1 ts2 =
-  match ts1, ts2 with
-  | S_static, _ | _, S_static -> S_static
-  | S_dynamic, _ -> S_dynamic
-
-let meet ts1 ts2 =
-  match ts1, ts2 with
-  | S_dynamic, _ | _, S_dynamic -> S_dynamic
-  | S_static, _ -> S_static
-
 module PreTy =
 struct
   type 'a pre_ty =
@@ -69,6 +59,14 @@ struct
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 
+let instantiate_ty_sig tysig =
+  let rec instantiate ty =
+    match ty with
+    | Sy_scal ss -> PreTy.Psy_scal ss
+    | Sy_prod ty_l -> PreTy.Psy_prod (List.map instantiate ty_l)
+  in
+  instantiate tysig.input, instantiate tysig.output
+
 let rec ty_of_pre_ty pty =
   let open PreTy in
   match pty with
@@ -81,7 +79,7 @@ let rec ty_of_pre_ty pty =
 let rec is_static st =
   match st with
   | Sy_scal S_static -> true
-  | Sy_scal S_dynamic -> true
+  | Sy_scal S_dynamic -> false
   | Sy_prod st_l -> List.exists is_static st_l
 
 let is_static_signature ssig = is_static ssig.input || is_static ssig.output
@@ -199,7 +197,7 @@ let add_constr idle c v =
   let v_idles, _ = take_var_idle_const idle v in
   Utils.Int_map.add v (c :: v_idles) idle
 
-let solve constraints =
+let solve constraints = (* TODO: solve incrementally *)
   let rec solve worklist idle =
     match worklist with
     | [] -> ()

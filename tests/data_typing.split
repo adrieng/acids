@@ -13,3 +13,11 @@ let node f () = 0
 let node g () = x where rec x = 0
 
 let node k () = g ()
+
+$$
+
+let node f () = 0 + x where rec x = 1
+
+$$
+
+let node f () = (x, y) where rec x = y and y = x

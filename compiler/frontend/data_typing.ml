@@ -61,9 +61,7 @@ let occur_check loc id ty =
     | Pty_scal _ -> ()
     | Pty_prod ty_l -> List.iter walk ty_l
   in
-  match ty with
-  | Pty_var { v_link = None; } -> ()
-  | _ -> walk ty
+  walk ty
 
 let unify loc ty1 ty2 =
   let open PreTy in
@@ -74,6 +72,10 @@ let unify loc ty1 ty2 =
     (** traverse links *)
     | Pty_var { v_link = Some ty1; }, ty2
     | ty1, Pty_var { v_link = Some ty2; } -> u ty1 ty2
+
+    | Pty_var { v_link = None; v_id = id1; },
+      Pty_var { v_link = None; v_id = id2; } when id1 = id2 ->
+      ()
 
     (** in-place unification *)
     | Pty_var ({ v_link = None; v_id = id; } as r), ty

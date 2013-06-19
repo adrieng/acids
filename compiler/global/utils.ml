@@ -315,3 +315,21 @@ functor (S : Map.OrderedType) ->
     val find_elem : t -> key -> S.t
   end
 ))
+
+type 'a bin_tree =
+  | Leaf of 'a
+  | Node of 'a bin_tree * 'a bin_tree
+
+let rec print_bin_tree print fmt bt =
+  match bt with
+  | Leaf x -> print fmt x
+  | Node (left, right) ->
+    Format.fprintf fmt "@[(%a,@ %a)@]"
+      (print_bin_tree print) left
+      (print_bin_tree print) right
+
+let rec fold_bin_tree_df f acc bt =
+  match bt with
+  | Leaf x -> f acc x
+  | Node (left, right) ->
+    fold_bin_tree_df f (fold_bin_tree_df f acc left) right

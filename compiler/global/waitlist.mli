@@ -23,8 +23,8 @@ val create : unit -> 'a t
 
 val print : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
-val add_constraint : 'a t -> id -> 'a -> unit
+val add_item : 'a t -> id -> 'a -> unit
 
-val fuse_constraints : 'a t -> id -> id -> unit
+val merge_items : 'a t -> id -> id -> unit
 
-val take_constraints : 'a t -> id -> 'a list
+val take_items : 'a t -> id -> 'a list

@@ -21,65 +21,75 @@ type id = int
 
 type 'a t =
   {
-    mutable num : int;
-    mutable var_to_class : int Int_map.t;
+    mutable var_to_class : int Union_find.point Int_map.t;
     mutable class_constr : 'a bin_tree Utils.Int_map.t;
   }
 
 let create () =
   {
-    num = 0;
     var_to_class = Int_map.empty;
     class_constr = Int_map.empty;
   }
 
-let print print_constr fmt deps =
-  Format.fprintf "num: %d@\b" deps.num;
-  Format.fprintf "var->class mapping:@[<hv 2>%a@]@\n"
-    (Int_map.print print_int) deps.var_to_class;
-  Format.fprintf fmt "class_constr:@[<hv 2>%a@]"
-    (Int_map.print (print_btree print_int)) deps.class_constr
+let print print_constr fmt waitlist =
+  Format.fprintf fmt "@[var->class mapping: @[%a@]@\n"
+    (Int_map.print print_int (fun fmt p -> print_int fmt (Union_find.find p)))
+    waitlist.var_to_class;
+  Format.fprintf fmt "class->constr mapping: @[%a@]@]"
+    (Int_map.print print_int (print_bin_tree print_constr)) waitlist.class_constr
 
-let find_class_id deps id =
-  try Utils.Int_map.find v_id deps.var_to_class
+let find_class waitlist id =
+  try Utils.Int_map.find id waitlist.var_to_class
   with Not_found ->
-    let class_id = deps.num in
-    deps.num <- deps.num + 1;
-    deps.var_to_class <- Utils.Int_map.add v_id class_id deps.var_to_class;
-    class_id
+    let cl = Union_find.fresh id in
+    waitlist.var_to_class <- Utils.Int_map.add id cl waitlist.var_to_class;
+    cl
 
-let find_class deps class_id =
-  try Some (Utils.Int_map.find class_id deps.var_to_class)
+let find_items waitlist class_id =
+  try Some (Utils.Int_map.find class_id waitlist.class_constr)
   with Not_found -> None
 
-let add_constraint deps id c =
-  let class_id = find_class_id deps id in
+let add_item waitlist id c =
+  let class_id = Union_find.find (find_class waitlist id) in
   let new_class =
-    match find_class deps class_id with
+    match find_items waitlist class_id with
     | Some cl -> Node (Leaf c, cl)
     | None -> Leaf c
   in
-  deps.class_constr <- Int_map.add class_id new_class class_constr
+  waitlist.class_constr <- Int_map.add class_id new_class waitlist.class_constr
 
-let fuse_constraints deps id1 id2 =
+let remove waitlist id =
+  waitlist.class_constr <- Int_map.remove id waitlist.class_constr
+
+let merge_items waitlist id1 id2 =
   (* remap the class of id2 to the class of id1 *)
-  let class_id1 = find_class_id deps id1 in
-  let class_id2 = find_class_id deps id2 in
-  (
-    match find_class class_id1, find_class class_id2 with
-    | None, None -> ()
-    | Some cl, None | None, Some cl ->
-      deps.class_constr <- Int_map.add class_id1 cl deps.class_constr
+  let cl1 = find_class waitlist id1 in
+  let cl2 = find_class waitlist id2 in
+  let class_id1 = Union_find.find cl1 in
+  let class_id2 = Union_find.find cl2 in
+  Union_find.union cl1 cl2;
+  match
+    match find_items waitlist class_id1, find_items waitlist class_id2 with
+    | None, None -> None
+    | Some cl, None ->
+      remove waitlist class_id1;
+      Some cl
+    | None, Some cl ->
+      remove waitlist class_id2;
+      Some cl
     | Some cl1, Some cl2 ->
-      deps.class_constr <- Int_map.remove class_id2 deps.class_constr;
-      deps.class_constr <- Int_map.add class_id1 (Node (cl1, cl2)) deps.class_constr
-  );
-  deps.var_to_class <- Int_map.add id2 class_id1 deps.var_to_class
+      remove waitlist class_id1;
+      remove waitlist class_id2;
+      Some (Node (cl1, cl2))
+  with
+  | None -> ()
+  | Some cl ->
+    waitlist.class_constr <- Int_map.add (Union_find.find cl1) cl waitlist.class_constr
 
-let take_constraints deps id =
-  let class_id = find_class_id deps id in
-  match find_class class_id1 with
+let take_items waitlist id =
+  let class_id = Union_find.find (find_class waitlist id) in
+  match find_items waitlist class_id with
   | None -> []
   | Some cl ->
-    deps.class_constr <- Int_map.remove class_id deps.class_constr;
-    fold_df (fun x acc -> x :: acc) [] cl
+    waitlist.class_constr <- Int_map.remove class_id waitlist.class_constr;
+    fold_bin_tree_df (fun acc x -> x :: acc) [] cl

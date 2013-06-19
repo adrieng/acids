@@ -199,58 +199,68 @@ let add_constr idle c v =
   let v_idles, _ = take_var_idle_const idle v in
   Utils.Int_map.add v (c :: v_idles) idle
 
+let print_solver_state fmt (worklist, waitlist) =
+  Format.fprintf fmt "worklist: @[%a@]@\n"
+    (Utils.print_list_r print_constr ";") worklist;
+  Format.fprintf fmt "waitlist: @[%a@]"
+    (Waitlist.print print_constr) waitlist
+
 let solve constraints = (* TODO: solve incrementally *)
-  let rec solve worklist idle =
+  (* let r = ref 0 in *)
+  let waitlist = Waitlist.create () in
+  let rec solve worklist =
+    (* incr r; *)
+    (* Format.eprintf "step %d@\n%a@\n@\n@\n@." *)
+    (*   !r *)
+    (*   print_solver_state (worklist, waitlist); *)
+
     match worklist with
     | [] -> ()
     | c :: worklist ->
       (
-        match unalias c.lhs, unalias c.rhs with
+        let lhs = unalias c.lhs in
+        let rhs = unalias c.rhs in
+        let c = make_constraint c.loc lhs rhs in
+        match lhs, rhs with
         | Psy_var { v_id = v1; }, Psy_var { v_id = v2; } ->
-          let idle = add_constr idle c v1 in
-          let idle = add_constr idle c v2 in
-          solve worklist idle
-        | lhs, rhs ->
-          let new_work_from_lhs, idle = awake_if_var idle lhs in
-          let new_work_from_rhs, idle = awake_if_var idle rhs in
-          let worklist = new_work_from_lhs @ new_work_from_rhs @ worklist in
-          let worklist, idle = solve_constraint c worklist idle in
-          solve worklist idle
+          Waitlist.add_item waitlist v1 c;
+          Waitlist.merge_items waitlist v1 v2;
+          solve worklist
+
+        (* S <: D *)
+        | Psy_scal S_static, Psy_scal S_dynamic
+        | Psy_scal S_static, Psy_scal S_static
+        | Psy_scal S_dynamic, Psy_scal S_dynamic ->
+          solve worklist
+
+        | Psy_scal S_dynamic, Psy_scal S_static ->
+          unification_conflict c.loc lhs rhs
+
+        (* ty <: S -> ty = S, D <: ty -> ty = D *)
+        | Psy_var { v_id = v; }, Psy_scal S_static
+        | Psy_scal S_dynamic, Psy_var { v_id = v; } ->
+          let awakened_constraints = Waitlist.take_items waitlist v in
+          unify c.loc lhs rhs;
+          solve (awakened_constraints @ worklist)
+
+        (* S <: ty and ty <: D are always satisfied *)
+        | Psy_var { v_id = v; }, Psy_scal S_dynamic
+        | Psy_scal S_static, Psy_var { v_id = v; } ->
+          solve worklist
+
+        (* Subtyping of products, a bit shaky *)
+        | Psy_prod ty_l1, Psy_prod ty_l2 ->
+          solve (List.map2 (make_constraint c.loc) ty_l1 ty_l2 @ worklist)
+        (* I'm not sure of the following two rules *)
+        | Psy_prod _, Psy_var { v_id = v; }
+        | Psy_var { v_id = v; }, Psy_prod _ ->
+          let awakened_constraints = Waitlist.take_items waitlist v in
+          unify c.loc lhs rhs;
+          solve (awakened_constraints @ worklist)
+
+        (* this case is a type error *)
+        | Psy_prod _, Psy_scal _ | Psy_scal _, Psy_prod _ ->
+          unification_conflict c.loc lhs rhs
       )
-
-  (* D <: S *)
-  and solve_constraint c worklist idle =
-    match c.lhs, c.rhs with
-    (* impossible if called from solve *)
-    | Psy_var _, Psy_var _ -> invalid_arg "solve_constraint"
-
-    (*
-      rule solved by unification:
-      t <: D => t = D,
-      S <: t => t = S
-    *)
-    | _, Psy_scal S_dynamic | Psy_scal S_static, _ ->
-      unify c.loc c.lhs c.rhs;
-      worklist, idle
-
-    (*
-      nothing to solve, just check
-    *)
-    | Psy_scal _, Psy_scal _ ->
-      unify c.loc c.lhs c.rhs;
-      worklist, idle
-
-    | Psy_var { v_id = v; }, Psy_scal S_static
-    | Psy_scal S_dynamic, Psy_var { v_id = v; } ->
-      worklist, add_constr idle c v
-
-    (* Subtyping of products *)
-    | Psy_prod ty_l1, Psy_prod ty_l2 ->
-      List.map2 (make_constraint c.loc) ty_l1 ty_l2 @ worklist, idle
-    | Psy_prod ty_l, ty -> (* not sure if useful! *)
-      List.map (fun sub_ty -> make_constraint c.loc sub_ty ty) ty_l @ worklist,
-      idle
-    | ty, Psy_prod ty_l -> (* not sure if useful! *)
-      List.map (make_constraint c.loc ty) ty_l @ worklist, idle
   in
-  solve constraints Utils.Int_map.empty
+  solve constraints

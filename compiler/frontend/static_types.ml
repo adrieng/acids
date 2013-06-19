@@ -27,8 +27,8 @@ type ty_sig = { input : ty; output : ty; }
 
 let print_static_ty_scal fmt ss =
   match ss with
-  | S_static -> Format.fprintf fmt "s"
-  | S_dynamic -> Format.fprintf fmt "d"
+  | S_static -> Format.fprintf fmt "S"
+  | S_dynamic -> Format.fprintf fmt "D"
 
 let rec print_static_ty fmt sty =
   match sty with

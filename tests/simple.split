@@ -1,0 +1,13 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check -nopervasives"
+        ]
+*)
+$}
+
+let node f () = 0
+
+let node g () = x where rec x = 0

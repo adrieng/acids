@@ -87,7 +87,7 @@ let print_error fmt err =
       Ast_misc.print_econstr ec
   | Not_subset_pat (p, e) ->
     Format.fprintf fmt
-      "%aThe declared value range for %a (%a) is smaller than the inferred value range of %a (%a)"
+      "%aThe declared value range for %a (%a) is smaller than@ the inferred value range of %a (%a)"
       Loc.print p.Acids_interval.p_loc
       Acids_interval.print_pat p
       print_ty (pat_type p)
@@ -539,7 +539,7 @@ and type_block block env =
     let e = type_exp env eq.eq_rhs in
     let ty_e = exp_type e in
     let ty_p = pat_type p in
-    if subset ty_e ty_p then not_subset_pat p e;
+    if not (subset ty_e ty_p) then not_subset_pat p e;
     {
       Acids_interval.eq_lhs = p;
       Acids_interval.eq_rhs = e;

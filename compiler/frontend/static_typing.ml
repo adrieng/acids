@@ -40,10 +40,6 @@ let unification_error err =
 
 (** {2 Unification} *)
 
-let unify loc ty1 ty2 =
-  try Static_types.unify loc ty1 ty2
-  with Static_types.Unification_error err -> unification_error err
-
 (** {2 Low-level utilities} *)
 
 let reset_ty, fresh_ty =
@@ -530,15 +526,18 @@ let type_phrase env phr =
     env, M.Phr_type_def td
 
 let type_file file =
-  let _, body =
-    Utils.mapfold_left type_phrase (initial_typing_env file.f_info) file.f_body
-  in
-  {
-    M.f_name = file.f_name;
-    M.f_imports = file.f_imports;
-    M.f_info = file.f_info;
-    M.f_body = body;
-  }
+  try
+    let _, body =
+      Utils.mapfold_left type_phrase (initial_typing_env file.f_info) file.f_body
+    in
+    {
+      M.f_name = file.f_name;
+      M.f_imports = file.f_imports;
+      M.f_info = file.f_info;
+      M.f_body = body;
+    }
+  with Static_types.Unification_error err ->
+    unification_error err
 
 (** {2 Moving from pretypes to types} *)
 

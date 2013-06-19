@@ -115,7 +115,7 @@ struct
       (print_full_info I.print_block_info) block.b_info
 
   and print_eq fmt eq =
-    Format.fprintf fmt "@[<hv 2>%a@ %a =@ %a@]"
+    Format.fprintf fmt "@[<hv 2>%a%a =@ %a@]"
       print_pat eq.eq_lhs
       (print_full_info I.print_eq_info) eq.eq_info
       print_exp eq.eq_rhs
@@ -169,7 +169,7 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   let print_node_def fmt nd =
-    Format.fprintf fmt "@[<hov 2>let %snode@ %a@ %a@ %a=@ %a@]"
+    Format.fprintf fmt "@[<hov 2>let %snode@ %a%a@ %a =@ %a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
       (print_full_info I.print_node_info) nd.n_info

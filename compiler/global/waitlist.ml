@@ -67,7 +67,7 @@ let merge_items waitlist id1 id2 =
   let cl2 = find_class waitlist id2 in
   let class_id1 = Union_find.find cl1 in
   let class_id2 = Union_find.find cl2 in
-  Union_find.union cl1 cl2;
+  if class_id1 <> class_id2 then Union_find.union cl1 cl2;
   match
     match find_items waitlist class_id1, find_items waitlist class_id2 with
     | None, None -> None

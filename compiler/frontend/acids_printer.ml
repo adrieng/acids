@@ -169,11 +169,11 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   let print_node_def fmt nd =
-    Format.fprintf fmt "@[<hov 2>let %snode@ %a@ %a %a=@ %a@]"
+    Format.fprintf fmt "@[<hov 2>let %snode@ %a@ %a@ %a=@ %a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
-      print_pat nd.n_input
       (print_full_info I.print_node_info) nd.n_info
+      print_pat nd.n_input
       print_exp nd.n_body
 
   let print_node_decl fmt decl =

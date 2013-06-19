@@ -69,6 +69,14 @@ type typing_env =
     mutable constr : Static_types.constr list;
   }
 
+let debug_typing_env fmt env =
+  let p fmt (id, ty) =
+    Format.fprintf fmt "@[%a -> %a@]"
+      Ident.print id
+      VarTy.print ty
+  in
+  Ident.Env.print p ";" fmt env.idents
+
 let initial_typing_env info =
   {
     intf_env = info#interfaces;
@@ -98,6 +106,8 @@ let find_node_signature env ln =
 
 let add_local_node_signature env shortn ssig =
   { env with current_nodes = Names.ShortEnv.add shortn ssig env.current_nodes; }
+
+let solve_subtyping_constraints env = Static_types.solve env.constr
 
 (** {2 High-level utilities} *)
 
@@ -300,7 +310,7 @@ and type_exp env e =
 
     | E_where (e, block) ->
       let block, new_env = type_block env block in
-      let e, ty = type_exp env e in
+      let e, ty = type_exp new_env e in
 
       (* /!\ since we are dropping new_env, update the current list of
          constraints with those gathered from the block /!\ *)
@@ -407,7 +417,8 @@ and type_pat env p =
   let loc = p.p_loc in
   let pd, ty =
     match p.p_desc with
-    | P_var (id, ann) -> M.P_var (id, ann), find_ident env id
+    | P_var (id, ann) ->
+      M.P_var (id, ann), find_ident env id
     | P_tuple p_l ->
       let pty_l = List.map (type_pat env) p_l in
       let p_l, ty_l = List.split pty_l in
@@ -456,7 +467,7 @@ and type_block env block =
     List.fold_left (fun env eq -> enrich_pat env eq.eq_lhs) env block.b_body
   in
 
-  let body = List.map (type_eq env) block.b_body in
+  let body = List.map (type_eq new_env) block.b_body in
 
   {
     M.b_body = body;
@@ -473,6 +484,8 @@ let type_node_def env nd =
   let body, out_ty = type_exp env nd.n_body in
 
   let ssig = make_ty_sig inp_ty out_ty in
+
+  solve_subtyping_constraints env;
 
   {
     M.n_name = nd.n_name;

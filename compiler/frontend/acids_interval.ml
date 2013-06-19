@@ -25,14 +25,21 @@ struct
         ci_data : Data_types.data_ty_scal;
         ci_interv : Interval.t;
       >
-  let print_clock_exp_info (_ : Format.formatter) _ = ()
+  let print_clock_exp_info fmt cei =
+    Format.fprintf fmt ": %a in %a"
+      Data_types.print_data_ty_scal cei#ci_data
+      Interval.print cei#ci_interv
 
   type exp_info =
       <
         ei_data : Data_types.data_ty;
         ei_interv : Interval_types.ty;
       >
-  let print_exp_info (_ : Format.formatter) _ = ()
+  let print_exp_info fmt ei =
+    Format.fprintf fmt ": %a"
+      Data_types.print_ty ei#ei_data;
+    if ei#ei_interv <> Interval_types.It_scal Interval_types.Is_top
+    then Format.fprintf fmt " in %a" Interval_types.print_ty ei#ei_interv
 
   type app_info = unit
   let print_app_info (_ : Format.formatter) _ = ()
@@ -45,7 +52,11 @@ struct
         pi_data : Data_types.data_ty;
         pi_interv : Interval_types.ty;
       >
-  let print_pat_info (_ : Format.formatter) _ = ()
+  let print_pat_info fmt pi =
+    Format.fprintf fmt ": %a"
+      Data_types.print_ty pi#pi_data;
+    if pi#pi_interv <> Interval_types.It_scal Interval_types.Is_top
+    then Format.fprintf fmt " in %a" Interval_types.print_ty pi#pi_interv
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -58,7 +69,10 @@ struct
         ni_data : Data_types.data_sig;
         ni_interv : Interval_types.ty_sig;
       >
-  let print_node_info (_ : Format.formatter) _ = ()
+  let print_node_info fmt ni =
+    Format.fprintf fmt ": %a in %a"
+      Data_types.print_sig ni#ni_data
+      Interval_types.print_sig ni#ni_interv
 end
 
 module Ast = Acids.Make(Info)

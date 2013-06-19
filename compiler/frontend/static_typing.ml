@@ -261,7 +261,7 @@ and type_exp env e =
       M.E_var v, find_ident env v
 
     | E_const c ->
-      M.E_const c, fresh_ty ()
+      M.E_const c, static_ty
 
     | E_fst e ->
       let ty_l = fresh_ty () in

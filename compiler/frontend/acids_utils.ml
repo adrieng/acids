@@ -90,7 +90,8 @@ struct
       match ce.ce_desc with
       | Ce_var id -> OUT.Ce_var id
       | Ce_pword w ->
-        OUT.Ce_pword (Ast_misc.map_upword extract_exp extract_exp w)
+        let w = Ast_misc.map_upword extract_pword_exp extract_pword_exp w in
+        OUT.Ce_pword w
       | Ce_equal (ce, e) ->
         OUT.Ce_equal (extract_clock_exp ce, extract_exp e)
       | Ce_iter ce ->
@@ -101,6 +102,10 @@ struct
       OUT.ce_loc = ce.ce_loc;
       OUT.ce_info = M.update_clock_exp_info ce.ce_info;
     }
+
+  and extract_pword_exp pwe =
+    match pwe with
+    | Pwe_exp e -> OUT.Pwe_exp (extract_exp e)
 
   and extract_exp e =
     let ed =

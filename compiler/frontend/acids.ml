@@ -54,13 +54,20 @@ sig
     ce_loc : Loc.t;
     ce_info : I.clock_exp_info;
   }
+
   and clock_exp_desc =
   | Ce_var of I.var
-  | Ce_pword of (exp, exp) Ast_misc.upword
+  | Ce_pword of (pword_exp, pword_exp) Ast_misc.upword
   | Ce_equal of clock_exp * exp
   | Ce_iter of clock_exp
+
+  and pword_exp =
+  | Pwe_exp of exp
+
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
+
   and exp = { e_desc : exp_desc; e_loc : Loc.t; e_info : I.exp_info; }
+
   and exp_desc =
   | E_var of I.var
   | E_const of Ast_misc.const
@@ -80,35 +87,43 @@ sig
   | E_type_annot of exp * Data_types.data_ty
   | E_dom of exp * domain
   | E_buffer of exp
+
   and app = {
     a_op : Names.longname;
     a_loc : Loc.t;
     a_info : I.app_info;
   }
+
   and block = { b_body : eq list; b_loc : Loc.t; b_info : I.block_info; }
+
   and eq = {
     eq_lhs : pat;
     eq_rhs : exp;
     eq_loc : Loc.t;
     eq_info : I.eq_info;
   }
+
   and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
+
   and pat_desc =
   | P_var of I.var * Interval.t option
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
   | P_split of (pat, exp) Ast_misc.upword
+
   and merge_clause = {
     c_sel : Ast_misc.econstr;
     c_body : exp;
     c_loc : Loc.t;
   }
+
   and domain = {
     d_base_clock : clock_annot option;
     d_par : bool;
     d_info : I.domain_info;
   }
+
   type node_def = {
     n_name : Names.shortname;
     n_input : pat;
@@ -118,6 +133,7 @@ sig
     n_loc : Loc.t;
     n_info : I.node_info;
   }
+
   type node_decl = {
     decl_name : Names.shortname;
     decl_data : Data_types.data_sig;
@@ -126,15 +142,18 @@ sig
     decl_clock : Clock_types.clock_sig;
     decl_loc : Loc.t;
   }
+
   type type_def = {
     ty_name : Names.shortname;
     ty_body : Names.shortname list;
     ty_loc : Loc.t;
   }
+
   type phrase =
-    Phr_node_def of node_def
+  | Phr_node_def of node_def
   | Phr_node_decl of node_decl
   | Phr_type_def of type_def
+
   type 'a file = {
     f_name : Names.modname;
     f_imports : Names.modname list;
@@ -157,9 +176,12 @@ module Make = functor (S : S) ->
 
     and clock_exp_desc =
     | Ce_var of S.var
-    | Ce_pword of (exp, exp) Ast_misc.upword
+    | Ce_pword of (pword_exp, pword_exp) Ast_misc.upword
     | Ce_equal of clock_exp * exp
     | Ce_iter of clock_exp
+
+    and pword_exp =
+    | Pwe_exp of exp
 
     and clock_annot =
     | Ca_var of int

@@ -314,6 +314,7 @@ and scope_clock_annot ctx id_env cka intf_env =
 
 and scope_clock_exp ctx id_env ce intf_env =
   let scope_exp = scope_exp ctx id_env in
+  let scope_pword_exp = scope_pword_exp ctx id_env in
   let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
     match ce.ce_desc with
@@ -322,7 +323,7 @@ and scope_clock_exp ctx id_env ce intf_env =
       Acids_scoped.Ce_var id, intf_env
     | Ce_pword upw ->
       let pw, intf_env =
-        Ast_misc.mapfold_upword scope_exp scope_exp upw intf_env
+        Ast_misc.mapfold_upword scope_pword_exp scope_pword_exp upw intf_env
       in
       Acids_scoped.Ce_pword pw, intf_env
     | Ce_equal (ce, e) ->
@@ -339,6 +340,12 @@ and scope_clock_exp ctx id_env ce intf_env =
     Acids_scoped.ce_info = ce.ce_info;
   },
   intf_env
+
+and scope_pword_exp ctx id_env pwe intf_env =
+  match pwe with
+  | Pwe_exp e ->
+    let e, intf_env = scope_exp ctx id_env e intf_env in
+    Acids_scoped.Pwe_exp e, intf_env
 
 and scope_exp
     ((local_nodes, local_constrs, local_types, imported_mods) as ctx)

@@ -34,12 +34,16 @@ struct
     | Ce_var v -> I.print_var fmt v
     | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
       Format.fprintf fmt "%a(%a)"
-        (Ast_misc.print_power_tree print_exp print_exp) u
-        (Ast_misc.print_power_tree print_exp print_exp) v
+        (Ast_misc.print_power_tree print_pword_exp print_pword_exp) u
+        (Ast_misc.print_power_tree print_pword_exp print_pword_exp) v
     | Ce_equal (ce, e) ->
       Format.fprintf fmt "%a = %a" print_clock_exp ce print_exp e
     | Ce_iter ce ->
       Format.fprintf fmt "iter %a" print_clock_exp ce
+
+  and print_pword_exp fmt pwe =
+    match pwe with
+    | Pwe_exp e -> print_exp fmt e
 
   and print_exp fmt e =
     Format.fprintf fmt "@[%a%a@]"

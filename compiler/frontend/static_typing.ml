@@ -228,8 +228,8 @@ let rec type_clock_exp env ce =
       M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
-      let expect = expect_exp loc env static_ty in
-      let w = Ast_misc.map_upword expect expect w in
+      let type_fun = type_pword_exp loc env in
+      let w = Ast_misc.map_upword type_fun type_fun w in
       let ty =
         if Ast_misc.is_constant_pword w
         then static_ty
@@ -252,6 +252,11 @@ let rec type_clock_exp env ce =
     M.ce_info = annotate_clock_exp ce ty;
   },
   ty
+
+and type_pword_exp loc env pwe =
+  match pwe with
+  | Pwe_exp e ->
+    M.Pwe_exp (expect_exp loc env static_ty e)
 
 and type_exp env e =
   let loc = e.e_loc in

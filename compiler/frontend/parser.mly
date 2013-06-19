@@ -366,7 +366,7 @@ clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
 | ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
 | ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
-| upword(trivial_exp, trivial_exp, parens) { Acids_parsetree.Ce_pword $1 }
+| upword(pword_exp, pword_exp, parens) { Acids_parsetree.Ce_pword $1 }
 
 clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
@@ -380,6 +380,9 @@ trivial_exp_desc:
 
 %inline trivial_exp:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
+
+%inline pword_exp:
+| e = trivial_exp { Acids_parsetree.Pwe_exp e }
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }

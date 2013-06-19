@@ -488,12 +488,6 @@ and type_econstr env ty ec =
     It_scal (Is_inter (Interval.make_0_n (Int.of_int (List.length c_l - 1))))
 
 and type_clock_exp env ce =
-  let exp_type_inter e =
-    match exp_type e with
-    | It_scal (Is_inter it) -> it
-    | _ -> exp_not_inter e
-  in
-
   let ced, ty =
     match ce.ce_desc with
     | Ce_var v ->
@@ -506,10 +500,19 @@ and type_clock_exp env ce =
       )
 
     | Ce_pword w ->
-      let w = Ast_misc.map_upword (type_exp env) (type_exp env) w in
+      let w =
+        Ast_misc.map_upword (type_pword_exp env) (type_pword_exp env) w
+      in
       let ty_l =
+        let pword_exp_type_inter pwe =
+          match pwe with
+          | Acids_interval.Pwe_exp e ->
+            match exp_type e with
+            | It_scal (Is_inter it) -> it
+            | _ -> exp_not_inter e
+        in
         Ast_misc.fold_upword
-          (fun e ty_l -> exp_type_inter e :: ty_l)
+          (fun pwe ty_l -> pword_exp_type_inter pwe :: ty_l)
           (fun _ ty_l -> ty_l)
           w
           []
@@ -530,6 +533,11 @@ and type_clock_exp env ce =
     Acids_interval.ce_loc = ce.ce_loc;
     Acids_interval.ce_info = clock_exp_annotate ce ty;
   }
+
+and type_pword_exp env pwe =
+  match pwe with
+  | Pwe_exp e ->
+    Acids_interval.Pwe_exp (type_exp env e)
 
 and type_block block env =
   let env = List.fold_left enrich_env_eq env block.b_body in

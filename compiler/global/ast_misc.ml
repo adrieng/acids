@@ -144,9 +144,12 @@ struct
   and t = ty_var S.pre_ty
 
   let rec print_var fmt v =
-    Format.fprintf fmt "%a%s"
-      (Utils.print_opt (S.print print_var)) v.v_link
-      (if v.v_id = 0 then "" else string_of_int v.v_id)
+    match v.v_link with
+    | None -> Format.fprintf fmt "v%d" v.v_id
+    | Some ty ->
+      Format.fprintf fmt "%a{v%d}"
+        (S.print print_var) ty
+        v.v_id
 
   let print fmt t = S.print print_var fmt t
 

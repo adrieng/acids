@@ -167,7 +167,8 @@ struct
         Format.fprintf fmt "%a -> %a;@ "
           print_key k
           print_value v)
-      map
+      map;
+    Format.fprintf fmt "@]"
 end
 
 module String_set =

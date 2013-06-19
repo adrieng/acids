@@ -111,7 +111,7 @@ struct
 
   and print_block fmt block =
     Format.fprintf fmt "@[rec %a%a@]"
-      (Utils.print_list_r print_eq " and") block.b_body
+      (Utils.print_list_l print_eq "and ") block.b_body
       (print_full_info I.print_block_info) block.b_info
 
   and print_eq fmt eq =

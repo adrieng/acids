@@ -27,6 +27,7 @@ let error_is_internal exn =
   | Interface.Interface_error _
   | Data_typing.Typing_error _
   | Interval_typing.Typing_error _
+  | Static_typing.Typing_error _
     ->
     false
   | _
@@ -51,6 +52,8 @@ let print_error _ fmt exn =
     Data_typing.print_error fmt err
   | Interval_typing.Typing_error err ->
     Interval_typing.print_error fmt err
+  | Static_typing.Typing_error err ->
+    Static_typing.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 

@@ -30,6 +30,11 @@ type error =
 
 exception Typing_error of error
 
+let print_error fmt err =
+  match err with
+  | Unification_error err ->
+    Static_types.print_error fmt err
+
 let unification_error err =
   raise (Typing_error (Unification_error err))
 
@@ -91,6 +96,9 @@ let find_node_signature env ln =
     let ni = Interface.find_node intf ln.shortn in
     Interface.static_signature_of_node_item ni
 
+let add_local_node_signature env shortn ssig =
+  { env with current_nodes = Names.ShortEnv.add shortn ssig env.current_nodes; }
+
 (** {2 High-level utilities} *)
 
 let static_ty = PreTy.Psy_scal S_static
@@ -125,7 +133,7 @@ let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
 module MORPH =
 struct
   module IN_INFO = M.I
-  module OUT_INFO = Acids_typed.Info
+  module OUT_INFO = Acids_preclock.Info
 
   open ANN_INFO
   open A
@@ -137,11 +145,11 @@ struct
       let ty = ty_of_pre_ty pty in
       (
         match ty with
-        | Sy_scal _ ->
+        | Sy_scal tys ->
           object
             method ci_data = info#ci_data
             method ci_interv = info#ci_interv
-            method ci_static = ty
+            method ci_static = tys
           end
         | _ -> invalid_arg "update_clock_exp_info"
       )
@@ -183,13 +191,10 @@ struct
       object
         method ni_data = info#ni_data
         method ni_interv = info#ni_interv
-        method ni_static =
-          {
-            input = ty_of_pre_ty inp;
-            output = ty_of_pre_ty out;
-          }
+        method ni_static = make_ty_sig inp out
       end
 end
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_preclock)(MORPH)
 
 let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
@@ -462,18 +467,65 @@ and type_block env block =
 
 let type_node_def env nd =
   let env = reset_env env in
-  (* TODO *)
-  (* let env = enrich_pat env p in *)
+  let env = enrich_pat env nd.n_input in
 
-  (* let p, inp_ty = type_pat env p in *)
-  (* let e, out_ty = type_exp env e in *)
+  let input, inp_ty = type_pat env nd.n_input in
+  let body, out_ty = type_exp env nd.n_body in
 
-  assert false
+  let ssig = make_ty_sig inp_ty out_ty in
 
-  (* { *)
-  (*   M.n_name = nd.n_name; *)
+  {
+    M.n_name = nd.n_name;
+    M.n_input = input;
+    M.n_body = body;
+    M.n_pragma = nd.n_pragma;
+    M.n_static = nd.n_static;
+    M.n_loc = nd.n_loc;
+    M.n_info = annotate_node nd inp_ty out_ty;
+  },
+  add_local_node_signature env nd.n_name ssig
 
-  (* } *)
+let type_node_decl env nd =
+  {
+    M.decl_name = nd.decl_name;
+    M.decl_data = nd.decl_data;
+    M.decl_static = nd.decl_static;
+    M.decl_interv = nd.decl_interv;
+    M.decl_clock = nd.decl_clock;
+    M.decl_loc = nd.decl_loc;
+  },
+  add_local_node_signature env nd.decl_name nd.decl_static
+
+let type_type_def env td =
+  {
+    M.ty_name = td.ty_name;
+    M.ty_body = td.ty_body;
+    M.ty_loc = td.ty_loc;
+  },
+  env
+
+let type_phrase env phr =
+  match phr with
+  | Phr_node_def nd ->
+    let nd, env = type_node_def env nd in
+    env, M.Phr_node_def nd
+  | Phr_node_decl nd ->
+    let nd, env = type_node_decl env nd in
+    env, M.Phr_node_decl nd
+  | Phr_type_def td ->
+    let td, env = type_type_def env td in
+    env, M.Phr_type_def td
+
+let type_file file =
+  let _, body =
+    Utils.mapfold_left type_phrase (initial_typing_env file.f_info) file.f_body
+  in
+  {
+    M.f_name = file.f_name;
+    M.f_imports = file.f_imports;
+    M.f_info = file.f_info;
+    M.f_body = body;
+  }
 
 (** {2 Moving from pretypes to types} *)
 
@@ -481,13 +533,9 @@ let type_file
     ctx
     (file
        : < interfaces : Interface.t Names.ShortEnv.t > Acids_interval.file) =
-  ((assert false)
-      :
-      Pass_manager.ctx
-   * < interfaces : Interface.t Names.ShortEnv.t > Acids_preclock.file)
-  (* let intermediate_file = type_file file in *)
-  (* let final_file = EXTRACT.extract_file intermediate_file in *)
-  (* ctx, final_file *)
+  let intermediate_file = type_file file in
+  let final_file = EXTRACT.extract_file intermediate_file in
+  ctx, final_file
 
 (** {2 Putting it all together} *)
 

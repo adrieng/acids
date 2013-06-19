@@ -449,8 +449,9 @@ and expect_pat loc env expected_ty p =
   p
 
 and type_eq env eq =
-  let e, ty = type_exp env eq.eq_rhs in
-  let p = expect_pat eq.eq_rhs.e_loc env ty eq.eq_lhs in
+  (* Note that the type of e should be a sub-type of p, not the converse *)
+  let p, ty = type_pat env eq.eq_lhs in
+  let e = expect_exp eq.eq_loc env ty eq.eq_rhs in
   {
     M.eq_rhs = e;
     M.eq_lhs = p;

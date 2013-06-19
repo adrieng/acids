@@ -472,7 +472,7 @@ pat_tuple:
 
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var (id, None) }
-| LPAREN id = IDENT COLON it = interval RPAREN
+| LPAREN id = IDENT IN it = interval RPAREN
         { Acids_parsetree.P_var (id, Some it) }
 | parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
 | ps = parens(upword(pat, simple_exp, chevrons)) { Acids_parsetree.P_split ps }

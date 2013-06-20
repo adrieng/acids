@@ -315,7 +315,7 @@ and scope_clock_annot ctx id_env cka intf_env =
 
 and scope_clock_exp ctx id_env ce intf_env =
   let scope_exp = scope_exp ctx id_env in
-  let scope_pword_exp = scope_pword_exp ctx id_env in
+  let scope_pword_exp = scope_pword_exp ce.ce_loc ctx id_env in
   let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
     match ce.ce_desc with
@@ -342,11 +342,14 @@ and scope_clock_exp ctx id_env ce intf_env =
   },
   intf_env
 
-and scope_pword_exp ctx id_env pwe intf_env =
+and scope_pword_exp loc ctx id_env pwe intf_env =
   match pwe with
   | Pwe_exp e ->
     let e, intf_env = scope_exp ctx id_env e intf_env in
     Acids_scoped.Pwe_exp e, intf_env
+  | Pwe_var v ->
+    let id = find_var id_env v loc in
+    Acids_scoped.Pwe_var id, intf_env
   | Pwe_econstr ec ->
     Acids_scoped.Pwe_econstr ec, intf_env
   | Pwe_fword i_l ->

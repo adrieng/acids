@@ -351,6 +351,8 @@ and type_pword_exp env pwe =
   | Pwe_exp e ->
     let e, ty = type_exp env e in
     M.Pwe_exp e, ty
+  | Pwe_var v ->
+    M.Pwe_var v, find_ident env v
   | Pwe_econstr ec ->
     M.Pwe_econstr ec, type_econstr env ec
   | Pwe_fword i_l ->

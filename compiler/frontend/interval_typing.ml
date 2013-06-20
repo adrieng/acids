@@ -497,7 +497,7 @@ and type_clock_exp env ce =
     | Ce_pword w ->
       let data_ty = ce.ce_info#ci_data in
       let w =
-        let type_fun = type_pword_exp env data_ty in
+        let type_fun = type_pword_exp ce.ce_loc env data_ty in
         Ast_misc.map_upword type_fun type_fun w
       in
       let w, ty_l =
@@ -525,7 +525,7 @@ and type_clock_exp env ce =
     Acids_interval.ce_info = clock_exp_annotate ce ty;
   }
 
-and type_pword_exp env ty pwe =
+and type_pword_exp loc env ty pwe =
   match pwe with
   | Pwe_exp e ->
     let e = type_exp env e in
@@ -533,6 +533,12 @@ and type_pword_exp env ty pwe =
       match exp_type e with
       | It_scal (Is_inter it) -> Acids_interval.Pwe_exp e, it
       | _ -> exp_not_inter e
+    )
+  | Pwe_var v ->
+    (
+      match find_ident env v with
+      | It_scal (Is_inter it) -> Acids_interval.Pwe_var v, it
+      | _ -> bad_annot loc v
     )
   | Pwe_econstr ec ->
     let it = type_econstr env (Data_types.Ty_scal ty) ec in

@@ -93,12 +93,12 @@ struct
         print_clock_exp ce
         (Utils.print_list_r Ast_misc.print_econstr ",") ec_l
     | E_bmerge (ce, e1, e2) ->
-      Format.fprintf fmt "@[merge %a@ %a@ %a@]"
+      Format.fprintf fmt "@[<hv 2>merge %a@ %a@ %a@]"
         print_clock_exp ce
         print_exp e1
         print_exp e2
     | E_merge (ce, c_l) ->
-      Format.fprintf fmt "@[merge %a with@ %a@ end@]"
+      Format.fprintf fmt "@[<hv 2>merge %a with@ %a@ end@]"
         print_clock_exp ce
         (Utils.print_list_r print_clause "") c_l
     | E_valof ce ->
@@ -114,7 +114,7 @@ struct
     | E_dom (e, dom) ->
       print_dom fmt dom e
     | E_buffer e ->
-      Format.fprintf fmt "@[buffer@ %a@]"
+      Format.fprintf fmt "@[(buffer@ %a)@]"
         print_exp e
 
   and print_app fmt app =
@@ -160,7 +160,7 @@ struct
       Ast_misc.print_upword print_pat print_exp fmt p_t
 
   and print_clause fmt clause =
-    Format.fprintf fmt "| @[%a -> %a@]"
+    Format.fprintf fmt "@[@?| @[<hv 2>%a -> %a@]@]"
       Ast_misc.print_econstr clause.c_sel
       print_exp clause.c_body
 

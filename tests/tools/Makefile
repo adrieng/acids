@@ -17,8 +17,12 @@ OCAMLBUILD= ocamlbuild -I lib -no-links -classic-display \
 		-tags debug,annot
 
 TARGET=native
+ALL=split.out run_test.out asc_test.out
 
-all: split run_test
+.PHONY: all native opt byte clean realclean
+.SUFFIXES:
+
+all: $(ALL)
 
 native: TARGET := native
 native: all
@@ -27,23 +31,15 @@ opt: native
 byte: TARGET := byte
 byte: all
 
+%.out: FORCE
+	$(OCAMLBUILD) $*.$(TARGET)
+	cp _build/$*.$(TARGET) $*
 
-split: split.target
-	cp _build/split.$(TARGET) split
-split.target:
-	$(OCAMLBUILD) split.$(TARGET)
-
-
-run_test: run_test.target
-	cp _build/run_test.$(TARGET) run_test
-run_test.target:
-	$(OCAMLBUILD) run_test.$(TARGET)
-
-
-clean: 
+clean:
 	ocamlbuild -clean
 
 realclean: clean
-	rm -f *~ split run_test
+	rm -f *~ $(subst .out,,$(ALL)) *.out
 
-cleanall: realclean
+FORCE:
+

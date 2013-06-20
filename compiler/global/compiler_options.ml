@@ -41,7 +41,7 @@ let serialize_transforms = (ref [] : string list ref)
 
 let stop_after = (ref None : string option ref)
 
-let no_pervasives = ref false
+let no_pervasives = ref true (* TODO: false *)
 
 let optimize = ref true
 

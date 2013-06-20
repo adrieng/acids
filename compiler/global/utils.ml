@@ -25,6 +25,11 @@ let zclamp x = max 0 x
 
 let flip f x y = f y x
 
+let rec index x l =
+  match l with
+  | [] -> raise Not_found
+  | y :: l -> if x = y then 0 else 1 + index x l
+
 let repeat n x =
   let rec walk n l =
     if n = 0 then l else walk (n - 1) (x :: l)

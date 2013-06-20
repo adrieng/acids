@@ -472,7 +472,7 @@ and type_econstr env ty ec =
   match ec with
   | Ec_bool b -> Interval.singleton (if b then 1n else 0n)
   | Ec_int i -> Interval.singleton i
-  | Ec_constr _ ->
+  | Ec_constr c ->
     let ln =
       let open Data_types in
       match ty with
@@ -480,7 +480,7 @@ and type_econstr env ty ec =
       | _ -> invalid_arg "type_econstr"
     in
     let c_l = find_constructors_for_type env ln in
-    Interval.make_0_n (Int.of_int (List.length c_l - 1))
+    Interval.singleton (Int.of_int (Utils.index c c_l))
 
 and type_clock_exp env ce =
   let ced, ty =

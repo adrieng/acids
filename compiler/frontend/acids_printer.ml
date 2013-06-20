@@ -43,7 +43,6 @@ struct
 
   and print_pword_exp fmt pwe =
     match pwe with
-    | Pwe_exp e -> print_exp fmt e
     | Pwe_var v -> I.print_var fmt v
     | Pwe_econstr ec -> Ast_misc.print_econstr fmt ec
     | Pwe_fword i_l ->

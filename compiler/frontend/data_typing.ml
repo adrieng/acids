@@ -348,9 +348,6 @@ and expect_clock_exp env expected_ty ce =
 
 and type_pword_exp env pwe =
   match pwe with
-  | Pwe_exp e ->
-    let e, ty = type_exp env e in
-    M.Pwe_exp e, ty
   | Pwe_var v ->
     M.Pwe_var v, find_ident env v
   | Pwe_econstr ec ->

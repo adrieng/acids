@@ -62,7 +62,6 @@ sig
   | Ce_iter of clock_exp
 
   and pword_exp =
-  | Pwe_exp of exp
   | Pwe_var of I.var
   | Pwe_econstr of Ast_misc.econstr
   | Pwe_fword of Int.t list (* [0-9] int *)
@@ -184,7 +183,6 @@ module Make = functor (S : S) ->
     | Ce_iter of clock_exp
 
     and pword_exp =
-    | Pwe_exp of exp
     | Pwe_var of I.var
     | Pwe_econstr of Ast_misc.econstr
     | Pwe_fword of Int.t list (* [0-9] int *)

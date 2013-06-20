@@ -527,13 +527,6 @@ and type_clock_exp env ce =
 
 and type_pword_exp loc env ty pwe =
   match pwe with
-  | Pwe_exp e ->
-    let e = type_exp env e in
-    (
-      match exp_type e with
-      | It_scal (Is_inter it) -> Acids_interval.Pwe_exp e, it
-      | _ -> exp_not_inter e
-    )
   | Pwe_var v ->
     (
       match find_ident env v with

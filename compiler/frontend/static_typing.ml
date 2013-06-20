@@ -255,8 +255,6 @@ let rec type_clock_exp env ce =
 
 and type_pword_exp loc env pwe =
   match pwe with
-  | Pwe_exp e ->
-    M.Pwe_exp (expect_exp loc env static_ty e)
   | Pwe_var v ->
     let ty = find_ident env v in
     unify loc static_ty ty;

@@ -381,8 +381,10 @@ trivial_exp_desc:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
 %inline pword_exp:
-| e = trivial_exp { Acids_parsetree.Pwe_exp e }
+| v = IDENT { Acids_parsetree.Pwe_var v }
+| ec = econstr { Acids_parsetree.Pwe_econstr ec }
 | w = WORD { Acids_parsetree.Pwe_fword w }
+
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }

@@ -131,6 +131,7 @@ module M = Acids.Make(ANN_INFO)
 
 let annotate_exp e ty = ANN_INFO.annotate e.e_info (A.Exp ty)
 let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
+let annotate_pword_exp pwe ty = ANN_INFO.annotate pwe.pwe_info (A.Exp ty)
 let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
   ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
@@ -158,6 +159,22 @@ struct
             method ci_static = tys
           end
         | _ -> invalid_arg "update_clock_exp_info"
+      )
+
+  let update_pword_exp_info { new_annot = na; old_annot = info; } =
+    match na with
+    | Node _ -> invalid_arg "update_pword_exp_info"
+    | Exp pty ->
+      let ty = ty_of_pre_ty pty in
+      (
+        match ty with
+        | Sy_scal tys ->
+          object
+            method pwi_data = info#pwi_data
+            method pwi_interv = info#pwi_interv
+            method pwi_static = tys
+          end
+        | _ -> invalid_arg "update_pword_exp_info"
       )
 
   let update_exp_info { new_annot = na; old_annot = info; } =
@@ -228,7 +245,7 @@ let rec type_clock_exp env ce =
       M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
-      let type_fun = type_pword_exp loc env in
+      let type_fun = type_pword_exp env in
       let w = Ast_misc.map_upword type_fun type_fun w in
       let ty =
         if Ast_misc.is_constant_pword w
@@ -253,16 +270,23 @@ let rec type_clock_exp env ce =
   },
   ty
 
-and type_pword_exp loc env pwe =
-  match pwe with
-  | Pwe_var v ->
-    let ty = find_ident env v in
-    unify loc static_ty ty;
-    M.Pwe_var v
-  | Pwe_econstr ec ->
-    M.Pwe_econstr ec
-  | Pwe_fword i_l ->
-    M.Pwe_fword i_l
+and type_pword_exp env pwe =
+  let pwed, ty =
+    match pwe.pwe_desc with
+    | Pwe_var v ->
+      let ty = find_ident env v in
+      unify pwe.pwe_loc static_ty ty;
+      M.Pwe_var v, ty
+    | Pwe_econstr ec ->
+      M.Pwe_econstr ec, static_ty
+    | Pwe_fword i_l ->
+      M.Pwe_fword i_l, static_ty
+  in
+  {
+    M.pwe_desc = pwed;
+    M.pwe_loc = pwe.pwe_loc;
+    M.pwe_info = annotate_pword_exp pwe ty;
+  }
 
 and type_exp env e =
   let loc = e.e_loc in

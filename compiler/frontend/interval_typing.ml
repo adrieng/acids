@@ -48,6 +48,12 @@ let clock_exp_annotate ce ty =
     method ci_interv = ty
   end
 
+let pword_exp_annotate pwe ty =
+  object
+    method pwi_data = pwe.pwe_info#pwi_data
+    method pwi_interv = ty
+  end
+
 let node_annotate nd ty =
   object
     method ni_data = nd.n_info#ni_data
@@ -495,9 +501,8 @@ and type_clock_exp env ce =
       )
 
     | Ce_pword w ->
-      let data_ty = ce.ce_info#ci_data in
       let w =
-        let type_fun = type_pword_exp ce.ce_loc env data_ty in
+        let type_fun = type_pword_exp env in
         Ast_misc.map_upword type_fun type_fun w
       in
       let w, ty_l =
@@ -525,21 +530,29 @@ and type_clock_exp env ce =
     Acids_interval.ce_info = clock_exp_annotate ce ty;
   }
 
-and type_pword_exp loc env ty pwe =
-  match pwe with
-  | Pwe_var v ->
-    (
-      match find_ident env v with
-      | It_scal (Is_inter it) -> Acids_interval.Pwe_var v, it
-      | _ -> bad_annot loc v
-    )
-  | Pwe_econstr ec ->
-    let it = type_econstr env (Data_types.Ty_scal ty) ec in
-    Acids_interval.Pwe_econstr ec, it
-  | Pwe_fword i_l ->
-    let it_l = List.map Interval.singleton i_l in
-    let it = Utils.fold_left_1 Interval.join it_l in
-    Acids_interval.Pwe_fword i_l, it
+and type_pword_exp env pwe =
+  let pwed, it =
+    match pwe.pwe_desc with
+    | Pwe_var v ->
+      (
+        match find_ident env v with
+        | It_scal (Is_inter it) -> Acids_interval.Pwe_var v, it
+        | _ -> bad_annot pwe.pwe_loc v
+      )
+    | Pwe_econstr ec ->
+      let it = type_econstr env (Data_types.Ty_scal pwe.pwe_info#pwi_data) ec in
+      Acids_interval.Pwe_econstr ec, it
+    | Pwe_fword i_l ->
+      let it_l = List.map Interval.singleton i_l in
+      let it = Utils.fold_left_1 Interval.join it_l in
+      Acids_interval.Pwe_fword i_l, it
+  in
+  {
+    Acids_interval.pwe_desc = pwed;
+    Acids_interval.pwe_loc = pwe.pwe_loc;
+    Acids_interval.pwe_info = pword_exp_annotate pwe it;
+  },
+  it
 
 and type_block block env =
   let env = List.fold_left enrich_env_eq env block.b_body in

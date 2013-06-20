@@ -32,6 +32,18 @@ struct
       Interval.print cei#ci_interv
       Static_types.print_static_ty_scal cei#ci_static
 
+  type pword_exp_info =
+      <
+        pwi_data : Data_types.data_ty_scal;
+        pwi_static : Static_types.ty_scal;
+        pwi_interv : Interval.t;
+      >
+  let print_pword_exp_info fmt (pwi : pword_exp_info) =
+    Format.fprintf fmt ": %a in %a is %a"
+      Data_types.print_data_ty_scal pwi#pwi_data
+      Interval.print pwi#pwi_interv
+      Static_types.print_static_ty_scal pwi#pwi_static
+
   type exp_info =
       <
         ei_data : Data_types.data_ty;

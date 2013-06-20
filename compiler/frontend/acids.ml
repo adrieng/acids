@@ -23,6 +23,9 @@ sig
   type clock_exp_info
   val print_clock_exp_info : Format.formatter -> clock_exp_info -> unit
 
+  type pword_exp_info
+  val print_pword_exp_info : Format.formatter -> pword_exp_info -> unit
+
   type exp_info
   val print_exp_info : Format.formatter -> exp_info -> unit
 
@@ -62,6 +65,13 @@ sig
   | Ce_iter of clock_exp
 
   and pword_exp =
+    {
+      pwe_desc : pword_exp_desc;
+      pwe_loc : Loc.t;
+      pwe_info : I.pword_exp_info;
+    }
+
+  and pword_exp_desc =
   | Pwe_var of I.var
   | Pwe_econstr of Ast_misc.econstr
   | Pwe_fword of Int.t list (* [0-9] int *)
@@ -183,6 +193,13 @@ module Make = functor (S : S) ->
     | Ce_iter of clock_exp
 
     and pword_exp =
+      {
+        pwe_desc : pword_exp_desc;
+        pwe_loc : Loc.t;
+        pwe_info : I.pword_exp_info;
+      }
+
+    and pword_exp_desc =
     | Pwe_var of I.var
     | Pwe_econstr of Ast_misc.econstr
     | Pwe_fword of Int.t list (* [0-9] int *)

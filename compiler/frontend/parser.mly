@@ -35,6 +35,13 @@
       Acids_parsetree.ce_info = ();
     }
 
+  let make_pword_exp pwed loc =
+    {
+      Acids_parsetree.pwe_desc = pwed;
+      Acids_parsetree.pwe_loc = loc;
+      Acids_parsetree.pwe_info = ();
+    }
+
   let make_domain par base e =
     let d =
       {
@@ -381,6 +388,9 @@ trivial_exp_desc:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
 %inline pword_exp:
+| pwed = with_loc(pword_exp_desc) { make_located make_pword_exp pwed }
+
+pword_exp_desc:
 | v = IDENT { Acids_parsetree.Pwe_var v }
 | ec = econstr { Acids_parsetree.Pwe_econstr ec }
 | w = WORD { Acids_parsetree.Pwe_fword w }

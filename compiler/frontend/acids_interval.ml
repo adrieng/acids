@@ -30,6 +30,16 @@ struct
       Data_types.print_data_ty_scal cei#ci_data
       Interval.print cei#ci_interv
 
+  type pword_exp_info =
+      <
+        pwi_data : Data_types.data_ty_scal;
+        pwi_interv : Interval.t;
+      >
+  let print_pword_exp_info fmt pwi =
+    Format.fprintf fmt ": %a in %a"
+      Data_types.print_data_ty_scal pwi#pwi_data
+      Interval.print pwi#pwi_interv
+
   type exp_info =
       <
         ei_data : Data_types.data_ty;

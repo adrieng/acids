@@ -267,6 +267,18 @@ struct
         | _ -> invalid_arg "update_clock_exp_info"
       )
 
+  let update_pword_exp_info { new_annot = na; old_annot = (); } =
+    match na with
+    | Node _ -> invalid_arg "update_pword_exp_info"
+    | Exp pty ->
+      let ty = Data_types.ty_of_pre_ty pty in
+      (
+        match ty with
+        | Ty_scal tys ->
+          object method pwi_data = tys end
+        | _ -> invalid_arg "update_pword_exp_info"
+      )
+
   let update_exp_info { new_annot = na; old_annot = (); } =
     match na with
     | Node _ -> invalid_arg "update_clock_exp_info"
@@ -321,7 +333,7 @@ and type_clock_exp env ce =
 
     | Ce_pword w ->
       let ty = fresh_ty () in
-      let expect = expect_pword_exp ce.ce_loc env ty in
+      let expect = expect_pword_exp env ty in
       let w = Ast_misc.map_upword expect expect w in
       M.Ce_pword w, ty
 
@@ -347,17 +359,25 @@ and expect_clock_exp env expected_ty ce =
   ce
 
 and type_pword_exp env pwe =
-  match pwe with
-  | Pwe_var v ->
-    M.Pwe_var v, find_ident env v
-  | Pwe_econstr ec ->
-    M.Pwe_econstr ec, type_econstr env ec
-  | Pwe_fword i_l ->
-    M.Pwe_fword i_l, int_ty
+  let pwed, ty =
+    match pwe.pwe_desc with
+    | Pwe_var v ->
+      M.Pwe_var v, find_ident env v
+    | Pwe_econstr ec ->
+      M.Pwe_econstr ec, type_econstr env ec
+    | Pwe_fword i_l ->
+      M.Pwe_fword i_l, int_ty
+  in
+  {
+    M.pwe_desc = pwed;
+    M.pwe_loc = pwe.pwe_loc;
+    M.pwe_info = annotate_exp pwe.pwe_info ty;
+  },
+  ty
 
-and expect_pword_exp loc env expected_ty pwe =
+and expect_pword_exp env expected_ty pwe =
   let pwe, effective_ty = type_pword_exp env pwe in
-  unify loc expected_ty effective_ty;
+  unify pwe.M.pwe_loc expected_ty effective_ty;
   pwe
 
 and type_exp env e =

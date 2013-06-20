@@ -25,6 +25,9 @@ struct
   type clock_exp_info = unit
   let print_clock_exp_info = print_no_info
 
+  type pword_exp_info = unit
+  let print_pword_exp_info = print_no_info
+
   type exp_info = unit
   let print_exp_info = print_no_info
 

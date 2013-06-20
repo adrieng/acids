@@ -28,6 +28,14 @@ struct
     Format.fprintf fmt ": %a"
       Data_types.print_data_ty_scal cei#ci_data
 
+  type pword_exp_info =
+      <
+        pwi_data : Data_types.data_ty_scal;
+      >
+  let print_pword_exp_info fmt (pwi : pword_exp_info) =
+    Format.fprintf fmt ": %a"
+      Data_types.print_data_ty_scal pwi#pwi_data
+
   type exp_info =
       <
         ei_data : Data_types.data_ty;

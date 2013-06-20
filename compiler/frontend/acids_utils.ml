@@ -38,6 +38,9 @@ struct
   type clock_exp_info = A.I.clock_exp_info annot
   let print_clock_exp_info = print_annot A.I.print_clock_exp_info
 
+  type pword_exp_info = A.I.pword_exp_info annot
+  let print_pword_exp_info = print_annot A.I.print_pword_exp_info
+
   type exp_info = A.I.exp_info annot
   let print_exp_info = print_annot A.I.print_exp_info
 
@@ -68,6 +71,7 @@ sig
   module OUT_INFO : Acids.S
 
   val update_clock_exp_info : IN_INFO.clock_exp_info -> OUT_INFO.clock_exp_info
+  val update_pword_exp_info : IN_INFO.pword_exp_info -> OUT_INFO.pword_exp_info
   val update_exp_info : IN_INFO.exp_info -> OUT_INFO.exp_info
   val update_app_info : IN_INFO.app_info -> OUT_INFO.app_info
   val update_block_info : IN_INFO.block_info -> OUT_INFO.block_info
@@ -104,10 +108,17 @@ struct
     }
 
   and extract_pword_exp pwe =
-    match pwe with
-    | Pwe_var v -> OUT.Pwe_var v
-    | Pwe_econstr ec -> OUT.Pwe_econstr ec
-    | Pwe_fword i_l -> OUT.Pwe_fword i_l
+    let pwed =
+      match pwe.pwe_desc with
+      | Pwe_var v -> OUT.Pwe_var v
+      | Pwe_econstr ec -> OUT.Pwe_econstr ec
+      | Pwe_fword i_l -> OUT.Pwe_fword i_l
+    in
+    {
+      OUT.pwe_desc = pwed;
+      OUT.pwe_loc = pwe.pwe_loc;
+      OUT.pwe_info = M.update_pword_exp_info pwe.pwe_info;
+    }
 
   and extract_exp e =
     let ed =

@@ -42,7 +42,12 @@ struct
       Format.fprintf fmt "iter %a" print_clock_exp ce
 
   and print_pword_exp fmt pwe =
-    match pwe with
+    Format.fprintf fmt "@[%a%a@]"
+      print_pword_exp_desc pwe.pwe_desc
+      (print_full_info I.print_pword_exp_info) pwe.pwe_info
+
+  and print_pword_exp_desc fmt pwed =
+    match pwed with
     | Pwe_var v -> I.print_var fmt v
     | Pwe_econstr ec -> Ast_misc.print_econstr fmt ec
     | Pwe_fword i_l ->

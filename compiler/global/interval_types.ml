@@ -42,6 +42,32 @@ let print_sig fmt cs =
     print_ty cs.input
     print_ty cs.output
 
+let printing_prefix = "in"
+
+let print_interval_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_interval_info
+    printing_prefix
+    Interval.print
+
+let print_ty_scal_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_interval_info
+    printing_prefix
+    print_ty_scal
+
+let print_ty_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_interval_info
+    printing_prefix
+    print_ty
+
+let print_sig_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_interval_info
+    printing_prefix
+    print_sig
+
 let join_scal ts1 ts2 =
   match ts1, ts2 with
   | Is_top, _ | _, Is_top -> Is_top

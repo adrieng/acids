@@ -150,3 +150,10 @@ struct
     | Some pty -> ty_of_pre_ty pty
     | None -> ty_of_var_id tyv.v_id
 end
+
+(** Printing annotations *)
+
+let print_annot r prefix p fmt x =
+  if !Compiler_options.print_full_info || !r
+  then Format.fprintf fmt " %s %a" prefix p x
+  else ()

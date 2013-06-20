@@ -21,7 +21,21 @@ let check_transforms = ref false
 
 let print_full_info = ref false
 
-let print_annotations = ref false
+let print_data_info = ref false
+
+let print_interval_info = ref false
+
+let print_static_info = ref false
+
+let info_list =
+  [
+    "full", print_full_info;
+    "data", print_data_info;
+    "interval", print_interval_info;
+    "static", print_static_info;
+  ]
+
+let set_info s = List.assoc s info_list := true
 
 let serialize_transforms = (ref [] : string list ref)
 
@@ -77,12 +91,8 @@ let options =
           Arg.Unit (set no_pervasives true),
           " Do not load the Pervasives module";
 
-          "-fi",
-          Arg.Unit (set print_full_info true),
-          " Print full type information";
-
-          "-an",
-          Arg.Unit (set print_annotations true),
+          "-ann",
+          Arg.Symbol (List.map fst info_list, set_info),
           " Print annotations";
 
           "-s",
@@ -96,3 +106,15 @@ let options =
     )
 
 let usage = Sys.argv.(0) ^ ": [options] files"
+
+let has_something_to_print =
+  (* we cache the result, since it is called after arguments have been set *)
+  let r = ref None in
+  fun () ->
+    match !r with
+    | None ->
+      let res = List.fold_left (||) false (List.map (fun (_, r) -> !r) info_list) in
+      r := Some res;
+      res
+    | Some res ->
+      res

@@ -32,7 +32,7 @@ type data_sig =
       data_sig_output : data_ty;
     }
 
-let print_data_ty_scal fmt tys =
+let print_ty_scal fmt tys =
   match tys with
   | Tys_bool -> Format.fprintf fmt "bool"
   | Tys_int -> Format.fprintf fmt "int"
@@ -42,7 +42,7 @@ let print_data_ty_scal fmt tys =
 let rec print_ty fmt ty =
   match ty with
   | Ty_var id -> Format.fprintf fmt "'x%d" id
-  | Ty_scal tys -> print_data_ty_scal fmt tys
+  | Ty_scal tys -> print_ty_scal fmt tys
   | Ty_prod ty_l ->
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
@@ -51,6 +51,26 @@ let print_sig fmt tys =
   Format.fprintf fmt "@[%a -> %a@]"
     print_ty tys.data_sig_input
     print_ty tys.data_sig_output
+
+let printing_prefix = ":"
+
+let print_ty_scal_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_data_info
+    printing_prefix
+    print_ty_scal
+
+let print_ty_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_data_info
+    printing_prefix
+    print_ty
+
+let print_sig_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_data_info
+    printing_prefix
+    print_sig
 
 module PreTy =
   struct
@@ -62,7 +82,7 @@ module PreTy =
     let rec print print_var fmt pty =
       match pty with
       | Pty_var v -> print_var fmt v
-      | Pty_scal tys -> print_data_ty_scal fmt tys
+      | Pty_scal tys -> print_ty_scal fmt tys
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l

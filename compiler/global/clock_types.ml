@@ -69,6 +69,8 @@ let print_sig fmt cs =
     print_clock_type cs.ct_sig_input
     print_clock_type cs.ct_sig_output
 
+let printing_prefix = "::"
+
 module PreTySt =
 struct
   type 'a pre_ty =

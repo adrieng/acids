@@ -25,22 +25,42 @@ type ty =
 
 type ty_sig = { input : ty; output : ty; }
 
-let print_static_ty_scal fmt ss =
+let print_ty_scal fmt ss =
   match ss with
   | S_static -> Format.fprintf fmt "S"
   | S_dynamic -> Format.fprintf fmt "D"
 
-let rec print_static_ty fmt sty =
+let rec print_ty fmt sty =
   match sty with
-  | Sy_scal ss -> print_static_ty_scal fmt ss
+  | Sy_scal ss -> print_ty_scal fmt ss
   | Sy_prod sty_l ->
     Format.fprintf fmt "(@[%a@])"
-      (Utils.print_list_r print_static_ty " *") sty_l
+      (Utils.print_list_r print_ty " *") sty_l
 
 let print_sig fmt csig =
   Format.fprintf fmt "@[%a -> %a@]"
-    print_static_ty csig.input
-    print_static_ty csig.output
+    print_ty csig.input
+    print_ty csig.output
+
+let printing_prefix = "is"
+
+let print_ty_scal_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_static_info
+    printing_prefix
+    print_ty_scal
+
+let print_ty_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_static_info
+    printing_prefix
+    print_ty
+
+let print_sig_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_static_info
+    printing_prefix
+    print_sig
 
 module PreTy =
 struct
@@ -52,7 +72,7 @@ struct
   let rec print print_var fmt pty =
     match pty with
     | Psy_var v -> print_var fmt v
-    | Psy_scal ss -> print_static_ty_scal fmt ss
+    | Psy_scal ss -> print_ty_scal fmt ss
     | Psy_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
@@ -244,8 +264,8 @@ let solve constraints = (* TODO: solve incrementally *)
           solve (awakened_constraints @ worklist)
 
         (* S <: ty and ty <: D are always satisfied *)
-        | Psy_var { v_id = v; }, Psy_scal S_dynamic
-        | Psy_scal S_static, Psy_var { v_id = v; } ->
+        | Psy_var { v_id = _; }, Psy_scal S_dynamic
+        | Psy_scal S_static, Psy_var { v_id = _; } ->
           solve worklist
 
         (* Subtyping of products, a bit shaky *)

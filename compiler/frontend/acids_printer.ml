@@ -19,15 +19,15 @@ module Make = functor (A : Acids.A) ->
 struct
   open A
 
-  let print_full_info p fmt x =
-    if !Compiler_options.print_full_info
-    then Format.fprintf fmt " (* %a *)" p x
+  let print_info p fmt x =
+    if Compiler_options.has_something_to_print ()
+    then Format.fprintf fmt " (*%a *)" p x
     else ()
 
   let rec print_clock_exp fmt ce =
     Format.fprintf fmt "@[%a%a@]"
       print_clock_exp_desc ce.ce_desc
-      (print_full_info I.print_clock_exp_info) ce.ce_info
+      (print_info I.print_clock_exp_info) ce.ce_info
 
   and print_clock_exp_desc fmt ced =
     match ced with
@@ -44,7 +44,7 @@ struct
   and print_pword_exp fmt pwe =
     Format.fprintf fmt "@[%a%a@]"
       print_pword_exp_desc pwe.pwe_desc
-      (print_full_info I.print_pword_exp_info) pwe.pwe_info
+      (print_info I.print_pword_exp_info) pwe.pwe_info
 
   and print_pword_exp_desc fmt pwed =
     match pwed with
@@ -57,7 +57,7 @@ struct
   and print_exp fmt e =
     Format.fprintf fmt "@[%a%a@]"
       print_exp_desc e.e_desc
-      (print_full_info I.print_exp_info) e.e_info
+      (print_info I.print_exp_info) e.e_info
 
   and print_exp_desc fmt ed =
     match ed with
@@ -120,23 +120,23 @@ struct
   and print_app fmt app =
     Format.fprintf fmt "@[%a%a@]"
       Names.print_longname app.a_op
-      (print_full_info I.print_app_info) app.a_info
+      (print_info I.print_app_info) app.a_info
 
   and print_block fmt block =
     Format.fprintf fmt "@[rec %a%a@]"
       (Utils.print_list_l print_eq "and ") block.b_body
-      (print_full_info I.print_block_info) block.b_info
+      (print_info I.print_block_info) block.b_info
 
   and print_eq fmt eq =
     Format.fprintf fmt "@[<hv 2>%a%a =@ %a@]"
       print_pat eq.eq_lhs
-      (print_full_info I.print_eq_info) eq.eq_info
+      (print_info I.print_eq_info) eq.eq_info
       print_exp eq.eq_rhs
 
   and print_pat fmt p =
     Format.fprintf fmt "@[%a%a@]"
       print_pat_desc p.p_desc
-      (print_full_info I.print_pat_info) p.p_info
+      (print_info I.print_pat_info) p.p_info
 
   and print_pat_desc fmt pd =
     match pd with
@@ -185,7 +185,7 @@ struct
     Format.fprintf fmt "@[<hov 2>let %snode@ %a%a@ %a =@ %a@]"
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
-      (print_full_info I.print_node_info) nd.n_info
+      (print_info I.print_node_info) nd.n_info
       print_pat nd.n_input
       print_exp nd.n_body
 

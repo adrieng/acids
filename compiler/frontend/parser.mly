@@ -236,7 +236,7 @@
 %token TYPE BY
 %token BUFFER
 
-%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY BOT_TY
+%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY (* BOT_TY *)
 
 %token<bool> DOM                        (* true for parallelism *)
 
@@ -246,7 +246,7 @@
 %token<string> UIDENT
 %token<string> OP
 %token<int> STVAR
-%token<int> TYVAR
+(* %token<int> TYVAR *)
 
 %token<bool> BOOL
 %token<Int.t> INT

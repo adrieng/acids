@@ -25,24 +25,21 @@ struct
         ci_data : Data_types.data_ty_scal;
       >
   let print_clock_exp_info fmt cei =
-    Format.fprintf fmt ": %a"
-      Data_types.print_data_ty_scal cei#ci_data
+    Data_types.print_ty_scal_ann fmt cei#ci_data
 
   type pword_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
       >
   let print_pword_exp_info fmt (pwi : pword_exp_info) =
-    Format.fprintf fmt ": %a"
-      Data_types.print_data_ty_scal pwi#pwi_data
+    Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
   type exp_info =
       <
         ei_data : Data_types.data_ty;
       >
   let print_exp_info fmt ei =
-    Format.fprintf fmt ": %a"
-      Data_types.print_ty ei#ei_data
+    Data_types.print_ty_ann fmt ei#ei_data
 
   type app_info = unit
   let print_app_info (_ : Format.formatter) _ = ()
@@ -55,8 +52,7 @@ struct
         pi_data : Data_types.data_ty;
       >
   let print_pat_info fmt pi =
-    Format.fprintf fmt ": %a"
-      Data_types.print_ty pi#pi_data
+    Data_types.print_ty fmt pi#pi_data
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -69,8 +65,7 @@ struct
         ni_data : Data_types.data_sig;
       >
   let print_node_info fmt ni =
-    Format.fprintf fmt ": %a"
-      Data_types.print_sig ni#ni_data
+    Data_types.print_sig fmt ni#ni_data
 end
 
 module Ast = Acids.Make(Info)

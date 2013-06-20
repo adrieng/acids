@@ -133,14 +133,14 @@ rule token = parse
 | "D" { DYNAMIC_TY }
 | "S" { STATIC_TY }
 | "T" { TOP_TY }
-| "B" { BOT_TY }
+(* | "B" { BOT_TY } *)
 
 | '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
 
 | "'a"(posint as i) { STVAR (int_of_string i) }
 | "'a"              { STVAR 0 }
-| "'x"(posint as i) { TYVAR (int_of_string i) }
-| "'x"              { TYVAR 0 }
+(* | "'x"(posint as i) { TYVAR (int_of_string i) } *)
+(* | "'x"              { TYVAR 0 } *)
 
 | lident as s { IDENT s }
 | uident as s { UIDENT s }

@@ -115,11 +115,6 @@ let fold_upword f g { u = u; v = v; } acc =
 let map_upword f g { u = u; v = v; } =
   { u = map_power_tree f g u; v = map_power_tree f g v; }
 
-let is_constant_pword { u = u; v = v; } =
-  match u, v with
-  | Concat [], (Leaf _ | Power (Leaf _, _)) -> true
-  | _ -> false
-
 (** Generic module for unification variables *)
 module MakeVar =
   functor

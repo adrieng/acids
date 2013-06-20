@@ -221,7 +221,7 @@ module EXTRACT = Acids_utils.MakeMap(M)(Acids_preclock)(MORPH)
 
 let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
-(** {2 Typing AST nodes} *)
+(** {2 Utility functions} *)
 
 let rec enrich_pat env p =
   match p.p_desc with
@@ -237,6 +237,37 @@ let rec enrich_pat env p =
       pt
       env
 
+exception Non_constant_pword
+
+(* A tree pword is constant if it contains no Pwe_fword and all its
+   sub-pwordexps are syntacticaly equal *)
+let is_constant_pword w =
+  let open Ast_misc in
+
+  let is_constant_pword_exp pwe =
+    match pwe.pwe_desc with
+    | Pwe_var _ | Pwe_econstr _ | Pwe_fword [_] -> true
+    | Pwe_fword _ -> false
+  in
+
+  let check_constant pwe acc =
+    if not (is_constant_pword_exp pwe) then raise Non_constant_pword
+    else
+      (
+        match acc with
+        | Some prev_pwe ->
+          if pwe.pwe_desc <> prev_pwe.pwe_desc
+          then raise Non_constant_pword
+          else acc
+        | None ->
+          Some pwe
+      )
+  in
+  try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
+  with Non_constant_pword -> false
+
+(** {2 Typing AST nodes} *)
+
 let rec type_clock_exp env ce =
   let loc = ce.ce_loc in
   let ced, ty =
@@ -246,12 +277,8 @@ let rec type_clock_exp env ce =
 
     | Ce_pword w ->
       let type_fun = type_pword_exp env in
+      let ty = if is_constant_pword w then static_ty else dynamic_ty in
       let w = Ast_misc.map_upword type_fun type_fun w in
-      let ty =
-        if Ast_misc.is_constant_pword w
-        then static_ty
-        else dynamic_ty
-      in
       M.Ce_pword w, ty
 
     | Ce_equal (ce, e) ->

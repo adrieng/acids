@@ -464,14 +464,14 @@ and type_domain env dom =
 and type_const env ty c =
   let open Ast_misc in
   match c with
-  | Cconstr ec -> type_econstr env ty ec
+  | Cconstr ec -> It_scal (Is_inter (type_econstr env ty ec))
   | Cfloat _ -> It_scal Is_top
 
 and type_econstr env ty ec =
   let open Ast_misc in
   match ec with
-  | Ec_bool b -> It_scal (Is_inter (Interval.singleton (if b then 1n else 0n)))
-  | Ec_int i -> It_scal (Is_inter (Interval.singleton i))
+  | Ec_bool b -> Interval.singleton (if b then 1n else 0n)
+  | Ec_int i -> Interval.singleton i
   | Ec_constr _ ->
     let ln =
       let open Data_types in
@@ -480,7 +480,7 @@ and type_econstr env ty ec =
       | _ -> invalid_arg "type_econstr"
     in
     let c_l = find_constructors_for_type env ln in
-    It_scal (Is_inter (Interval.make_0_n (Int.of_int (List.length c_l - 1))))
+    Interval.make_0_n (Int.of_int (List.length c_l - 1))
 
 and type_clock_exp env ce =
   let ced, ty =
@@ -495,8 +495,10 @@ and type_clock_exp env ce =
       )
 
     | Ce_pword w ->
+      let data_ty = ce.ce_info#ci_data in
       let w =
-        Ast_misc.map_upword (type_pword_exp env) (type_pword_exp env) w
+        let type_fun = type_pword_exp env data_ty in
+        Ast_misc.map_upword type_fun type_fun w
       in
       let w, ty_l =
         let pword_exp_type_inter (pwe, ty) acc = pwe, ty :: acc in
@@ -523,7 +525,7 @@ and type_clock_exp env ce =
     Acids_interval.ce_info = clock_exp_annotate ce ty;
   }
 
-and type_pword_exp env pwe =
+and type_pword_exp env ty pwe =
   match pwe with
   | Pwe_exp e ->
     let e = type_exp env e in
@@ -532,6 +534,9 @@ and type_pword_exp env pwe =
       | It_scal (Is_inter it) -> Acids_interval.Pwe_exp e, it
       | _ -> exp_not_inter e
     )
+  | Pwe_econstr ec ->
+    let it = type_econstr env (Data_types.Ty_scal ty) ec in
+    Acids_interval.Pwe_econstr ec, it
   | Pwe_fword i_l ->
     let it_l = List.map Interval.singleton i_l in
     let it = Utils.fold_left_1 Interval.join it_l in

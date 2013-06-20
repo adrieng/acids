@@ -63,6 +63,7 @@ sig
 
   and pword_exp =
   | Pwe_exp of exp
+  | Pwe_econstr of Ast_misc.econstr
   | Pwe_fword of Int.t list (* [0-9] int *)
 
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
@@ -183,6 +184,7 @@ module Make = functor (S : S) ->
 
     and pword_exp =
     | Pwe_exp of exp
+    | Pwe_econstr of Ast_misc.econstr
     | Pwe_fword of Int.t list (* [0-9] int *)
 
     and clock_annot =

@@ -347,6 +347,8 @@ and scope_pword_exp ctx id_env pwe intf_env =
   | Pwe_exp e ->
     let e, intf_env = scope_exp ctx id_env e intf_env in
     Acids_scoped.Pwe_exp e, intf_env
+  | Pwe_econstr ec ->
+    Acids_scoped.Pwe_econstr ec, intf_env
   | Pwe_fword i_l ->
     Acids_scoped.Pwe_fword i_l, intf_env
 

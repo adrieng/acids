@@ -106,6 +106,7 @@ struct
   and extract_pword_exp pwe =
     match pwe with
     | Pwe_exp e -> OUT.Pwe_exp (extract_exp e)
+    | Pwe_econstr ec -> OUT.Pwe_econstr ec
     | Pwe_fword i_l -> OUT.Pwe_fword i_l
 
   and extract_exp e =

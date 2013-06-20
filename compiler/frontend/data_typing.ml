@@ -320,9 +320,10 @@ and type_clock_exp env ce =
       M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
-      let type_fun = type_pword_exp env in
-      let w = Ast_misc.map_upword type_fun type_fun w in
-      M.Ce_pword w, int_ty
+      let ty = fresh_ty () in
+      let expect = expect_pword_exp ce.ce_loc env ty in
+      let w = Ast_misc.map_upword expect expect w in
+      M.Ce_pword w, ty
 
     | Ce_equal (ce, e) ->
       let ce, ty = type_clock_exp env ce in
@@ -340,18 +341,25 @@ and type_clock_exp env ce =
   },
   ty
 
-and type_pword_exp env pwe =
-  match pwe with
-  | Pwe_exp e ->
-    let e = expect_exp env int_ty e in
-    M.Pwe_exp e
-  | Pwe_fword i_l ->
-    M.Pwe_fword i_l
-
 and expect_clock_exp env expected_ty ce =
   let ce, effective_ty = type_clock_exp env ce in
   unify ce.M.ce_loc expected_ty effective_ty;
   ce
+
+and type_pword_exp env pwe =
+  match pwe with
+  | Pwe_exp e ->
+    let e, ty = type_exp env e in
+    M.Pwe_exp e, ty
+  | Pwe_econstr ec ->
+    M.Pwe_econstr ec, type_econstr env ec
+  | Pwe_fword i_l ->
+    M.Pwe_fword i_l, int_ty
+
+and expect_pword_exp loc env expected_ty pwe =
+  let pwe, effective_ty = type_pword_exp env pwe in
+  unify loc expected_ty effective_ty;
+  pwe
 
 and type_exp env e =
   let ed, ty =
@@ -570,6 +578,7 @@ and type_domain env dom =
   }
 
 let type_node_def env nd =
+  reset_ty ();
   let env = add_fresh_types_for_pat env nd.n_input in
   let (p, inp_ty), env = type_pattern nd.n_input env in
   let e, out_ty = type_exp env nd.n_body in

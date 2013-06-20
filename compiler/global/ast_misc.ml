@@ -41,14 +41,11 @@ let print_econstr fmt ec =
 type const =
   | Cconstr of econstr
   | Cfloat of float
-  | Cword of Int.t list (* [0-9] ints *)
 
 let print_const fmt c =
   match c with
   | Cconstr c -> print_econstr fmt c
   | Cfloat f -> Format.fprintf fmt "%f" f
-  | Cword w ->
-    Format.fprintf fmt "'%a'" (Utils.print_list Int.print) w
 
 type ('a, 'b) power_tree =
   | Leaf of 'a

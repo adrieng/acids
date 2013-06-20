@@ -312,7 +312,6 @@ and type_const env c =
   match c with
   | Cconstr ec -> type_econstr env ec
   | Cfloat _ -> float_ty
-  | Cword _ -> int_ty
 
 and type_clock_exp env ce =
   let ced, ty =
@@ -346,6 +345,8 @@ and type_pword_exp env pwe =
   | Pwe_exp e ->
     let e = expect_exp env int_ty e in
     M.Pwe_exp e
+  | Pwe_fword i_l ->
+    M.Pwe_fword i_l
 
 and expect_clock_exp env expected_ty ce =
   let ce, effective_ty = type_clock_exp env ce in

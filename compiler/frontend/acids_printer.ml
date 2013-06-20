@@ -44,6 +44,9 @@ struct
   and print_pword_exp fmt pwe =
     match pwe with
     | Pwe_exp e -> print_exp fmt e
+    | Pwe_fword i_l ->
+      Format.fprintf fmt "'%a'"
+        (Utils.print_list Int.print) i_l
 
   and print_exp fmt e =
     Format.fprintf fmt "@[%a%a@]"

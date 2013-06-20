@@ -466,11 +466,6 @@ and type_const env ty c =
   match c with
   | Cconstr ec -> type_econstr env ty ec
   | Cfloat _ -> It_scal Is_top
-  | Cword i_l ->
-    let ty_l =
-      List.map (fun i -> It_scal (Is_inter (Interval.singleton i))) i_l
-    in
-    Utils.fold_left_1 join ty_l
 
 and type_econstr env ty ec =
   let open Ast_misc in
@@ -503,17 +498,11 @@ and type_clock_exp env ce =
       let w =
         Ast_misc.map_upword (type_pword_exp env) (type_pword_exp env) w
       in
-      let ty_l =
-        let pword_exp_type_inter pwe =
-          match pwe with
-          | Acids_interval.Pwe_exp e ->
-            match exp_type e with
-            | It_scal (Is_inter it) -> it
-            | _ -> exp_not_inter e
-        in
-        Ast_misc.fold_upword
-          (fun pwe ty_l -> pword_exp_type_inter pwe :: ty_l)
-          (fun _ ty_l -> ty_l)
+      let w, ty_l =
+        let pword_exp_type_inter (pwe, ty) acc = pwe, ty :: acc in
+        Ast_misc.mapfold_upword
+          pword_exp_type_inter
+          (fun (pw, _) ty_l -> pw, ty_l)
           w
           []
       in
@@ -537,7 +526,16 @@ and type_clock_exp env ce =
 and type_pword_exp env pwe =
   match pwe with
   | Pwe_exp e ->
-    Acids_interval.Pwe_exp (type_exp env e)
+    let e = type_exp env e in
+    (
+      match exp_type e with
+      | It_scal (Is_inter it) -> Acids_interval.Pwe_exp e, it
+      | _ -> exp_not_inter e
+    )
+  | Pwe_fword i_l ->
+    let it_l = List.map Interval.singleton i_l in
+    let it = Utils.fold_left_1 Interval.join it_l in
+    Acids_interval.Pwe_fword i_l, it
 
 and type_block block env =
   let env = List.fold_left enrich_env_eq env block.b_body in

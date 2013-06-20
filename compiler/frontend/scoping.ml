@@ -299,7 +299,8 @@ and scope_const local_constrs imported_mods loc c intf_env =
       scope_econstr local_constrs imported_mods loc ec intf_env
     in
     Ast_misc.Cconstr ec, intf_env
-  | Ast_misc.Cfloat _ | Ast_misc.Cword _ -> c, intf_env
+  | Ast_misc.Cfloat _ ->
+    c, intf_env
 
 and scope_clock_annot ctx id_env cka intf_env =
   let scope_clock_exp = scope_clock_exp ctx id_env in
@@ -346,6 +347,8 @@ and scope_pword_exp ctx id_env pwe intf_env =
   | Pwe_exp e ->
     let e, intf_env = scope_exp ctx id_env e intf_env in
     Acids_scoped.Pwe_exp e, intf_env
+  | Pwe_fword i_l ->
+    Acids_scoped.Pwe_fword i_l, intf_env
 
 and scope_exp
     ((local_nodes, local_constrs, local_types, imported_mods) as ctx)

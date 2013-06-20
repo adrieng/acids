@@ -360,7 +360,6 @@ econstr:
 const:
 | econstr { Ast_misc.Cconstr $1 }
 | FLOAT { Ast_misc.Cfloat $1 }
-| WORD { Ast_misc.Cword $1 }
 
 clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
@@ -383,6 +382,7 @@ trivial_exp_desc:
 
 %inline pword_exp:
 | e = trivial_exp { Acids_parsetree.Pwe_exp e }
+| w = WORD { Acids_parsetree.Pwe_fword w }
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }

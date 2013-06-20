@@ -257,6 +257,8 @@ and type_pword_exp loc env pwe =
   match pwe with
   | Pwe_exp e ->
     M.Pwe_exp (expect_exp loc env static_ty e)
+  | Pwe_fword i_l ->
+    M.Pwe_fword i_l
 
 and type_exp env e =
   let loc = e.e_loc in

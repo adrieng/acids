@@ -4,3 +4,5 @@ Compiler:
 - record type instantiations for future monomorphization
 - P_split -> exponents should be pword_exps
 - P_split -> less hideous concrete syntax
+- fix static type variables, see example in static.split
+- interval typing: be more modular, see example in interval.split

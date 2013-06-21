@@ -61,7 +61,7 @@ let reset_ty, fresh_ty =
 type typing_env =
   {
     (** maps module names to interfaces *)
-    intf_env : Interface.t Names.ShortEnv.t;
+    intf_env : Interface.env;
     (** maps constructors from the current module to type names *)
     current_constr : Names.shortname Names.ShortEnv.t;
     (** maps nodes from the current module to type signatures *)
@@ -639,7 +639,7 @@ let type_file file =
 let type_file
     ctx
     (file
-       : < interfaces : Interface.t Names.ShortEnv.t > Acids_interval.file) =
+       : < interfaces : Interface.env > Acids_interval.file) =
   let intermediate_file = type_file file in
   let final_file = EXTRACT.extract_file intermediate_file in
   ctx, final_file

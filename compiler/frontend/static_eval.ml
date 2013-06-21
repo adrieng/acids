@@ -27,7 +27,7 @@ type value =
 
 type env =
   {
-    intf_env : Interface.t Names.ShortEnv.t;
+    intf_env : Interface.env;
     current_nodes : node_def Names.ShortEnv.t;
     idents : value Ident.Env.t;
     seen : Ident.Set.t;

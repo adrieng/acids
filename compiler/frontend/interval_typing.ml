@@ -172,7 +172,7 @@ let snd_ty ty =
 
 type typing_env =
   {
-    intf_env : Interface.t Names.ShortEnv.t;
+    intf_env : Interface.env;
     current_types : Names.shortname list Names.ShortEnv.t;
     current_nodes : ty_sig Names.ShortEnv.t;
     idents : ty Ident.Env.t;
@@ -633,7 +633,7 @@ let type_file file =
 
 let type_file
     ctx
-    (file : < interfaces : Interface.t Names.ShortEnv.t > Acids_typed.file) =
+    (file : < interfaces : Interface.env > Acids_typed.file) =
   ctx, type_file file
 
 (** {2 Putting it all together} *)

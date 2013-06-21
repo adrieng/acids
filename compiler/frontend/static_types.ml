@@ -20,6 +20,7 @@ type ty_scal =
   | S_dynamic
 
 type ty =
+  | Sy_var of int
   | Sy_scal of ty_scal
   | Sy_prod of ty list
 
@@ -32,6 +33,7 @@ let print_ty_scal fmt ss =
 
 let rec print_ty fmt sty =
   match sty with
+  | Sy_var v -> Format.fprintf fmt "'s%d" v
   | Sy_scal ss -> print_ty_scal fmt ss
   | Sy_prod sty_l ->
     Format.fprintf fmt "(@[%a@])"
@@ -79,9 +81,20 @@ struct
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 
-let instantiate_ty_sig tysig =
+let instantiate_ty_sig fresh_ty tysig =
+  let ht = Hashtbl.create 30 in
+
+  let find_var v =
+    try Hashtbl.find ht v
+    with Not_found ->
+      let ty = fresh_ty () in
+      Hashtbl.add ht v ty;
+      ty
+  in
+
   let rec instantiate ty =
     match ty with
+    | Sy_var v -> find_var v
     | Sy_scal ss -> PreTy.Psy_scal ss
     | Sy_prod ty_l -> PreTy.Psy_prod (List.map instantiate ty_l)
   in
@@ -91,8 +104,7 @@ let rec ty_of_pre_ty pty =
   let open PreTy in
   match pty with
   | Psy_var v ->
-    (* type variables default to dynamic since its more modular *)
-    VarTy.ty_of_ty_var ty_of_pre_ty (fun _ -> Sy_scal S_dynamic) v
+    VarTy.ty_of_ty_var ty_of_pre_ty (fun v -> Sy_var v) v
   | Psy_scal ss -> Sy_scal ss
   | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
 
@@ -100,6 +112,7 @@ let make_ty_sig inp out = { input = ty_of_pre_ty inp; output = ty_of_pre_ty out;
 
 let rec is_static st =
   match st with
+  | Sy_var _ -> false
   | Sy_scal S_static -> true
   | Sy_scal S_dynamic -> false
   | Sy_prod st_l -> List.exists is_static st_l

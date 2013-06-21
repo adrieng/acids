@@ -355,7 +355,7 @@ and type_exp env e =
 
     | E_app (app, e) ->
       let ssig = find_node_signature env app.a_op in
-      let inp, out = Static_types.instantiate_ty_sig ssig in
+      let inp, out = Static_types.instantiate_ty_sig fresh_ty ssig in
       let e = expect_exp loc env inp e in
       let app =
         {

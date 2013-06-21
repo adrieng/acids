@@ -84,11 +84,14 @@
     Acids_parsetree.E_app (app, make_tuple [e1; e2] loc)
 
   let make_pat pd loc =
-    {
-      Acids_parsetree.p_desc = pd;
-      Acids_parsetree.p_loc = loc;
-      Acids_parsetree.p_info = ();
-    }
+    match pd with
+    | Acids_parsetree.P_tuple [p] -> p
+    | _ ->
+      {
+        Acids_parsetree.p_desc = pd;
+        Acids_parsetree.p_loc = loc;
+        Acids_parsetree.p_info = ();
+      }
 
   let make_clause ((ec, e), loc) =
     {

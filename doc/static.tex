@@ -1,0 +1,36 @@
+\section{Static typing}
+
+The goal of static typing is to enable some form of compile-time evaluation
+while avoiding the Heptagon quagmire where we basically have two subtly
+different languages that do not mix well. The idea of static typing is to have
+two different types to distinguish between expressions that can be evaluated to
+a compile-time constant, and those who cannot.
+
+\subsection{Expressions}
+
+It is a very simple type system with the following grammar:
+\grammar{
+  \grammardef{\tau}{\alpha}{static type variables}
+  \grammarcase{\St}{stationary stream}
+  \grammarcase{\Dt}{non-stationary stream}
+}
+
+The type system involves simple sub-typing because a compile-time constant can
+be used anywhere a non-constant expression was expected: $\St \mathrel{<:} \Dt$.
+
+\subsection{Nodes}
+
+The programmer can declare static nodes, that is nodes that will not get clocked
+and will be carried around in intermediate files. Non-static nodes are black
+boxes and therefore cannot be used to define compile-time constants.
+
+The following program is thus rejected:
+\begin{verbatim}
+let node f () = 0
+
+let node g () = 0 when <(b)> where rec b = f ()
+\end{verbatim}
+
+
+A non-static node may not have static inputs. Conversely, its static outputs are
+converted to dynamic since they may not be e

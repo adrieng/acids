@@ -1,0 +1,241 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% DEPENDENCIES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{mathtools} % for \Coloneqq
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% GENERAL MACROS (language names, etc.)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\TODO}[1]{\textbf{{\color{red} TODO {#1}}}}
+
+\newcommand{\vieuxlucid}{{\sc Lucid}}
+\newcommand{\lucid}{{\sc Lucid Synchrone}}
+\newcommand{\lucyn}{{\sc Lucy-n}}
+\newcommand{\lustre}{{\sc Lustre}}
+\newcommand{\scade}{{\sc SCADE}}
+\newcommand{\ml}{{\sc ML}}
+\newcommand{\haskell}{{\sc Haskell}}
+\newcommand{\coq}{{\sc Coq}}
+\newcommand{\unix}{{\sc Unix}}
+\newcommand{\calcn}{\ensuremath{\mu \mathit{K}}}
+\newcommand{\acid}{{\sc Acid Synchrone}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MATH MACROS (sets, etc.)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\finseq}[1]{\ensuremath{#1^*}}
+\newcommand{\infseq}[1]{\ensuremath{#1^\infty}}
+\newcommand{\strseq}[1]{\ensuremath{#1^\omega}}
+\newcommand{\lfp}[1]{\ensuremath{\mathit{lfp}\ #1}}
+\newcommand{\length}[1]{\ensuremath{\mid {#1} \mid\;}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% HELPER MACROS (grammars, etc.)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\grammar}[1]{
+  \[
+  \begin{array}{rcll}
+    #1
+  \end{array}
+  \]
+}
+\newcommand{\grammardef}[3]{#1 & \Coloneqq & #2 & \mbox{#3} \\}
+\newcommand{\grammarcasenonewline}[2]{& \mid & #1 & \mbox{#2}}
+\newcommand{\grammarcase}[2]{\grammarcasenonewline{#1}{#2} \\}
+\newcommand{\grammarpar}{\; \mid \;}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% LANGUAGE SYNTAX MACROS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Clock language expressions
+
+\newcommand{\cle}{\ensuremath{\mathit{le}}}
+
+% Clock expressions
+
+\newcommand{\ce}{\ensuremath{\mathit{ce}}}
+\newcommand{\NotCeOp}{\mbox{{\tt not}}}
+\newcommand{\NotCe}[1]{\NotCeOp\;{#1}}
+\newcommand{\OnCeOp}{\mbox{{\tt on\_ce}}}
+\newcommand{\OnCe}[2]{{#1}\;\OnCeOp\;{#2}}
+
+% Expressions
+
+\newcommand{\e}{\ensuremath{\mathit{e}}}
+\newcommand{\ConstOp}{\mbox{{\tt const}}}
+\newcommand{\Const}[1]{\ConstOp({#1})}
+\newcommand{\FstOp}{\mbox{{\tt fst}}}
+\newcommand{\Fst}[1]{\FstOp\;{#1}}
+\newcommand{\SndOp}{\mbox{{\tt snd}}}
+\newcommand{\Snd}[1]{\SndOp\;{#1}}
+\newcommand{\App}[3]{{#1}\,^{#2}{#3}}
+\newcommand{\WhereOp}{\mbox{{\tt where\;rec}}}
+\newcommand{\Where}[2]{{#1}\;\WhereOp\;{#2}}
+\newcommand{\WhenOp}{\mbox{\tt when}}
+\newcommand{\When}[2]{{#1}\;\WhenOp\;{#2}}
+\newcommand{\WhenotOp}{\mbox{{\tt whenot}}}
+\newcommand{\Whenot}[2]{{#1}\;\WhenotOp\;{#2}}
+\newcommand{\MergeOp}{\mbox{{\tt merge}}}
+\newcommand{\Merge}[3]{\MergeOp\;{#1}\;{#2}\;{#3}}
+\newcommand{\FbyOp}{\mbox{{\tt fby}}}
+\newcommand{\Fby}[2]{{#1}\;\FbyOp\;{#2}}
+\newcommand{\BufOp}{\mbox{{\tt buffer}}}
+\newcommand{\Buf}[2]{\BufOp{}\;{#1}\;{#2}}
+\newcommand{\SyncOp}{\mbox{{\tt sync}}}
+\newcommand{\Sync}[1]{\SyncOp{}\;{#1}}
+
+% Equations
+
+\newcommand{\eqs}{\ensuremath{\mathit{eqs}}}
+\newcommand{\ParOp}{\mbox{{\tt and}}}
+\newcommand{\Par}[2]{{#1}\;\ParOp\;{#2}}
+
+% Stream types
+
+\newcommand{\st}{\ensuremath{\mathit{st}}}
+
+\newcommand{\OnOp}{\mbox{{\tt on}}}
+\newcommand{\On}[2]{{#1}\;\OnOp\;{#2}}
+\newcommand{\OnotOp}{\mbox{{\tt onot}}}
+\newcommand{\Onot}[2]{{#1}\;\OnotOp\;{#2}}
+\newcommand{\NotOp}{\mbox{{\tt not}}}
+
+% Stream type environments
+
+\newcommand{\sti}{\ensuremath{\mathit{sti}}}
+
+% Types
+
+\newcommand{\ty}{\ensuremath{\mathit{t}}}
+\newcommand{\tysig}{\ensuremath{\mathit{tsig}}}
+
+% Definitions
+
+\newcommand{\ndef}{\ensuremath{\mathit{def}}}
+\newcommand{\Node}[4]{\mbox{{\tt let node}\;{#1}}^{#2}\;{#3}\;\mbox{{\tt =}}\;#4}
+\newcommand{\DefAnd}[2]{{#1}\; ; \;{#2}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SEMANTICS MACRO
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\Val}{\ensuremath{\mathbb{V}}}
+
+\newcommand{\clock}[1]{\ensuremath{\mathit{clock}}({#1})}
+
+\newcommand{\OmSymb}{\sharp}
+\newcommand{\Om}[1]{{#1}^\OmSymb} % des op<E9>rateurs
+
+\newcommand{\ConstOm}[1]{\Om{\ConstOp}({#1})}
+\newcommand{\CondOm}[2]{\Om{\CondOp}(#1,#2)}
+\newcommand{\OpOm}[2]{\Om{\OpOp}(#1,#2)}
+\newcommand{\FbyOm}[2]{\Om{\FbyOp}({#1},{#2})}
+\newcommand{\FbypOm}[3]{\Om{\FbypOp}({#1},{#2},{#3})}
+\newcommand{\WhenOm}[2]{\Om{\WhenOp}({#1},{#2})}
+\newcommand{\WhenotOm}[2]{\Om{\WhenotOp}({#1},{#2})}
+\newcommand{\MergeOm}[3]{\Om{\MergeOp}({#1},{#2},{#3})}
+\newcommand{\BufOm}[2]{\Om{\BufOp}({#1},{#2})}
+\newcommand{\NotOm}[1]{\Om{\NotOp}({#1})}
+\newcommand{\OnOm}[2]{\Om{\OnOp}({#1},{#2})}
+\newcommand{\OnCeOm}[2]{\Om{\OnCeOp}({#1},{#2})}
+\newcommand{\SyncOm}[1]{\Om{\SyncOp}({#1})}
+
+\newcommand{\SConstOm}[2]{\Om{\ConstOp}_\bot({#1},{#2})}
+\newcommand{\SCondOm}[2]{\Om{\CondOp}_\bot({#1},{#2})}
+\newcommand{\SOpOm}[2]{\Om{\OpOp}_\bot(#1,#2)}
+\newcommand{\SFbyOm}[2]{\Om{\FbyOp}_\bot({#1},{#2})}
+\newcommand{\SFbypOm}[3]{\Om{\FbypOp}_\bot({#1},{#2},{#3})}
+\newcommand{\SWhenOm}[2]{\Om{\WhenOp}_\bot({#1},{#2})}
+\newcommand{\SWhenotOm}[2]{\Om{\WhenotOp}_\bot({#1},{#2})}
+\newcommand{\SMergeOm}[3]{\Om{\MergeOp}_\bot({#1},{#2},{#3})}
+\newcommand{\SBufOm}[3]{\Om{\BufOp}_\bot({#1},{#2},{#3})}
+\newcommand{\SNotOm}[1]{\Om{\NotOp}_\bot({#1})}
+\newcommand{\SOnOm}[1]{\Om{\OnOp}_\bot({#1})}
+\newcommand{\SOnCeOm}[1]{\Om{\OnCeOp}_\bot({#1})}
+\newcommand{\SSyncOm}[1]{\Om{\SyncOp}_\bot({#1})}
+
+% \newcommand{\semE}[3] {\prescript{}{#1}{\llbracket} {#3} \rrbracket^{e}_{#2}}
+% \newcommand{\semCE}[3]{\prescript{}{#1}{\llbracket #3 \rrbracket^{ce}_{#2}}}
+% \newcommand{\semLE}[3]{\prescript{}{#1}{\llbracket #3 \rrbracket^{le}_{#2}}}
+% \newcommand{\semST}[3]{\prescript{}{#1}{\llbracket #3 \rrbracket^{st}_{#2}}}
+% \newcommand{\semS}[3]{\llbracket #3 \rrbracket^{t}_{#2}}
+% \newcommand{\semCENV}[3]{\llbracket #3 \rrbracket^{cenv}_{#2}}
+
+\newcommand{\semE}[1] {\llbracket {#1} \rrbracket_{e}}
+\newcommand{\semCE}[1]{\llbracket {#1} \rrbracket_{\ce}}
+\newcommand{\semLE}[1]{\llbracket {#1} \rrbracket_{\cle}}
+\newcommand{\semEQS}[1]{\llbracket {#1} \rrbracket_{\eqs}}
+\newcommand{\semDEF}[1]{\llbracket {#1} \rrbracket_{\ndef}}
+
+\newcommand{\ssemE}[1] {\llbracket {#1} \rrbracket_{e}^\bot}
+\newcommand{\ssemCE}[1]{\llbracket {#1} \rrbracket_{\ce}^\bot}
+\newcommand{\ssemLE}[1]{\llbracket {#1} \rrbracket_{\cle}^\bot}
+\newcommand{\ssemST}[1]{\llbracket {#1} \rrbracket_{\st}^\bot}
+\newcommand{\ssemEQS}[1]{\llbracket {#1} \rrbracket_{\eqs}^\bot}
+\newcommand{\ssemDEF}[1]{\llbracket {#1} \rrbracket_{\ndef}^\bot}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% STATIC MACROS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\St}{\mathcal{S}}
+\newcommand{\Dt}{\mathcal{D}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CLOCKING MACROS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\jugtel}[3]{{#1} \vdash {#2} : {#3}}
+\newcommand{\jugteqsl}[3]{{#1} \vdash_{eqs} {#2} : {#3}}
+\newcommand{\jugtcel}[3]{{#1} \vdash_{\ce} {#2} : {#3}}
+\newcommand{\jugtdef}[3]{{#1} \vdash_{\ndef} {#2} : {#3}}
+
+\newcommand{\jugtadapt}[3]{{#1} \vdash {#2} \mathrel{<:} {#3}}
+\newcommand{\jugtadaptce}[3]{{#1} \vdash {#2} \mathrel{<:}_{\ce} {#3}}
+
+\newcommand{\jugtequiv}[3]{{#1} \vdash {#2} \equiv_{st} {#3}}
+\newcommand{\jugtequivce}[3]{{#1} \vdash {#2} \equiv_{ce} {#3}}
+\newcommand{\jugtequivt}[3]{{#1} \vdash {#2} \equiv_{t} {#3}}
+
+\newcommand{\jugtrewr}[3]{{#1} \vdash {#2} \leadsto {#3}}
+
+%\newcommand{\jugtunitce}[2]{#1 \vdash unit(#2)}
+%\newcommand{\jugtredonce}[4]{#1 \vdash #2\;\OnOp{}\;#3 \leadsto #4}
+%\newcommand{\jugtrednotce}[3]{#1 \vdash \NotOp{}\;#2 \leadsto #3}
+
+\newcommand{\regle}[1]{{\scriptsize(#1)}}
+\newcommand{\VAR}{\regle{VAR}}
+\newcommand{\IM}{\regle{IM}}
+\newcommand{\INST}{\regle{INST}}
+\newcommand{\PAIR}{\regle{PAIR}}
+\newcommand{\FST}{\regle{FST}}
+\newcommand{\SND}{\regle{SND}}
+\newcommand{\OP}{\regle{OP}}
+\newcommand{\APP}{\regle{APP}}
+\newcommand{\WHERE}{\regle{WHERE}}
+\newcommand{\FBY}{\regle{FBY}}
+\newcommand{\WHEN}{\regle{WHEN}}
+\newcommand{\WHENOT}{\regle{WHENOT}}
+\newcommand{\MERGE}{\regle{MERGE}}
+\newcommand{\BUF}{\regle{BUF}}
+\newcommand{\SYNC}{\regle{SYNC}}
+\newcommand{\EQ}{\regle{EQ}}
+\newcommand{\EQS}{\regle{EQS}}
+\newcommand{\NODE}{\regle{NODE}}
+\newcommand{\CLOCK}{\regle{CLOCK}}
+\newcommand{\DEF}{\regle{DEF}}
+\newcommand{\REWR}{\regle{REWR}}
+\newcommand{\ARL}{\regle{ADAPT$_L$}}
+\newcommand{\ARR}{\regle{ADAPT$_R$}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SOUNDNESS MACROS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\Clean}[1]{\textit{clean}({#1})}
+\newcommand{\Take}[1]{\textit{take}({#1})}
+\newcommand{\Ones}[2]{\mathcal{O}_{#1}({#2})}

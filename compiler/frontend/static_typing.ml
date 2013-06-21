@@ -516,7 +516,7 @@ and type_pat env p =
       let pt =
         Ast_misc.map_upword
           (expect_pat loc env ty)
-          (expect_exp loc env ty)
+          (expect_exp loc env static_ty)
           pt
       in
       M.P_split pt, ty

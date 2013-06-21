@@ -504,7 +504,7 @@ pragma:
 | BEGIN_PRAGMA END_PRAGMA { Some () }
 
 node_desc:
-| pr = pragma LET NODE s = static n = nodename p = pat EQUAL e = exp
+| pr = pragma LET s = static NODE n = nodename p = pat EQUAL e = exp
           { (s, n, p, e, pr) }
 
 node:

@@ -24,13 +24,18 @@ The programmer can declare static nodes, that is nodes that will not get clocked
 and will be carried around in intermediate files. Non-static nodes are black
 boxes and therefore cannot be used to define compile-time constants.
 
+A non-static node may not have static inputs. Conversely, its static outputs are
+converted to dynamic since they may not be used to define compile-time constants.
+
 The following program is thus rejected:
 \begin{verbatim}
-let node f () = 0
+let node f () = false
 
 let node g () = 0 when <(b)> where rec b = f ()
 \end{verbatim}
+Whereas the following one is accepted:
+\begin{verbatim}
+let static node f () = false
 
-
-A non-static node may not have static inputs. Conversely, its static outputs are
-converted to dynamic since they may not be e
+let node g () = 0 when <(b)> where rec b = f ()
+\end{verbatim}

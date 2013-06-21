@@ -1,0 +1,78 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+(* See {Static typing} in the manual *)
+
+let node f () = <('1001')>
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad 1 "Could not unify D with S": "asc -check"
+        ]
+*)
+$}
+
+let node f () = x when <(x)=1> where
+      rec (x in [0, 0]) = 0 fby x
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "asc -check"
+        ]
+*)
+$}
+
+let node f () = true
+
+let node g () = 0 when <(b)> where rec b = f ()
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "asc -check"
+        ]
+*)
+$}
+
+let static node f () = true
+
+let node g () = 0 when <(b)> where rec b = f ()
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "asc -check"
+        ]
+*)
+$}
+
+let node f b = 0 when <(b)>
+
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let static node f b = 0 when <(b)>

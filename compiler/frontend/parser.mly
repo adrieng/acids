@@ -356,8 +356,11 @@ static:
 | { false }
 | STATIC { true }
 
+%inline interval_desc:
+| l = INT COMMA u = INT { l, u }
+
 interval:
-| LBRACKET l = INT COMMA u = INT RBRACKET { Interval.make l u }
+| i = brackets(interval_desc) { Interval.make (fst i) (snd i) }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Source files

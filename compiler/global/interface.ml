@@ -104,6 +104,11 @@ let static_signature_of_node_item ni =
   | I_static snd -> snd.sn_info#ni_static
   | I_dynamic dnd -> dnd.dn_info#ni_static
 
+let node_definition_of_node_item ni =
+  match ni with
+  | I_static snd -> snd.sn_body
+  | I_dynamic _ -> invalid_arg "node_definition_of_node_item"
+
 let find_node intf shortn = Names.ShortEnv.find shortn intf.i_nodes
 
 let find_type intf shortn = Names.ShortEnv.find shortn intf.i_types

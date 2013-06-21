@@ -113,6 +113,15 @@ let reset_env env =
       computing = Ident.Set.empty;
   }
 
+let find_node env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.current_nodes
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    let ni = Interface.find_node intf ln.shortn in
+    Interface.node_definition_of_node_item ni
+
 let find_value env id =
   Ident.Env.find id env.idents
 
@@ -129,6 +138,68 @@ let add_equation env id eq =
 
 let find_equation_for env id =
   Ident.Env.find id env.current_defs
+
+(** {2 From expressions to environments} *)
+
+let rec create_env_exp env e =
+  match e.e_desc with
+  | E_var _ | E_const _ | E_valof _ -> env
+  | E_fst e | E_snd e
+  | E_app (_, e)
+  | E_when (e, _) | E_split (_, e, _)
+  | E_clock_annot (e, _) | E_type_annot (e, _)
+  | E_dom (e, _) | E_buffer e ->
+    create_env_exp env e
+
+  | E_fby (e1, e2) | E_bmerge (_, e1, e2) ->
+    let env = create_env_exp env e1 in
+    create_env_exp env e2
+
+  | E_ifthenelse (e1, e2, e3) ->
+    let env = create_env_exp env e1 in
+    let env = create_env_exp env e2 in
+    create_env_exp env e3
+
+  | E_tuple e_l ->
+    List.fold_left create_env_exp env e_l
+
+  | E_merge (_, c_l) ->
+    List.fold_left (fun env c -> create_env_exp env c.c_body) env c_l
+
+  | E_where (e, block) ->
+    create_env_exp (create_env_block env block) e
+
+and create_env_block env block =
+  let add_eq env eq =
+    let rec add_to_relevant_vars env p =
+      match p.p_desc with
+      | P_var (v, _) -> add_equation env v eq
+      | P_tuple p_l -> List.fold_left add_to_relevant_vars env p_l
+      | P_clock_annot (p, _) | P_type_annot (p, _) -> add_to_relevant_vars env p
+      | P_split p ->
+        Ast_misc.fold_upword
+          (Utils.flip add_to_relevant_vars)
+          (fun _ env -> env)
+          p
+          env
+    in
+    add_to_relevant_vars env eq.eq_lhs
+  in
+  let env = List.fold_left add_eq env block.b_body in
+  List.fold_left (fun env eq -> create_env_exp env eq.eq_rhs) env block.b_body
+
+let rec enrich_with_pat env pat value =
+  match pat.p_desc with
+  | P_var (v, _) -> add_value env v value
+  | P_tuple p_l ->
+    let v_l = get_tuple value in
+    List.fold_left2 enrich_with_pat env p_l v_l
+  | P_clock_annot (p, _) | P_type_annot (p, _) -> enrich_with_pat env p value
+  | P_split p ->
+    let p_l =
+      Ast_misc.fold_upword (fun p p_l -> p :: p_l) (fun _ p_l -> p_l) p []
+    in
+    List.fold_left (fun env p -> enrich_with_pat env p value) env p_l
 
 (** {2 Static evaluation itself}
 
@@ -164,12 +235,9 @@ and compute_var env id =
   with Not_found ->
     let env = register_as_being_computed env id in
     let eq = find_equation_for env id in
-    let env = enrich_with_eq env eq in
+    let value, env = eval_static_exp eq.eq_rhs env in
+    let env = enrich_with_pat env eq.eq_lhs value in
     find_value env id, env
-
-and enrich_with_eq env eq =
-  let value, env = eval_static_exp eq.eq_rhs env in
-  enrich_with_pat env eq.eq_lhs value
 
 and eval_static_exp e env =
   assert (e.e_info#ei_static
@@ -200,11 +268,12 @@ and eval_static_exp e env =
     let v, env = eval_static_exp e1 env in
     eval_static_exp (if get_bool v then e2 else e3) env
 
-  | E_app _ ->
-    assert false (* TODO *)
+  | E_app (app, e) ->
+    let v, env = eval_static_exp e env in
+    let nd = find_node env app.a_op in
+    apply_node env nd v, env
 
-  | E_where (e, block) ->
-    let env = eval_block block env in
+  | E_where (e, _) ->
     eval_static_exp e env
 
   | E_bmerge (ce, e1, e2) ->
@@ -235,36 +304,10 @@ and eval_static_pword_exp pwe env =
   | Pwe_fword ec_l ->
     int (List.hd ec_l), env
 
-and eval_block block env =
-  let add_eq env eq =
-    let rec add_to_relevant_vars env p =
-      match p.p_desc with
-      | P_var (v, _) -> add_equation env v eq
-      | P_tuple p_l -> List.fold_left add_to_relevant_vars env p_l
-      | P_clock_annot (p, _) | P_type_annot (p, _) -> add_to_relevant_vars env p
-      | P_split p ->
-        Ast_misc.fold_upword
-          (Utils.flip add_to_relevant_vars)
-          (fun _ env -> env)
-          p
-          env
-    in
-    add_to_relevant_vars env eq.eq_lhs
-  in
-  List.fold_left add_eq env block.b_body
-
-and enrich_with_pat env pat value =
-  match pat.p_desc with
-  | P_var (v, _) -> add_value env v value
-  | P_tuple p_l ->
-    let v_l = get_tuple value in
-    List.fold_left2 enrich_with_pat env p_l v_l
-  | P_clock_annot (p, _) | P_type_annot (p, _) -> enrich_with_pat env p value
-  | P_split p ->
-    let p_l =
-      Ast_misc.fold_upword (fun p p_l -> p :: p_l) (fun _ p_l -> p_l) p []
-    in
-    List.fold_left (fun env p -> enrich_with_pat env p value) env p_l
+and apply_node env nd value =
+  let env = reset_env env in
+  let env = enrich_with_pat env nd.n_input value in
+  assert false
 
 let eval_file ctx (file : < interfaces : Interface.env > Acids_preclock.file) =
   ctx, file

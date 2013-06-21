@@ -27,6 +27,7 @@ open Static_types
 
 type error =
   | Unification_error of Static_types.error
+  | Static_inputs of Names.shortname
 
 exception Typing_error of error
 
@@ -34,9 +35,15 @@ let print_error fmt err =
   match err with
   | Unification_error err ->
     Static_types.print_error fmt err
+  | Static_inputs nn ->
+    Format.fprintf fmt "Node %a has static inputs but have not been declared static"
+      Names.print_shortname nn
 
 let unification_error err =
   raise (Typing_error (Unification_error err))
+
+let static_inputs nn =
+  raise (Typing_error (Static_inputs nn))
 
 (** {2 Unification} *)
 
@@ -238,6 +245,22 @@ let rec enrich_pat env p =
       env
 
 exception Non_constant_pword
+
+let check_and_transform_non_static_sig name ssig =
+  let open Static_types in
+
+  if is_static ssig.input then static_inputs name;
+
+  let rec remap_to_dynamic st =
+    match st with
+    | Sy_var _ | Sy_scal _ -> Sy_scal S_dynamic
+    | Sy_prod ty_l -> Sy_prod (List.map remap_to_dynamic ty_l)
+  in
+
+  {
+    input = remap_to_dynamic ssig.input;
+    output = remap_to_dynamic ssig.output;
+  }
 
 (* A tree pword is constant if it contains no Pwe_fword and all its
    sub-pwordexps are syntacticaly equal *)
@@ -542,9 +565,18 @@ let type_node_def env nd =
   let input, inp_ty = type_pat env nd.n_input in
   let body, out_ty = type_exp env nd.n_body in
 
+  (* TODO solve incrementally at where level *)
+  solve_subtyping_constraints env;
+
   let ssig = make_ty_sig inp_ty out_ty in
 
-  solve_subtyping_constraints env;
+  (* non-static nodes may not have static inputs, and only have dynamic outputs,
+     see the relevant section of the manual *)
+  let ssig =
+    if nd.n_static
+    then ssig
+    else check_and_transform_non_static_sig nd.n_name ssig
+  in
 
   {
     M.n_name = nd.n_name;

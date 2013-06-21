@@ -108,7 +108,8 @@ let rec ty_of_pre_ty pty =
   | Psy_scal ss -> Sy_scal ss
   | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
 
-let make_ty_sig inp out = { input = ty_of_pre_ty inp; output = ty_of_pre_ty out; }
+let make_ty_sig inp out =
+  { input = ty_of_pre_ty inp; output = ty_of_pre_ty out; }
 
 let rec is_static st =
   match st with

@@ -36,7 +36,7 @@ let print_error fmt err =
   | Unification_error err ->
     Static_types.print_error fmt err
   | Static_inputs nn ->
-    Format.fprintf fmt "Node %a has static inputs but have not been declared static"
+    Format.fprintf fmt "Node %a has static inputs but has not been declared static"
       Names.print_shortname nn
 
 let unification_error err =

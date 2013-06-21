@@ -22,16 +22,17 @@ let node k () = g ()
 
 $$
 
-let node f () = 0 + x where rec x = 1
-
-$$
-
 let node f () = (x, y) where rec x = y and y = x
 
 $$
 
 let node f () = o where
     rec o = merge <1(0)=1> 0 (buffer o)
+
+$$
+
+let node f () = o where
+    rec o = merge <true (false)> 0 (buffer o)
 
 $$
 

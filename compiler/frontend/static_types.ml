@@ -239,14 +239,8 @@ let print_solver_state fmt (worklist, waitlist) =
     (Waitlist.print print_constr) waitlist
 
 let solve constraints = (* TODO: solve incrementally *)
-  (* let r = ref 0 in *)
   let waitlist = Waitlist.create () in
   let rec solve worklist =
-    (* incr r; *)
-    (* Format.eprintf "step %d@\n%a@\n@\n@\n@." *)
-    (*   !r *)
-    (*   print_solver_state (worklist, waitlist); *)
-
     match worklist with
     | [] -> ()
     | c :: worklist ->

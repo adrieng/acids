@@ -1,0 +1,18 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node f () = x where rec (x in [0, 0]) = 0
+
+$$
+
+let node id x = x
+
+let node f () = o where
+    rec (o in [0, 0]) = id 0

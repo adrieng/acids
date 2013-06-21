@@ -76,3 +76,26 @@ ${
 $}
 
 let static node f b = 0 when <(b)>
+
+$$
+
+let static node f (x, y) = a where
+    rec (<a^2 b^x>) = y
+
+let node g y = f (1, y)
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad 1 "Could not unify D with S": "asc -check"
+        ]
+*)
+$}
+
+let static node f (x, y) = a where
+    rec (<a^2 b^x>) = y
+
+let node g y = 1 when (<b>) where
+    rec b = f (1, true)

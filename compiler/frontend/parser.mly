@@ -495,15 +495,23 @@ clock_annot:
 it_annot:
 | IN it = interval { it }
 
+%inline tuple_pat:
+| { [] }
+| p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
+
 pat_desc:
 | id = IDENT ita = option(it_annot) { Acids_parsetree.P_var (id, ita) }
-| p_l = parens(separated_list(COMMA, pat)) { Acids_parsetree.P_tuple p_l }
-| pt = parens(upword(pat, pword_exp, chevrons)) { Acids_parsetree.P_split pt }
+| p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
+| pt = chevrons(upword(pat, pword_exp, parens))
+   { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
-        { Acids_parsetree.P_clock_annot (p, ck) }
+   { Acids_parsetree.P_clock_annot (p, ck) }
+
+%inline general_pat(PD):
+| pd = with_loc(PD) { make_located make_pat pd }
 
 pat:
-| pd = with_loc(pat_desc) { make_located make_pat pd }
+| p = general_pat(pat_desc) { p }
 
 pragma:
 | { None }

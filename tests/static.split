@@ -23,7 +23,7 @@ ${
 $}
 
 let node f () = x when <(x)=1> where
-      rec (x in [0, 0]) = 0 fby x
+      rec x in [0, 0] = 0 fby x
 
 $$
 ${
@@ -80,7 +80,7 @@ let static node f b = 0 when <(b)>
 $$
 
 let static node f (x, y) = a where
-    rec (<a^2 b^x>) = y
+    rec <(a^2 b^x)> = y
 
 let node g y = f (1, y)
 
@@ -95,7 +95,7 @@ ${
 $}
 
 let static node f (x, y) = a where
-    rec (<a^2 b^x>) = y
+    rec <(a^2 b^x)> = y
 
 let node g y = 1 when <(b)> where
     rec b = f (1, true)

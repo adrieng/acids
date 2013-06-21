@@ -8,7 +8,7 @@ ${
 *)
 $}
 
-let node f () = x where rec (x in [0, 0]) = 0
+let node f () = x where rec x in [0, 0] = 0
 
 $$
 

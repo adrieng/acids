@@ -80,7 +80,7 @@ struct
         print_app app
         print_exp e
     | E_where (e, bl) ->
-      Format.fprintf fmt "@[<hv 2>%a where@ %a@]"
+      Format.fprintf fmt "@[%a where@ %a@]"
         print_exp e
         print_block bl
     | E_when (e, ce) ->
@@ -93,14 +93,14 @@ struct
         print_clock_exp ce
         (Utils.print_list_r Ast_misc.print_econstr ",") ec_l
     | E_bmerge (ce, e1, e2) ->
-      Format.fprintf fmt "@[<hv 2>merge %a@ %a@ %a@]"
+      Format.fprintf fmt "@[merge %a@ %a@ %a@]"
         print_clock_exp ce
         print_exp e1
         print_exp e2
     | E_merge (ce, c_l) ->
-      Format.fprintf fmt "@[<hv 2>merge %a with@ %a@ end@]"
+      Format.fprintf fmt "@[@[<hv 2>merge %a with%a@]@ end@]"
         print_clock_exp ce
-        (Utils.print_list_r print_clause "") c_l
+        (Utils.print_list print_clause) c_l
     | E_valof ce ->
       Format.fprintf fmt "<@[%a@]>" print_clock_exp ce
     | E_clock_annot (e, ck) ->
@@ -123,12 +123,12 @@ struct
       (print_info I.print_app_info) app.a_info
 
   and print_block fmt block =
-    Format.fprintf fmt "@[rec %a%a@]"
+    Format.fprintf fmt "@[<hv 2>rec %a%a@]"
       (Utils.print_list_l print_eq "and ") block.b_body
       (print_info I.print_block_info) block.b_info
 
   and print_eq fmt eq =
-    Format.fprintf fmt "@[<hv 2>%a%a =@ %a@]"
+    Format.fprintf fmt "@[%a%a =@ %a@]"
       print_pat eq.eq_lhs
       (print_info I.print_eq_info) eq.eq_info
       print_exp eq.eq_rhs
@@ -160,7 +160,7 @@ struct
       Ast_misc.print_upword print_pat print_exp fmt p_t
 
   and print_clause fmt clause =
-    Format.fprintf fmt "@[@?| @[<hv 2>%a -> %a@]@]"
+    Format.fprintf fmt "@ | @[<hv 2>%a ->@ %a@]"
       Ast_misc.print_econstr clause.c_sel
       print_exp clause.c_body
 

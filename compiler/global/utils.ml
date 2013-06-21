@@ -188,6 +188,8 @@ end)
 
 open Format
 
+let print_nothing (fmt : Format.formatter) _ = ()
+
 let print_string fmt s = fprintf fmt "%s" s
 
 let print_int fmt i = fprintf fmt "%d" i

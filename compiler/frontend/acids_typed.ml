@@ -52,7 +52,7 @@ struct
         pi_data : Data_types.data_ty;
       >
   let print_pat_info fmt pi =
-    Data_types.print_ty fmt pi#pi_data
+    Data_types.print_ty_ann fmt pi#pi_data
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -65,7 +65,7 @@ struct
         ni_data : Data_types.data_sig;
       >
   let print_node_info fmt ni =
-    Data_types.print_sig fmt ni#ni_data
+    Data_types.print_sig_ann fmt ni#ni_data
 end
 
 module Ast = Acids.Make(Info)

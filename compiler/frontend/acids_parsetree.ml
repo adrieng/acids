@@ -15,39 +15,37 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let print_no_info fmt _ = Format.fprintf fmt "."
-
 module Info =
 struct
   type var = string
   let print_var fmt s = Format.fprintf fmt "%s" s
 
   type clock_exp_info = unit
-  let print_clock_exp_info = print_no_info
+  let print_clock_exp_info = Utils.print_nothing
 
   type pword_exp_info = unit
-  let print_pword_exp_info = print_no_info
+  let print_pword_exp_info = Utils.print_nothing
 
   type exp_info = unit
-  let print_exp_info = print_no_info
+  let print_exp_info = Utils.print_nothing
 
   type app_info = unit
-  let print_app_info = print_no_info
+  let print_app_info = Utils.print_nothing
 
   type block_info = unit
-  let print_block_info = print_no_info
+  let print_block_info = Utils.print_nothing
 
   type pat_info = unit
-  let print_pat_info = print_no_info
+  let print_pat_info = Utils.print_nothing
 
   type eq_info = unit
-  let print_eq_info = print_no_info
+  let print_eq_info = Utils.print_nothing
 
   type domain_info = unit
   let print_domain_info _ () = ()
 
   type node_info = unit
-  let print_node_info = print_no_info
+  let print_node_info = Utils.print_nothing
 end
 
 module Ast = Acids.Make(Info)

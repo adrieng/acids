@@ -292,25 +292,28 @@
 %inline with_loc(X):
  | x = X { x, Parser_utils.make_loc $startpos $endpos }
 
-parens(X):
+%inline parens(X):
 | LPAREN x = X RPAREN { x }
 
 %inline chevrons(X):
 | LT x = X GT { x }
+
+%inline brackets(X):
+| LBRACKET x = X RBRACKET { x }
 
 simple_ptree(X, Y):
 | x = X { Ast_misc.Leaf x }
 | t = simple_ptree(X, Y) CARET y = Y { Ast_misc.Power (t, y) }
 | LBRACE t = ptree(X, Y) RBRACE { t }
 
-ptree(X, Y):
-| nonempty_list(simple_ptree(X, Y)) { make_concat $1 }
+%inline ptree(X, Y):
+| pt = nonempty_list(simple_ptree(X, Y)) { make_concat pt }
 
-upword_desc(X, Y, Z):
+%inline upword_desc(X, Y, Z):
 | v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
 | u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
 
-upword(X, Y, Z):
+%inline upword(X, Y, Z):
 | w = upword_desc(X, Y, Z) { make_pword w }
 
 tuple(ty):
@@ -372,9 +375,9 @@ clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
 | ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
 | ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
-| upword(pword_exp, pword_exp, parens) { Acids_parsetree.Ce_pword $1 }
+| pt = upword(pword_exp, pword_exp, parens) { Acids_parsetree.Ce_pword pt }
 
-clock_exp:
+%inline clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
 
 clock_exp_exp:
@@ -390,11 +393,10 @@ trivial_exp_desc:
 %inline pword_exp:
 | pwed = with_loc(pword_exp_desc) { make_located make_pword_exp pwed }
 
-pword_exp_desc:
+%inline pword_exp_desc:
 | v = IDENT { Acids_parsetree.Pwe_var v }
 | ec = econstr { Acids_parsetree.Pwe_econstr ec }
 | w = WORD { Acids_parsetree.Pwe_fword w }
-
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }
@@ -481,18 +483,16 @@ block:
 | b = with_loc(block_desc) { make_located make_block b }
 
 clock_annot:
-| STVAR { Acids_parsetree.Ca_var $1 }
-| clock_annot ON clock_exp { Acids_parsetree.Ca_on ($1, $3) }
+| v = STVAR { Acids_parsetree.Ca_var v }
+| cka = clock_annot ON ce = clock_exp { Acids_parsetree.Ca_on (cka, ce) }
 
-pat_tuple:
-| p_l = separated_list(COMMA, pat) { p_l }
+it_annot:
+| IN it = interval { it }
 
 pat_desc:
-| id = IDENT { Acids_parsetree.P_var (id, None) }
-| LPAREN id = IDENT IN it = interval RPAREN
-        { Acids_parsetree.P_var (id, Some it) }
-| parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
-| ps = parens(upword(pat, pword_exp, chevrons)) { Acids_parsetree.P_split ps }
+| id = IDENT ita = option(it_annot) { Acids_parsetree.P_var (id, ita) }
+| p_l = parens(separated_list(COMMA, pat)) { Acids_parsetree.P_tuple p_l }
+| pt = parens(upword(pat, pword_exp, chevrons)) { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
         { Acids_parsetree.P_clock_annot (p, ck) }
 

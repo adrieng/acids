@@ -231,6 +231,7 @@ let rec free_type_for_data_type ty =
   let open Data_types in
   match ty with
   | Ty_var _ -> ty_top (* unsure *)
+  | Ty_scal Tys_bool -> It_scal (Is_inter Interval.bool)
   | Ty_scal _ -> ty_top
   | Ty_prod ty_l -> It_prod (List.map free_type_for_data_type ty_l)
 

@@ -410,6 +410,8 @@ exp_desc:
 
 | FST e = exp { Acids_parsetree.E_fst e }
 | SND e = exp { Acids_parsetree.E_snd e }
+
+| LPAREN RPAREN { Acids_parsetree.E_tuple [] }
 | e = simple_exp COMMA e_l = separated_nonempty_list(COMMA, simple_exp)
               { Acids_parsetree.E_tuple (e :: e_l) }
 

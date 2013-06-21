@@ -36,9 +36,10 @@ let repeat n x =
   in
   walk n []
 
-let range n =
-  let rec walk acc n =
-    if n <= 0 then List.rev acc else walk (n :: acc) (n - 1)
+let range n m =
+  assert (n <= m);
+  let rec walk acc i =
+    if i > m then List.rev acc else walk (i :: acc) (i + 1)
   in
   walk [] n
 

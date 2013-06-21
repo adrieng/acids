@@ -234,20 +234,22 @@ let rec free_type_for_data_type ty =
   | Ty_scal _ -> ty_top
   | Ty_prod ty_l -> It_prod (List.map free_type_for_data_type ty_l)
 
-let check_pattern_range env loc ty c_l =
+let check_pattern_range env loc it ty c_l =
   let open Data_types in
   let open Ast_misc in
-  let it, ec_l =
+  let ec_l =
     match ty with
     | Tys_float -> invalid_arg "check_pattern_range: float"
-    | Tys_bool -> Interval.bool, [Ec_bool true; Ec_bool false]
+    | Tys_bool -> [Ec_bool true; Ec_bool false]
     | Tys_int ->
-      let max = List.length c_l - 1 in
-      Interval.make_0_n (Int.of_int max),
-      List.map (fun i -> Ec_int (Int.of_int i)) (Utils.range max)
+      let range =
+        Utils.range
+          (Int.to_int it.Interval.l)
+          (Int.to_int it.Interval.u) (* TODO may fail with big patterns *)
+      in
+      List.map (fun i -> Ec_int (Int.of_int i)) range
     | Tys_user ln ->
       let ec_l = find_constructors_for_type env ln in
-      Interval.make_0_n (Int.of_int (List.length ec_l)),
       List.map (fun constr -> Ec_constr constr) ec_l
   in
 
@@ -261,8 +263,7 @@ let check_pattern_range env loc ty c_l =
       then duplicate_pattern loc ec;
       check_exhaustive expected (ec :: seen) actual
   in
-  check_exhaustive ec_l [] c_l;
-  it
+  check_exhaustive ec_l [] c_l
 
 let rec enrich_env_pat env p =
   match p.p_desc with
@@ -396,30 +397,24 @@ and type_exp env e =
 
     | E_merge (ce, c_l) ->
       let ce = type_clock_exp env ce in
-      let it =
-        check_pattern_range
-          env
-          e.e_loc
-          ce.Acids_interval.ce_info#ci_data
-          (List.map (fun c -> c.c_sel) c_l)
-      in
-      if not (Interval.subset (clock_exp_type ce) it)
-      then not_subset_ce ce it;
+      check_pattern_range
+        env
+        e.e_loc
+        (clock_exp_type ce)
+        ce.Acids_interval.ce_info#ci_data
+        (List.map (fun c -> c.c_sel) c_l);
       let c_l = List.map (type_merge_clause env) c_l in
       let ty_l = List.map (fun c -> exp_type c.Acids_interval.c_body) c_l in
       Acids_interval.E_merge (ce, c_l), join_l ty_l
 
     | E_split (ce, e', ec_l) ->
       let ce = type_clock_exp env ce in
-      let it =
-        check_pattern_range
-          env
-          e.e_loc
-          ce.Acids_interval.ce_info#ci_data
-          ec_l
-      in
-      if not (Interval.subset (clock_exp_type ce) it)
-      then not_subset_ce ce it;
+      check_pattern_range
+        env
+        e.e_loc
+        (clock_exp_type ce)
+        ce.Acids_interval.ce_info#ci_data
+        ec_l;
       let e' = type_exp env e' in
       Acids_interval.E_split (ce, e', ec_l), exp_type e'
 

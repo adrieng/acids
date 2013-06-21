@@ -94,11 +94,13 @@ let get_opt = function
 
 let get_opt_ref r = get_opt !r
 
-let fold_opt f o acc = match o with
+let fold_opt f o acc =
+  match o with
   | None -> acc
   | Some x -> f x acc
 
-let mapfold_opt f o acc = match o with
+let mapfold_opt f o acc =
+  match o with
   | None -> None, acc
   | Some x ->
     let x, acc = f x acc in

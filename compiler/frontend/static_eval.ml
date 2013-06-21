@@ -39,7 +39,24 @@ type value =
   | Const of Ast_misc.const
   | Tuple of value list
 
+let equal_val v1 v2 = v1 = v2
+
 let ill_typed str = invalid_arg (str ^ ": ill-typed")
+
+let const c = Const c
+
+let econstr ec = const (Ast_misc.Cconstr ec)
+
+let bool b = econstr (Ast_misc.Ec_bool b)
+
+let int i = econstr (Ast_misc.Ec_int i)
+
+let tuple v_l = Tuple v_l
+
+let get_econstr v =
+  match v with
+  | Const (Ast_misc.Cconstr ec) -> ec
+  | _ -> ill_typed "get_econstr"
 
 let get_bool v =
   let open Ast_misc in
@@ -57,6 +74,16 @@ let get_tuple v =
   match v with
   | Tuple v_l -> v_l
   | _ -> ill_typed "get_tuple"
+
+let val_fst v =
+  match v with
+  | Tuple [v; _] -> v
+  | _ -> ill_typed "value_fst"
+
+let val_snd v =
+  match v with
+  | Tuple [_; v] -> v
+  | _ -> ill_typed "value_fst"
 
 (** {2 Environments} *)
 
@@ -97,6 +124,9 @@ let register_as_being_computed env id =
   if Ident.Set.mem id env.computing then non_causal id;
   { env with computing = Ident.Set.add id env.computing; }
 
+let add_equation env id eq =
+  { env with current_defs = Ident.Env.add id eq env.current_defs; }
+
 let find_equation_for env id =
   Ident.Env.find id env.current_defs
 
@@ -105,14 +135,29 @@ let find_equation_for env id =
     We walk the AST and replace expressions in pword by their evaluation.
 *)
 
-let rec eval_static_clock_exp env ce =
+let not_static s =
+  invalid_arg (s ^ ": expression cannot be evaluated")
+
+let rec eval_static_clock_exp ce env =
   assert (ce.ce_info#ci_static <> Static_types.S_dynamic);
   match ce.ce_desc with
   | Ce_var v ->
     compute_var env v
-  | _ ->
-    assert false
-
+  | Ce_pword w ->
+    let rec find_any pt =
+      match pt with
+      | Ast_misc.Leaf x -> x
+      | Ast_misc.Power (pt, _) -> find_any pt
+      | Ast_misc.Concat [] -> assert false
+      | Ast_misc.Concat (x :: _) -> find_any x
+    in
+    eval_static_pword_exp (find_any w.Ast_misc.u) env
+  | Ce_equal (ce, e) ->
+    let val_ce, env = eval_static_clock_exp ce env in
+    let val_e, env = eval_static_exp e env in
+    bool (equal_val val_ce val_e), env
+  | Ce_iter _ ->
+    not_static "eval_static_clock_exp"
 
 and compute_var env id =
   try find_value env id, env
@@ -123,13 +168,90 @@ and compute_var env id =
     find_value env id, env
 
 and enrich_with_eq env eq =
-  let value, env = eval_static_exp env eq.eq_rhs in
+  let value, env = eval_static_exp eq.eq_rhs env in
   enrich_with_pat env eq.eq_lhs value
 
-and eval_static_exp env e =
+and eval_static_exp e env =
   assert (e.e_info#ei_static
           <> Static_types.Sy_scal Static_types.S_dynamic);
-  assert false
+  match e.e_desc with
+  | E_var v ->
+    compute_var env v
+
+  | E_const c ->
+    const c, env
+
+  | E_fst e ->
+    let value, env = eval_static_exp e env in
+    val_fst value, env
+
+  | E_snd e ->
+    let value, env = eval_static_exp e env in
+    val_snd value, env
+
+  | E_tuple e_l ->
+    let v_l, env = Utils.mapfold eval_static_exp e_l env in
+    tuple v_l, env
+
+  | E_fby _ ->
+    not_static "eval_static_exp"
+
+  | E_ifthenelse (e1, e2, e3) ->
+    let v, env = eval_static_exp e1 env in
+    eval_static_exp (if get_bool v then e2 else e3) env
+
+  | E_app _ ->
+    assert false (* TODO *)
+
+  | E_where (e, block) ->
+    let env = eval_block block env in
+    eval_static_exp e env
+
+  | E_bmerge (ce, e1, e2) ->
+    let v, env = eval_static_clock_exp ce env in
+    eval_static_exp (if get_bool v then e1 else e2) env
+
+  | E_merge (ce, c_l) ->
+    let v, env = eval_static_clock_exp ce env in
+    let ec = get_econstr v in
+    let c = List.find (fun c -> c.c_sel = ec) c_l in
+    eval_static_exp c.c_body env
+
+  | E_valof ce ->
+    eval_static_clock_exp ce env
+
+  | E_when (e, _) | E_split (_, e, _)
+  | E_clock_annot (e, _) | E_type_annot (e, _)
+  | E_dom (e, _) | E_buffer e ->
+    eval_static_exp e env
+
+and eval_static_pword_exp pwe env =
+  assert (pwe.pwe_info#pwi_static <> Static_types.S_dynamic);
+  match pwe.pwe_desc with
+  | Pwe_var v ->
+    compute_var env v
+  | Pwe_econstr ec ->
+    econstr ec, env
+  | Pwe_fword ec_l ->
+    int (List.hd ec_l), env
+
+and eval_block block env =
+  let add_eq env eq =
+    let rec add_to_relevant_vars env p =
+      match p.p_desc with
+      | P_var (v, _) -> add_equation env v eq
+      | P_tuple p_l -> List.fold_left add_to_relevant_vars env p_l
+      | P_clock_annot (p, _) | P_type_annot (p, _) -> add_to_relevant_vars env p
+      | P_split p ->
+        Ast_misc.fold_upword
+          (Utils.flip add_to_relevant_vars)
+          (fun _ env -> env)
+          p
+          env
+    in
+    add_to_relevant_vars env eq.eq_lhs
+  in
+  List.fold_left add_eq env block.b_body
 
 and enrich_with_pat env pat value =
   match pat.p_desc with

@@ -181,7 +181,7 @@ struct
       | P_type_annot (p, ty) ->
         OUT.P_type_annot (extract_pattern p, ty)
       | P_split w ->
-        OUT.P_split (Ast_misc.map_upword extract_pattern extract_exp w)
+        OUT.P_split (Ast_misc.map_upword extract_pattern extract_pword_exp w)
     in
     {
       OUT.p_desc = pd;

@@ -539,9 +539,9 @@ and type_pattern p env =
     | P_split w ->
       let ty = fresh_ty () in
       let expect_pat = expect_pat ty in
-      let expect_exp_int e env = expect_exp env int_ty e, env in
+      let expect_pword_exp_int e env = expect_pword_exp env int_ty e, env in
       let w, env =
-        Ast_misc.mapfold_upword expect_pat expect_exp_int w env
+        Ast_misc.mapfold_upword expect_pat expect_pword_exp_int w env
       in
       M.P_split w, ty, env
   in

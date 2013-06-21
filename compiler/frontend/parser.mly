@@ -492,7 +492,7 @@ pat_desc:
 | LPAREN id = IDENT IN it = interval RPAREN
         { Acids_parsetree.P_var (id, Some it) }
 | parens(pat_tuple) { Acids_parsetree.P_tuple $1 }
-| ps = parens(upword(pat, simple_exp, chevrons)) { Acids_parsetree.P_split ps }
+| ps = parens(upword(pat, pword_exp, chevrons)) { Acids_parsetree.P_split ps }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
         { Acids_parsetree.P_clock_annot (p, ck) }
 

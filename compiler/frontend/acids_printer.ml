@@ -157,7 +157,7 @@ struct
         print_pat p
         Data_types.print_ty ty
     | P_split p_t ->
-      Ast_misc.print_upword print_pat print_exp fmt p_t
+      Ast_misc.print_upword print_pat print_pword_exp fmt p_t
 
   and print_clause fmt clause =
     Format.fprintf fmt "@ | @[<hv 2>%a ->@ %a@]"

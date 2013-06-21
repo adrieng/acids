@@ -514,10 +514,7 @@ and type_pat env p =
     | P_split pt ->
       let ty = fresh_ty () in
       let pt =
-        Ast_misc.map_upword
-          (expect_pat loc env ty)
-          (expect_exp loc env static_ty)
-          pt
+        Ast_misc.map_upword (expect_pat loc env ty) (type_pword_exp env) pt
       in
       M.P_split pt, ty
   in

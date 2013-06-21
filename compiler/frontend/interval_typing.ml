@@ -309,11 +309,11 @@ let rec type_pat env p =
       Acids_interval.P_type_annot (p, tya), pat_type p
 
     | P_split w ->
-      let w = Ast_misc.map_upword (type_pat env) (type_exp env) w in
-      let ty_l =
-        Ast_misc.fold_upword
-          (fun p acc -> pat_type p :: acc)
-          (fun _ acc -> acc)
+      let w = Ast_misc.map_upword (type_pat env) (type_pword_exp env) w in
+      let w, ty_l =
+        Ast_misc.mapfold_upword
+          (fun p acc -> p, pat_type p :: acc)
+          (fun (pwe, _) acc -> pwe, acc)
           w
           []
       in

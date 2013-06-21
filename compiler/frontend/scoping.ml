@@ -572,11 +572,13 @@ and scope_pattern
       in
       Acids_scoped.P_type_annot (p, ty), (id_env, intf_env)
     | P_split upw ->
-      let scope_exp e (id_env, intf_env) =
-        let e, intf_env = scope_exp ctx id_env e intf_env in
+      let scope_pword_exp pwe (id_env, intf_env) =
+        let e, intf_env = scope_pword_exp id_env pwe intf_env in
         e, (id_env, intf_env)
       in
-      let p_l, acc = Ast_misc.mapfold_upword scope_pattern scope_exp upw acc in
+      let p_l, acc =
+        Ast_misc.mapfold_upword scope_pattern scope_pword_exp upw acc
+      in
       Acids_scoped.P_split p_l, acc
   in
   {

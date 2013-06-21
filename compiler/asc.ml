@@ -67,6 +67,7 @@ let flow =
   +>+ Data_typing.type_
   +>+ Interval_typing.type_
   +>+ Static_typing.type_
+  +>+ Static_eval.eval
 
 (*****************************************************************************)
 (* File handling *)

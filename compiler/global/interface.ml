@@ -85,6 +85,8 @@ type t =
     i_constrs : Names.shortname Names.ShortEnv.t;
   }
 
+type env = t Names.ShortEnv.t
+
 (** {2 Access functions} *)
 
 let data_signature_of_node_item ni =

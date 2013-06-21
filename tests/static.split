@@ -30,7 +30,7 @@ ${
 (*
         run_test:
         [
-                Bad: "asc -check"
+                Bad 1 "Could not unify D with S": "asc -check"
         ]
 *)
 $}
@@ -44,7 +44,7 @@ ${
 (*
         run_test:
         [
-                Bad: "asc -check"
+                Good: "asc -check"
         ]
 *)
 $}
@@ -58,7 +58,7 @@ ${
 (*
         run_test:
         [
-                Bad: "asc -check"
+                Bad 1 "Node f has static inputs but has not been declared static": "asc -check"
         ]
 *)
 $}

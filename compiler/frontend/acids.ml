@@ -23,8 +23,8 @@ sig
   type clock_exp_info
   val print_clock_exp_info : Format.formatter -> clock_exp_info -> unit
 
-  type pword_exp_info
-  val print_pword_exp_info : Format.formatter -> pword_exp_info -> unit
+  type static_exp_info
+  val print_static_exp_info : Format.formatter -> static_exp_info -> unit
 
   type exp_info
   val print_exp_info : Format.formatter -> exp_info -> unit
@@ -60,21 +60,21 @@ sig
 
   and clock_exp_desc =
   | Ce_var of I.var
-  | Ce_pword of (pword_exp, pword_exp) Ast_misc.upword
+  | Ce_pword of (static_exp, static_exp) Ast_misc.upword
   | Ce_equal of clock_exp * exp
   | Ce_iter of clock_exp
 
-  and pword_exp =
+  and static_exp =
     {
-      pwe_desc : pword_exp_desc;
-      pwe_loc : Loc.t;
-      pwe_info : I.pword_exp_info;
+      se_desc : static_exp_desc;
+      se_loc : Loc.t;
+      se_info : I.static_exp_info;
     }
 
-  and pword_exp_desc =
-  | Pwe_var of I.var
-  | Pwe_econstr of Ast_misc.econstr
-  | Pwe_fword of Int.t list (* [0-9] int *)
+  and static_exp_desc =
+  | Se_var of I.var
+  | Se_econstr of Ast_misc.econstr
+  | Se_fword of Int.t list (* [0-9] int *)
 
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
 
@@ -122,7 +122,7 @@ sig
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
-  | P_split of (pat, pword_exp) Ast_misc.upword
+  | P_split of (pat, static_exp) Ast_misc.upword
 
   and merge_clause = {
     c_sel : Ast_misc.econstr;
@@ -188,21 +188,21 @@ module Make = functor (S : S) ->
 
     and clock_exp_desc =
     | Ce_var of S.var
-    | Ce_pword of (pword_exp, pword_exp) Ast_misc.upword
+    | Ce_pword of (static_exp, static_exp) Ast_misc.upword
     | Ce_equal of clock_exp * exp
     | Ce_iter of clock_exp
 
-    and pword_exp =
+    and static_exp =
       {
-        pwe_desc : pword_exp_desc;
-        pwe_loc : Loc.t;
-        pwe_info : I.pword_exp_info;
+        se_desc : static_exp_desc;
+        se_loc : Loc.t;
+        se_info : I.static_exp_info;
       }
 
-    and pword_exp_desc =
-    | Pwe_var of I.var
-    | Pwe_econstr of Ast_misc.econstr
-    | Pwe_fword of Int.t list (* [0-9] int *)
+    and static_exp_desc =
+    | Se_var of I.var
+    | Se_econstr of Ast_misc.econstr
+    | Se_fword of Int.t list (* [0-9] int *)
 
     and clock_annot =
     | Ca_var of int
@@ -278,7 +278,7 @@ module Make = functor (S : S) ->
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty
-    | P_split of (pat, pword_exp) Ast_misc.upword
+    | P_split of (pat, static_exp) Ast_misc.upword
 
     and merge_clause =
       {

@@ -315,7 +315,7 @@ and scope_clock_annot ctx id_env cka intf_env =
 
 and scope_clock_exp ctx id_env ce intf_env =
   let scope_exp = scope_exp ctx id_env in
-  let scope_pword_exp = scope_pword_exp id_env in
+  let scope_static_exp = scope_static_exp id_env in
   let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
     match ce.ce_desc with
@@ -324,7 +324,7 @@ and scope_clock_exp ctx id_env ce intf_env =
       Acids_scoped.Ce_var id, intf_env
     | Ce_pword upw ->
       let pw, intf_env =
-        Ast_misc.mapfold_upword scope_pword_exp scope_pword_exp upw intf_env
+        Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
       in
       Acids_scoped.Ce_pword pw, intf_env
     | Ce_equal (ce, e) ->
@@ -342,21 +342,21 @@ and scope_clock_exp ctx id_env ce intf_env =
   },
   intf_env
 
-and scope_pword_exp id_env pwe intf_env =
-  let pwed, intf_env =
-    match pwe.pwe_desc with
-    | Pwe_var v ->
-      let id = find_var id_env v pwe.pwe_loc in
-      Acids_scoped.Pwe_var id, intf_env
-    | Pwe_econstr ec ->
-      Acids_scoped.Pwe_econstr ec, intf_env
-    | Pwe_fword i_l ->
-      Acids_scoped.Pwe_fword i_l, intf_env
+and scope_static_exp id_env se intf_env =
+  let sed, intf_env =
+    match se.se_desc with
+    | Se_var v ->
+      let id = find_var id_env v se.se_loc in
+      Acids_scoped.Se_var id, intf_env
+    | Se_econstr ec ->
+      Acids_scoped.Se_econstr ec, intf_env
+    | Se_fword i_l ->
+      Acids_scoped.Se_fword i_l, intf_env
   in
   {
-    Acids_scoped.pwe_desc = pwed;
-    Acids_scoped.pwe_loc = pwe.pwe_loc;
-    Acids_scoped.pwe_info = pwe.pwe_info;
+    Acids_scoped.se_desc = sed;
+    Acids_scoped.se_loc = se.se_loc;
+    Acids_scoped.se_info = se.se_info;
   },
   intf_env
 
@@ -572,12 +572,12 @@ and scope_pattern
       in
       Acids_scoped.P_type_annot (p, ty), (id_env, intf_env)
     | P_split upw ->
-      let scope_pword_exp pwe (id_env, intf_env) =
-        let e, intf_env = scope_pword_exp id_env pwe intf_env in
+      let scope_static_exp se (id_env, intf_env) =
+        let e, intf_env = scope_static_exp id_env se intf_env in
         e, (id_env, intf_env)
       in
       let p_l, acc =
-        Ast_misc.mapfold_upword scope_pattern scope_pword_exp upw acc
+        Ast_misc.mapfold_upword scope_pattern scope_static_exp upw acc
       in
       Acids_scoped.P_split p_l, acc
   in

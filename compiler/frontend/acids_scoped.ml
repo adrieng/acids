@@ -23,8 +23,8 @@ struct
   type clock_exp_info = unit
   let print_clock_exp_info = Utils.print_nothing
 
-  type pword_exp_info = unit
-  let print_pword_exp_info = Utils.print_nothing
+  type static_exp_info = unit
+  let print_static_exp_info = Utils.print_nothing
 
   type exp_info = unit
   let print_exp_info = Utils.print_nothing

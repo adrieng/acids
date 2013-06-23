@@ -29,14 +29,14 @@ struct
       >
   let print_clock_exp_info (_ : Format.formatter) _ = ()
 
-  type pword_exp_info =
+  type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
         pwi_static : Static_types.ty_scal;
         pwi_interv : Interval_types.ty_scal;
         pwi_clock : Clock_types.stream_type;
       >
-  let print_pword_exp_info (_ : Format.formatter) _ = ()
+  let print_static_exp_info (_ : Format.formatter) _ = ()
 
   type exp_info =
       <

@@ -138,7 +138,7 @@ module M = Acids.Make(ANN_INFO)
 
 let annotate_exp e ty = ANN_INFO.annotate e.e_info (A.Exp ty)
 let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
-let annotate_pword_exp pwe ty = ANN_INFO.annotate pwe.pwe_info (A.Exp ty)
+let annotate_static_exp se ty = ANN_INFO.annotate se.se_info (A.Exp ty)
 let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
   ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
@@ -168,9 +168,9 @@ struct
         | _ -> invalid_arg "update_clock_exp_info"
       )
 
-  let update_pword_exp_info { new_annot = na; old_annot = info; } =
+  let update_static_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ -> invalid_arg "update_pword_exp_info"
+    | Node _ -> invalid_arg "update_static_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       (
@@ -181,7 +181,7 @@ struct
             method pwi_interv = info#pwi_interv
             method pwi_static = tys
           end
-        | _ -> invalid_arg "update_pword_exp_info"
+        | _ -> invalid_arg "update_static_exp_info"
       )
 
   let update_exp_info { new_annot = na; old_annot = info; } =
@@ -262,28 +262,28 @@ let check_and_transform_non_static_sig name ssig =
     output = remap_to_dynamic ssig.output;
   }
 
-(* A tree pword is constant if it contains no Pwe_fword and all its
+(* A tree pword is constant if it contains no Se_fword and all its
    sub-pwordexps are syntacticaly equal *)
 let is_constant_pword w =
   let open Ast_misc in
 
-  let is_constant_pword_exp pwe =
-    match pwe.pwe_desc with
-    | Pwe_var _ | Pwe_econstr _ | Pwe_fword [_] -> true
-    | Pwe_fword _ -> false
+  let is_constant_static_exp se =
+    match se.se_desc with
+    | Se_var _ | Se_econstr _ | Se_fword [_] -> true
+    | Se_fword _ -> false
   in
 
-  let check_constant pwe acc =
-    if not (is_constant_pword_exp pwe) then raise Non_constant_pword
+  let check_constant se acc =
+    if not (is_constant_static_exp se) then raise Non_constant_pword
     else
       (
         match acc with
-        | Some prev_pwe ->
-          if pwe.pwe_desc <> prev_pwe.pwe_desc
+        | Some prev_se ->
+          if se.se_desc <> prev_se.se_desc
           then raise Non_constant_pword
           else acc
         | None ->
-          Some pwe
+          Some se
       )
   in
   try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
@@ -299,7 +299,7 @@ let rec type_clock_exp env ce =
       M.Ce_var id, find_ident env id
 
     | Ce_pword w ->
-      let type_fun = type_pword_exp env in
+      let type_fun = type_static_exp env in
       let ty = if is_constant_pword w then static_ty else dynamic_ty in
       let w = Ast_misc.map_upword type_fun type_fun w in
       M.Ce_pword w, ty
@@ -320,22 +320,22 @@ let rec type_clock_exp env ce =
   },
   ty
 
-and type_pword_exp env pwe =
-  let pwed, ty =
-    match pwe.pwe_desc with
-    | Pwe_var v ->
+and type_static_exp env se =
+  let sed, ty =
+    match se.se_desc with
+    | Se_var v ->
       let ty = find_ident env v in
-      unify pwe.pwe_loc static_ty ty;
-      M.Pwe_var v, ty
-    | Pwe_econstr ec ->
-      M.Pwe_econstr ec, static_ty
-    | Pwe_fword i_l ->
-      M.Pwe_fword i_l, static_ty
+      unify se.se_loc static_ty ty;
+      M.Se_var v, ty
+    | Se_econstr ec ->
+      M.Se_econstr ec, static_ty
+    | Se_fword i_l ->
+      M.Se_fword i_l, static_ty
   in
   {
-    M.pwe_desc = pwed;
-    M.pwe_loc = pwe.pwe_loc;
-    M.pwe_info = annotate_pword_exp pwe ty;
+    M.se_desc = sed;
+    M.se_loc = se.se_loc;
+    M.se_info = annotate_static_exp se ty;
   }
 
 and type_exp env e =
@@ -514,7 +514,7 @@ and type_pat env p =
     | P_split pt ->
       let ty = fresh_ty () in
       let pt =
-        Ast_misc.map_upword (expect_pat loc env ty) (type_pword_exp env) pt
+        Ast_misc.map_upword (expect_pat loc env ty) (type_static_exp env) pt
       in
       M.P_split pt, ty
   in

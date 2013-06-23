@@ -32,13 +32,13 @@ struct
       Interval_types.print_interval_ann cei#ci_interv
       Static_types.print_ty_scal_ann cei#ci_static
 
-  type pword_exp_info =
+  type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
         pwi_static : Static_types.ty_scal;
         pwi_interv : Interval.t;
       >
-  let print_pword_exp_info fmt (pwi : pword_exp_info) =
+  let print_static_exp_info fmt (pwi : static_exp_info) =
     Format.fprintf fmt "%a%a%a"
       Data_types.print_ty_scal_ann pwi#pwi_data
       Interval_types.print_interval_ann pwi#pwi_interv

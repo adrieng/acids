@@ -267,16 +267,16 @@ struct
         | _ -> invalid_arg "update_clock_exp_info"
       )
 
-  let update_pword_exp_info { new_annot = na; old_annot = (); } =
+  let update_static_exp_info { new_annot = na; old_annot = (); } =
     match na with
-    | Node _ -> invalid_arg "update_pword_exp_info"
+    | Node _ -> invalid_arg "update_static_exp_info"
     | Exp pty ->
       let ty = Data_types.ty_of_pre_ty pty in
       (
         match ty with
         | Ty_scal tys ->
           object method pwi_data = tys end
-        | _ -> invalid_arg "update_pword_exp_info"
+        | _ -> invalid_arg "update_static_exp_info"
       )
 
   let update_exp_info { new_annot = na; old_annot = (); } =
@@ -333,7 +333,7 @@ and type_clock_exp env ce =
 
     | Ce_pword w ->
       let ty = fresh_ty () in
-      let expect = expect_pword_exp env ty in
+      let expect = expect_static_exp env ty in
       let w = Ast_misc.map_upword expect expect w in
       M.Ce_pword w, ty
 
@@ -358,27 +358,27 @@ and expect_clock_exp env expected_ty ce =
   unify ce.M.ce_loc expected_ty effective_ty;
   ce
 
-and type_pword_exp env pwe =
-  let pwed, ty =
-    match pwe.pwe_desc with
-    | Pwe_var v ->
-      M.Pwe_var v, find_ident env v
-    | Pwe_econstr ec ->
-      M.Pwe_econstr ec, type_econstr env ec
-    | Pwe_fword i_l ->
-      M.Pwe_fword i_l, int_ty
+and type_static_exp env se =
+  let sed, ty =
+    match se.se_desc with
+    | Se_var v ->
+      M.Se_var v, find_ident env v
+    | Se_econstr ec ->
+      M.Se_econstr ec, type_econstr env ec
+    | Se_fword i_l ->
+      M.Se_fword i_l, int_ty
   in
   {
-    M.pwe_desc = pwed;
-    M.pwe_loc = pwe.pwe_loc;
-    M.pwe_info = annotate_exp pwe.pwe_info ty;
+    M.se_desc = sed;
+    M.se_loc = se.se_loc;
+    M.se_info = annotate_exp se.se_info ty;
   },
   ty
 
-and expect_pword_exp env expected_ty pwe =
-  let pwe, effective_ty = type_pword_exp env pwe in
-  unify pwe.M.pwe_loc expected_ty effective_ty;
-  pwe
+and expect_static_exp env expected_ty se =
+  let se, effective_ty = type_static_exp env se in
+  unify se.M.se_loc expected_ty effective_ty;
+  se
 
 and type_exp env e =
   let ed, ty =
@@ -539,9 +539,9 @@ and type_pattern p env =
     | P_split w ->
       let ty = fresh_ty () in
       let expect_pat = expect_pat ty in
-      let expect_pword_exp_int e env = expect_pword_exp env int_ty e, env in
+      let expect_static_exp_int e env = expect_static_exp env int_ty e, env in
       let w, env =
-        Ast_misc.mapfold_upword expect_pat expect_pword_exp_int w env
+        Ast_misc.mapfold_upword expect_pat expect_static_exp_int w env
       in
       M.P_split w, ty, env
   in

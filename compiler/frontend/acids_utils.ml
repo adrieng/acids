@@ -38,8 +38,8 @@ struct
   type clock_exp_info = A.I.clock_exp_info annot
   let print_clock_exp_info = print_annot A.I.print_clock_exp_info
 
-  type pword_exp_info = A.I.pword_exp_info annot
-  let print_pword_exp_info = print_annot A.I.print_pword_exp_info
+  type static_exp_info = A.I.static_exp_info annot
+  let print_static_exp_info = print_annot A.I.print_static_exp_info
 
   type exp_info = A.I.exp_info annot
   let print_exp_info = print_annot A.I.print_exp_info
@@ -71,7 +71,7 @@ sig
   module OUT_INFO : Acids.S
 
   val update_clock_exp_info : IN_INFO.clock_exp_info -> OUT_INFO.clock_exp_info
-  val update_pword_exp_info : IN_INFO.pword_exp_info -> OUT_INFO.pword_exp_info
+  val update_static_exp_info : IN_INFO.static_exp_info -> OUT_INFO.static_exp_info
   val update_exp_info : IN_INFO.exp_info -> OUT_INFO.exp_info
   val update_app_info : IN_INFO.app_info -> OUT_INFO.app_info
   val update_block_info : IN_INFO.block_info -> OUT_INFO.block_info
@@ -94,7 +94,7 @@ struct
       match ce.ce_desc with
       | Ce_var id -> OUT.Ce_var id
       | Ce_pword w ->
-        let w = Ast_misc.map_upword extract_pword_exp extract_pword_exp w in
+        let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
         OUT.Ce_pword w
       | Ce_equal (ce, e) ->
         OUT.Ce_equal (extract_clock_exp ce, extract_exp e)
@@ -107,17 +107,17 @@ struct
       OUT.ce_info = M.update_clock_exp_info ce.ce_info;
     }
 
-  and extract_pword_exp pwe =
-    let pwed =
-      match pwe.pwe_desc with
-      | Pwe_var v -> OUT.Pwe_var v
-      | Pwe_econstr ec -> OUT.Pwe_econstr ec
-      | Pwe_fword i_l -> OUT.Pwe_fword i_l
+  and extract_static_exp se =
+    let sed =
+      match se.se_desc with
+      | Se_var v -> OUT.Se_var v
+      | Se_econstr ec -> OUT.Se_econstr ec
+      | Se_fword i_l -> OUT.Se_fword i_l
     in
     {
-      OUT.pwe_desc = pwed;
-      OUT.pwe_loc = pwe.pwe_loc;
-      OUT.pwe_info = M.update_pword_exp_info pwe.pwe_info;
+      OUT.se_desc = sed;
+      OUT.se_loc = se.se_loc;
+      OUT.se_info = M.update_static_exp_info se.se_info;
     }
 
   and extract_exp e =
@@ -181,7 +181,7 @@ struct
       | P_type_annot (p, ty) ->
         OUT.P_type_annot (extract_pattern p, ty)
       | P_split w ->
-        OUT.P_split (Ast_misc.map_upword extract_pattern extract_pword_exp w)
+        OUT.P_split (Ast_misc.map_upword extract_pattern extract_static_exp w)
     in
     {
       OUT.p_desc = pd;

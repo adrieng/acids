@@ -48,9 +48,9 @@ let clock_exp_annotate ce ty =
     method ci_interv = ty
   end
 
-let pword_exp_annotate pwe ty =
+let static_exp_annotate se ty =
   object
-    method pwi_data = pwe.pwe_info#pwi_data
+    method pwi_data = se.se_info#pwi_data
     method pwi_interv = ty
   end
 
@@ -309,11 +309,11 @@ let rec type_pat env p =
       Acids_interval.P_type_annot (p, tya), pat_type p
 
     | P_split w ->
-      let w = Ast_misc.map_upword (type_pat env) (type_pword_exp env) w in
+      let w = Ast_misc.map_upword (type_pat env) (type_static_exp env) w in
       let w, ty_l =
         Ast_misc.mapfold_upword
           (fun p acc -> p, pat_type p :: acc)
-          (fun (pwe, _) acc -> pwe, acc)
+          (fun (se, _) acc -> se, acc)
           w
           []
       in
@@ -498,13 +498,13 @@ and type_clock_exp env ce =
 
     | Ce_pword w ->
       let w =
-        let type_fun = type_pword_exp env in
+        let type_fun = type_static_exp env in
         Ast_misc.map_upword type_fun type_fun w
       in
       let w, ty_l =
-        let pword_exp_type_inter (pwe, ty) acc = pwe, ty :: acc in
+        let static_exp_type_inter (se, ty) acc = se, ty :: acc in
         Ast_misc.mapfold_upword
-          pword_exp_type_inter
+          static_exp_type_inter
           (fun (pw, _) ty_l -> pw, ty_l)
           w
           []
@@ -526,27 +526,27 @@ and type_clock_exp env ce =
     Acids_interval.ce_info = clock_exp_annotate ce ty;
   }
 
-and type_pword_exp env pwe =
-  let pwed, it =
-    match pwe.pwe_desc with
-    | Pwe_var v ->
+and type_static_exp env se =
+  let sed, it =
+    match se.se_desc with
+    | Se_var v ->
       (
         match find_ident env v with
-        | It_scal (Is_inter it) -> Acids_interval.Pwe_var v, it
-        | _ -> bad_annot pwe.pwe_loc v
+        | It_scal (Is_inter it) -> Acids_interval.Se_var v, it
+        | _ -> bad_annot se.se_loc v
       )
-    | Pwe_econstr ec ->
-      let it = type_econstr env (Data_types.Ty_scal pwe.pwe_info#pwi_data) ec in
-      Acids_interval.Pwe_econstr ec, it
-    | Pwe_fword i_l ->
+    | Se_econstr ec ->
+      let it = type_econstr env (Data_types.Ty_scal se.se_info#pwi_data) ec in
+      Acids_interval.Se_econstr ec, it
+    | Se_fword i_l ->
       let it_l = List.map Interval.singleton i_l in
       let it = Utils.fold_left_1 Interval.join it_l in
-      Acids_interval.Pwe_fword i_l, it
+      Acids_interval.Se_fword i_l, it
   in
   {
-    Acids_interval.pwe_desc = pwed;
-    Acids_interval.pwe_loc = pwe.pwe_loc;
-    Acids_interval.pwe_info = pword_exp_annotate pwe it;
+    Acids_interval.se_desc = sed;
+    Acids_interval.se_loc = se.se_loc;
+    Acids_interval.se_info = static_exp_annotate se it;
   },
   it
 

@@ -27,11 +27,11 @@ struct
   let print_clock_exp_info fmt cei =
     Data_types.print_ty_scal_ann fmt cei#ci_data
 
-  type pword_exp_info =
+  type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
       >
-  let print_pword_exp_info fmt (pwi : pword_exp_info) =
+  let print_static_exp_info fmt (pwi : static_exp_info) =
     Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
   type exp_info =

@@ -34,23 +34,23 @@ struct
     | Ce_var v -> I.print_var fmt v
     | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
       Format.fprintf fmt "%a(%a)"
-        (Ast_misc.print_power_tree print_pword_exp print_pword_exp) u
-        (Ast_misc.print_power_tree print_pword_exp print_pword_exp) v
+        (Ast_misc.print_power_tree print_static_exp print_static_exp) u
+        (Ast_misc.print_power_tree print_static_exp print_static_exp) v
     | Ce_equal (ce, e) ->
       Format.fprintf fmt "%a = %a" print_clock_exp ce print_exp e
     | Ce_iter ce ->
       Format.fprintf fmt "iter %a" print_clock_exp ce
 
-  and print_pword_exp fmt pwe =
+  and print_static_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"
-      print_pword_exp_desc pwe.pwe_desc
-      (print_info I.print_pword_exp_info) pwe.pwe_info
+      print_static_exp_desc se.se_desc
+      (print_info I.print_static_exp_info) se.se_info
 
-  and print_pword_exp_desc fmt pwed =
-    match pwed with
-    | Pwe_var v -> I.print_var fmt v
-    | Pwe_econstr ec -> Ast_misc.print_econstr fmt ec
-    | Pwe_fword i_l ->
+  and print_static_exp_desc fmt sed =
+    match sed with
+    | Se_var v -> I.print_var fmt v
+    | Se_econstr ec -> Ast_misc.print_econstr fmt ec
+    | Se_fword i_l ->
       Format.fprintf fmt "'%a'"
         (Utils.print_list Int.print) i_l
 
@@ -157,7 +157,7 @@ struct
         print_pat p
         Data_types.print_ty ty
     | P_split p_t ->
-      Ast_misc.print_upword print_pat print_pword_exp fmt p_t
+      Ast_misc.print_upword print_pat print_static_exp fmt p_t
 
   and print_clause fmt clause =
     Format.fprintf fmt "@ | @[<hv 2>%a ->@ %a@]"

@@ -35,11 +35,11 @@
       Acids_parsetree.ce_info = ();
     }
 
-  let make_pword_exp pwed loc =
+  let make_static_exp sed loc =
     {
-      Acids_parsetree.pwe_desc = pwed;
-      Acids_parsetree.pwe_loc = loc;
-      Acids_parsetree.pwe_info = ();
+      Acids_parsetree.se_desc = sed;
+      Acids_parsetree.se_loc = loc;
+      Acids_parsetree.se_info = ();
     }
 
   let make_domain par base e =
@@ -381,7 +381,7 @@ clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
 | ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
 | ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
-| pt = upword(pword_exp, pword_exp, parens) { Acids_parsetree.Ce_pword pt }
+| pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
 
 %inline clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
@@ -396,13 +396,13 @@ trivial_exp_desc:
 %inline trivial_exp:
 | ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
 
-%inline pword_exp:
-| pwed = with_loc(pword_exp_desc) { make_located make_pword_exp pwed }
+%inline static_exp:
+| sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
-%inline pword_exp_desc:
-| v = IDENT { Acids_parsetree.Pwe_var v }
-| ec = econstr { Acids_parsetree.Pwe_econstr ec }
-| w = WORD { Acids_parsetree.Pwe_fword w }
+%inline static_exp_desc:
+| v = IDENT { Acids_parsetree.Se_var v }
+| ec = econstr { Acids_parsetree.Se_econstr ec }
+| w = WORD { Acids_parsetree.Se_fword w }
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }
@@ -502,7 +502,7 @@ it_annot:
 pat_desc:
 | id = IDENT ita = option(it_annot) { Acids_parsetree.P_var (id, ita) }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
-| pt = chevrons(upword(pat, pword_exp, parens))
+| pt = chevrons(upword(pat, static_exp, parens))
    { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
    { Acids_parsetree.P_clock_annot (p, ck) }

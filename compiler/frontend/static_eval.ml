@@ -161,7 +161,7 @@ and eval_clock_exp env ce =
       | Ast_misc.Concat [] -> assert false
       | Ast_misc.Concat (x :: _) -> find_any x
     in
-    eval_pword_exp (find_any w.Ast_misc.u) env
+    eval_static_exp (find_any w.Ast_misc.u) env
   | Ce_equal (ce, e) ->
     let val_ce = eval_clock_exp env ce in
     let val_e = eval_exp env e in
@@ -222,14 +222,14 @@ and eval_exp env e =
   | E_dom (e, _) | E_buffer e ->
     eval_exp env e
 
-and eval_pword_exp pwe env =
-  assert (pwe.pwe_info#pwi_static <> Static_types.S_dynamic);
-  match pwe.pwe_desc with
-  | Pwe_var v ->
+and eval_static_exp se env =
+  assert (se.se_info#pwi_static <> Static_types.S_dynamic);
+  match se.se_desc with
+  | Se_var v ->
     eval_var env v
-  | Pwe_econstr ec ->
+  | Se_econstr ec ->
     econstr ec
-  | Pwe_fword ec_l ->
+  | Se_fword ec_l ->
     int (List.hd ec_l)
 
 and eval_block env block =

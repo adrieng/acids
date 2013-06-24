@@ -380,7 +380,7 @@ const:
 clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
 | ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
-| ce = clock_exp EQUAL e = trivial_exp { Acids_parsetree.Ce_equal (ce, e) }
+| ce = clock_exp EQUAL se = static_exp { Acids_parsetree.Ce_equal (ce, se) }
 | pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
 
 %inline clock_exp:

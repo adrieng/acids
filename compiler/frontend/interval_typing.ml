@@ -511,10 +511,10 @@ and type_clock_exp env ce =
       in
       Acids_interval.Ce_pword w, Utils.fold_left_1 Interval.join ty_l
 
-    | Ce_equal (ce, e) ->
+    | Ce_equal (ce, se) ->
       let ce = type_clock_exp env ce in
-      let e = type_exp env e in
-      Acids_interval.Ce_equal (ce, e), Interval.bool
+      let se, _ = type_static_exp env se in
+      Acids_interval.Ce_equal (ce, se), Interval.bool
 
     | Ce_iter ce ->
       let ce = type_clock_exp env ce in

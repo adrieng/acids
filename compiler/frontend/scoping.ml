@@ -327,10 +327,10 @@ and scope_clock_exp ctx id_env ce intf_env =
         Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
       in
       Acids_scoped.Ce_pword pw, intf_env
-    | Ce_equal (ce, e) ->
+    | Ce_equal (ce, se) ->
       let ce, intf_env = scope_clock_exp ce intf_env in
-      let e, intf_env = scope_exp e intf_env in
-      Acids_scoped.Ce_equal (ce, e), intf_env
+      let se, intf_env = scope_static_exp se intf_env in
+      Acids_scoped.Ce_equal (ce, se), intf_env
     | Ce_iter ce ->
       let ce, intf_env = scope_clock_exp ce intf_env in
       Acids_scoped.Ce_iter ce, intf_env

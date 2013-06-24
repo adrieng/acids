@@ -337,10 +337,10 @@ and type_clock_exp env ce =
       let w = Ast_misc.map_upword expect expect w in
       M.Ce_pword w, ty
 
-    | Ce_equal (ce, e) ->
+    | Ce_equal (ce, se) ->
       let ce, ty = type_clock_exp env ce in
-      let e = expect_exp env ty e in
-      M.Ce_equal (ce, e), bool_ty
+      let se = expect_static_exp env ty se in
+      M.Ce_equal (ce, se), bool_ty
 
     | Ce_iter ce ->
       let ce = expect_clock_exp env int_ty ce in

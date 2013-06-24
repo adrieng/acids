@@ -64,7 +64,7 @@ sig
   and clock_exp_desc =
   | Ce_var of I.var
   | Ce_pword of (static_exp, static_exp) Ast_misc.upword
-  | Ce_equal of clock_exp * exp
+  | Ce_equal of clock_exp * static_exp
   | Ce_iter of clock_exp
 
   and static_exp =
@@ -187,7 +187,7 @@ module Make = functor (S : S) ->
     and clock_exp_desc =
     | Ce_var of S.var
     | Ce_pword of (static_exp, static_exp) Ast_misc.upword
-    | Ce_equal of clock_exp * exp
+    | Ce_equal of clock_exp * static_exp
     | Ce_iter of clock_exp
 
     and static_exp =

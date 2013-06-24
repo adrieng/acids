@@ -184,10 +184,10 @@ and eval_clock_exp env ce =
       | Ast_misc.Concat (x :: _) -> find_any x
     in
     eval_static_exp (find_any w.Ast_misc.u) env
-  | Ce_equal (ce, e) ->
+  | Ce_equal (ce, se) ->
     let val_ce = eval_clock_exp env ce in
-    let val_e = eval_exp env e in
-    bool (equal_val val_ce val_e)
+    let val_se = eval_static_exp se env in
+    bool (equal_val val_ce val_se)
   | Ce_iter _ ->
     not_static "eval_static_clock_exp"
 

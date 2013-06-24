@@ -102,8 +102,8 @@ struct
       | Ce_pword w ->
         let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
         OUT.Ce_pword w
-      | Ce_equal (ce, e) ->
-        OUT.Ce_equal (extract_clock_exp ce, extract_exp e)
+      | Ce_equal (ce, se) ->
+        OUT.Ce_equal (extract_clock_exp ce, extract_static_exp se)
       | Ce_iter ce ->
         OUT.Ce_iter (extract_clock_exp ce)
     in

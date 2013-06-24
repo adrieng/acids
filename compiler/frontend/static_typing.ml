@@ -293,7 +293,6 @@ let is_constant_pword w =
 (** {2 Typing AST nodes} *)
 
 let rec type_clock_exp env ce =
-  let loc = ce.ce_loc in
   let ced, ty =
     match ce.ce_desc with
     | Ce_var id ->
@@ -305,10 +304,10 @@ let rec type_clock_exp env ce =
       let w = Ast_misc.map_upword type_fun type_fun w in
       M.Ce_pword w, ty
 
-    | Ce_equal (ce, e) ->
+    | Ce_equal (ce, se) ->
       let ce, ty = type_clock_exp env ce in
-      let e = expect_exp loc env static_ty e in
-      M.Ce_equal (ce, e), ty
+      let se = type_static_exp env se in
+      M.Ce_equal (ce, se), ty
 
     | Ce_iter ce ->
       let ce, ty = type_clock_exp env ce in

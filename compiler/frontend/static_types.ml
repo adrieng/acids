@@ -286,9 +286,13 @@ let solve constraints = (* TODO: solve incrementally *)
           unify c.loc lhs rhs;
           solve (awakened_constraints @ worklist)
 
-        (* this case is a type error *)
-        | Psy_prod _, Psy_scal _ | Psy_scal _, Psy_prod _ ->
-          unification_conflict c.loc lhs rhs
+        | Psy_prod ty_l, Psy_scal _ ->
+          let make ty = make_constraint c.loc ty rhs in
+          solve (List.map make ty_l @ worklist)
+
+        | Psy_scal _, Psy_prod ty_l ->
+          let make ty = make_constraint c.loc lhs ty in
+          solve (List.map make ty_l @ worklist)
       )
   in
   solve constraints

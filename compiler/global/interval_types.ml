@@ -95,6 +95,13 @@ let rec subset ty1 ty2 =
   | It_scal ts1, It_scal ts2 -> subset_scal ts1 ts2
   | It_prod ty_l1, It_prod ty_l2 ->
     List.iter2 subset ty_l1 ty_l2
-  | It_scal _, It_prod _ | It_prod _, It_scal _ -> raise Ill_typed
+
+  | It_prod ty_l, It_scal _ ->
+    let ty1 = Utils.fold_left_1 join ty_l in
+    subset ty1 ty2
+
+  | It_scal _, It_prod ty_l ->
+    let ty2 = Utils.fold_left_1 join ty_l in
+    subset ty1 ty2
 
 let subset ty1 ty2 = try subset ty1 ty2; true with Not_subset -> false

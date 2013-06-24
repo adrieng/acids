@@ -55,14 +55,18 @@ let get_int value =
 
 type env =
   {
+    intf_env : Interface.env;
     eval_env : Static_eval.env;
     static_nodes : Acids_static.node_def list;
+    static_node_env : Acids_static.node_def Names.ShortEnv.t;
   }
 
 let initial_env intf_env =
   {
+    intf_env = intf_env;
     eval_env = Static_eval.make_env intf_env;
     static_nodes = [];
+    static_node_env = Names.ShortEnv.empty;
   }
 
 let add_local_defs env block =
@@ -72,7 +76,19 @@ let add_node_def env nd =
   { env with eval_env = Static_eval.add_node_def env.eval_env nd; }
 
 let add_static_node_def env nd =
-  { env with static_nodes = nd :: env.static_nodes; }
+  {
+    env with
+      static_nodes = nd :: env.static_nodes;
+      static_node_env = Names.ShortEnv.add nd.n_name nd env.static_node_env;
+  }
+
+let find_static_node_def env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.static_node_env
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    Interface.node_definition_of_node_item (Interface.find_node intf ln.shortn)
 
 let static_nodes env = env.static_nodes
 
@@ -187,16 +203,18 @@ and simpl_exp env e =
       let e3 = simpl_exp env e3 in
       Acids_preclock.E_ifthenelse (e1, e2, e3)
 
-    | E_app (app, e) ->
-      (* TODO: perform inlining *)
-      let app =
-        {
-          Acids_preclock.a_op = app.a_op;
-          Acids_preclock.a_loc = app.a_loc;
-          Acids_preclock.a_info = ();
-        }
-      in
-      Acids_preclock.E_app (app, simpl_exp env e)
+    | E_app (app, e_arg) ->
+      if app.a_info.Info.ai_is_static
+      then simpl_inline env app.a_op e e_arg
+      else
+        let app =
+          {
+            Acids_preclock.a_op = app.a_op;
+            Acids_preclock.a_loc = app.a_loc;
+            Acids_preclock.a_info = ();
+          }
+        in
+        Acids_preclock.E_app (app, simpl_exp env e_arg)
 
     | E_where (e, block) ->
       let block, env = simpl_block env block in
@@ -273,9 +291,45 @@ and simpl_domain env dom =
     Acids_preclock.d_info = dom.d_info;
   }
 
+and simpl_inline env ln e_app e_arg =
+  (*
+    When "f p = e1" is static, we translate "f e2" to
+     "e1 where rec p = e2"
+  *)
+  let nd = find_static_node_def env ln in
+  let module R = Acids_utils.REFRESH(Acids_static) in
+  let nd = R.refresh_node nd in
+  let e =
+    {
+      e_app with (* keep typing info from e_app *)
+      e_desc =
+        E_where
+          (
+            nd.n_body,
+            {
+              b_body =
+                [
+                  {
+                    eq_lhs = nd.n_input;
+                    eq_rhs = e_arg;
+                    eq_info = ();
+                    eq_loc = Loc.dummy;
+                  }
+                ];
+              b_loc = Loc.dummy;
+              b_info = ();
+            }
+          );
+    }
+  in
+  let e = simpl_exp env e in
+  e.Acids_preclock.e_desc
+
 let simpl_node_def env nd =
   assert (not nd.n_static);
   try
+    (* /!\ NEEDED FOR INLINING /!\ *)
+    Ident.set_current_ctx nd.n_info#ni_ctx;
     {
       Acids_preclock.n_name = nd.n_name;
       Acids_preclock.n_input = simpl_pattern env nd.n_input;

@@ -27,6 +27,12 @@ let static node f x = 0 when <(x)>
 let node g () = f true
 
 $$
+
+let static node f x = 42 when <(x)>
+
+let node g () = (f y, f x) where rec x = y and y = 3
+
+$$
 ${
 (*
         run_test:

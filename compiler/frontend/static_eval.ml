@@ -19,19 +19,9 @@ open Acids_static
 
 (** {2 Errors} *)
 
-type error =
-  | Non_causal of Ident.t
+exception Non_causal of Ident.t
 
-exception Eval_error of error
-
-let print_error fmt err =
-  match err with
-  | Non_causal id ->
-    Format.fprintf fmt "Variable %a has been defined in terms of itself"
-      Ident.print id
-
-let non_causal id =
-  raise (Eval_error (Non_causal id))
+let non_causal id = raise (Non_causal id)
 
 (** {2 Values and related functions} *)
 

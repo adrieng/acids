@@ -44,8 +44,14 @@ struct
       Interval_types.print_interval_ann pwi#pwi_interv
       Static_types.print_ty_scal_ann pwi#pwi_static
 
-  type static_exp_desc = Acids_scoped.Info.static_exp_desc
-  let print_static_exp_desc = Acids_scoped.Info.print_static_exp_desc
+  type static_exp_desc =
+  | Se_econstr of Ast_misc.econstr
+  | Se_fword of Int.t list (* [0-9] int *)
+  let print_static_exp_desc fmt sed =
+    match sed with
+    | Se_econstr ec -> Ast_misc.print_econstr fmt ec
+    | Se_fword i_l ->
+      Format.fprintf fmt "'%a'" (Utils.print_list Int.print) i_l
 
   type exp_info =
       <

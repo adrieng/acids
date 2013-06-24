@@ -15,12 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type error =
-  | Non_causal of Ident.t
-
-exception Eval_error of error
-
-val print_error : Format.formatter -> error -> unit
+exception Non_causal of Ident.t
 
 type value =
   | Const of Ast_misc.const

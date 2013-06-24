@@ -28,7 +28,7 @@ let error_is_internal exn =
   | Data_typing.Typing_error _
   | Interval_typing.Typing_error _
   | Static_typing.Typing_error _
-  | Static_eval.Eval_error _
+  | Static_simpl.Simplification_error _
     ->
     false
   | _
@@ -55,8 +55,8 @@ let print_error _ fmt exn =
     Interval_typing.print_error fmt err
   | Static_typing.Typing_error err ->
     Static_typing.print_error fmt err
-  | Static_eval.Eval_error err ->
-    Static_eval.print_error fmt err
+  | Static_simpl.Simplification_error err ->
+    Static_simpl.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -70,7 +70,7 @@ let flow =
   +>+ Data_typing.type_
   +>+ Interval_typing.type_
   +>+ Static_typing.type_
-  +>+ Static_eval.eval
+  +>+ Static_simpl.simpl
 
 (*****************************************************************************)
 (* File handling *)

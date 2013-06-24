@@ -86,15 +86,18 @@ and simpl_clock_exp env ce =
     match ce.ce_desc with
     | Ce_var v ->
       Acids_preclock.Ce_var v
+
     | Ce_pword pw ->
       let pw =
         Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
       in
       Acids_preclock.Ce_pword pw
+
     | Ce_equal (ce, se) ->
       let ce = simpl_clock_exp env ce in
       let se = simpl_static_exp env se in
       Acids_preclock.Ce_equal (ce, se)
+
     | Ce_iter ce ->
       Acids_preclock.Ce_iter (simpl_clock_exp env ce)
   in
@@ -124,14 +127,18 @@ and simpl_pattern env p =
   let pd =
     match p.p_desc with
     | P_var (v, ita) -> Acids_preclock.P_var (v, ita)
+
     | P_tuple p_l ->
       Acids_preclock.P_tuple (List.map (simpl_pattern env) p_l)
+
     | P_clock_annot (p, cka) ->
       let p = simpl_pattern env p in
       let cka = simpl_clock_annot env cka in
       Acids_preclock.P_clock_annot (p, cka)
+
     | P_type_annot (p, tya) ->
       Acids_preclock.P_type_annot (simpl_pattern env p, tya)
+
     | P_split pt ->
       let pt =
         Ast_misc.map_upword (simpl_pattern env) (simpl_static_exp env) pt
@@ -157,21 +164,29 @@ and simpl_exp env e =
     match e.e_desc with
     | E_var v ->
       Acids_preclock.E_var v
+
     | E_const c ->
       Acids_preclock.E_const c
+
+
     | E_fst e ->
       Acids_preclock.E_fst (simpl_exp env e)
+
     | E_snd e ->
       Acids_preclock.E_snd (simpl_exp env e)
+
     | E_tuple e_l ->
       Acids_preclock.E_tuple (List.map (simpl_exp env) e_l)
+
     | E_fby (e1, e2) ->
       Acids_preclock.E_fby (simpl_exp env e1, simpl_exp env e2)
+
     | E_ifthenelse (e1, e2, e3) ->
       let e1 = simpl_exp env e1 in
       let e2 = simpl_exp env e2 in
       let e3 = simpl_exp env e3 in
       Acids_preclock.E_ifthenelse (e1, e2, e3)
+
     | E_app (app, e) ->
       (* TODO: perform inlining *)
       let app =
@@ -182,19 +197,24 @@ and simpl_exp env e =
         }
       in
       Acids_preclock.E_app (app, simpl_exp env e)
+
     | E_where (e, block) ->
       let block, env = simpl_block env block in
       let e = simpl_exp env e in
       Acids_preclock.E_where (e, block)
+
     | E_when (e, ce) ->
       Acids_preclock.E_when (simpl_exp env e, simpl_clock_exp env ce)
+
     | E_split (ce, e, ec_l) ->
       Acids_preclock.E_split (simpl_clock_exp env ce, simpl_exp env e, ec_l)
+
     | E_bmerge (ce, e1, e2) ->
       let ce = simpl_clock_exp env ce in
       let e1 = simpl_exp env e1 in
       let e2 = simpl_exp env e2 in
       Acids_preclock.E_bmerge (ce, e1, e2)
+
     | E_merge (ce, c_l) ->
       let simpl_clause c =
         {
@@ -204,16 +224,21 @@ and simpl_exp env e =
         }
       in
       Acids_preclock.E_merge (simpl_clock_exp env ce, List.map simpl_clause c_l)
+
     | E_valof ce ->
       Acids_preclock.E_valof (simpl_clock_exp env ce)
+
     | E_clock_annot (e, cka) ->
       let e = simpl_exp env e in
       let cka = simpl_clock_annot env cka in
       Acids_preclock.E_clock_annot (e, cka)
+
     | E_type_annot (e, tya) ->
       Acids_preclock.E_type_annot (simpl_exp env e, tya)
+
     | E_dom (e, dom) ->
       Acids_preclock.E_dom (simpl_exp env e, simpl_domain env dom)
+
     | E_buffer e ->
       Acids_preclock.E_buffer (simpl_exp env e)
   in
@@ -289,8 +314,10 @@ let simpl_phrase (body, env) phr =
     else
       let nd, env = simpl_node_def env nd in
       (Acids_preclock.Phr_node_def nd :: body, env)
+
   | Phr_node_decl nd ->
     (Acids_preclock.Phr_node_decl (simpl_node_decl nd) :: body, env)
+
   | Phr_type_def td ->
     (Acids_preclock.Phr_type_def (simpl_type_def td) :: body, env)
 

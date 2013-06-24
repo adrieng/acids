@@ -388,7 +388,7 @@ let simpl_file file =
     Acids_preclock.f_name = file.f_name;
     Acids_preclock.f_imports = file.f_imports;
     Acids_preclock.f_info = info;
-    Acids_preclock.f_body = body;
+    Acids_preclock.f_body = List.rev body;
   }
 
 let simpl_file

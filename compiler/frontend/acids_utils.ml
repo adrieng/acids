@@ -258,3 +258,194 @@ struct
       OUT.f_body = List.map extract_phrase f.f_body;
     }
 end
+
+module REFRESH(A : Acids.A
+               with type I.var = Ident.t
+               and type
+                 I.static_exp_desc = Acids_scoped.Info.static_exp_desc) =
+struct
+  open A
+
+  let refresh_var env v =
+    try env, Ident.Env.find v env
+    with Not_found ->
+      let v' = Ident.refresh v in
+      Ident.Env.add v v' env, v'
+
+  let rec refresh_clock_exp ce env =
+    let ced, env =
+      match ce.ce_desc with
+      | Ce_var v ->
+        let env, v = refresh_var env v in
+        Ce_var v, env
+      | Ce_pword pw ->
+        let pw, env =
+          Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
+        in
+        Ce_pword pw, env
+      | Ce_equal (ce, se) ->
+        let ce, env = refresh_clock_exp ce env in
+        let se, env = refresh_static_exp se env in
+        Ce_equal (ce, se), env
+      | Ce_iter ce ->
+        let ce, env = refresh_clock_exp ce env in
+        Ce_iter ce, env
+    in
+    { ce with ce_desc = ced; }, env
+
+  and refresh_static_exp se env =
+    let open Acids_scoped.Info in
+    let sed, env =
+      match se.se_desc with
+      | Se_var v ->
+        let env, v = refresh_var env v in
+        Se_var v, env
+      | Se_econstr _ | Se_fword _ -> se.se_desc, env
+    in
+    { se with se_desc = sed; }, env
+
+  and refresh_clock_annot cka env =
+    match cka with
+    | Ca_var _ -> cka, env
+    | Ca_on (cka, ce) ->
+      let cka, env = refresh_clock_annot cka env in
+      let ce, env = refresh_clock_exp ce env in
+      Ca_on (cka, ce), env
+
+  and refresh_exp e env =
+    let ed, env =
+      match e.e_desc with
+      | E_var v ->
+        let env, v = refresh_var env v in
+        E_var v, env
+
+      | E_const c ->
+        E_const c, env
+
+      | E_fst e ->
+        let e, env = refresh_exp e env in
+        E_fst e, env
+
+      | E_snd e ->
+        let e, env = refresh_exp e env in
+        E_snd e, env
+
+      | E_tuple e_l ->
+        let e_l, env = Utils.mapfold refresh_exp e_l env in
+        E_tuple e_l, env
+
+      | E_fby (e1, e2) ->
+        let e1, env = refresh_exp e1 env in
+        let e2, env = refresh_exp e2 env in
+        E_fby (e1, e2), env
+
+      | E_ifthenelse (e1, e2, e3) ->
+        let e1, env = refresh_exp e1 env in
+        let e2, env = refresh_exp e2 env in
+        let e3, env = refresh_exp e3 env in
+        E_ifthenelse (e1, e2, e3), env
+
+      | E_app (app, e) ->
+        let e, env = refresh_exp e env in
+        E_app (app, e), env
+
+      | E_where (e, block) ->
+        let e, env = refresh_exp e env in
+        let block, env = refresh_block block env in
+        E_where (e, block), env
+
+      | E_when (e, ce) ->
+        let e, env = refresh_exp e env in
+        let ce, env = refresh_clock_exp ce env in
+        E_when (e, ce), env
+
+      | E_split (ce, e, ec_l) ->
+        let ce, env = refresh_clock_exp ce env in
+        let e, env = refresh_exp e env in
+        E_split (ce, e, ec_l), env
+
+      | E_bmerge (ce, e1, e2) ->
+        let ce, env = refresh_clock_exp ce env in
+        let e1, env = refresh_exp e1 env in
+        let e2, env = refresh_exp e2 env in
+        E_bmerge (ce, e1, e2), env
+
+      | E_merge (ce, c_l) ->
+        let ce, env = refresh_clock_exp ce env in
+        let refresh_clause c env =
+          let body, env = refresh_exp c.c_body env in
+          { c with c_body = body; }, env
+        in
+        let c_l, env = Utils.mapfold refresh_clause c_l env in
+        E_merge (ce, c_l), env
+
+      | E_valof ce ->
+        let ce, env = refresh_clock_exp ce env in
+        E_valof ce, env
+
+      | E_clock_annot (e, cka) ->
+        let e, env = refresh_exp e env in
+        let cka, env = refresh_clock_annot cka env in
+        E_clock_annot (e, cka), env
+
+      | E_type_annot (e, tya) ->
+        let e, env = refresh_exp e env in
+        E_type_annot (e, tya), env
+
+      | E_dom (e, dom) ->
+        let e, env = refresh_exp e env in
+        let dom, env = refresh_domain dom env in
+        E_dom (e, dom), env
+
+      | E_buffer e ->
+        let e, env = refresh_exp e env in
+        E_buffer e, env
+    in
+    { e with e_desc = ed; }, env
+
+  and refresh_domain dom env =
+    let cka, env = Utils.mapfold_opt refresh_clock_annot dom.d_base_clock env in
+    { dom with d_base_clock = cka; }, env
+
+  and refresh_block block env =
+    let body, env = Utils.mapfold refresh_eq block.b_body env in
+    { block with b_body = body; }, env
+
+  and refresh_eq eq env =
+    let lhs, env = refresh_pattern eq.eq_lhs env in
+    let rhs, env = refresh_exp eq.eq_rhs env in
+    { eq with eq_lhs = lhs; eq_rhs = rhs; }, env
+
+  and refresh_pattern p env =
+    let pd, env =
+      match p.p_desc with
+      | P_var (v, ita) ->
+        let env, v = refresh_var env v in
+        P_var (v, ita), env
+
+      | P_tuple p_l ->
+        let p_l, env = Utils.mapfold refresh_pattern p_l env in
+        P_tuple p_l, env
+
+      | P_clock_annot (p, cka) ->
+        let p, env = refresh_pattern p env in
+        let cka, env = refresh_clock_annot cka env in
+        P_clock_annot (p, cka), env
+
+      | P_type_annot (p, tya) ->
+        let p, env = refresh_pattern p env in
+        P_type_annot (p, tya), env
+
+      | P_split pt ->
+        let pt, env =
+          Ast_misc.mapfold_upword refresh_pattern refresh_static_exp pt env
+        in
+        P_split pt, env
+    in
+    { p with p_desc = pd; }, env
+
+  let refresh_node nd =
+    let input, env = refresh_pattern nd.n_input Ident.Env.empty in
+    let body, _ = refresh_exp nd.n_body env in
+    { nd with n_input = input; n_body = body; }
+end

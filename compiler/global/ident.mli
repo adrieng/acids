@@ -33,6 +33,8 @@ val make_internal : string -> t
 
 val make_concat : t -> string -> t
 
+val refresh : t -> t
+
 val compare : t -> t -> int
 
 val hash : t -> int

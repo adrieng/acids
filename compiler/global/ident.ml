@@ -72,6 +72,8 @@ let make_internal = make_ident Internal
 
 let make_concat b s = make_internal (b.name ^ s)
 
+let refresh id = make_ident id.kind id.name
+
 let hash id = Hashtbl.hash id.num
 
 let equal id1 id2 = 0 = compare id1 id2

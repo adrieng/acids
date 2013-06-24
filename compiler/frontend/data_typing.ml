@@ -301,11 +301,14 @@ struct
 
   let update_domain_info _ = ()
 
-  let update_node_info  { new_annot = na; old_annot = (); } =
+  let update_node_info { new_annot = na; old_annot = ctx; } =
     match na with
     | Exp _ -> invalid_arg "update_node_info"
     | Node (inp, out) ->
-      object method ni_data = Data_types.generalize_sig inp out end
+      object
+        method ni_ctx = ctx
+        method ni_data = Data_types.generalize_sig inp out
+      end
 end
 
 module EXTRACT = Acids_utils.MakeMap(M)(Acids_typed)(MORPH)

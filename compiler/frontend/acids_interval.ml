@@ -74,6 +74,7 @@ struct
 
   type node_info =
       <
+        ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
         ni_interv : Interval_types.ty_sig;
       >

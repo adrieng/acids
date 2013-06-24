@@ -25,32 +25,43 @@ type t =
     kind : kind;
   }
 
-let global_cpt = ref 0
-let available_name_nums = Hashtbl.create 1000
-let ident_table = Hashtbl.create 1000
+type ctx =
+  {
+    mutable global_cpt : int;
+    available_name_nums : (string, int ref) Hashtbl.t;
+  }
 
-let reset () =
-  Hashtbl.clear available_name_nums;
-  global_cpt := 0;
-  Hashtbl.clear ident_table
+let make_ctx () =
+  {
+    global_cpt = 0;
+    available_name_nums = Hashtbl.create 1000;
+  }
+
+let _current_ctx = ref (make_ctx ())
+
+let get_current_ctx () = !_current_ctx
+
+let set_current_ctx ctx = _current_ctx := ctx
+
+let reset_ctx () = set_current_ctx (make_ctx ())
 
 let make_ident kind name =
   let available_name_num =
-    try Hashtbl.find available_name_nums name
+    try Hashtbl.find !_current_ctx.available_name_nums name
     with Not_found ->
       let r = ref 0 in
-      Hashtbl.add available_name_nums name r;
+      Hashtbl.add !_current_ctx.available_name_nums name r;
       r
   in
   let id =
     {
-      num = !global_cpt;
+      num = !_current_ctx.global_cpt;
       name = name;
       name_num = !available_name_num;
       kind = kind;
     }
   in
-  incr global_cpt;
+  !_current_ctx.global_cpt <- !_current_ctx.global_cpt + 1;
   incr available_name_num;
   id
 

@@ -314,7 +314,6 @@ and scope_clock_annot ctx id_env cka intf_env =
     Acids_scoped.Ca_on (cka, ce), intf_env
 
 and scope_clock_exp ctx id_env ce intf_env =
-  let scope_exp = scope_exp ctx id_env in
   let scope_static_exp = scope_static_exp id_env in
   let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
@@ -604,7 +603,7 @@ let scope_node_def
     imported_mods node (local_nodes, local_constrs, local_types, intf_env) =
   check_node_name local_nodes node.n_name node.n_loc;
   check_pattern node.n_input;
-  Ident.reset ();
+  Ident.reset_ctx ();
   let ctx = (local_nodes, local_constrs, local_types, imported_mods) in
   let inp, (id_env, intf_env) =
     scope_pattern ctx node.n_input (Utils.String_map.empty, intf_env)
@@ -618,7 +617,7 @@ let scope_node_def
       Acids_scoped.n_pragma = node.n_pragma;
       Acids_scoped.n_static = node.n_static;
       Acids_scoped.n_loc = node.n_loc;
-      Acids_scoped.n_info = node.n_info;
+      Acids_scoped.n_info = Ident.get_current_ctx ();
     }
   in
   let local_nodes = Names.ShortSet.add node.Acids_scoped.n_name local_nodes in

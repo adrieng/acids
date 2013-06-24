@@ -55,7 +55,7 @@ struct
   type domain_info = unit
   let print_domain_info = Utils.print_nothing
 
-  type node_info = unit
+  type node_info = Ident.ctx
   let print_node_info = Utils.print_nothing
 end
 

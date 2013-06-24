@@ -205,7 +205,7 @@
 
   let sig_scope_reinitialize () =
     Hashtbl.clear ht;
-    Ident.reset ()
+    Ident.reset_ctx ()
 
   let sig_scope_ident v =
     try Hashtbl.find ht v

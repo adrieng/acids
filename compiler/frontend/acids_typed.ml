@@ -65,6 +65,7 @@ struct
 
   type node_info =
       <
+        ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
       >
   let print_node_info fmt ni =

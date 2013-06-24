@@ -56,6 +56,7 @@ let static_exp_annotate se ty =
 
 let node_annotate nd ty =
   object
+    method ni_ctx = nd.n_info#ni_ctx
     method ni_data = nd.n_info#ni_data
     method ni_interv = ty
   end

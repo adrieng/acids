@@ -17,7 +17,15 @@
 
 type t
 
-val reset : unit -> unit
+type ctx
+
+val make_ctx : unit -> ctx
+
+val get_current_ctx : unit -> ctx
+
+val set_current_ctx : ctx -> unit
+
+val reset_ctx : unit -> unit
 
 val make_source : string -> t
 

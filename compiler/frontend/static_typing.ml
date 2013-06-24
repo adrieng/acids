@@ -219,6 +219,7 @@ struct
     | Exp _ -> invalid_arg "update_node_info"
     | Node (inp, out) ->
       object
+        method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
         method ni_interv = info#ni_interv
         method ni_static = make_ty_sig inp out

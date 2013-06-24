@@ -414,7 +414,7 @@ exp_desc:
 | SND e = exp { Acids_parsetree.E_snd e }
 
 | LPAREN RPAREN { Acids_parsetree.E_tuple [] }
-| e = simple_exp COMMA e_l = separated_nonempty_list(COMMA, simple_exp)
+| LPAREN e = exp COMMA e_l = separated_nonempty_list(COMMA, exp) RPAREN
               { Acids_parsetree.E_tuple (e :: e_l) }
 
 | e1 = exp PLUS e2 = exp
@@ -448,7 +448,7 @@ exp_desc:
 | MERGE ce = clock_exp_exp WITH c_l = nonempty_list(merge_clause) END
             { Acids_parsetree.E_merge (ce, c_l) }
 | SPLIT e = exp
-  WITH ce = clock_exp_exp BY c_l = separated_nonempty_list(COMMA, econstr)
+  WITH ce = clock_exp_exp BY c_l = parens(separated_nonempty_list(COMMA, econstr))
             { Acids_parsetree.E_split (ce, e, c_l) }
 
 | ce = clock_exp_exp { Acids_parsetree.E_valof ce }

@@ -17,6 +17,16 @@ $$
 let node f () = 0 when <(b)> where rec b = true
 
 $$
+
+let node f () = 0 when <(x y)> where rec (x, y) = (true, false)
+
+$$
+
+let static node f x = 0 when <(x)>
+
+let node g () = f true
+
+$$
 ${
 (*
         run_test:
@@ -76,7 +86,9 @@ ${
 (*
         run_test:
         [
-                Bad 1 "Node f has static inputs but has not been declared static": "asc -check"
+                Bad 1
+                "Node f has static inputs but has not been declared static":
+                 "asc -check"
         ]
 *)
 $}

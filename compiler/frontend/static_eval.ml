@@ -64,12 +64,6 @@ let get_bool v =
   | Const (Cconstr (Ec_bool b)) -> b
   | _ -> ill_typed "get_bool"
 
-let get_int v =
-  let open Ast_misc in
-  match v with
-  | Const (Cconstr (Ec_int i)) -> i
-  | _ -> ill_typed "get_int"
-
 let get_tuple v =
   match v with
   | Tuple v_l -> v_l
@@ -87,20 +81,45 @@ let val_snd v =
 
 exception Found of value
 
-let project_pat id p value =
-  let rec find value p =
-    match p.p_desc with
-    | P_var (id', _) ->
-      if Ident.equal id id' then raise (Found value)
-    | P_tuple p_l ->
-      let v_l = get_tuple value in
-      List.iter2 find v_l p_l
-    | P_clock_annot (p, _) | P_type_annot (p, _) ->
-      find value p
-    | P_split pt ->
-      Ast_misc.iter_upword (find value) (fun _ -> ()) pt
+let access_funs_pat p =
+  (* TODO: fuse project_pat and compute_pat_access_funs *)
+
+  let project_pat id p value =
+    let rec find value p =
+      match p.p_desc with
+      | P_var (id', _) ->
+        if Ident.equal id id' then raise (Found value)
+      | P_tuple p_l ->
+        let v_l = get_tuple value in
+        List.iter2 find v_l p_l
+      | P_clock_annot (p, _) | P_type_annot (p, _) ->
+        find value p
+      | P_split pt ->
+        Ast_misc.iter_upword (find value) (fun _ -> ()) pt
+    in
+    try
+      find value p;
+      invalid_arg ("project_pat: could not find " ^ Ident.to_string id)
+    with Found value -> value
   in
-  try find value p; None with Found value -> Some value
+
+  let orig_p = p in
+
+  let rec compute_pat_access_funs acc p =
+    match p.p_desc with
+    | P_var (v, _) -> (v, project_pat v orig_p) :: acc
+    | P_tuple p_l -> List.fold_left compute_pat_access_funs acc p_l
+    | P_clock_annot (p, _) | P_type_annot (p, _) ->
+      compute_pat_access_funs acc p
+    | P_split pt ->
+      Ast_misc.fold_upword
+        (Utils.flip compute_pat_access_funs)
+        (fun _ acc -> acc)
+        pt
+        acc
+  in
+
+  compute_pat_access_funs [] p
 
 (** {2 Suspensions, environments and related functions} *)
 
@@ -110,43 +129,56 @@ type thunk =
     lval : value Lazy.t;
   }
 
+and node_fun = value Lazy.t -> value
+
 and env =
   {
     intf_env : Interface.env;
-    current_nodes : node_def Names.ShortEnv.t;
+    external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
+    current_nodes : node_fun Names.ShortEnv.t;
     values : thunk Ident.Env.t;
   }
 
-let initial_env intf_env =
+let reset_env_var env = { env with values = Ident.Env.empty; }
+
+let add_var env var value =
+  { env with values = Ident.Env.add var value env.values; }
+
+let find_var env id = Ident.Env.find id env.values
+
+let add_external_node env modn shortn f =
+  let open Names in
+  let modn_env =
+    try ShortEnv.find modn env.external_nodes
+    with Not_found -> ShortEnv.empty
+  in
+  let modn_env = ShortEnv.add shortn f modn_env in
   {
-    intf_env = intf_env;
-    current_nodes = Names.ShortEnv.empty;
-    values = Ident.Env.empty;
+    env with
+      external_nodes = ShortEnv.add modn modn_env env.external_nodes;
   }
 
-let reset_env env = { env with values = Ident.Env.empty; }
-
-let find_thunk env id = Ident.Env.find id env.values
+let add_node env name node =
+  { env with current_nodes = Names.ShortEnv.add name node env.current_nodes; }
 
 let find_node env ln =
   let open Names in
   match ln.modn with
   | LocalModule -> ShortEnv.find ln.shortn env.current_nodes
   | Module modn ->
-    let intf = ShortEnv.find modn env.intf_env in
-    let ni = Interface.find_node intf ln.shortn in
-    Interface.node_definition_of_node_item ni
+    let mod_env = ShortEnv.find modn env.external_nodes in
+    ShortEnv.find ln.shortn mod_env
 
 (** {2 Static evaluation itself} *)
 
 let not_static s =
   invalid_arg (s ^ ": expression cannot be evaluated")
 
-let rec force thunk =
+let force thunk =
   try Lazy.force thunk.lval
   with Lazy.Undefined -> non_causal thunk.name
 
-and eval_var env v = force (find_thunk env v)
+let rec eval_var env v = force (find_var env v)
 
 and eval_clock_exp env ce =
   assert (ce.ce_info#ci_static <> Static_types.S_dynamic);
@@ -196,12 +228,10 @@ and eval_exp env e =
     eval_exp env (if get_bool v then e2 else e3)
 
   | E_app (app, e) ->
-    let v = eval_exp env e in
-    let nd = find_node env app.a_op in
-    apply_node env nd v
+    apply_node env app.a_op e
 
   | E_where (e, block) ->
-    let env = eval_block env block in
+    let env = add_local_defs env block in
     eval_exp env e
 
   | E_bmerge (ce, e1, e2) ->
@@ -232,11 +262,80 @@ and eval_static_exp se env =
   | Se_fword ec_l ->
     int (List.hd ec_l)
 
-and eval_block env block =
-  assert false
+and add_local_defs env block =
+  (* Since equations are mutually recursive, we update the mutable [eval_env]
+     after having enriched the environments with other definitions.
+     Cycles will be taken care of by Lazy.force.
+  *)
+  let eval_env = ref env in
+  let env = List.fold_left (eval_eq eval_env) env block.b_body in
+  eval_env := env;
+  env
 
-and apply_node env nd value =
-  assert false
+(* [eval_eq eval_env env eq] enriches [env] with the lazy values for variables
+   present in [eq], evaluated into mutable environment [eval_env]. *)
+and eval_eq eval_env env eq =
+  let get_value =
+    let cell = ref None in
+    fun () ->
+      match !cell with
+      | Some value -> value
+      | None ->
+        let value = eval_exp !eval_env eq.eq_rhs in
+        cell := Some value;
+        value
+  in
+
+  let access = access_funs_pat eq.eq_lhs in
+  let mk_thunk (v, f) = { name = v; lval = lazy (f (get_value ())); } in
+  List.fold_left (fun env (v, f) -> add_var env v (mk_thunk (v, f))) env access
+
+and node_fun_of_node_def env nd =
+  let env = reset_env_var env in
+  let access = access_funs_pat nd.n_input in
+  fun value ->
+    let mk_thunk (v, f) = { name = v; lval = lazy (f (Lazy.force value)); } in
+    let env =
+      List.fold_left
+        (fun env (v, f) -> add_var env v (mk_thunk (v, f)))
+        env
+        access
+    in
+    eval_exp env nd.n_body
+
+and apply_node env op e =
+  let f = find_node env op in
+  f (lazy (eval_exp env e))
+
+let add_node_def env nd =
+  let f = node_fun_of_node_def env nd in
+  add_node env nd.n_name f
+
+let make_env intf_env =
+  let open Names in
+
+  let empty_env =
+    {
+      intf_env = intf_env;
+      external_nodes = ShortEnv.empty;
+      current_nodes = ShortEnv.empty;
+      values = Ident.Env.empty;
+    }
+  in
+
+  let add_intf intf_name intf env =
+    let add_node node_name ni env =
+      let open Interface in
+      match ni with
+      | I_static sni ->
+        let f = node_fun_of_node_def env sni.sn_body in
+        add_external_node env intf_name node_name f
+      | I_dynamic _ ->
+        env
+    in
+    ShortEnv.fold add_node intf.Interface.i_nodes env
+  in
+  ShortEnv.fold add_intf intf_env empty_env
 
 let eval_file ctx (file : < interfaces : Interface.env > Acids_preclock.file) =
   ctx, file

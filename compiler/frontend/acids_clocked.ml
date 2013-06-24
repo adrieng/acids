@@ -38,6 +38,9 @@ struct
       >
   let print_static_exp_info (_ : Format.formatter) _ = ()
 
+  type static_exp_desc = Acids_scoped.Info.static_exp_desc
+  let print_static_exp_desc = Acids_scoped.Info.print_static_exp_desc
+
   type exp_info =
       <
         ei_data : Data_types.data_ty;

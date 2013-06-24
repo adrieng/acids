@@ -41,6 +41,9 @@ struct
   type static_exp_info = A.I.static_exp_info annot
   let print_static_exp_info = print_annot A.I.print_static_exp_info
 
+  type static_exp_desc = A.I.static_exp_desc
+  let print_static_exp_desc = A.I.print_static_exp_desc
+
   type exp_info = A.I.exp_info annot
   let print_exp_info = print_annot A.I.print_exp_info
 

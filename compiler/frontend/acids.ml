@@ -26,6 +26,9 @@ sig
   type static_exp_info
   val print_static_exp_info : Format.formatter -> static_exp_info -> unit
 
+  type static_exp_desc
+  val print_static_exp_desc : Format.formatter -> static_exp_desc -> unit
+
   type exp_info
   val print_exp_info : Format.formatter -> exp_info -> unit
 

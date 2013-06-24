@@ -44,6 +44,9 @@ struct
       Interval_types.print_interval_ann pwi#pwi_interv
       Static_types.print_ty_scal_ann pwi#pwi_static
 
+  type static_exp_desc = Acids_scoped.Info.static_exp_desc
+  let print_static_exp_desc = Acids_scoped.Info.print_static_exp_desc
+
   type exp_info =
       <
         ei_data : Data_types.data_ty;

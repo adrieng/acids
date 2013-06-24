@@ -118,7 +118,7 @@ let rec is_static st =
   | Sy_scal S_dynamic -> false
   | Sy_prod st_l -> List.exists is_static st_l
 
-let is_static_signature ssig = is_static ssig.input || is_static ssig.output
+let is_static_signature ssig = is_static ssig.input
 
 (** {2 Unification *)
 

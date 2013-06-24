@@ -123,6 +123,7 @@ struct
   type new_annot =
   | Exp of VarTy.t
   | Node of VarTy.t * VarTy.t
+  | App of bool (* true iff application is static *)
 
   let print_new_annot fmt na =
     match na with
@@ -131,6 +132,8 @@ struct
       Format.fprintf fmt "%a -> %a"
         VarTy.print ty1
         VarTy.print ty2
+    | App is_static ->
+      Format.fprintf fmt "app is%s static" (if is_static then " not" else "")
 end
 
 module ANN_INFO = Acids_utils.MakeAnnot(Acids_interval)(A)
@@ -142,6 +145,7 @@ let annotate_static_exp se ty = ANN_INFO.annotate se.se_info (A.Exp ty)
 let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
   ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
+let annotate_app info static = ANN_INFO.annotate info (A.App static)
 let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
 
 module MORPH =
@@ -154,7 +158,7 @@ struct
 
   let update_clock_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       (
@@ -170,7 +174,7 @@ struct
 
   let update_static_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ -> invalid_arg "update_static_exp_info"
+    | Node _ | App _ -> invalid_arg "update_static_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       (
@@ -186,7 +190,7 @@ struct
 
   let update_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       object
@@ -195,13 +199,16 @@ struct
         method ei_static = ty
       end
 
-  let update_app_info _ = ()
+  let update_app_info { new_annot = na; _ } =
+    match na with
+    | Exp _ | Node _ -> invalid_arg "update_app_info"
+    | App is_static -> { Acids_static.Info.ai_is_static = is_static; }
 
   let update_block_info _ = ()
 
   let update_pat_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ -> invalid_arg "update_clock_exp_info"
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       object
@@ -216,7 +223,7 @@ struct
 
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
-    | Exp _ -> invalid_arg "update_node_info"
+    | Exp _ | App _ -> invalid_arg "update_node_info"
     | Node (inp, out) ->
       object
         method ni_ctx = info#ni_ctx
@@ -250,7 +257,7 @@ exception Non_constant_pword
 let check_and_transform_non_static_sig name ssig =
   let open Static_types in
 
-  if is_static ssig.input then static_inputs name;
+  if Static_types.is_static_signature ssig then static_inputs name;
 
   let rec remap_to_dynamic st =
     match st with
@@ -378,15 +385,16 @@ and type_exp env e =
 
     | E_app (app, e) ->
       let ssig = find_node_signature env app.a_op in
-      let inp, out = Static_types.instantiate_ty_sig fresh_ty ssig in
-      let e = expect_exp loc env inp e in
       let app =
         {
           M.a_op = app.a_op;
           M.a_loc = app.a_loc;
-          M.a_info = annotate_dummy app.a_info;
+          M.a_info =
+            annotate_app app.a_info (Static_types.is_static_signature ssig);
         }
       in
+      let inp, out = Static_types.instantiate_ty_sig fresh_ty ssig in
+      let e = expect_exp loc env inp e in
       M.E_app (app, e), out
 
     | E_where (e, block) ->

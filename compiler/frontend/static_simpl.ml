@@ -178,7 +178,7 @@ and simpl_exp env e =
         {
           Acids_preclock.a_op = app.a_op;
           Acids_preclock.a_loc = app.a_loc;
-          Acids_preclock.a_info = app.a_info;
+          Acids_preclock.a_info = ();
         }
       in
       Acids_preclock.E_app (app, simpl_exp env e)

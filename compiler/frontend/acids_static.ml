@@ -59,8 +59,10 @@ struct
     then Interval_types.print_ty_ann fmt ei#ei_interv;
     Static_types.print_ty_ann fmt ei#ei_static
 
-  type app_info = unit
-  let print_app_info (_ : Format.formatter) _ = ()
+  type app_info = { ai_is_static : bool; }
+  let print_app_info fmt { ai_is_static = b; } =
+    if !Compiler_options.print_static_info
+    then Format.fprintf fmt "(* staticity: %b *)" b
 
   type block_info = unit
   let print_block_info (_ : Format.formatter) _ = ()

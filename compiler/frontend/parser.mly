@@ -389,13 +389,6 @@ clock_exp_desc:
 clock_exp_exp:
 | ce = chevrons(clock_exp) { ce }
 
-trivial_exp_desc:
-| c = const { Acids_parsetree.E_const c }
-| v = IDENT { Acids_parsetree.E_var v }
-
-%inline trivial_exp:
-| ed = with_loc(trivial_exp_desc) { make_located make_exp ed }
-
 %inline static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
@@ -405,7 +398,8 @@ trivial_exp_desc:
 | w = WORD { Acids_parsetree.Info.Se_fword w }
 
 simple_exp_desc:
-| ed = trivial_exp_desc { ed }
+| c = const { Acids_parsetree.E_const c }
+| v = IDENT { Acids_parsetree.E_var v }
 | ed = parens(exp_desc) { ed }
 | LPAREN e = exp DCOLON ck = clock_annot RPAREN
                         { Acids_parsetree.E_clock_annot (e, ck) }

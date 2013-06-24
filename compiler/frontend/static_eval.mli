@@ -32,8 +32,3 @@ val add_local_defs : env -> Acids_static.block -> env
 val eval_exp : env -> Acids_static.exp -> value
 
 val eval_var : env -> Ident.t -> value
-
-val eval :
-  (< interfaces : Interface.env > Acids_static.file ->
-   < interfaces : Interface.env > Acids_static.file)
- Pass_manager.pass

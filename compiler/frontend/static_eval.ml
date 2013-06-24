@@ -327,16 +327,3 @@ let make_env intf_env =
     ShortEnv.fold add_node intf.Interface.i_nodes env
   in
   ShortEnv.fold add_intf intf_env empty_env
-
-let eval_file ctx (file : < interfaces : Interface.env > Acids_static.file) =
-  ctx, file
-
-(** {2 Putting it all together} *)
-
-let eval =
-  let open Pass_manager in
-  P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_static.print_file
-       "static_eval"
-       eval_file)

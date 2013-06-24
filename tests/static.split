@@ -13,6 +13,24 @@ $}
 let node f () = <('1001')>
 
 $$
+
+let node f () = 0 when <(b)> where rec b = true
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad 1 "Static variable b.*itself": "asc -check"
+        ]
+*)
+$}
+
+(* See {Static typing} in the manual *)
+
+let node f () = 0 when <(b)> where rec b = b
+
+$$
 ${
 (*
         run_test:

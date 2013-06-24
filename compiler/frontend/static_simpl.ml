@@ -20,19 +20,20 @@ open Acids_static
 (** {2 Exceptions} *)
 
 type error =
-  | Non_causal of Names.shortname * Ident.t
+  | Non_causal of Loc.t * Names.shortname * Ident.t
 
 exception Simplification_error of error
 
 let print_error fmt err =
   match err with
-  | Non_causal (nn, v) ->
-    Format.fprintf fmt "Variable %a in node %a is defined in terms of itself"
+  | Non_causal (l, nn, v) ->
+    Format.fprintf fmt "%aStatic variable %a in node %a is defined in terms of itself"
+      Loc.print l
       Ident.print v
       Names.print_shortname nn
 
-let non_causal nn v =
-  raise (Simplification_error (Non_causal (nn, v)))
+let non_causal loc nn v =
+  raise (Simplification_error (Non_causal (loc, nn, v)))
 
 (** {2 Utility functions} *)
 
@@ -241,16 +242,19 @@ and simpl_domain env dom =
   }
 
 let simpl_node_def env nd =
-  {
-    Acids_preclock.n_name = nd.n_name;
-    Acids_preclock.n_input = simpl_pattern env nd.n_input;
-    Acids_preclock.n_body = simpl_exp env nd.n_body;
-    Acids_preclock.n_pragma = nd.n_pragma;
-    Acids_preclock.n_static = nd.n_static;
-    Acids_preclock.n_loc = nd.n_loc;
-    Acids_preclock.n_info = nd.n_info;
-  },
-  add_node_def env nd
+  try
+    {
+      Acids_preclock.n_name = nd.n_name;
+      Acids_preclock.n_input = simpl_pattern env nd.n_input;
+      Acids_preclock.n_body = simpl_exp env nd.n_body;
+      Acids_preclock.n_pragma = nd.n_pragma;
+      Acids_preclock.n_static = nd.n_static;
+      Acids_preclock.n_loc = nd.n_loc;
+      Acids_preclock.n_info = nd.n_info;
+    },
+    add_node_def env nd
+  with Static_eval.Non_causal v ->
+    non_causal nd.n_loc nd.n_name v
 
 let simpl_node_decl nd =
   {

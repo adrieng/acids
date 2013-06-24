@@ -30,15 +30,15 @@ type env
 
 val make_env : Interface.env -> env
 
-val add_node_def : env -> Acids_preclock.node_def -> env
+val add_node_def : env -> Acids_static.node_def -> env
 
-val add_local_defs : env -> Acids_preclock.block -> env
+val add_local_defs : env -> Acids_static.block -> env
 
-val eval_exp : env -> Acids_preclock.exp -> value
+val eval_exp : env -> Acids_static.exp -> value
 
 val eval_var : env -> Ident.t -> value
 
 val eval :
-  (< interfaces : Interface.env > Acids_preclock.file ->
-   < interfaces : Interface.env >  Acids_preclock.file)
+  (< interfaces : Interface.env > Acids_static.file ->
+   < interfaces : Interface.env > Acids_static.file)
  Pass_manager.pass

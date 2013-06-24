@@ -147,7 +147,7 @@ let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
 module MORPH =
 struct
   module IN_INFO = M.I
-  module OUT_INFO = Acids_preclock.Info
+  module OUT_INFO = Acids_static.Info
 
   open ANN_INFO
   open A
@@ -224,7 +224,7 @@ struct
         method ni_static = make_ty_sig inp out
       end
 end
-module EXTRACT = Acids_utils.MakeMap(M)(Acids_preclock)(MORPH)
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_static)(MORPH)
 
 let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
@@ -647,6 +647,6 @@ let type_ =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
-       ~print_out:Acids_preclock.print_file
+       ~print_out:Acids_static.print_file
        "static_typing"
        type_file)

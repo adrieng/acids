@@ -55,8 +55,8 @@ let ill_formed_interface intfn =
 
 type static_node_decl =
   {
-    sn_info : Acids_preclock.Info.node_info;
-    sn_body : Acids_preclock.node_def;
+    sn_info : Acids_static.Info.node_info;
+    sn_body : Acids_static.node_def;
   }
 
 type dynamic_node_decl =

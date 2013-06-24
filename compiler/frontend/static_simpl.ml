@@ -284,8 +284,7 @@ let simpl_node_def env nd =
       Acids_preclock.n_static = nd.n_static;
       Acids_preclock.n_loc = nd.n_loc;
       Acids_preclock.n_info = nd.n_info;
-    },
-    add_node_def env nd
+    }
   with Static_eval.Non_causal v ->
     non_causal nd.n_loc nd.n_name v
 
@@ -309,17 +308,18 @@ let simpl_type_def td =
 let simpl_phrase (body, env) phr =
   match phr with
   | Phr_node_def nd ->
-    if nd.n_static
-    then (body, add_static_node_def env nd)
-    else
-      let nd, env = simpl_node_def env nd in
-      (Acids_preclock.Phr_node_def nd :: body, env)
+    let body, env =
+      if nd.n_static
+      then body, add_static_node_def env nd
+      else Acids_preclock.Phr_node_def (simpl_node_def env nd) :: body, env
+    in
+    body, add_node_def env nd
 
   | Phr_node_decl nd ->
-    (Acids_preclock.Phr_node_decl (simpl_node_decl nd) :: body, env)
+    Acids_preclock.Phr_node_decl (simpl_node_decl nd) :: body, env
 
   | Phr_type_def td ->
-    (Acids_preclock.Phr_type_def (simpl_type_def td) :: body, env)
+    Acids_preclock.Phr_type_def (simpl_type_def td) :: body, env
 
 let simpl_file file =
   let env = initial_env file.f_info#interfaces in

@@ -61,8 +61,8 @@ struct
 
   type app_info = { ai_is_static : bool; }
   let print_app_info fmt { ai_is_static = b; } =
-    if !Compiler_options.print_static_info
-    then Format.fprintf fmt "(* staticity: %b *)" b
+    if !Compiler_options.print_static_info || !Compiler_options.print_full_info
+    then Format.fprintf fmt " staticity: %b" b
 
   type block_info = unit
   let print_block_info (_ : Format.formatter) _ = ()

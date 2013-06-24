@@ -74,7 +74,8 @@ sig
   module OUT_INFO : Acids.S
 
   val update_clock_exp_info : IN_INFO.clock_exp_info -> OUT_INFO.clock_exp_info
-  val update_static_exp_info : IN_INFO.static_exp_info -> OUT_INFO.static_exp_info
+  val update_static_exp_info :
+    IN_INFO.static_exp_info -> OUT_INFO.static_exp_info
   val update_exp_info : IN_INFO.exp_info -> OUT_INFO.exp_info
   val update_app_info : IN_INFO.app_info -> OUT_INFO.app_info
   val update_block_info : IN_INFO.block_info -> OUT_INFO.block_info
@@ -86,10 +87,9 @@ end
 
 module MakeMap
   (IN : Acids.A)
-  (OUT : Acids.A with
-                   type I.var = IN.I.var
-                 and
-                   type I.static_exp_desc = IN.I.static_exp_desc)
+  (OUT : Acids.A
+   with type I.var = IN.I.var
+   and type I.static_exp_desc = IN.I.static_exp_desc)
   (M : INFO_MAP with module IN_INFO = IN.I and module OUT_INFO = OUT.I)
   =
 struct

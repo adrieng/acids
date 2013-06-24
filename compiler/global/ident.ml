@@ -87,7 +87,7 @@ end
 
 let to_string id =
   let print_short = id.kind = Source && id.name_num = 0 in
-  if print_short then id.name else id.name ^ "_" ^ (string_of_int id.name_num)
+  if print_short then id.name else Printf.sprintf "%s_%d" id.name id.name_num
 
 let print fmt id = Format.fprintf fmt "%s" (to_string id)
 

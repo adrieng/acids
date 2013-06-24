@@ -56,11 +56,13 @@ let get_int value =
 type env =
   {
     eval_env : Static_eval.env;
+    static_nodes : Acids_static.node_def list;
   }
 
 let initial_env intf_env =
   {
     eval_env = Static_eval.make_env intf_env;
+    static_nodes = [];
   }
 
 let add_local_defs env block =
@@ -68,6 +70,11 @@ let add_local_defs env block =
 
 let add_node_def env nd =
   { env with eval_env = Static_eval.add_node_def env.eval_env nd; }
+
+let add_static_node_def env nd =
+  { env with static_nodes = nd :: env.static_nodes; }
+
+let static_nodes env = env.static_nodes
 
 (** {2 Putting it all together} *)
 
@@ -242,6 +249,7 @@ and simpl_domain env dom =
   }
 
 let simpl_node_def env nd =
+  assert (not nd.n_static);
   try
     {
       Acids_preclock.n_name = nd.n_name;
@@ -273,23 +281,32 @@ let simpl_type_def td =
     Acids_preclock.ty_loc = td.ty_loc;
   }
 
-let simpl_phrase env phr =
+let simpl_phrase (body, env) phr =
   match phr with
   | Phr_node_def nd ->
-    let nd, env = simpl_node_def env nd in
-    env, Acids_preclock.Phr_node_def nd
+    if nd.n_static
+    then (body, add_static_node_def env nd)
+    else
+      let nd, env = simpl_node_def env nd in
+      (Acids_preclock.Phr_node_def nd :: body, env)
   | Phr_node_decl nd ->
-    env, Acids_preclock.Phr_node_decl (simpl_node_decl nd)
+    (Acids_preclock.Phr_node_decl (simpl_node_decl nd) :: body, env)
   | Phr_type_def td ->
-    env, Acids_preclock.Phr_type_def (simpl_type_def td)
+    (Acids_preclock.Phr_type_def (simpl_type_def td) :: body, env)
 
 let simpl_file file =
   let env = initial_env file.f_info#interfaces in
-  let _, body = Utils.mapfold_left simpl_phrase env file.f_body in
+  let body, env = List.fold_left simpl_phrase ([], env) file.f_body in
+  let info =
+    object
+      method interfaces = file.f_info#interfaces
+      method static_nodes = static_nodes env
+    end
+  in
   {
     Acids_preclock.f_name = file.f_name;
     Acids_preclock.f_imports = file.f_imports;
-    Acids_preclock.f_info = file.f_info;
+    Acids_preclock.f_info = info;
     Acids_preclock.f_body = body;
   }
 

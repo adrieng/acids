@@ -76,21 +76,21 @@ struct
         print_exp e
         print_block bl
     | E_when (e, ce) ->
-      Format.fprintf fmt "@[%a@ when %a@]"
+      Format.fprintf fmt "@[%a@ when <%a>@]"
         print_exp e
         print_clock_exp ce
     | E_split (ce, e, ec_l) ->
-      Format.fprintf fmt "@[split %a@ with %a by %a@]"
+      Format.fprintf fmt "@[split <%a>@ with %a by %a@]"
         print_exp e
         print_clock_exp ce
         (Utils.print_list_r Ast_misc.print_econstr ",") ec_l
     | E_bmerge (ce, e1, e2) ->
-      Format.fprintf fmt "@[merge %a@ %a@ %a@]"
+      Format.fprintf fmt "@[merge <%a>@ %a@ %a@]"
         print_clock_exp ce
         print_exp e1
         print_exp e2
     | E_merge (ce, c_l) ->
-      Format.fprintf fmt "@[@[<hv 2>merge %a with%a@]@ end@]"
+      Format.fprintf fmt "@[@[<hv 2>merge <%a> with%a@]@ end@]"
         print_clock_exp ce
         (Utils.print_list print_clause) c_l
     | E_valof ce ->

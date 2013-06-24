@@ -43,16 +43,8 @@ struct
 
   and print_static_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"
-      print_static_exp_desc se.se_desc
+      I.print_static_exp_desc se.se_desc
       (print_info I.print_static_exp_info) se.se_info
-
-  and print_static_exp_desc fmt sed =
-    match sed with
-    | Se_var v -> I.print_var fmt v
-    | Se_econstr ec -> Ast_misc.print_econstr fmt ec
-    | Se_fword i_l ->
-      Format.fprintf fmt "'%a'"
-        (Utils.print_list Int.print) i_l
 
   and print_exp fmt e =
     Format.fprintf fmt "@[%a%a@]"

@@ -359,17 +359,15 @@ and expect_clock_exp env expected_ty ce =
   ce
 
 and type_static_exp env se =
-  let sed, ty =
+  let open Acids_scoped.Info in
+  let ty =
     match se.se_desc with
-    | Se_var v ->
-      M.Se_var v, find_ident env v
-    | Se_econstr ec ->
-      M.Se_econstr ec, type_econstr env ec
-    | Se_fword i_l ->
-      M.Se_fword i_l, int_ty
+    | Se_var v -> find_ident env v
+    | Se_econstr ec -> type_econstr env ec
+    | Se_fword _ -> int_ty
   in
   {
-    M.se_desc = sed;
+    M.se_desc = se.se_desc;
     M.se_loc = se.se_loc;
     M.se_info = annotate_exp se.se_info ty;
   },

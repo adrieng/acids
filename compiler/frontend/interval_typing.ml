@@ -527,24 +527,23 @@ and type_clock_exp env ce =
   }
 
 and type_static_exp env se =
-  let sed, it =
+  let open Acids_scoped.Info in
+  let it =
     match se.se_desc with
     | Se_var v ->
       (
         match find_ident env v with
-        | It_scal (Is_inter it) -> Acids_interval.Se_var v, it
+        | It_scal (Is_inter it) -> it
         | _ -> bad_annot se.se_loc v
       )
     | Se_econstr ec ->
-      let it = type_econstr env (Data_types.Ty_scal se.se_info#pwi_data) ec in
-      Acids_interval.Se_econstr ec, it
+      type_econstr env (Data_types.Ty_scal se.se_info#pwi_data) ec
     | Se_fword i_l ->
       let it_l = List.map Interval.singleton i_l in
-      let it = Utils.fold_left_1 Interval.join it_l in
-      Acids_interval.Se_fword i_l, it
+      Utils.fold_left_1 Interval.join it_l
   in
   {
-    Acids_interval.se_desc = sed;
+    Acids_interval.se_desc = se.se_desc;
     Acids_interval.se_loc = se.se_loc;
     Acids_interval.se_info = static_exp_annotate se it;
   },

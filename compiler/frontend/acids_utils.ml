@@ -86,7 +86,10 @@ end
 
 module MakeMap
   (IN : Acids.A)
-  (OUT : Acids.A with type I.var = IN.I.var)
+  (OUT : Acids.A with
+                   type I.var = IN.I.var
+                 and
+                   type I.static_exp_desc = IN.I.static_exp_desc)
   (M : INFO_MAP with module IN_INFO = IN.I and module OUT_INFO = OUT.I)
   =
 struct
@@ -111,14 +114,8 @@ struct
     }
 
   and extract_static_exp se =
-    let sed =
-      match se.se_desc with
-      | Se_var v -> OUT.Se_var v
-      | Se_econstr ec -> OUT.Se_econstr ec
-      | Se_fword i_l -> OUT.Se_fword i_l
-    in
     {
-      OUT.se_desc = sed;
+      OUT.se_desc = se.se_desc;
       OUT.se_loc = se.se_loc;
       OUT.se_info = M.update_static_exp_info se.se_info;
     }

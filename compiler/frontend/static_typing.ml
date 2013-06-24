@@ -268,6 +268,7 @@ let is_constant_pword w =
   let open Ast_misc in
 
   let is_constant_static_exp se =
+    let open Acids_scoped.Info in
     match se.se_desc with
     | Se_var _ | Se_econstr _ | Se_fword [_] -> true
     | Se_fword _ -> false
@@ -321,19 +322,18 @@ let rec type_clock_exp env ce =
   ty
 
 and type_static_exp env se =
-  let sed, ty =
+  let open Acids_scoped.Info in
+  let ty =
     match se.se_desc with
     | Se_var v ->
       let ty = find_ident env v in
       unify se.se_loc static_ty ty;
-      M.Se_var v, ty
-    | Se_econstr ec ->
-      M.Se_econstr ec, static_ty
-    | Se_fword i_l ->
-      M.Se_fword i_l, static_ty
+      ty
+    | Se_econstr _ | Se_fword _ ->
+      static_ty
   in
   {
-    M.se_desc = sed;
+    M.se_desc = se.se_desc;
     M.se_loc = se.se_loc;
     M.se_info = annotate_static_exp se ty;
   }

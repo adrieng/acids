@@ -254,6 +254,7 @@ and eval_exp env e =
 
 and eval_static_exp se env =
   assert (se.se_info#pwi_static <> Static_types.S_dynamic);
+  let open Acids_scoped.Info in
   match se.se_desc with
   | Se_var v ->
     eval_var env v

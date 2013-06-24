@@ -400,9 +400,9 @@ trivial_exp_desc:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
 %inline static_exp_desc:
-| v = IDENT { Acids_parsetree.Se_var v }
-| ec = econstr { Acids_parsetree.Se_econstr ec }
-| w = WORD { Acids_parsetree.Se_fword w }
+| v = IDENT { Acids_parsetree.Info.Se_var v }
+| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
+| w = WORD { Acids_parsetree.Info.Se_fword w }
 
 simple_exp_desc:
 | ed = trivial_exp_desc { ed }

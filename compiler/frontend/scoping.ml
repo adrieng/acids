@@ -345,13 +345,13 @@ and scope_clock_exp ctx id_env ce intf_env =
 and scope_static_exp id_env se intf_env =
   let sed, intf_env =
     match se.se_desc with
-    | Se_var v ->
+    | Acids_parsetree.Info.Se_var v ->
       let id = find_var id_env v se.se_loc in
-      Acids_scoped.Se_var id, intf_env
-    | Se_econstr ec ->
-      Acids_scoped.Se_econstr ec, intf_env
-    | Se_fword i_l ->
-      Acids_scoped.Se_fword i_l, intf_env
+      Acids_scoped.Info.Se_var id, intf_env
+    | Acids_parsetree.Info.Se_econstr ec ->
+      Acids_scoped.Info.Se_econstr ec, intf_env
+    | Acids_parsetree.Info.Se_fword i_l ->
+      Acids_scoped.Info.Se_fword i_l, intf_env
   in
   {
     Acids_scoped.se_desc = sed;

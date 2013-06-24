@@ -69,15 +69,10 @@ sig
 
   and static_exp =
     {
-      se_desc : static_exp_desc;
+      se_desc : I.static_exp_desc;
       se_loc : Loc.t;
       se_info : I.static_exp_info;
     }
-
-  and static_exp_desc =
-  | Se_var of I.var
-  | Se_econstr of Ast_misc.econstr
-  | Se_fword of Int.t list (* [0-9] int *)
 
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
 
@@ -197,15 +192,10 @@ module Make = functor (S : S) ->
 
     and static_exp =
       {
-        se_desc : static_exp_desc;
+        se_desc : I.static_exp_desc;
         se_loc : Loc.t;
         se_info : I.static_exp_info;
       }
-
-    and static_exp_desc =
-    | Se_var of I.var
-    | Se_econstr of Ast_misc.econstr
-    | Se_fword of Int.t list (* [0-9] int *)
 
     and clock_annot =
     | Ca_var of int

@@ -239,7 +239,7 @@ let print_solver_state fmt (worklist, waitlist) =
   Format.fprintf fmt "waitlist: @[%a@]"
     (Waitlist.print print_constr) waitlist
 
-let solve constraints = (* TODO: solve incrementally *)
+let solve ?(unify_remaining = true) constraints = (* TODO: solve incrementally *)
   let waitlist = Waitlist.create () in
   let rec solve worklist =
     match worklist with
@@ -295,4 +295,11 @@ let solve constraints = (* TODO: solve incrementally *)
           solve (List.map make ty_l @ worklist)
       )
   in
-  solve constraints
+  solve constraints;
+
+  (* Unify the remaining constraints *)
+  if unify_remaining
+  then
+    let remaining_constraints = Waitlist.take_all waitlist in
+    let unify_constraints c = unify c.loc c.lhs c.rhs in
+    List.iter unify_constraints remaining_constraints

@@ -28,3 +28,5 @@ val add_item : 'a t -> id -> 'a -> unit
 val merge_items : 'a t -> id -> id -> unit
 
 val take_items : 'a t -> id -> 'a list
+
+val take_all : 'a t -> 'a list

@@ -37,6 +37,20 @@ ${
 (*
         run_test:
         [
+                Bad 1 "Cannot unify": "asc -check"
+        ]
+*)
+$}
+
+let static node f x = y where rec y = x
+
+let node g () = 0 when <(b)> where rec b = f (true fby false)
+
+$$
+${
+(*
+        run_test:
+        [
                 Bad 1 "Static variable b.*itself": "asc -check"
         ]
 *)

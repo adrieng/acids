@@ -93,3 +93,12 @@ let take_items waitlist id =
   | Some cl ->
     waitlist.class_constr <- Int_map.remove class_id waitlist.class_constr;
     fold_bin_tree_df (fun acc x -> x :: acc) [] cl
+
+let take_all waitlist =
+  let take_and_remove i cl acc =
+    remove waitlist i;
+    fold_bin_tree_df (fun acc x -> x :: acc) acc cl
+  in
+  let res = Utils.Int_map.fold take_and_remove waitlist.class_constr [] in
+  waitlist.var_to_class <- Utils.Int_map.empty;
+  res

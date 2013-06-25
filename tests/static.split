@@ -30,7 +30,7 @@ $$
 
 let static node f x = 42 when <(x)>
 
-let node g () = (f y, f x) where rec x = y and y = 3
+let node g () = (f y, f x) where rec x = y and y = true
 
 $$
 ${

@@ -17,7 +17,7 @@
 
 type clock_exp =
   | Ce_var of Ident.t
-  | Ce_pword of (Int.t, Int.t) Ast_misc.upword
+  | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.upword
   | Ce_equal of clock_exp * Int.t
   | Ce_iter of clock_exp
 
@@ -30,17 +30,28 @@ type clock_type =
   | Ct_stream of stream_type
   | Ct_prod of clock_type list
 
+type clock_constraint =
+  | Cc_adapt of stream_type * stream_type
+
 type clock_sig =
     {
       ct_sig_input : clock_type;
       ct_sig_output : clock_type;
+      ct_constraints : clock_constraint list;
     }
 
 let rec print_clock_exp fmt ce =
   match ce with
   | Ce_var id -> Ident.print fmt id
   | Ce_pword pw ->
-    Ast_misc.print_upword Int.print Int.print fmt pw
+    let print_fword fmt fw =
+      match fw with
+      | [x] -> Ast_misc.print_econstr fmt x
+      | _ ->
+        Format.fprintf fmt "'%a'"
+          (Utils.print_list Ast_misc.print_econstr) fw
+    in
+    Ast_misc.print_upword print_fword Int.print fmt pw
   | Ce_equal (ce, i) ->
     Format.fprintf fmt "%a = %a"
       print_clock_exp ce
@@ -64,10 +75,25 @@ let rec print_clock_type fmt ct =
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_clock_type " *") st_l
 
+let print_constraint fmt c =
+  match c with
+  | Cc_adapt (st1, st2) ->
+    Format.fprintf fmt "@[%a <:@ %a@]"
+      print_stream_type st1
+      print_stream_type st2
+
 let print_sig fmt cs =
-  Format.fprintf fmt "%a -> %a"
+  let print_constraints fmt cs =
+    match cs with
+    | [] -> ()
+    | _ :: _ ->
+      Format.fprintf fmt "@ with {@[%a@]}"
+        (Utils.print_list_r print_constraint ",") cs
+  in
+  Format.fprintf fmt "@[%a -> %a%a@]"
     print_clock_type cs.ct_sig_input
     print_clock_type cs.ct_sig_output
+    print_constraints cs.ct_constraints
 
 let printing_prefix = "::"
 

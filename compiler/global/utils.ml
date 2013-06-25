@@ -43,6 +43,13 @@ let range n m =
   in
   walk [] n
 
+let rec split_3 l =
+  match l with
+  | [] -> ([], [], [])
+  | (x, y, z) :: l ->
+    let xl, yl, zl = split_3 l in
+    (x :: xl, y :: yl, z :: zl)
+
 let fold_left_1 f l =
   match l with
   | x :: l -> List.fold_left f x l
@@ -105,6 +112,11 @@ let mapfold_opt f o acc =
   | Some x ->
     let x, acc = f x acc in
     Some x, acc
+
+let get_1 l =
+  match l with
+  | [] -> invalid_arg "get_1"
+  | x :: l -> x, l
 
 (* /!\ watch out aliasing /!\ *)
 let map_opt_ref alias f r acc =

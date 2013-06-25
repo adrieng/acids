@@ -176,6 +176,7 @@
       {
         Clock_types.ct_sig_input = inp;
         Clock_types.ct_sig_output = out;
+        Clock_types.ct_constraints = [];
       }
     in
     mk_s mk_sig (mk_prod, mk_scal)
@@ -526,9 +527,12 @@ data_ty:
 | FLOAT_TY { Data_types.Tys_float }
 | ln = longname { Data_types.Tys_user ln }
 
+econstr_singleton:
+| econstr { [$1] }
+
 clock_exp_ty:
 | id = IDENT { Clock_types.Ce_var (sig_scope_ident id) }
-| w = upword(INT, INT, parens) { Clock_types.Ce_pword w }
+| w = upword(econstr_singleton, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL i = INT { Clock_types.Ce_equal (ce, i) }
 | ITER ce = clock_exp_ty { Clock_types.Ce_iter ce }
 

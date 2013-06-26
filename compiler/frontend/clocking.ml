@@ -75,24 +75,6 @@ let print_ty_sch fmt tys =
     (Ident.Env.print print_occ_item ";") tys.occ
     VarTy.print tys.ty
 
-(** {2 Environments} *)
-
-type env =
-  {
-    intf_env : Interface.env;
-    constrs : ty_constr list;
-  }
-
-let initial_env intf_env =
-  {
-    intf_env = intf_env;
-    constrs = [];
-  }
-
-let add_constrs env constrs = { env with constrs = constrs @ env.constrs; }
-
-(** {2 Utility functions} *)
-
 let reset_st, fresh_st =
   let r = ref 0 in
   (fun () -> r := 0),
@@ -115,12 +97,54 @@ let fresh_ty_sch () =
     ty = fresh_ty ();
   }
 
+(** {2 Environments} *)
+
+type env =
+  {
+    intf_env : Interface.env;
+    mutable ck_vars : ty_sch Utils.Int_map.t;
+  }
+
+let initial_env intf_env =
+  {
+    intf_env = intf_env;
+    ck_vars = Utils.Int_map.empty;
+  }
+
+let reset_env env = { env with ck_vars = Utils.Int_map.empty; }
+
+let find_ck_var env v =
+  try Utils.Int_map.find v env.ck_vars
+  with Not_found ->
+    let ty = fresh_ty_sch () in
+    env.ck_vars <- Utils.Int_map.add v ty env.ck_vars;
+    ty
+
+(** {2 Utility functions} *)
+
 let singleton_ty x =
   let ty = fresh_ty () in
   {
     occ = Ident.Env.add x ty Ident.Env.empty;
     ty = ty;
   }
+
+let unify_free_vars loc s1 s2 constrs =
+  let unify_occ id ty (new_occ, new_constr) =
+    try
+      let ty' = Ident.Env.find id s1.occ in
+      new_occ, { loc = loc; desc = Tc_equal (ty, ty') } :: new_constr
+    with Not_found ->
+      Ident.Env.add id ty new_occ, new_constr
+  in
+  let new_occ, new_constrs =
+    Ident.Env.fold unify_occ s2.occ (s1.occ, constrs)
+  in
+  {
+    occ = new_occ;
+    ty = ty;
+  },
+  { loc = loc; desc = Tc_equal (s1.ty, s2.ty) } :: new_constrs
 
 let merge_sch loc ty s1 s2 constrs =
   let unify_occ id ty (new_occ, new_constr) =
@@ -130,18 +154,18 @@ let merge_sch loc ty s1 s2 constrs =
     with Not_found ->
       Ident.Env.add id ty new_occ, new_constr
   in
-  let new_occ, new_constr =
+  let new_occ, new_constrs =
     Ident.Env.fold unify_occ s2.occ (s1.occ, constrs)
   in
   {
     occ = new_occ;
     ty = ty;
   },
-  { loc = loc; desc = Tc_equal (s1.ty, s2.ty) } :: constrs
+  { loc = loc; desc = Tc_equal (s1.ty, s2.ty) } :: new_constrs
 
 (* [unify_sch s1 s2] unify the occurences found in occ1 and occ2 *)
 let unify_sch loc s1 s2 constrs =
-  let sch = merge_sch loc s1.ty s1 s2 in
+  let sch, constrs = merge_sch loc s1.ty s1 s2 constrs in
   sch, { loc = loc; desc = Tc_equal (s1.ty, s2.ty); } :: constrs
 
 let tuple_ty loc s_l constrs =
@@ -160,6 +184,11 @@ let trad_static_exp_int se =
   | [Ast_misc.Ec_int i] -> i
   | _ -> invalid_arg "trad_static_exp_int"
 
+let trad_static_exp_econstr se =
+  match trad_static_exp se with
+  | [ec] -> ec
+  | _ -> invalid_arg "trad_static_exp_econstr" (* TODO *)
+
 let rec trad_clock_exp ce =
   match ce.ce_desc with
   | Ce_var v ->
@@ -168,9 +197,25 @@ let rec trad_clock_exp ce =
     let pw = Ast_misc.map_upword trad_static_exp trad_static_exp_int pw in
     Clock_types.Ce_pword pw
   | Ce_equal (ce, se) ->
-    Clock_types.Ce_equal (trad_clock_exp ce, trad_static_exp_int se)
+    Clock_types.Ce_equal (trad_clock_exp ce, trad_static_exp_econstr se)
   | Ce_iter ce ->
     Clock_types.Ce_iter (trad_clock_exp ce)
+
+let on_ty loc s ce constrs =
+  let st = fresh_st () in
+  { s with ty = Pct_stream (Pst_on (st, ce)); },
+  { loc = loc; desc = Tc_equal (Pct_stream st, s.ty); } :: constrs
+
+let ty_of_st st = { ty = Pct_stream st; occ = Ident.Env.empty; }
+
+let adaptable_tys loc constrs =
+  let st = fresh_st () in
+  let st' = fresh_st () in
+  let constr = { loc = loc; desc = Tc_adapt (st, st'); } in
+  ty_of_st st, ty_of_st st', constr :: constrs
+
+let sampled_ty loc ty cce ec constrs =
+  on_ty loc ty (Clock_types.Ce_equal (cce, ec)) constrs
 
 (** {2 High-level utilities} *)
 
@@ -207,34 +252,31 @@ let annotate_dummy info =
   in
   ANN_INFO.annotate info (A.Exp dummy_sch)
 
-let on_ty loc s ce constrs =
-  let st = fresh_st () in
-  { s with ty = Pct_stream (Pst_on (st, ce)); },
-  { loc = loc; desc = Tc_equal (Pct_stream st, s.ty); } :: constrs
-
 (** {2 Clocking itself} *)
 
-let clock_var env v = singleton_ty v
+let clock_var v = singleton_ty v
 
 let rec clock_clock_exp env ce constrs =
   let loc = ce.ce_loc in
   let ced, ty, constrs =
     match ce.ce_desc with
     | Ce_var v ->
-      M.Ce_var v, clock_var env v, constrs
+      M.Ce_var v, clock_var v, constrs
     | Ce_pword pw ->
       let v = fresh_ty_sch () in
-      (* M.Ce_pword pw, v, constrs *)
-      assert false
-    | Ce_equal (ce, i) ->
-      (* let ce, ty, constrs = clock_clock_exp env ce constrs in *)
-      (* M.Ce_equal (ce, i), ty, constrs *)
-      assert false
+      let pw, constrs =
+        let expect = expect_static_exp v in
+        Ast_misc.mapfold_upword expect expect pw constrs
+      in
+      M.Ce_pword pw, v, constrs
+    | Ce_equal (ce, se) ->
+      let (ce, ty), constrs = clock_clock_exp env ce constrs in
+      let se, constrs = expect_static_exp ty se constrs in
+      M.Ce_equal (ce, se), ty, constrs
     | Ce_iter ce ->
-      (* let ce, ty, constrs = clock_clock_exp env ce constrs in *)
-      (* let ty, constrs = on_ty loc ty (trad_clock_exp ce) constrs in *)
-      (* M.Ce_iter ce, ty, constrs *)
-      assert false
+      let (mce, ty), constrs = clock_clock_exp env ce constrs in
+      let ty, constrs = on_ty loc ty (trad_clock_exp ce) constrs in
+      M.Ce_iter mce, ty, constrs
   in
   ({
     M.ce_desc = ced;
@@ -244,17 +286,30 @@ let rec clock_clock_exp env ce constrs =
   constrs
 
 and expect_clock_exp env expected_ty ce constrs =
-  assert false
-  (* let (ce', actual_ty), constrs = clock_clock_exp env ce constrs in *)
-  (* let ty, constrs = unify_sch ce.ce_loc expected_ty actual_ty in *)
-  (* { ce' with M.ce_info = annotate_exp ce.ce_info ty; }, constrs *)
+  let (ce', actual_ty), constrs = clock_clock_exp env ce constrs in
+  let ty, constrs = unify_sch ce.ce_loc expected_ty actual_ty constrs in
+  { ce' with M.ce_info = annotate_exp ce.ce_info ty; }, constrs
+
+and clock_static_exp se =
+  let ty = fresh_ty_sch () in
+  {
+    M.se_desc = se.se_desc;
+    M.se_loc = se.se_loc;
+    M.se_info = annotate_exp se.se_info ty;
+  },
+  ty
+
+and expect_static_exp expected_ty se constrs =
+  let se', actual_ty = clock_static_exp se in
+  let ty, constrs = unify_sch se.se_loc expected_ty actual_ty constrs in
+  { se' with M.se_info = annotate_exp se.se_info ty; }, constrs
 
 and clock_exp env e constrs =
   let loc = e.e_loc in
   let ed, ty, constrs =
   match e.e_desc with
   | E_var v ->
-    M.E_var v, clock_var env v, constrs
+    M.E_var v, clock_var v, constrs
 
   | E_const c ->
     M.E_const c, fresh_ty_sch (), constrs
@@ -293,18 +348,77 @@ and clock_exp env e constrs =
   | E_app _ ->
     assert false (* TODO *)
 
-  | E_where _ ->
+  | E_where (e, block) ->
     assert false
 
   | E_when (e, ce) ->
+    let cce = trad_clock_exp ce in
     let (e, ty), constrs = clock_exp env e constrs in
-    assert false
-    (* let ce, constrs = expect_clock_exp env ce constrs in *)
-    (* let ty, constrs = on_ty loc ty (trad_clock_exp ce) constrs in *)
-    (* M.E_when (e, ce), ty, constrs *)
+    let ce, constrs = expect_clock_exp env ty ce constrs in
+    let ty, constrs = on_ty loc ty cce constrs in
+    M.E_when (e, ce), ty, constrs
 
-  | _ ->
-    assert false
+  | E_split (ce, e, ec_l) ->
+    let cce = trad_clock_exp ce in
+    let (e, ty), constrs = clock_exp env e constrs in
+    let ce, constrs = expect_clock_exp env ty ce constrs in
+    let ty_l, constrs = Utils.mapfold (sampled_ty loc ty cce) ec_l constrs in
+    let ty, constrs = tuple_ty loc ty_l constrs in
+    M.E_split (ce, e, ec_l), ty, constrs
+
+  | E_bmerge (ce, e1, e2) ->
+    let cce = trad_clock_exp ce in
+    let (ce, ty), constrs = clock_clock_exp env ce constrs in
+    let e1, constrs =
+      expect_sampled_exp env ty cce (Ast_misc.Ec_bool true) e1 constrs
+    in
+    let e2, constrs =
+      expect_sampled_exp env ty cce (Ast_misc.Ec_bool false) e2 constrs
+    in
+    M.E_bmerge (ce, e1, e2), ty, constrs
+
+  | E_merge (ce, c_l) ->
+    let cce = trad_clock_exp ce in
+    let (ce, ty), constrs = clock_clock_exp env ce constrs in
+    let c_l, constrs =
+      let clock_clause c constrs =
+        let e, constrs =
+          expect_sampled_exp env ty cce c.c_sel c.c_body constrs
+        in
+        {
+          M.c_sel = c.c_sel;
+          M.c_body = e;
+          M.c_loc = c.c_loc;
+        },
+        constrs
+      in
+      Utils.mapfold clock_clause c_l constrs
+    in
+    M.E_merge (ce, c_l), ty, constrs
+
+  | E_valof ce ->
+    let (ce, ty), constrs = clock_clock_exp env ce constrs in
+    M.E_valof ce, ty, constrs
+
+  | E_clock_annot (e, cka) ->
+    let (cka, ty), constrs = clock_clock_annot env loc cka constrs in
+    let e, constrs = expect_exp env ty e constrs in
+    M.E_clock_annot (e, cka), ty, constrs
+
+  | E_type_annot (e, tya) ->
+    let (e, ty), constrs = clock_exp env e constrs in
+    M.E_type_annot (e, tya), ty, constrs
+
+  | E_dom (e, dom) ->
+    let (e, ty), constrs = clock_exp env e constrs in
+    let (dom, ty), constrs = clock_dom env dom ty constrs in
+    M.E_dom (e, dom), ty, constrs
+
+  | E_buffer e ->
+    let ty, ty', constrs = adaptable_tys loc constrs in
+    let e, constrs = expect_exp env ty e constrs in
+    M.E_buffer e, ty', constrs
+
   in
   ({
     M.e_desc = ed;
@@ -314,20 +428,34 @@ and clock_exp env e constrs =
    ty),
   constrs
 
-and expect_exp env expected_ty e =
+and expect_exp env expected_ty e constrs =
+  let (e', actual_ty), constrs = clock_exp env e constrs in
+  let ty, constrs = unify_sch e.e_loc expected_ty actual_ty constrs in
+  { e' with M.e_info = annotate_exp e.e_info ty; }, constrs
+
+and expect_sampled_exp env base_ty cce ec e constrs =
+    let expected_ty, constrs = sampled_ty e.e_loc base_ty cce ec constrs in
+    expect_exp env expected_ty e constrs
+
+and clock_clock_annot env loc cka constrs =
+  match cka with
+  | Ca_var v ->
+    (M.Ca_var v, find_ck_var env v), constrs
+  | Ca_on (cka, ce) ->
+    let cce = trad_clock_exp ce in
+    let (cka, ty), constrs = clock_clock_annot env loc cka constrs in
+    let ce, constrs = expect_clock_exp env ty ce constrs in
+    let res_ty, constrs = on_ty loc ty cce constrs in
+    (M.Ca_on (cka, ce), res_ty), constrs
+
+and clock_dom env dom ty constrs =
   assert false
-  (* let e', actual_ty = clock_exp env e in *)
-  (* { *)
-  (*   e' with *)
-  (*     M.e_info = *)
-  (*     annotate_exp e.e_info (unify_sch e.e_loc expected_ty actual_ty); *)
-  (* } *)
 
 (** {2 Putting it all together} *)
 
-(* let clock : *)
-(*     (< interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_preclock.file -> *)
-(*      < interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_clocked.file) *)
-(*     Pass_manager.pass *)
-(*     = *)
-(*   assert false *)
+let clock :
+    (< interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_preclock.file ->
+     < interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_clocked.file)
+    Pass_manager.pass
+    =
+  assert false

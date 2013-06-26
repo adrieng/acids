@@ -18,7 +18,7 @@
 type clock_exp =
   | Ce_var of Ident.t
   | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.upword
-  | Ce_equal of clock_exp * Int.t
+  | Ce_equal of clock_exp * Ast_misc.econstr
   | Ce_iter of clock_exp
 
 type stream_type =
@@ -52,10 +52,10 @@ let rec print_clock_exp fmt ce =
           (Utils.print_list Ast_misc.print_econstr) fw
     in
     Ast_misc.print_upword print_fword Int.print fmt pw
-  | Ce_equal (ce, i) ->
+  | Ce_equal (ce, ec) ->
     Format.fprintf fmt "%a = %a"
       print_clock_exp ce
-      Int.print i
+      Ast_misc.print_econstr ec
   | Ce_iter ce ->
     Format.fprintf fmt "iter %a" print_clock_exp ce
 

@@ -261,17 +261,18 @@ let annotate_dummy info =
 
 (** {2 Clocking itself} *)
 
-let rec clock_var loc v (ctx, constrs) =
-  let ty, new_ctx = singleton_ctx v in
-  let ctx, constrs = merge_ctx loc ctx new_ctx constrs in
-  ty, (ctx, constrs)
+let rec clock_var v (ctx, constrs) =
+  try Ident.Env.find v ctx, (ctx, constrs)
+  with Not_found ->
+    let ty = fresh_ty () in
+    ty, (Ident.Env.add v ty ctx, constrs)
 
 and clock_clock_exp env ce acc =
   let loc = ce.ce_loc in
   let ced, ty, acc =
     match ce.ce_desc with
     | Ce_var v ->
-      let ty, acc = clock_var loc v acc in
+      let ty, acc = clock_var v acc in
       M.Ce_var v, ty, acc
 
     | Ce_pword pw ->
@@ -324,7 +325,7 @@ and clock_exp env e acc =
   let ed, ty, acc =
   match e.e_desc with
   | E_var v ->
-    let ty, acc = clock_var loc v acc in
+    let ty, acc = clock_var v acc in
     M.E_var v, ty, acc
 
   | E_const c ->
@@ -442,8 +443,7 @@ and clock_exp env e acc =
     M.E_type_annot (e, tya), ty, acc
 
   | E_dom (e, dom) ->
-    let (e, ty), acc = clock_exp env e acc in
-    let (dom, ty), acc = clock_dom env dom ty acc in
+    let (dom, e, ty), acc = clock_dom env dom e acc in
     M.E_dom (e, dom), ty, acc
 
   | E_buffer e ->
@@ -481,15 +481,12 @@ and clock_clock_annot env loc cka acc =
     let res_ty, acc = on_ty loc ty cce acc in
     (M.Ca_on (cka, ce), res_ty), acc
 
-and clock_dom env dom ty (ctx, constrs) =
-  assert false
-
 and clock_pattern env p acc =
   let loc = p.p_loc in
   let pd, ty, acc =
     match p.p_desc with
     | P_var (v, ita) ->
-      let ty, acc = clock_var loc v acc in
+      let ty, acc = clock_var v acc in
       M.P_var (v, ita), ty, acc
 
     | P_tuple p_l ->
@@ -570,6 +567,9 @@ and clock_block env block acc =
     M.b_loc = block.b_loc;
   },
   acc
+
+and clock_dom env dom e (ctx, constrs) =
+  assert false
 
 (** {2 Putting it all together} *)
 

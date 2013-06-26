@@ -91,12 +91,14 @@ let reset_ty, fresh_ty =
 type env =
   {
     intf_env : Interface.env;
+    local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
     mutable ck_vars : VarTy.t Utils.Int_map.t;
   }
 
 let initial_env intf_env =
   {
     intf_env = intf_env;
+    local_nodes = Names.ShortEnv.empty;
     ck_vars = Utils.Int_map.empty;
   }
 
@@ -108,6 +110,17 @@ let find_ck_var env v =
     let t = fresh_ty () in
     env.ck_vars <- Utils.Int_map.add v t env.ck_vars;
     t
+
+let add_local_node env name csig =
+  { env with local_nodes = Names.ShortEnv.add name csig env.local_nodes; }
+
+let find_node_signature env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.local_nodes
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    Interface.clock_signature_of_node_item (Interface.find_node intf ln.shortn)
 
 (** {2 Utility functions} *)
 
@@ -213,6 +226,7 @@ struct
   type new_annot =
     | Exp of VarTy.t
     | Node of VarTy.t * VarTy.t
+    | App of (int * VarTySt.t) list
 
   let print_new_annot fmt na =
     match na with
@@ -221,6 +235,12 @@ struct
       Format.fprintf fmt "@[%a -> %a@]"
         VarTy.print ty_in
         VarTy.print ty_out
+    | App inst ->
+      let print_binding fmt (i, ty) =
+        Format.fprintf fmt "%d -> %a" i VarTySt.print ty
+      in
+      Format.fprintf fmt "@[%a@]"
+        (Utils.print_list_r print_binding ",") inst
 end
 
 module ANN_INFO = Acids_utils.MakeAnnot(Acids_preclock)(A)
@@ -231,6 +251,9 @@ let annotate_exp info ty =
 
 let annotate_node info inp_ty out_ty =
   ANN_INFO.annotate info (A.Node (inp_ty, out_ty))
+
+let annotate_app info app =
+  ANN_INFO.annotate info (A.App app)
 
 let annotate_dummy info =
   let dummy_sch = PreTy.Pct_var { VarTy.v_id = -1; VarTy.v_link = None; } in
@@ -335,8 +358,26 @@ and clock_exp env e acc =
     let e3, acc = expect_exp env ty e3 acc in
     M.E_ifthenelse (e1, e2, e3), ty, acc
 
-  | E_app _ ->
-    assert false (* TODO *)
+  | E_app (app, e) ->
+    let csig = find_node_signature env app.a_op in
+    let ty_in, ty_out, preconstrs, inst =
+      Clock_types.instantiate_clock_sig fresh_st fresh_ty csig
+    in
+    let app =
+      {
+        M.a_op = app.a_op;
+        M.a_loc = app.a_loc;
+        M.a_info = annotate_app app.a_info inst;
+      }
+    in
+    let e, (ctx, cstrs) = expect_exp env ty_in e acc in
+    let cstrs =
+      let mk_constraint (st1, st2) =
+        { loc = loc; desc = Tc_adapt (st1, st2); }
+      in
+      List.map mk_constraint preconstrs @ cstrs
+    in
+    M.E_app (app, e), ty_out, (ctx, cstrs)
 
   | E_where (e, block) ->
     let block, acc = clock_block env block acc in

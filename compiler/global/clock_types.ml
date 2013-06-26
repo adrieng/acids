@@ -143,3 +143,50 @@ let rec ty_of_pre_ty pty =
   | Pct_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ct_var i) v
   | Pct_stream pst -> Ct_stream (st_of_pre_st pst)
   | Pct_prod pty_l -> Ct_prod (List.map ty_of_pre_ty pty_l)
+
+let instantiate_clock_sig fresh_st fresh_ct csig =
+  let ht_st = Hashtbl.create 10 in
+  let ht_ct = Hashtbl.create 10 in
+
+  let rec inst_st st =
+    let open PreTySt in
+    match st with
+    | St_var v ->
+      (
+        try Hashtbl.find ht_st v
+        with Not_found ->
+          let st = fresh_st () in
+          Hashtbl.add ht_st v st;
+          st
+      )
+    | St_on (st, ce) -> Pst_on (inst_st st, ce)
+  in
+
+  let rec inst_ct ct =
+    let open PreTy in
+    match ct with
+    | Ct_var v ->
+      (
+        try Hashtbl.find ht_ct v
+        with Not_found ->
+          let ct = fresh_ct () in
+          Hashtbl.add ht_ct v ct;
+          ct
+      )
+    | Ct_stream st -> Pct_stream (inst_st st)
+    | Ct_prod ct_l -> Pct_prod (List.map inst_ct ct_l)
+  in
+
+  let inst_constraint c =
+    match c with
+    | Cc_adapt (st1, st2) -> inst_st st1, inst_st st2
+  in
+
+  let ty_in = inst_ct csig.ct_sig_input in
+  let ty_out = inst_ct csig.ct_sig_output in
+  let ty_constr = List.map inst_constraint csig.ct_constraints in
+  let insts =
+    let add_inst i ty inst_l = (i, ty) :: inst_l in
+    Hashtbl.fold add_inst ht_st []
+  in
+  ty_in, ty_out, ty_constr, insts

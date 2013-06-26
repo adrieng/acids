@@ -104,6 +104,11 @@ let static_signature_of_node_item ni =
   | I_static snd -> snd.sn_info#ni_static
   | I_dynamic dnd -> dnd.dn_info#ni_static
 
+let clock_signature_of_node_item ni =
+  match ni with
+  | I_static _ -> invalid_arg "clock_signature_of_node_item: static node"
+  | I_dynamic dnd -> dnd.dn_info#ni_clock
+
 let node_definition_of_node_item ni =
   match ni with
   | I_static snd -> snd.sn_body

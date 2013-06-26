@@ -74,7 +74,7 @@ let flow =
   +>+ Interval_typing.type_
   +>+ Static_typing.type_
   +>+ Static_simpl.simpl
-  +>+ Clocking.clock
+  (* +>+ Clocking.clock *)
 
 (*****************************************************************************)
 (* File handling *)

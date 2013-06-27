@@ -44,31 +44,7 @@ let print_error fmt err =
       VarTy.print ct1
       VarTy.print ct2
 
-(** {2 Type schemes} *)
-
-type ty_constr_desc =
-  | Tc_adapt of VarTySt.t * VarTySt.t
-  | Tc_equal of VarTy.t * VarTy.t
-
-type ty_constr =
-  {
-    loc : Loc.t;
-    desc : ty_constr_desc;
-  }
-
-let print_ty_constr_desc fmt tycd =
-  match tycd with
-  | Tc_adapt (st1, st2) ->
-    Format.fprintf fmt "@[%a <:@ %a@]"
-      VarTySt.print st1
-      VarTySt.print st2
-  | Tc_equal (t1, t2) ->
-    Format.fprintf fmt "@[%a =@ %a@]"
-      VarTy.print t1
-      VarTy.print t2
-
-let print_ty_constr fmt tyc =
-  print_ty_constr_desc fmt tyc.desc
+(** {2 Utilities} *)
 
 let reset_st, fresh_st =
   let r = ref 0 in
@@ -219,22 +195,30 @@ let adaptable_tys loc (ctx, constrs) =
 let sampled_ty loc ty cce ec acc =
   on_ty loc ty (Clock_types.Ce_equal (cce, ec)) acc
 
+let rec unalias_st st =
+  match st with
+  | PreTySt.Pst_var { VarTySt.v_link = Some st; } -> unalias_st st
+  | _ -> st
+
+let rec unalias_ty ty =
+  match ty with
+  | PreTy.Pct_var { VarTy.v_link = Some ty; } -> unalias_ty ty
+  | _ -> ty
+
 (** {2 High-level utilities} *)
 
 module A =
 struct
   type new_annot =
     | Exp of VarTy.t
-    | Node of VarTy.t * VarTy.t
+    | Node of Clock_types.clock_sig
     | App of (int * VarTySt.t) list
 
   let print_new_annot fmt na =
     match na with
     | Exp ty -> VarTy.print fmt ty
-    | Node (ty_in, ty_out) ->
-      Format.fprintf fmt "@[%a -> %a@]"
-        VarTy.print ty_in
-        VarTy.print ty_out
+    | Node csig ->
+      Clock_types.print_sig fmt csig
     | App inst ->
       let print_binding fmt (i, ty) =
         Format.fprintf fmt "%d -> %a" i VarTySt.print ty
@@ -249,8 +233,8 @@ module M = Acids.Make(ANN_INFO)
 let annotate_exp info ty =
   ANN_INFO.annotate info (A.Exp ty)
 
-let annotate_node info inp_ty out_ty =
-  ANN_INFO.annotate info (A.Node (inp_ty, out_ty))
+let annotate_node info csig =
+  ANN_INFO.annotate info (A.Node csig)
 
 let annotate_app info app =
   ANN_INFO.annotate info (A.App app)
@@ -258,6 +242,100 @@ let annotate_app info app =
 let annotate_dummy info =
   let dummy_sch = PreTy.Pct_var { VarTy.v_id = -1; VarTy.v_link = None; } in
   ANN_INFO.annotate info (A.Exp dummy_sch)
+
+module MORPH =
+struct
+  module IN_INFO = M.I
+  module OUT_INFO = Acids_clocked.Info
+
+  open ANN_INFO
+  open A
+
+  let update_clock_exp_info { new_annot = na; old_annot = info; } =
+    match na with
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      (
+        let ty = Clock_types.ty_of_pre_ty pty in
+        match ty with
+        | Ct_stream st ->
+          object
+            method ci_data = info#ci_data
+            method ci_interv = info#ci_interv
+            method ci_static = info#ci_static
+            method ci_clock = st
+          end
+        | _ -> invalid_arg "update_clock_exp_info"
+      )
+
+  let update_static_exp_info { new_annot = na; old_annot = info; } =
+    match na with
+    | Node _ | App _ -> invalid_arg "update_static_exp_info"
+    | Exp pty ->
+      (
+        let ty = Clock_types.ty_of_pre_ty pty in
+        match ty with
+        | Ct_stream st ->
+          object
+            method pwi_data = info#pwi_data
+            method pwi_interv = info#pwi_interv
+            method pwi_static = info#pwi_static
+            method pwi_clock = st
+          end
+        | _ -> invalid_arg "update_static_exp_info"
+      )
+
+  let update_exp_info { new_annot = na; old_annot = info; } =
+    match na with
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      object
+        method ei_data = info#ei_data
+        method ei_interv = info#ei_interv
+        method ei_static = info#ei_static
+        method ei_clock = Clock_types.ty_of_pre_ty pty
+      end
+
+  let update_app_info { new_annot = na; old_annot = (); } =
+    match na with
+    | Exp _ | Node _ -> invalid_arg "update_app_info"
+    | App inst ->
+      let trad (i, pst) = i, Clock_types.st_of_pre_st pst in
+      {
+        Acids_clocked.Info.ai_clock_inst = List.map trad inst;
+      }
+
+  let update_block_info _ = ()
+
+  let update_pat_info { new_annot = na; old_annot = info; } =
+    match na with
+    | Node _ | App _ -> invalid_arg "update_clock_exp_info"
+    | Exp pty ->
+      let ty = ty_of_pre_ty pty in
+      object
+        method pi_data = info#pi_data
+        method pi_interv = info#pi_interv
+        method pi_static = info#pi_static
+        method pi_clock = ty
+      end
+
+  let update_eq_info _ = ()
+
+  let update_domain_info _ = ()
+
+  let update_node_info  { new_annot = na; old_annot = info; } =
+    match na with
+    | Exp _ | App _ -> invalid_arg "update_node_info"
+    | Node csig ->
+      object
+        method ni_ctx = info#ni_ctx
+        method ni_data = info#ni_data
+        method ni_interv = info#ni_interv
+        method ni_static = info#ni_static
+        method ni_clock = csig
+      end
+end
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_clocked)(MORPH)
 
 (** {2 Clocking itself} *)
 
@@ -362,7 +440,7 @@ and clock_exp env e acc =
   | E_app (app, e) ->
     let csig = find_node_signature env app.a_op in
     let ty_in, ty_out, preconstrs, inst =
-      Clock_types.instantiate_clock_sig fresh_st fresh_ty csig
+      Clock_types.instantiate_clock_sig loc fresh_st fresh_ty csig
     in
     let app =
       {
@@ -372,12 +450,7 @@ and clock_exp env e acc =
       }
     in
     let e, (ctx, cstrs) = expect_exp env ty_in e acc in
-    let cstrs =
-      let mk_constraint (st1, st2) =
-        { loc = loc; desc = Tc_adapt (st1, st2); }
-      in
-      List.map mk_constraint preconstrs @ cstrs
-    in
+    let cstrs = preconstrs @ cstrs in
     M.E_app (app, e), ty_out, (ctx, cstrs)
 
   | E_where (e, block) ->
@@ -467,8 +540,8 @@ and expect_exp env expected_ty e (ctx, constrs) =
   e, (ctx, unify e.M.e_loc expected_ty actual_ty constrs)
 
 and expect_sampled_exp env base_ty cce ec e constrs =
-    let expected_ty, constrs = sampled_ty e.e_loc base_ty cce ec constrs in
-    expect_exp env expected_ty e constrs
+  let expected_ty, constrs = sampled_ty e.e_loc base_ty cce ec constrs in
+  expect_exp env expected_ty e constrs
 
 and clock_clock_annot env loc cka acc =
   match cka with
@@ -571,11 +644,76 @@ and clock_block env block acc =
 and clock_dom env dom e (ctx, constrs) =
   assert false
 
+let clock_node_def env nd =
+  let env = reset_env env in
+  let (input, ty_in), acc = clock_pattern env nd.n_input (Ident.Env.empty, []) in
+  let (body, ty_out), (_, cstrs) = clock_exp env nd.n_body acc in
+  let csig = Clock_types.generalize_clock_sig ty_in ty_out cstrs in
+  add_local_node env nd.n_name csig,
+  {
+    M.n_name = nd.n_name;
+    M.n_input = input;
+    M.n_body = body;
+    M.n_pragma = nd.n_pragma;
+    M.n_static = nd.n_static;
+    M.n_loc = nd.n_loc;
+    M.n_info = annotate_node nd.n_info csig;
+  }
+
+let clock_node_decl env ndecl =
+  add_local_node env ndecl.decl_name ndecl.decl_clock,
+  {
+    M.decl_name = ndecl.decl_name;
+    M.decl_data = ndecl.decl_data;
+    M.decl_static = ndecl.decl_static;
+    M.decl_interv = ndecl.decl_interv;
+    M.decl_clock = ndecl.decl_clock;
+    M.decl_loc = ndecl.decl_loc;
+  }
+
+let clock_type_decl td =
+  {
+    M.ty_name = td.ty_name;
+    M.ty_body = td.ty_body;
+    M.ty_loc = td.ty_loc;
+  }
+
+let clock_phrase env phr =
+  match phr with
+  | Phr_node_def nd ->
+    let env, nd = clock_node_def env nd in
+    env, M.Phr_node_def nd
+  | Phr_node_decl nd ->
+    let env, nd = clock_node_decl env nd in
+    env, M.Phr_node_decl nd
+  | Phr_type_def td ->
+    env, M.Phr_type_def (clock_type_decl td)
+
+let clock_file file =
+  let env = initial_env file.f_info#interfaces in
+  let _, body = Utils.mapfold_left clock_phrase env file.f_body in
+  {
+    M.f_name = file.f_name;
+    M.f_imports = file.f_imports;
+    M.f_info = file.f_info;
+    M.f_body = body;
+  }
+
 (** {2 Putting it all together} *)
 
-(* let clock : *)
-(*     (< interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_preclock.file -> *)
-(*      < interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_clocked.file) *)
-(*     Pass_manager.pass *)
-(*     = *)
-(*   assert false *)
+let clock_file ctx file =
+  let file = clock_file file in
+  let file = EXTRACT.extract_file file in
+  ctx, file
+
+let clock :
+    (< interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_preclock.file ->
+     < interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_clocked.file)
+    Pass_manager.pass
+    =
+  let open Pass_manager in
+  P_transform
+    (Frontend_utils.make_transform
+       ~print_out:Acids_clocked.print_file
+       "clocking"
+       clock_file)

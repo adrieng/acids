@@ -32,6 +32,7 @@ type clock_type =
 
 type clock_constraint =
   | Cc_adapt of stream_type * stream_type
+  | Cc_equal of clock_type * clock_type
 
 type clock_sig =
     {
@@ -81,6 +82,10 @@ let print_constraint fmt c =
     Format.fprintf fmt "@[%a <:@ %a@]"
       print_stream_type st1
       print_stream_type st2
+  | Cc_equal (t1, t2) ->
+    Format.fprintf fmt "@[%a =@ %a@]"
+      print_clock_type t1
+      print_clock_type t2
 
 let print_sig fmt cs =
   let print_constraints fmt cs =
@@ -144,7 +149,49 @@ let rec ty_of_pre_ty pty =
   | Pct_stream pst -> Ct_stream (st_of_pre_st pst)
   | Pct_prod pty_l -> Ct_prod (List.map ty_of_pre_ty pty_l)
 
-let instantiate_clock_sig fresh_st fresh_ct csig =
+type ty_constr_desc =
+  | Tc_adapt of VarTySt.t * VarTySt.t (* st1 <: st2 *)
+  | Tc_equal of VarTy.t * VarTy.t (* ty1 = ty2 *)
+
+type ty_constr =
+  {
+    loc : Loc.t;
+    desc : ty_constr_desc;
+  }
+
+let print_ty_constr_desc fmt tycd =
+  match tycd with
+  | Tc_adapt (st1, st2) ->
+    Format.fprintf fmt "@[%a <:@ %a@]"
+      VarTySt.print st1
+      VarTySt.print st2
+  | Tc_equal (t1, t2) ->
+    Format.fprintf fmt "@[%a =@ %a@]"
+      VarTy.print t1
+      VarTy.print t2
+
+let print_ty_constr fmt tyc =
+  print_ty_constr_desc fmt tyc.desc
+
+let clock_constr_of_ty_constr cstr =
+  match cstr.desc with
+  | Tc_adapt (st1, st2) ->
+    let st1 = st_of_pre_st st1 in
+    let st2 = st_of_pre_st st2 in
+    Cc_adapt (st1, st2)
+  | Tc_equal (t1, t2) ->
+    let t1 = ty_of_pre_ty t1 in
+    let t2 = ty_of_pre_ty t2 in
+    Cc_equal (t1, t2)
+
+let generalize_clock_sig inp out cstrs =
+  {
+    ct_sig_input = ty_of_pre_ty inp;
+    ct_sig_output = ty_of_pre_ty out;
+    ct_constraints = List.map clock_constr_of_ty_constr cstrs;
+  }
+
+let instantiate_clock_sig loc fresh_st fresh_ct csig =
   let ht_st = Hashtbl.create 10 in
   let ht_ct = Hashtbl.create 10 in
 
@@ -178,8 +225,14 @@ let instantiate_clock_sig fresh_st fresh_ct csig =
   in
 
   let inst_constraint c =
-    match c with
-    | Cc_adapt (st1, st2) -> inst_st st1, inst_st st2
+    let desc =
+      match c with
+      | Cc_adapt (st1, st2) ->
+        Tc_adapt (inst_st st1, inst_st st2)
+      | Cc_equal (t1, t2) ->
+        Tc_equal (inst_ct t1, inst_ct t2)
+    in
+    { loc = loc; desc = desc; }
   in
 
   let ty_in = inst_ct csig.ct_sig_input in
@@ -189,4 +242,4 @@ let instantiate_clock_sig fresh_st fresh_ct csig =
     let add_inst i ty inst_l = (i, ty) :: inst_l in
     Hashtbl.fold add_inst ht_st []
   in
-  ty_in, ty_out, ty_constr, insts
+  ty_in, ty_out, ty_constr, (insts : (int * VarTySt.t) list)

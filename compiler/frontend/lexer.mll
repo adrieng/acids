@@ -58,7 +58,7 @@ let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 let op = ['+' '-' '*' '-' '/' '^' '%' '#']+
 
 rule token = parse
-| "(*-" { pragma lexbuf }
+| "(*-" { BEGIN_PRAGMA; pragma lexbuf }
 | "(*" { comment lexbuf }
 
 | "(" { LPAREN }
@@ -160,7 +160,10 @@ rule token = parse
 | eof { EOF }
 
 and pragma = parse
-| "pragma" { BEGIN_PRAGMA }
+| ":" { COLON }
+| "," { COMMA }
+| alpha+ as s { PRAGMA_KEY s }
+| (alpha | '_' | digit)+ as s { PRAGMA_VAL s }
 | "-*)" { END_PRAGMA }
 
 and comment = parse

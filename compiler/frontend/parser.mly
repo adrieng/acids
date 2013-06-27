@@ -260,6 +260,8 @@
 /* Misc */
 
 %token BEGIN_PRAGMA END_PRAGMA
+%token<string> PRAGMA_KEY
+%token<string> PRAGMA_VAL
 
 %token EOF
 
@@ -508,12 +510,18 @@ pat_desc:
 pat:
 | p = general_pat(pat_desc) { p }
 
+pragma_desc:
+| key = PRAGMA_KEY COLON value = PRAGMA_VAL { (key, value) }
+
 pragma:
-| { None }
-| BEGIN_PRAGMA END_PRAGMA { Some () }
+| pd = with_loc(pragma_desc) { make_located Pragma.make_command pd }
+
+pragma_node:
+| { [] }
+| BEGIN_PRAGMA p_l = separated_list(COMMA, pragma) END_PRAGMA { p_l }
 
 node_desc:
-| pr = pragma LET s = static NODE n = nodename p = pat EQUAL e = exp
+| pr = pragma_node LET s = static NODE n = nodename p = pat EQUAL e = exp
           { (s, n, p, e, pr) }
 
 node:

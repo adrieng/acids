@@ -138,7 +138,7 @@ sig
     n_name : Names.shortname;
     n_input : pat;
     n_body : exp;
-    n_pragma : Pragma.t option;
+    n_pragma : Pragma.t;
     n_static : bool;
     n_loc : Loc.t;
     n_info : I.node_info;
@@ -292,7 +292,7 @@ module Make = functor (S : S) ->
         n_name : Names.shortname;
         n_input : pat;
         n_body : exp;
-        n_pragma : Pragma.t option;
+        n_pragma : Pragma.t;
         n_static : bool;
         n_loc : Loc.t;
         n_info : S.node_info;

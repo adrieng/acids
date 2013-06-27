@@ -102,6 +102,24 @@ let print_sig fmt cs =
 
 let printing_prefix = "::"
 
+let print_stream_type_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_clock_info
+    printing_prefix
+    print_stream_type
+
+let print_clock_type_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_clock_info
+    printing_prefix
+    print_clock_type
+
+let print_sig_ann =
+  Ast_misc.print_annot
+    Compiler_options.print_clock_info
+    printing_prefix
+    print_sig
+
 module PreTySt =
 struct
   type 'a pre_ty =

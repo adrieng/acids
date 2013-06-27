@@ -32,7 +32,7 @@ struct
       Data_types.print_ty_scal_ann cei#ci_data
       Interval_types.print_interval_ann cei#ci_interv
       Static_types.print_ty_scal_ann cei#ci_static
-      Clock_types.print_stream_type cei#ci_clock
+      Clock_types.print_stream_type_ann cei#ci_clock
 
   type static_exp_info =
       <
@@ -46,7 +46,7 @@ struct
       Data_types.print_ty_scal_ann pwi#pwi_data
       Interval_types.print_interval_ann pwi#pwi_interv
       Static_types.print_ty_scal_ann pwi#pwi_static
-      Clock_types.print_stream_type pwi#pwi_clock
+      Clock_types.print_stream_type_ann pwi#pwi_clock
 
   type static_exp_desc = Acids_preclock.Info.static_exp_desc
   let print_static_exp_desc = Acids_preclock.Info.print_static_exp_desc
@@ -63,7 +63,7 @@ struct
     if ei#ei_interv <> Interval_types.It_scal Interval_types.Is_top
     then Interval_types.print_ty_ann fmt ei#ei_interv;
     Static_types.print_ty_ann fmt ei#ei_static;
-    Clock_types.print_clock_type fmt ei#ei_clock
+    Clock_types.print_clock_type_ann fmt ei#ei_clock
 
   type app_info =
     {
@@ -81,7 +81,12 @@ struct
         pi_interv : Interval_types.ty;
         pi_clock : Clock_types.clock_type;
       >
-  let print_pat_info (_ : Format.formatter) _ = ()
+  let print_pat_info fmt pi =
+    Data_types.print_ty_ann fmt pi#pi_data;
+    if pi#pi_interv <> Interval_types.It_scal Interval_types.Is_top
+    then Interval_types.print_ty_ann fmt pi#pi_interv;
+    Static_types.print_ty_ann fmt pi#pi_static;
+    Clock_types.print_clock_type_ann fmt pi#pi_clock
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -97,7 +102,12 @@ struct
         ni_interv : Interval_types.ty_sig;
         ni_clock : Clock_types.clock_sig;
       >
-  let print_node_info (_ : Format.formatter) _ = ()
+  let print_node_info fmt ni =
+    Format.fprintf fmt "%a%a%a%a"
+      Data_types.print_sig_ann ni#ni_data
+      Interval_types.print_sig_ann ni#ni_interv
+      Static_types.print_sig_ann ni#ni_static
+      Clock_types.print_sig_ann ni#ni_clock
 end
 
 module M = Acids.Make(Info)

@@ -27,12 +27,15 @@ let print_interval_info = ref false
 
 let print_static_info = ref false
 
+let print_clock_info = ref false
+
 let info_list =
   [
     "full", print_full_info;
     "data", print_data_info;
     "interval", print_interval_info;
     "static", print_static_info;
+    "clock", print_clock_info;
   ]
 
 let set_info s = List.assoc s info_list := true

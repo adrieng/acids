@@ -24,6 +24,8 @@ open PreTy
 type error =
   | Occur_check_st of Loc.t * int * VarTySt.t
   | Occur_check_ty of Loc.t * int * VarTy.t
+  | Could_not_unify_st of Loc.t * VarTySt.t * VarTySt.t
+  | Could_not_unify_ty of Loc.t * VarTy.t * VarTy.t
 
 exception Resolution_error of error
 
@@ -39,12 +41,28 @@ let print_error fmt err =
       Loc.print l
       i
       VarTy.print ty
+  | Could_not_unify_st (l, st1, st2) ->
+    Format.fprintf fmt "%aCould not unify stream type %a with stream type %a"
+      Loc.print l
+      VarTySt.print st1
+      VarTySt.print st2
+  | Could_not_unify_ty (l, ty1, ty2) ->
+    Format.fprintf fmt "%aCould not unify clock type %a with clock type %a"
+      Loc.print l
+      VarTy.print ty1
+      VarTy.print ty2
 
 let occur_check_st l id st =
   raise (Resolution_error (Occur_check_st (l, id, st)))
 
 let occur_check_ty l id ty =
   raise (Resolution_error (Occur_check_ty (l, id, ty)))
+
+let could_not_unify_st l st1 st2 =
+  raise (Resolution_error (Could_not_unify_st (l, st1, st2)))
+
+let could_not_unify_ty l ty1 ty2 =
+  raise (Resolution_error (Could_not_unify_ty (l, ty1, ty2)))
 
 (** {2 Utilities} *)
 
@@ -86,7 +104,92 @@ let occur_check_ty loc id ty =
   | Pct_var _ | Pct_stream _ -> ()
   | Pct_prod ty_l -> List.iter check ty_l
 
-(** {2 Constraint solving} *)
+let rec is_rigid_ce ce =
+  match ce with
+  | Ce_var _ -> true
+  | Ce_pword _ -> false
+  | Ce_equal (ce, _) | Ce_iter ce -> is_rigid_ce ce
+
+let rec decompose_st st =
+  match unalias_st st with
+  | Pst_var _ -> st, []
+  | Pst_on (bst, ce) ->
+    if is_rigid_ce ce
+    then st, []
+    else
+      let bst, ce_l = decompose_st bst in
+      bst, ce :: ce_l
+
+(* TODO cleaner *)
+let rec ce_equal ce1 ce2 =
+  match ce1, ce2 with
+  | Ce_var (v1, _), Ce_var (v2, _) -> Ident.equal v1 v2
+  | Ce_pword pw1, Ce_pword pw2 -> pw1 = pw2
+  | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
+  | Ce_iter ce1, Ce_iter ce2 -> ce_equal ce1 ce2
+  | _ -> false
+
+(** {2 Word constraints} *)
+
+module WordConstr =
+struct
+  type wconstr =
+    {
+      loc : Loc.t;
+      lhs : side;
+      kind : kind;
+      rhs : side;
+    }
+
+  and kind = Equal | Adapt
+
+  and side =
+    {
+      var : Ident.t option;
+      const : word list;
+    }
+
+  and word = (Int.t, Int.t) Ast_misc.upword
+
+  let print_words fmt w =
+    Utils.print_list_r
+      (Ast_misc.print_upword Int.print Int.print)
+      "on "
+      fmt
+      w
+
+  let print_side fmt s =
+    match s.var with
+    | None -> print_words fmt s.const
+    | Some v ->
+      Format.fprintf fmt "%a on @[%a@]"
+        Ident.print v
+        print_words s.const
+
+  let print_kind fmt k =
+    let s =
+      match k with
+      | Equal -> "="
+      | Adapt -> "<:"
+    in
+    Format.fprintf fmt "%s" s
+
+  let print_wconstr fmt wc =
+    Format.fprintf fmt "@[%a %a@ %a (* @[%a@] *)@]"
+      print_side wc.lhs
+      print_kind wc.kind
+      print_side wc.rhs
+      Loc.print_short wc.loc
+end
+
+let mk_word_constr kind loc lhs rhs =
+  WordConstr.({ loc = loc; lhs = lhs; kind = kind; rhs = rhs; })
+
+let eq_word = mk_word_constr WordConstr.Equal
+
+let adapt_word = mk_word_constr WordConstr.Adapt
+
+(** {2 Constraint simplification} *)
 
 let simplify_equality_constraints sys =
   let unify_st loc sys st1 st2 =
@@ -125,7 +228,9 @@ let simplify_equality_constraints sys =
       unify_st loc sys st1 st2
 
     | Pct_prod ty_l1, Pct_prod ty_l2 ->
-      List.fold_left2 (unify_ty loc) sys ty_l1 ty_l2
+      if List.length ty_l1 <> List.length ty_l2
+      then could_not_unify_ty loc ty1 ty2
+      else List.fold_left2 (unify_ty loc) sys ty_l1 ty_l2
 
     | Pct_prod ty_l, Pct_stream st | Pct_stream st, Pct_prod ty_l ->
       synchronize loc sys st ty_l
@@ -143,10 +248,125 @@ let simplify_equality_constraints sys =
   in
   List.fold_left simplify_constraints [] sys
 
+(** {2 Clock constraints to word constraints} *)
+
+(*
+
+  a1 on (10) = a2 on x
+
+  ->
+
+  a1' on c1 on (10) = a2 on x on (1)
+
+  ->
+
+  c1 on (10) = (1)
+  and
+  a1 = a2 on x
+
+  ->
+
+  c1 = (2)
+  and
+  a1 = a2 on x
+
+  ------------------------------------------------------------------------------
+
+
+  a1 on x on (10) = a2 on x on (2)
+
+  ->
+
+  a1' on c1 on (10) = a2 on x on (1)
+
+  ->
+
+  c1 on (10) = (1)
+  and
+  a1 = a2 on x
+
+  ->
+
+  c1 = (2)
+  and
+  a1 = a2 on x
+
+
+*)
+
+let fresh_word_var () =
+  (* UGLY AS HELL: we use Ident.t as a type of word variables!
+     No risk of confusion with program variables howver since we
+     adopt names forbidden by the compiler's lexer. *)
+  let s = "?W" in
+  Ce_var (Ident.make_internal s, Interval.singleton Int.zero) (* TODO *)
+
+let word_constraints_of_clock_constraints sys =
+  let rec unify loc wsys st1 st2 =
+    let open VarTySt in
+    let st1 = unalias_st st1 in
+    let st2 = unalias_st st2 in
+    match st1, st2 with
+    | Pst_var v1, Pst_var v2 ->
+      if v1.v_id <> v2.v_id then v2.v_link <- Some st1;
+      wsys
+
+    | Pst_var v, st | st, Pst_var v ->
+      occur_check_st loc v.v_id st;
+      v.v_link <- Some st;
+      wsys
+
+    | Pst_on (st1', ce1), Pst_on (st2', ce2)
+      when is_rigid_ce ce1 && is_rigid_ce ce2 ->
+      if not (ce_equal ce1 ce2) then could_not_unify_st loc st1' st2';
+        unify loc wsys st1' st2'
+
+    | Pst_on _, Pst_on _ ->
+      let rigid_st1, l_side = split_rigit st1 in
+      let rigid_st2, r_side = split_rigit st2 in
+      unify loc (eq_word loc l_side r_side :: wsys) rigid_st1 rigid_st2
+
+  and split_rigit st =
+    let st, ce_l = decompose_st st in
+    let w = assert false (* TODO *) in
+    let st =
+      match unalias_st st with
+      | Pst_var v ->
+        let bst = fresh_st () in
+        let c = fresh_word_var () in
+        v.VarTySt.v_link <- Some (Pst_on (bst, c));
+        bst
+      | _ ->
+        st
+    in
+    st, w
+  in
+
+  let solve_constraint wsys c =
+    match c.desc with
+    | Tc_equal _ -> invalid_arg "word_constraints_of_clock_constraints"
+
+    | Tc_equal_st (st1, st2) ->
+      unify c.loc wsys st1 st2
+
+    | Tc_adapt (st1, st2) ->
+      let rigid_st1, l_side = split_rigit st1 in
+      let rigid_st2, r_side = split_rigit st2 in
+      unify c.loc (adapt_word c.loc l_side r_side :: wsys) rigid_st1 rigid_st2
+  in
+  List.fold_left solve_constraint [] sys
+
 (** {2 Top-level function} *)
 
 let solve_constraints sys =
+  let ctx = Ident.get_current_ctx () in
+  Ident.reset_ctx ();
   p_sys "Initial system" sys;
   let sys = simplify_equality_constraints sys in
   p_sys "System with simplified equality constraints" sys;
+  assert
+    (List.for_all
+       (fun c -> match c.desc with Tc_equal _ -> false | _ -> true)
+       sys);
+  Ident.set_current_ctx ctx;
   ()

@@ -119,7 +119,7 @@ let trad_static_exp_econstr se =
 let rec trad_clock_exp ce =
   match ce.ce_desc with
   | Ce_var v ->
-    Clock_types.Ce_var v
+    Clock_types.Ce_var (v, ce.ce_info#ci_interv)
   | Ce_pword pw ->
     let pw = Ast_misc.map_upword trad_static_exp trad_static_exp_int pw in
     Clock_types.Ce_pword pw

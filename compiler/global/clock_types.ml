@@ -16,7 +16,7 @@
  *)
 
 type clock_exp =
-  | Ce_var of Ident.t
+  | Ce_var of Ident.t * Interval.t
   | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.upword
   | Ce_equal of clock_exp * Ast_misc.econstr
   | Ce_iter of clock_exp
@@ -43,7 +43,10 @@ type clock_sig =
 
 let rec print_clock_exp fmt ce =
   match ce with
-  | Ce_var id -> Ident.print fmt id
+  | Ce_var (id, it) ->
+    Format.fprintf fmt "%a%a"
+      Ident.print id
+      Interval_types.print_interval_ann it
   | Ce_pword pw ->
     let print_fword fmt fw =
       match fw with

@@ -539,7 +539,7 @@ econstr_singleton:
 | econstr { [$1] }
 
 clock_exp_ty:
-| id = IDENT { Clock_types.Ce_var (sig_scope_ident id) }
+| id = IDENT IN it = interval { Clock_types.Ce_var (sig_scope_ident id, it) }
 | w = upword(econstr_singleton, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL ec = econstr { Clock_types.Ce_equal (ce, ec) }
 | ITER ce = clock_exp_ty { Clock_types.Ce_iter ce }

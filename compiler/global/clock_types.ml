@@ -261,3 +261,18 @@ let instantiate_clock_sig loc fresh_st fresh_ct csig =
     Hashtbl.fold add_inst ht_st []
   in
   ty_in, ty_out, ty_constr, (insts : (int * VarTySt.t) list)
+
+let rec reroot_st bst st =
+  let open PreTySt in
+  match st with
+  | Pst_var { VarTySt.v_link = Some st; } -> reroot_st bst st
+  | Pst_var _ -> bst
+  | Pst_on (st, cce) -> Pst_on (reroot_st bst st, cce)
+
+let rec reroot_ty bst ty =
+  let open PreTy in
+  match ty with
+  | Pct_var { VarTy.v_link = Some ty; } -> reroot_ty bst ty
+  | Pct_var _ -> ty
+  | Pct_stream st -> Pct_stream (reroot_st bst st)
+  | Pct_prod ty_l -> Pct_prod (List.map (reroot_ty bst) ty_l)

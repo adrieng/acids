@@ -91,8 +91,9 @@ struct
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
 
-  type domain_info = unit
-  let print_domain_info _ () = ()
+  type domain_info = Clock_types.stream_type
+  let print_domain_info fmt st =
+    Clock_types.print_stream_type_ann fmt st
 
   type node_info =
       <

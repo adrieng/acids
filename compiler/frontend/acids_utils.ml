@@ -259,6 +259,89 @@ struct
     }
 end
 
+module FREEVARS(A : Acids.A
+                with type I.var = Ident.t
+                and type
+                  I.static_exp_desc = Acids_preclock.Info.static_exp_desc) =
+struct
+  open A
+
+  let rec fv_clock_exp fv ce =
+    match ce.ce_desc with
+    | Ce_var v -> Ident.Set.add v fv
+    | Ce_pword _ -> fv
+    | Ce_equal (ce, _) -> fv_clock_exp fv ce
+    | Ce_iter ce -> fv_clock_exp fv ce
+
+  and fv_exp fv e =
+    match e.e_desc with
+    | E_var v -> Ident.Set.add v fv
+
+    | E_const _ -> fv
+
+    | E_fst e | E_snd e | E_app (_, e)
+    | E_type_annot (e, _) | E_buffer e -> fv_exp fv e
+
+    | E_tuple e_l -> List.fold_left fv_exp fv e_l
+
+    | E_fby (e1, e2) -> fv_exp (fv_exp fv e1) e2
+
+    | E_ifthenelse (e1, e2, e3) -> fv_exp (fv_exp (fv_exp fv e1) e2) e3
+
+    | E_where (e, block) ->
+      let fv = fv_exp fv e in
+      let fv, bv = fv_block fv block in
+      Ident.Set.diff fv bv
+
+    | E_when (e, ce) | E_split (ce, e, _) -> fv_exp (fv_clock_exp fv ce) e
+
+    | E_bmerge (ce, e1, e2) -> fv_exp (fv_exp (fv_clock_exp fv ce) e1) e2
+
+    | E_merge (ce, c_l) ->
+      List.fold_left (fun fv c -> fv_exp fv c.c_body) (fv_clock_exp fv ce) c_l
+
+    | E_valof ce -> fv_clock_exp fv ce
+
+    | E_clock_annot (e, cka) ->
+      fv_exp (fv_clock_annot fv cka) e
+
+    | E_dom (e, dom) ->
+      let fv =
+        match dom.d_base_clock with
+        | None -> fv
+        | Some cka -> fv_clock_annot fv cka
+      in
+      fv_exp fv e
+
+  and fv_clock_annot fv cka =
+    match cka with
+    | Ca_var _ -> fv
+    | Ca_on (cka, ce) -> fv_clock_annot (fv_clock_exp fv ce) cka
+
+  and fv_pattern ?(gather_clock_vars = true) fv p =
+    match p.p_desc with
+    | P_var (v, _) -> Ident.Set.add v fv
+    | P_tuple p_l -> List.fold_left fv_pattern fv p_l
+    | P_clock_annot (p, cka) ->
+      let fv =
+        if gather_clock_vars
+        then fv_clock_annot fv cka
+        else fv
+      in
+      fv_pattern fv p
+    | P_type_annot (p, _) -> fv_pattern fv p
+    | P_split pw ->
+      Ast_misc.fold_upword (Utils.flip fv_pattern) (fun _ l -> l) pw fv
+
+  and fv_block fv block =
+    let bv_eq bv eq = fv_pattern ~gather_clock_vars:false bv eq.eq_lhs in
+    let fv_eq fv eq = fv_exp fv eq.eq_rhs in
+
+    let fv = List.fold_left fv_eq fv block.b_body in
+    let bv = List.fold_left bv_eq Ident.Set.empty block.b_body in
+    fv, bv
+end
+
 module REFRESH(A : Acids.A
                with type I.var = Ident.t
                and type

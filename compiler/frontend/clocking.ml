@@ -321,7 +321,10 @@ struct
 
   let update_eq_info _ = ()
 
-  let update_domain_info _ = ()
+  let update_domain_info { new_annot = na; old_annot = (); } =
+    match na with
+    | Node _ | App _ | Exp _ -> invalid_arg "update_domain_info"
+    | ClockExp pst -> st_of_pre_st pst
 
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
@@ -523,7 +526,7 @@ and clock_exp env e acc =
     M.E_type_annot (e, tya), ty, acc
 
   | E_dom (e, dom) ->
-    let (dom, e, ty), acc = clock_dom env dom e acc in
+    let (dom, e, ty), acc = clock_dom env loc dom e acc in
     M.E_dom (e, dom), ty, acc
 
   | E_buffer e ->
@@ -648,8 +651,62 @@ and clock_block env block acc =
   },
   acc
 
-and clock_dom env dom e (ctx, constrs) =
-  assert false
+and clock_dom env loc dom e acc =
+  (* Clocking domains:
+     1. Clock e in a fresh environment (ctx and constrs)
+     2. Solve clocking constraints
+     3. Generate a fresh stream type bst
+     4. If the domain is annotated with a base clock,
+     add a constraint between bst and the former
+     5. For each x : st free in e, add a constraint relating st[alpha/bst] and its type
+     in the environment.
+     6. Remap the output type
+  *)
+
+  (* 1. Clock e in isolation *)
+  let (e, ty), (local_ctx, local_constrs) = clock_exp env e (Ident.Env.empty, []) in
+
+  (* 2. Solve constraints *)
+  (* solve_constraints local_constrs; *) (* TODO *)
+
+  (* 3. Fresh base clock *)
+
+  let bst = fresh_st () in
+
+  (* 4. Unification between base clock and annot *)
+  let cka, (ctx, cstrs) =
+    match dom.d_base_clock with
+    | None -> None, acc
+    | Some cka ->
+      let (cka, st), (ctx, cstrs) = clock_clock_annot env loc cka acc in
+      let c = { loc = loc; desc = Tc_equal (ty_of_st bst, ty_of_st st); } in
+      Some cka, (ctx, c :: cstrs)
+  in
+
+  (* 5. For each free variable of e, we add a constraint relating it to the output env *)
+  let fv_e =
+    let module F = Acids_utils.FREEVARS(M) in
+    F.fv_exp Ident.Set.empty e
+  in
+  let add_constraint v (ctx, cstrs) =
+    let out_ty, (ctx, cstrs) = clock_var v (ctx, cstrs) in
+    let in_ty = Ident.Env.find v local_ctx in
+    let c = { loc = loc; desc = Tc_equal (out_ty, reroot_ty bst in_ty); } in
+    (ctx, c :: cstrs)
+  in
+  let (ctx, cstrs) = Ident.Set.fold add_constraint fv_e (ctx, cstrs) in
+
+  let ty = reroot_ty bst ty in
+
+  (
+    {
+      M.d_base_clock = cka;
+      M.d_par = dom.d_par;
+      M.d_info = annotate_clock_exp dom.d_info bst;
+    },
+    e,
+    ty),
+  (ctx, cstrs)
 
 let clock_node_def env nd =
   let env = reset_env env in

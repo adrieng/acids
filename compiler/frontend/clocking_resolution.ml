@@ -104,7 +104,7 @@ let simplify_equality_constraints sys =
       sys
 
     | Pst_on _, Pst_on _ ->
-      { loc = loc; desc = Tc_equal (Pct_stream st1, Pct_stream st2); } :: sys
+      { loc = loc; desc = Tc_equal_st (st1, st2); } :: sys
   in
 
   let rec unify_ty loc sys ty1 ty2 =
@@ -139,6 +139,7 @@ let simplify_equality_constraints sys =
     match c.desc with
     | Tc_adapt _ -> c :: sys
     | Tc_equal (ty1, ty2) -> unify_ty c.loc sys ty1 ty2
+    | Tc_equal_st (st1, st2) -> unify_st c.loc sys st1 st2
   in
   List.fold_left simplify_constraints [] sys
 

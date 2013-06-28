@@ -170,6 +170,7 @@ let rec ty_of_pre_ty pty =
 type ty_constr_desc =
   | Tc_adapt of VarTySt.t * VarTySt.t (* st1 <: st2 *)
   | Tc_equal of VarTy.t * VarTy.t (* ty1 = ty2 *)
+  | Tc_equal_st of VarTySt.t * VarTySt.t (* st1 = st2 *)
 
 type ty_constr =
   {
@@ -187,6 +188,10 @@ let print_ty_constr_desc fmt tycd =
     Format.fprintf fmt "@[%a =@ %a@]"
       VarTy.print t1
       VarTy.print t2
+  | Tc_equal_st (st1, st2) ->
+    Format.fprintf fmt "@[%a =@ %a@]"
+      VarTySt.print st1
+      VarTySt.print st2
 
 let print_ty_constr fmt tyc =
   print_ty_constr_desc fmt tyc.desc
@@ -201,6 +206,10 @@ let clock_constr_of_ty_constr cstr =
     let t1 = ty_of_pre_ty t1 in
     let t2 = ty_of_pre_ty t2 in
     Cc_equal (t1, t2)
+  | Tc_equal_st (st1, st2) ->
+    let st1 = st_of_pre_st st1 in
+    let st2 = st_of_pre_st st2 in
+    Cc_equal (Ct_stream st1, Ct_stream st2)
 
 let generalize_clock_sig inp out cstrs =
   {

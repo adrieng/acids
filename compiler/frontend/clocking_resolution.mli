@@ -15,4 +15,10 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type error
+
+exception Resolution_error of error
+
+val print_error : Format.formatter -> error -> unit
+
 val solve_constraints : Clock_types.ty_constr list -> unit

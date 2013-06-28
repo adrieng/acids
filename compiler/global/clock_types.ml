@@ -209,7 +209,23 @@ let generalize_clock_sig inp out cstrs =
     ct_constraints = List.map clock_constr_of_ty_constr cstrs;
   }
 
-let instantiate_clock_sig loc fresh_st fresh_ct csig =
+let reset_st, fresh_st =
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () ->
+    let v = !r in
+    incr r;
+    PreTySt.Pst_var { VarTySt.v_id = v; VarTySt.v_link = None; })
+
+let reset_ty, fresh_ty =
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () ->
+    let v = !r in
+    incr r;
+    PreTy.Pct_var { VarTy.v_id = v; VarTy.v_link = None; })
+
+let instantiate_clock_sig loc csig =
   let ht_st = Hashtbl.create 10 in
   let ht_ct = Hashtbl.create 10 in
 
@@ -234,9 +250,9 @@ let instantiate_clock_sig loc fresh_st fresh_ct csig =
       (
         try Hashtbl.find ht_ct v
         with Not_found ->
-          let ct = fresh_ct () in
-          Hashtbl.add ht_ct v ct;
-          ct
+          let ty = fresh_ty () in
+          Hashtbl.add ht_ct v ty;
+          ty
       )
     | Ct_stream st -> Pct_stream (inst_st st)
     | Ct_prod ct_l -> Pct_prod (List.map inst_ct ct_l)
@@ -276,3 +292,13 @@ let rec reroot_ty bst ty =
   | Pct_var _ -> ty
   | Pct_stream st -> Pct_stream (reroot_st bst st)
   | Pct_prod ty_l -> Pct_prod (List.map (reroot_ty bst) ty_l)
+
+let rec unalias_st st =
+  match st with
+  | PreTySt.Pst_var { VarTySt.v_link = Some st; } -> unalias_st st
+  | _ -> st
+
+let rec unalias_ty ty =
+  match ty with
+  | PreTy.Pct_var { VarTy.v_link = Some ty; } -> unalias_ty ty
+  | _ -> ty

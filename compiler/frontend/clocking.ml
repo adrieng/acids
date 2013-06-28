@@ -44,24 +44,6 @@ let print_error fmt err =
       VarTy.print ct1
       VarTy.print ct2
 
-(** {2 Utilities} *)
-
-let reset_st, fresh_st =
-  let r = ref 0 in
-  (fun () -> r := 0),
-  (fun () ->
-    let v = !r in
-    incr r;
-    Pst_var { VarTySt.v_id = v; VarTySt.v_link = None; })
-
-let reset_ty, fresh_ty =
-  let r = ref 0 in
-  (fun () -> r := 0),
-  (fun () ->
-    let v = !r in
-    incr r;
-    Pct_var { VarTy.v_id = v; VarTy.v_link = None; })
-
 (** {2 Environments} *)
 
 type env =
@@ -197,16 +179,6 @@ let adaptable_tys loc (ctx, constrs) =
 
 let sampled_ty loc ty cce ec acc =
   on_ty loc ty (Clock_types.Ce_equal (cce, ec)) acc
-
-let rec unalias_st st =
-  match st with
-  | PreTySt.Pst_var { VarTySt.v_link = Some st; } -> unalias_st st
-  | _ -> st
-
-let rec unalias_ty ty =
-  match ty with
-  | PreTy.Pct_var { VarTy.v_link = Some ty; } -> unalias_ty ty
-  | _ -> ty
 
 (** {2 High-level utilities} *)
 
@@ -446,7 +418,7 @@ and clock_exp env e acc =
   | E_app (app, e) ->
     let csig = find_node_signature env app.a_op in
     let ty_in, ty_out, preconstrs, inst =
-      Clock_types.instantiate_clock_sig loc fresh_st fresh_ty csig
+      Clock_types.instantiate_clock_sig loc csig
     in
     let app =
       {

@@ -129,6 +129,56 @@ let rec ce_equal ce1 ce2 =
   | Ce_iter ce1, Ce_iter ce2 -> ce_equal ce1 ce2
   | _ -> false
 
+let int_pword_of_econst_pword int_of_constr pw =
+  let open Ast_misc in
+
+  let get_int ec =
+    match ec with
+    | Ec_bool false -> Int.zero
+    | Ec_bool true -> Int.one
+    | Ec_int i -> i
+    | Ec_constr ec -> int_of_constr ec
+  in
+
+  let rec walk pt =
+    match pt with
+    | Leaf ec_l -> Concat (List.map (fun x -> Leaf (get_int x)) ec_l)
+    | Concat pt_l -> Concat (List.map walk pt_l)
+    | Power (pt, p) -> Power (walk pt, p)
+  in
+
+  { u = walk pw.u; v = walk pw.v; }
+
+let rec eval_rigid_ce ce =
+  let open Ast_misc in
+  match ce with
+  | Ce_var _ -> invalid_arg "eval_rigid_ce"
+  | Ce_pword pw -> pw
+  | Ce_equal (ce, ec) ->
+    let pw = eval_rigid_ce ce in
+    let is_eq ec_l =
+      List.map (fun x -> Ec_bool (x = ec)) ec_l in
+    Ast_misc.map_upword is_eq (fun x -> x) pw
+  | Ce_iter ce ->
+    let pw = eval_rigid_ce ce in
+    let rec walk pt =
+      match pt with
+      | Leaf ec_l ->
+        let mk_iter ec acc =
+          let i =
+            match ec with
+            | Ec_int i -> i
+            | Ec_bool _ | Ec_constr _ -> invalid_arg "walk" (* ill-typed *)
+          in
+          let i_l = Utils.range 0 (Int.to_int i - 1) in (* TODO *)
+          List.map (fun i -> Ec_int (Int.of_int i)) i_l @ acc
+        in
+        Leaf (List.fold_right mk_iter ec_l [])
+      | Concat pt_l -> Concat (List.map walk pt_l)
+      | Power (pt, p) -> Power (walk pt, p)
+    in
+    { u = walk pw.u; v = walk pw.v; }
+
 (** {2 Word constraints} *)
 
 module WordConstr =
@@ -180,6 +230,10 @@ struct
       print_kind wc.kind
       print_side wc.rhs
       Loc.print_short wc.loc
+
+  let print_system fmt sys =
+    Format.fprintf fmt "{ @[<v>%a@] }"
+      (Utils.print_list_r print_wconstr ";") sys
 end
 
 let mk_word_constr kind loc lhs rhs =
@@ -299,10 +353,12 @@ let fresh_word_var () =
      No risk of confusion with program variables howver since we
      adopt names forbidden by the compiler's lexer. *)
   let s = "?W" in
-  Ce_var (Ident.make_internal s, Interval.singleton Int.zero) (* TODO *)
+  let id = Ident.make_internal s in
+  id, Ce_var (id, Interval.singleton Int.zero) (* TODO *)
 
 let word_constraints_of_clock_constraints sys =
   let rec unify loc wsys st1 st2 =
+    Format.eprintf "U(%a, %a)@." VarTySt.print st1 VarTySt.print st2;
     let open VarTySt in
     let st1 = unalias_st st1 in
     let st2 = unalias_st st2 in
@@ -322,24 +378,32 @@ let word_constraints_of_clock_constraints sys =
         unify loc wsys st1' st2'
 
     | Pst_on _, Pst_on _ ->
-      let rigid_st1, l_side = split_rigit st1 in
-      let rigid_st2, r_side = split_rigit st2 in
+      let rigid_st1, l_side = split_rigid st1 in
+      let rigid_st2, r_side = split_rigid st2 in
       unify loc (eq_word loc l_side r_side :: wsys) rigid_st1 rigid_st2
 
-  and split_rigit st =
+  and split_rigid st =
     let st, ce_l = decompose_st st in
-    let w = assert false (* TODO *) in
-    let st =
+    let st, var =
       match unalias_st st with
       | Pst_var v ->
         let bst = fresh_st () in
-        let c = fresh_word_var () in
-        v.VarTySt.v_link <- Some (Pst_on (bst, c));
-        bst
+        let id, ce = fresh_word_var () in
+        v.VarTySt.v_link <- Some (Pst_on (bst, ce));
+        bst, Some id
       | _ ->
-        st
+        st, None
     in
-    st, w
+    let side =
+      let w_l =
+        let pw_l = List.map eval_rigid_ce ce_l in
+        let int_of_constr _ = assert false in (* TODO *)
+        List.map (int_pword_of_econst_pword int_of_constr) pw_l
+      in
+      WordConstr.({ var = var; const = w_l; })
+    in
+    Format.eprintf "New side: @[%a@]@." WordConstr.print_side side;
+    st, side
   in
 
   let solve_constraint wsys c =
@@ -350,8 +414,8 @@ let word_constraints_of_clock_constraints sys =
       unify c.loc wsys st1 st2
 
     | Tc_adapt (st1, st2) ->
-      let rigid_st1, l_side = split_rigit st1 in
-      let rigid_st2, r_side = split_rigit st2 in
+      let rigid_st1, l_side = split_rigid st1 in
+      let rigid_st2, r_side = split_rigid st2 in
       unify c.loc (adapt_word c.loc l_side r_side :: wsys) rigid_st1 rigid_st2
   in
   List.fold_left solve_constraint [] sys
@@ -361,12 +425,17 @@ let word_constraints_of_clock_constraints sys =
 let solve_constraints sys =
   let ctx = Ident.get_current_ctx () in
   Ident.reset_ctx ();
+
   p_sys "Initial system" sys;
+
   let sys = simplify_equality_constraints sys in
   p_sys "System with simplified equality constraints" sys;
-  assert
-    (List.for_all
-       (fun c -> match c.desc with Tc_equal _ -> false | _ -> true)
-       sys);
+
+  let wsys = word_constraints_of_clock_constraints sys in
+  p
+    (fun fmt wsys ->
+      Format.fprintf fmt "Word constraints: @[%a@]"
+        WordConstr.print_system wsys) wsys;
+
   Ident.set_current_ctx ctx;
   ()

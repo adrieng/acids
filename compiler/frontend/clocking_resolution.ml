@@ -378,32 +378,39 @@ let word_constraints_of_clock_constraints sys =
         unify loc wsys st1' st2'
 
     | Pst_on _, Pst_on _ ->
-      let rigid_st1, l_side = split_rigid st1 in
-      let rigid_st2, r_side = split_rigid st2 in
+      let rigid_st1, left_consts = decompose st1 in
+      let rigid_st2, right_consts = decompose st2 in
+      let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
+      let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
+      let r_side = { WordConstr.var = v1; WordConstr.const = right_consts; } in
       unify loc (eq_word loc l_side r_side :: wsys) rigid_st1 rigid_st2
 
-  and split_rigid st =
-    let st, ce_l = decompose_st st in
-    let st, var =
-      match unalias_st st with
-      | Pst_var v ->
-        let bst = fresh_st () in
-        let id, ce = fresh_word_var () in
-        v.VarTySt.v_link <- Some (Pst_on (bst, ce));
-        bst, Some id
-      | _ ->
-        st, None
-    in
-    let side =
-      let w_l =
-        let pw_l = List.map eval_rigid_ce ce_l in
-        let int_of_constr _ = assert false in (* TODO *)
-        List.map (int_pword_of_econst_pword int_of_constr) pw_l
-      in
-      WordConstr.({ var = var; const = w_l; })
-    in
-    Format.eprintf "New side: @[%a@]@." WordConstr.print_side side;
-    st, side
+  and decompose st =
+    let rigid_st, ce_l = decompose_st st in
+    let pw_l = List.map eval_rigid_ce ce_l in
+    let int_of_constr _ = assert false in (* TODO *)
+    rigid_st, List.map (int_pword_of_econst_pword int_of_constr) pw_l
+
+  and gen_vars st1 st2 =
+    let open VarTySt in
+    match unalias_st st1, unalias_st st2 with
+    | Pst_var v1, Pst_var v2 when v1.v_id = v2.v_id -> (* special case *)
+      let bst = fresh_st () in
+      let id, ce = fresh_word_var () in
+      v1.v_link <- Some (Pst_on (bst, ce));
+      (bst, Some id), (bst, Some id)
+    | _ ->
+      gen_var st1, gen_var st2
+
+  and gen_var st =
+    match unalias_st st with
+    | Pst_var v ->
+      let bst = fresh_st () in
+      let id, ce = fresh_word_var () in
+      v.VarTySt.v_link <- Some (Pst_on (bst, ce));
+      bst, Some id
+    | _ ->
+      st, None
   in
 
   let solve_constraint wsys c =
@@ -414,8 +421,11 @@ let word_constraints_of_clock_constraints sys =
       unify c.loc wsys st1 st2
 
     | Tc_adapt (st1, st2) ->
-      let rigid_st1, l_side = split_rigid st1 in
-      let rigid_st2, r_side = split_rigid st2 in
+      let rigid_st1, left_consts = decompose st1 in
+      let rigid_st2, right_consts = decompose st2 in
+      let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
+      let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
+      let r_side = { WordConstr.var = v1; WordConstr.const = right_consts; } in
       unify c.loc (adapt_word c.loc l_side r_side :: wsys) rigid_st1 rigid_st2
   in
   List.fold_left solve_constraint [] sys

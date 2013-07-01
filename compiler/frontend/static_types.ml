@@ -168,6 +168,9 @@ let rec unify loc ty1 ty2 =
   | Psy_var { v_link = Some ty1; }, ty2
   | ty1, Psy_var { v_link = Some ty2; } -> unify loc ty1 ty2
 
+  | Psy_var { v_id = id1 }, Psy_var { v_id = id2; } when id1 = id2 ->
+    ()
+
     (** in-place unification *)
   | Psy_var ({ v_link = None; v_id = id; } as r), ty
   | ty, Psy_var ({ v_link = None; v_id = id; } as r) ->

@@ -122,15 +122,16 @@ module A =
 struct
   type new_annot =
   | Exp of VarTy.t
-  | Node of VarTy.t * VarTy.t
+  | Node of bool * VarTy.t * VarTy.t (* is_static * inp * out *)
   | App of bool (* true iff application is static *)
 
   let print_new_annot fmt na =
     match na with
     | Exp ty -> VarTy.print fmt ty
-    | Node (ty1, ty2) ->
-      Format.fprintf fmt "%a -> %a"
+    | Node (static, ty1, ty2) ->
+      Format.fprintf fmt "%a -{%b}> %a"
         VarTy.print ty1
+        static
         VarTy.print ty2
     | App is_static ->
       Format.fprintf fmt "app is%s static" (if is_static then " not" else "")
@@ -144,7 +145,7 @@ let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
 let annotate_static_exp se ty = ANN_INFO.annotate se.se_info (A.Exp ty)
 let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
-  ANN_INFO.annotate node.n_info (A.Node (inp_ty, out_ty))
+  ANN_INFO.annotate node.n_info (A.Node (node.n_static, inp_ty, out_ty))
 let annotate_app info static = ANN_INFO.annotate info (A.App static)
 let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
 
@@ -224,12 +225,12 @@ struct
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
     | Exp _ | App _ -> invalid_arg "update_node_info"
-    | Node (inp, out) ->
+    | Node (static, inp, out) ->
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
         method ni_interv = info#ni_interv
-        method ni_static = make_ty_sig inp out
+        method ni_static = make_ty_sig static inp out
       end
 end
 module EXTRACT = Acids_utils.MakeMap(M)(Acids_static)(MORPH)
@@ -257,7 +258,7 @@ exception Non_constant_pword
 let check_and_transform_non_static_sig name ssig =
   let open Static_types in
 
-  if Static_types.is_static_signature ssig then static_inputs name;
+  if Static_types.is_static ssig.input then static_inputs name;
 
   let rec remap_to_dynamic st =
     match st with
@@ -268,6 +269,7 @@ let check_and_transform_non_static_sig name ssig =
   {
     input = remap_to_dynamic ssig.input;
     output = remap_to_dynamic ssig.output;
+    static = S_dynamic;
   }
 
 (* A tree pword is constant if it contains no Se_fword and all its
@@ -573,7 +575,7 @@ let type_node_def env nd =
   (* TODO solve incrementally at where level *)
   solve_subtyping_constraints env;
 
-  let ssig = make_ty_sig inp_ty out_ty in
+  let ssig = make_ty_sig nd.n_static inp_ty out_ty in
 
   (* non-static nodes may not have static inputs, and only have dynamic outputs,
      see the relevant section of the manual *)

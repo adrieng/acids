@@ -24,7 +24,7 @@ type ty =
   | Sy_scal of ty_scal
   | Sy_prod of ty list
 
-type ty_sig = { input : ty; output : ty; }
+type ty_sig = { input : ty; output : ty; static : ty_scal; }
 
 let print_ty_scal fmt ss =
   match ss with
@@ -40,8 +40,9 @@ let rec print_ty fmt sty =
       (Utils.print_list_r print_ty " *") sty_l
 
 let print_sig fmt csig =
-  Format.fprintf fmt "@[%a -> %a@]"
+  Format.fprintf fmt "@[%a -{%a}> %a@]"
     print_ty csig.input
+    print_ty_scal csig.static
     print_ty csig.output
 
 let printing_prefix = "is"
@@ -108,9 +109,6 @@ let rec ty_of_pre_ty pty =
   | Psy_scal ss -> Sy_scal ss
   | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
 
-let make_ty_sig inp out =
-  { input = ty_of_pre_ty inp; output = ty_of_pre_ty out; }
-
 let rec is_static st =
   match st with
   | Sy_var _ -> false
@@ -118,7 +116,17 @@ let rec is_static st =
   | Sy_scal S_dynamic -> false
   | Sy_prod st_l -> List.exists is_static st_l
 
-let is_static_signature ssig = is_static ssig.input
+let make_ty_sig static inp out =
+  let inp = ty_of_pre_ty inp in
+  let out = ty_of_pre_ty out in
+  assert (static || not (is_static inp)); (*not static => not (is_static inp) *)
+  {
+    input = inp;
+    output = out;
+    static = if static then S_static else S_dynamic;
+  }
+
+let is_static_signature ssig = ssig.static = S_static
 
 (** {2 Unification *)
 

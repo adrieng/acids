@@ -154,6 +154,10 @@
       {
         Static_types.input = inp;
         Static_types.output = out;
+        Static_types.static =
+          if Static_types.is_static inp
+          then Static_types.S_static
+          else Static_types.S_dynamic;
       }
     in
     mk_s mk_sig (mk_prod, mk_scal)

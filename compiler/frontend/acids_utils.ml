@@ -30,10 +30,14 @@ struct
   let print_var = A.I.print_var
 
   type 'a annot = { new_annot : ANN.new_annot; old_annot : 'a; }
-  let print_annot print fmt { new_annot = na; old_annot = oa; } =
-    Format.fprintf fmt "new: %a, old: %a@."
-      ANN.print_new_annot na
-      print oa
+  let print_annot ?(print_old = false) print fmt { new_annot = na; old_annot = oa; } =
+    if print_old
+    then
+      Format.fprintf fmt "@[ new: %a,@ old: %a@]"
+        ANN.print_new_annot na
+        print oa
+    else
+      Format.fprintf fmt " %a" ANN.print_new_annot na
 
   type clock_exp_info = A.I.clock_exp_info annot
   let print_clock_exp_info = print_annot A.I.print_clock_exp_info

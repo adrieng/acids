@@ -203,7 +203,7 @@ struct
       const : word list;
     }
 
-  and word = (Int.t, Int.t) Ast_misc.upword
+  and word = (Int.t, Int.t) Tree_word.t
 
   let print_words fmt w =
     Utils.print_list_r

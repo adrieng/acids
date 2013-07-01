@@ -63,7 +63,7 @@ sig
 
   and clock_exp_desc =
   | Ce_var of I.var
-  | Ce_pword of (static_exp, static_exp) Ast_misc.upword
+  | Ce_pword of (static_exp, static_exp) Tree_word.t
   | Ce_equal of clock_exp * static_exp
   | Ce_iter of clock_exp
 
@@ -120,7 +120,7 @@ sig
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
-  | P_split of (pat, static_exp) Ast_misc.upword
+  | P_split of (pat, static_exp) Tree_word.t
 
   and merge_clause = {
     c_sel : Ast_misc.econstr;
@@ -186,7 +186,7 @@ module Make = functor (S : S) ->
 
     and clock_exp_desc =
     | Ce_var of S.var
-    | Ce_pword of (static_exp, static_exp) Ast_misc.upword
+    | Ce_pword of (static_exp, static_exp) Tree_word.t
     | Ce_equal of clock_exp * static_exp
     | Ce_iter of clock_exp
 
@@ -271,7 +271,7 @@ module Make = functor (S : S) ->
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty
-    | P_split of (pat, static_exp) Ast_misc.upword
+    | P_split of (pat, static_exp) Tree_word.t
 
     and merge_clause =
       {

@@ -17,7 +17,7 @@
 
 type clock_exp =
   | Ce_var of Ident.t * Interval.t
-  | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.upword
+  | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.t
   | Ce_equal of clock_exp * Ast_misc.econstr
   | Ce_iter of clock_exp
 

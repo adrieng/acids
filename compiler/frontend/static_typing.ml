@@ -129,7 +129,7 @@ struct
     match na with
     | Exp ty -> VarTy.print fmt ty
     | Node (static, ty1, ty2) ->
-      Format.fprintf fmt "%a -{%b}> %a"
+      Format.fprintf fmt "@[%a@ -{%b}>@ %a@]"
         VarTy.print ty1
         static
         VarTy.print ty2

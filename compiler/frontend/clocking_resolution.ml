@@ -179,6 +179,10 @@ let rec eval_rigid_ce ce =
     in
     { u = walk pw.u; v = walk pw.v; }
 
+let unit_ipword =
+  let open Ast_misc in
+  { u = Concat []; v = Concat [Leaf Int.one]; }
+
 (** {2 Word constraints} *)
 
 module WordConstr =
@@ -386,9 +390,16 @@ let word_constraints_of_clock_constraints sys =
 
   and decompose st =
     let rigid_st, ce_l = decompose_st st in
-    let pw_l = List.map eval_rigid_ce ce_l in
-    let int_of_constr _ = assert false in (* TODO *)
-    rigid_st, List.map (int_pword_of_econst_pword int_of_constr) pw_l
+    let iw_l =
+      match ce_l with
+      | [] ->
+        [unit_ipword]
+      | _ :: _ ->
+        let pw_l = List.map eval_rigid_ce ce_l in
+        let int_of_constr _ = assert false in (* TODO *)
+        List.map (int_pword_of_econst_pword int_of_constr) pw_l
+    in
+    rigid_st, iw_l
 
   and gen_vars st1 st2 =
     let open VarTySt in

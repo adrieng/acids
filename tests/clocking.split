@@ -16,4 +16,18 @@ $$
 
 let node f (x, y) = (x, y) when <(true)>
 
+let node g (x, y) = f (x when <(true false)>, y when <s>) where rec s = true
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad 1: "asc -check"
+        ]
+*)
+$}
+
+let node f (x, y) = (x, y) when <(true)>
+
 let node g x = f (x when <(true false)>, x when <s>) where rec s = true

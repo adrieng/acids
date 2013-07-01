@@ -18,7 +18,7 @@ acids.pdf: $(wildcard *.tex)
 
 clean:
 	rm -f $(OUT_DIR)/*
-	rm -rf aut
+	rm -rf auto
 
 realclean: clean
 	rm $(TARGET)

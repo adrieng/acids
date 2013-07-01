@@ -1,21 +1,8 @@
 #!/bin/sh
 
-PREF=native
+PREF=asm
 CDIR=`dirname $0`
 
-if [ -f $CDIR/compiler/asc.native ]
-then
-    make -C $CDIR compiler/asc.native > /dev/null
-    C=$CDIR/asc.native
-else
-    if [ -f $CDIR/compiler/asc.byte ]
-    then
-        make -C $CDIR compiler/asc.byte > /dev/null
-        C=$CDIR/asc.byte
-    else
-        make -C $CDIR compiler/asc.$PREF > /dev/null
-        C=$CDIR/asc.$PREF
-    fi
-fi
-
+make -C $CDIR >/dev/null 2>&1
+C="$CDIR/_obuild/asc/asc.$PREF"
 $C $@

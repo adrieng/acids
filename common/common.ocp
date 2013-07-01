@@ -1,0 +1,10 @@
+begin library "asc_base"
+      sort = true
+      files =
+            [
+                "int.ml"
+                "utils.ml"
+                "tree_word.ml"
+            ]
+      requires = [ "unix" ]
+end

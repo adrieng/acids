@@ -15,6 +15,8 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+open Resolution
+
 open Clock_types
 open PreTySt
 open PreTy

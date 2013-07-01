@@ -2,7 +2,6 @@ begin program "asc"
       sort = true
       files =
             [
-                "global/utils.ml"
                 "global/names.ml"
                 "global/interface.ml"
                 "global/pass_manager.ml"
@@ -16,7 +15,6 @@ begin program "asc"
                 "global/ast_misc.ml"
                 "global/pragma.ml"
                 "global/compiler_options.ml"
-                "global/int.ml"
                 "global/loc.ml"
                 "global/union_find.ml"
                 "global/initial.ml"
@@ -47,7 +45,7 @@ begin program "asc"
                 "frontend/acids_utils.ml"
                 "asc.ml"
             ]
-      requires = [ "unix" "str" "menhirLib" ]
+      requires = [ "unix" "str" "menhirLib" "asc_base" "asc_solve" ]
       asmlink += [ "menhirLib.cmx" ]
       bytelink += [ "menhirLib.cmo" ]
 end

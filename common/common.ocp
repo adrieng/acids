@@ -2,6 +2,7 @@ begin library "asc_base"
       sort = true
       files =
             [
+                "loc.ml"
                 "int.ml"
                 "utils.ml"
                 "tree_word.ml"

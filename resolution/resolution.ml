@@ -29,6 +29,7 @@ struct
 
   type constr =
     {
+      loc : Loc.t;
       lhs : side;
       kind : constr_kind;
       rhs : side;
@@ -63,10 +64,11 @@ struct
     Format.fprintf fmt "%s" s
 
   let print_wconstr fmt wc =
-    Format.fprintf fmt "@[%a %a@ %a@]"
+    Format.fprintf fmt "@[%a %a@ %a (* %a *)@]"
       print_side wc.lhs
       print_kind wc.kind
       print_side wc.rhs
+      Loc.print wc.loc
 
   let print_system fmt sys =
     Format.fprintf fmt "{ @[<v>%a@] }"
@@ -77,6 +79,12 @@ struct
     type t = word Utils.String_map.t
     let get m x = try Some (Utils.String_map.find x m) with Not_found -> None
   end
+
+  type error =
+  | Rate_inconsistency
+  | Precedence_inconsistency
+
+  exception Could_not_solve of error
 
   let solve _ = assert false
 end

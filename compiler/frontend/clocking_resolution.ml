@@ -15,7 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Resolution
+module Resol = Resolution.Make(struct end)
 
 open Clock_types
 open PreTySt
@@ -28,6 +28,8 @@ type error =
   | Occur_check_ty of Loc.t * int * VarTy.t
   | Could_not_unify_st of Loc.t * VarTySt.t * VarTySt.t
   | Could_not_unify_ty of Loc.t * VarTy.t * VarTy.t
+  | Rate_inconsistency of Loc.t * Resol.system
+  | Precedence_inconsistency of Loc.t * Resol.system
 
 exception Resolution_error of error
 
@@ -53,6 +55,16 @@ let print_error fmt err =
       Loc.print l
       VarTy.print ty1
       VarTy.print ty2
+  | Rate_inconsistency (l, wsys) ->
+    Format.fprintf fmt
+      "%aThe following system has inconsistent rates@\n%a"
+      Loc.print l
+      Resol.print_system wsys
+  | Precedence_inconsistency (l, wsys) ->
+    Format.fprintf fmt
+      "%aThe following system has inconsistent precedences@\n%a"
+      Loc.print l
+      Resol.print_system wsys
 
 let occur_check_st l id st =
   raise (Resolution_error (Occur_check_st (l, id, st)))
@@ -65,6 +77,12 @@ let could_not_unify_st l st1 st2 =
 
 let could_not_unify_ty l ty1 ty2 =
   raise (Resolution_error (Could_not_unify_ty (l, ty1, ty2)))
+
+let inconsistent_rates l sys =
+  raise (Resolution_error (Rate_inconsistency (l, sys)))
+
+let inconsistent_precedences l sys =
+  raise (Resolution_error (Precedence_inconsistency (l, sys)))
 
 (** {2 Utilities} *)
 
@@ -186,61 +204,6 @@ let unit_ipword =
   { u = Concat []; v = Concat [Leaf Int.one]; }
 
 (** {2 Word constraints} *)
-
-module WordConstr =
-struct
-  type wconstr =
-    {
-      loc : Loc.t;
-      lhs : side;
-      kind : kind;
-      rhs : side;
-    }
-
-  and kind = Equal | Adapt
-
-  and side =
-    {
-      var : Ident.t option;
-      const : word list;
-    }
-
-  and word = (Int.t, Int.t) Tree_word.t
-
-  let print_words fmt w =
-    Utils.print_list_r
-      (Ast_misc.print_upword Int.print Int.print)
-      "on "
-      fmt
-      w
-
-  let print_side fmt s =
-    match s.var with
-    | None -> print_words fmt s.const
-    | Some v ->
-      Format.fprintf fmt "%a on @[%a@]"
-        Ident.print v
-        print_words s.const
-
-  let print_kind fmt k =
-    let s =
-      match k with
-      | Equal -> "="
-      | Adapt -> "<:"
-    in
-    Format.fprintf fmt "%s" s
-
-  let print_wconstr fmt wc =
-    Format.fprintf fmt "@[%a %a@ %a (* @[%a@] *)@]"
-      print_side wc.lhs
-      print_kind wc.kind
-      print_side wc.rhs
-      Loc.print_short wc.loc
-
-  let print_system fmt sys =
-    Format.fprintf fmt "{ @[<v>%a@] }"
-      (Utils.print_list_r print_wconstr ";") sys
-end
 
 (** {2 Constraint simplification} *)
 
@@ -376,16 +339,16 @@ let word_constraints_of_clock_constraints sys =
         unify loc wsys st1' st2'
 
     | Pst_on _, Pst_on _ ->
-      unify_decompose WordConstr.Equal loc wsys st1 st2
+      unify_decompose Resol.Equal loc wsys st1 st2
 
   and unify_decompose kind loc wsys st1 st2 =
     let rigid_st1, left_consts = decompose st1 in
     let rigid_st2, right_consts = decompose st2 in
     let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
-    let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
-    let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
+    let l_side = { Resol.var = v1; Resol.const = left_consts; } in
+    let r_side = { Resol.var = v2; Resol.const = right_consts; } in
     let c =
-      let open WordConstr in
+      let open Resol in
       { loc = loc; lhs = l_side; kind = kind; rhs = r_side; }
     in
     unify loc (c :: wsys) bst1 bst2
@@ -410,7 +373,7 @@ let word_constraints_of_clock_constraints sys =
       let bst = fresh_st () in
       let id, ce = fresh_word_var () in
       v1.v_link <- Some (Pst_on (bst, ce));
-      (bst, Some id), (bst, Some id)
+      (bst, Some (Ident.to_string id)), (bst, Some (Ident.to_string id))
     | _ ->
       gen_var st1, gen_var st2
 
@@ -420,7 +383,7 @@ let word_constraints_of_clock_constraints sys =
       let bst = fresh_st () in
       let id, ce = fresh_word_var () in
       v.VarTySt.v_link <- Some (Pst_on (bst, ce));
-      bst, Some id
+      bst, Some (Ident.to_string id)
     | _ ->
       st, None
   in
@@ -433,15 +396,17 @@ let word_constraints_of_clock_constraints sys =
       unify c.loc wsys st1 st2
 
     | Tc_adapt (st1, st2) ->
-      unify_decompose WordConstr.Adapt c.loc wsys st1 st2
+      unify_decompose Resol.Adapt c.loc wsys st1 st2
   in
-  List.fold_left solve_constraint [] sys
+  { Resol.body = List.fold_left solve_constraint [] sys; }
 
 (** {2 Top-level function} *)
 
-let solve_constraints sys =
+let solve_constraints loc sys =
   let ctx = Ident.get_current_ctx () in
   Ident.reset_ctx ();
+
+  try
 
   p_sys "Initial system" sys;
 
@@ -453,7 +418,20 @@ let solve_constraints sys =
   p
     (fun fmt wsys ->
       Format.fprintf fmt "Word constraints: @[%a@]"
-        WordConstr.print_system wsys) wsys;
+        Resol.print_system wsys) wsys;
+
+  let sol =
+    try Resol.solve wsys
+    with
+    | Resol.Could_not_solve Resol.Rate_inconsistency ->
+      inconsistent_rates loc wsys
+    | Resol.Could_not_solve Resol.Precedence_inconsistency ->
+      inconsistent_precedences loc wsys
+  in
 
   Ident.set_current_ctx ctx;
   ()
+
+  with exn ->
+    Ident.set_current_ctx ctx;
+    raise exn

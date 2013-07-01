@@ -1,5 +1,5 @@
 # From Acid Synchrone, (c) Adrien Guatto 2013
-BUILD=ocp-build
+BUILD=ocp-build -no-color
 
 .PHONY: all clean distclean
 .SUFFIX:

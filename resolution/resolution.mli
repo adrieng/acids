@@ -29,6 +29,7 @@ sig
 
   type constr =
     {
+      loc : Loc.t;
       lhs : side;
       kind : constr_kind;
       rhs : side;
@@ -46,6 +47,12 @@ sig
     type t
     val get : t -> string -> word option
   end
+
+  type error =
+  | Rate_inconsistency
+  | Precedence_inconsistency
+
+  exception Could_not_solve of error
 
   val solve : system -> Solution.t
 end

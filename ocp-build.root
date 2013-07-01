@@ -68,7 +68,7 @@ project_external_dirs = [
 
 (* List of configuration files for this project *)
 files = [
-  "/home/adrieng/pro/acids/resolution/solve.ocp";
-  "/home/adrieng/pro/acids/compiler/asc.ocp";
-  "/home/adrieng/pro/acids/common/common.ocp";
+  "/Users/adrieng/pro/acids/resolution/solve.ocp";
+  "/Users/adrieng/pro/acids/compiler/asc.ocp";
+  "/Users/adrieng/pro/acids/common/common.ocp";
 ]

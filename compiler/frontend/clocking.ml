@@ -639,7 +639,7 @@ and clock_dom env loc dom e acc =
   let (e, ty), (local_ctx, local_constrs) = clock_exp env e (Ident.Env.empty, []) in
 
   (* 2. Solve constraints *)
-  Clocking_resolution.solve_constraints local_constrs;
+  Clocking_resolution.solve_constraints loc local_constrs;
 
   (* 3. Fresh base clock *)
 
@@ -684,7 +684,7 @@ let clock_node_def env nd =
   let env = reset_env env in
   let (input, ty_in), acc = clock_pattern env nd.n_input (Ident.Env.empty, []) in
   let (body, ty_out), (_, cstrs) = clock_exp env nd.n_body acc in
-  Clocking_resolution.solve_constraints cstrs;
+  Clocking_resolution.solve_constraints nd.n_loc cstrs;
   let csig = Clock_types.generalize_clock_sig ty_in ty_out [] in
   add_local_node env nd.n_name csig,
   {

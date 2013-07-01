@@ -119,7 +119,6 @@ let rec is_static st =
 let make_ty_sig static inp out =
   let inp = ty_of_pre_ty inp in
   let out = ty_of_pre_ty out in
-  assert (static || not (is_static inp)); (*not static => not (is_static inp) *)
   {
     input = inp;
     output = out;

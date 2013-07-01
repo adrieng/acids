@@ -1,0 +1,19 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node f (x, y) = (x, y) when <(true)>
+
+let node g x = f (x when <(true false)>, x when <(false true)>)
+
+$$
+
+let node f (x, y) = (x, y) when <(true)>
+
+let node g x = f (x when <(true false)>, x when <s>) where rec s = true

@@ -170,7 +170,14 @@ struct
             method ci_interv = info#ci_interv
             method ci_static = tys
           end
-        | _ -> invalid_arg "update_clock_exp_info"
+        | Sy_var _ -> (* default to dynamic *)
+          object
+            method ci_data = info#ci_data
+            method ci_interv = info#ci_interv
+            method ci_static = S_dynamic
+          end
+        | _ ->
+          invalid_arg "update_clock_exp_info"
       )
 
   let update_static_exp_info { new_annot = na; old_annot = info; } =
@@ -629,9 +636,8 @@ let type_phrase env phr =
 
 let type_file file =
   try
-    let _, body =
-      Utils.mapfold_left type_phrase (initial_typing_env file.f_info) file.f_body
-    in
+    let env = initial_typing_env file.f_info in
+    let _, body = Utils.mapfold_left type_phrase env file.f_body in
     {
       M.f_name = file.f_name;
       M.f_imports = file.f_imports;

@@ -32,12 +32,12 @@ exception Resolution_error of error
 let print_error fmt err =
   match err with
   | Occur_check_st (l, i, st) ->
-    Format.fprintf fmt "%aStream type variable %d occurs in %a"
+    Format.fprintf fmt "%aStream type variable v%d occurs in %a"
       Loc.print l
       i
       VarTySt.print st
   | Occur_check_ty (l, i, ty) ->
-    Format.fprintf fmt "%aClock type variable %d occurs in %a"
+    Format.fprintf fmt "%aClock type variable v%d occurs in %a"
       Loc.print l
       i
       VarTy.print ty
@@ -79,28 +79,28 @@ let p_sys s sys =
     (fun fmt sys -> Format.fprintf fmt "%s: %a@." s print_system sys)
     sys
 
-let occur_check_st loc id st =
+let occur_check_st loc id orig_st =
   let open VarTySt in
   let rec check st =
     match unalias_st st with
     | Pst_var { v_id = id'; } ->
-      if id = id' then occur_check_st loc id st
+      if id = id' then occur_check_st loc id orig_st
     | Pst_on (st, _) -> check st
   in
-  match unalias_st st with
+  match unalias_st orig_st with
   | Pst_var _ -> ()
   | Pst_on (st, _) -> check st
 
-let occur_check_ty loc id ty =
+let occur_check_ty loc id orig_ty =
   let open VarTy in
   let rec check ty =
     match unalias_ty ty with
     | Pct_var { v_id = id'; } ->
-      if id = id' then occur_check_ty loc id ty
+      if id = id' then occur_check_ty loc id orig_ty
     | Pct_stream _ -> ()
     | Pct_prod ty_l -> List.iter check ty_l
   in
-  match unalias_ty ty with
+  match unalias_ty orig_ty with
   | Pct_var _ | Pct_stream _ -> ()
   | Pct_prod ty_l -> List.iter check ty_l
 

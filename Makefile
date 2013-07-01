@@ -15,10 +15,10 @@ ifeq ($(UNAME), FreeBSD)
 endif
 
 OCAMLBUILDOPTS=-j $(NCPU) -use-menhir -use-ocamlfind -classic-display \
-	-I global -I frontend -I backend
+	-I common -I compiler/global -I compiler/frontend -I compiler/backend
 
 TARGETS= \
-	 asc.byte
+	 compiler/asc.byte
 
 .PHONY: clean all toprun test unit_test doc
 .SUFFIX:

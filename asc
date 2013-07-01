@@ -5,16 +5,16 @@ CDIR=`dirname $0`
 
 if [ -f $CDIR/compiler/asc.native ]
 then
-    make -C $CDIR/compiler asc.native > /dev/null
-    C=$CDIR/compiler/asc.native
+    make -C $CDIR compiler/asc.native > /dev/null
+    C=$CDIR/asc.native
 else
     if [ -f $CDIR/compiler/asc.byte ]
     then
-        make -C $CDIR/compiler asc.byte > /dev/null
-        C=$CDIR/compiler/asc.byte
+        make -C $CDIR compiler/asc.byte > /dev/null
+        C=$CDIR/asc.byte
     else
-        make -C $CDIR/compiler asc.$PREF > /dev/null
-        C=$CDIR/compiler/asc.$PREF
+        make -C $CDIR compiler/asc.$PREF > /dev/null
+        C=$CDIR/asc.$PREF
     fi
 fi
 

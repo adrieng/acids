@@ -39,6 +39,8 @@ sig
       body : constr list;
     }
 
+  val print_system : Format.formatter -> system -> unit
+
   module Solution :
   sig
     type t

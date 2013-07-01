@@ -60,7 +60,7 @@ ocamllib = None
 use_ocamlfind = true
 
 (* The version of ocp-build used to save this file *)
-ocpbuild_version = "1.99.7-beta"
+ocpbuild_version = "1.99.6-beta"
 
 (* All external (absolute) directories to be included in this project *)
 project_external_dirs = [

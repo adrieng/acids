@@ -39,6 +39,39 @@ struct
       body : constr list;
     }
 
+  let print_words fmt w =
+    Utils.print_list_r
+      (Tree_word.print_upword Int.print Int.print)
+      "on "
+      fmt
+      w
+
+  let print_side fmt s =
+    match s.var with
+    | None -> print_words fmt s.const
+    | Some v ->
+      Format.fprintf fmt "%s on @[%a@]"
+        v
+        print_words s.const
+
+  let print_kind fmt k =
+    let s =
+      match k with
+      | Equal -> "="
+      | Adapt -> "<:"
+    in
+    Format.fprintf fmt "%s" s
+
+  let print_wconstr fmt wc =
+    Format.fprintf fmt "@[%a %a@ %a@]"
+      print_side wc.lhs
+      print_kind wc.kind
+      print_side wc.rhs
+
+  let print_system fmt sys =
+    Format.fprintf fmt "{ @[<v>%a@] }"
+      (Utils.print_list_r print_wconstr ";") sys.body
+
   module Solution =
   struct
     type t = word Utils.String_map.t

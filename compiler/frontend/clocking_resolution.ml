@@ -236,13 +236,6 @@ struct
       (Utils.print_list_r print_wconstr ";") sys
 end
 
-let mk_word_constr kind loc lhs rhs =
-  WordConstr.({ loc = loc; lhs = lhs; kind = kind; rhs = rhs; })
-
-let eq_word = mk_word_constr WordConstr.Equal
-
-let adapt_word = mk_word_constr WordConstr.Adapt
-
 (** {2 Constraint simplification} *)
 
 let simplify_equality_constraints sys =
@@ -377,12 +370,19 @@ let word_constraints_of_clock_constraints sys =
         unify loc wsys st1' st2'
 
     | Pst_on _, Pst_on _ ->
-      let rigid_st1, left_consts = decompose st1 in
-      let rigid_st2, right_consts = decompose st2 in
-      let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
-      let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
-      let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
-      unify loc (eq_word loc l_side r_side :: wsys) bst1 bst2
+      unify_decompose WordConstr.Equal loc wsys st1 st2
+
+  and unify_decompose kind loc wsys st1 st2 =
+    let rigid_st1, left_consts = decompose st1 in
+    let rigid_st2, right_consts = decompose st2 in
+    let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
+    let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
+    let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
+    let c =
+      let open WordConstr in
+      { loc = loc; lhs = l_side; kind = kind; rhs = r_side; }
+    in
+    unify loc (c :: wsys) bst1 bst2
 
   and decompose st =
     let rigid_st, ce_l = decompose_st st in
@@ -420,12 +420,7 @@ let word_constraints_of_clock_constraints sys =
       unify c.loc wsys st1 st2
 
     | Tc_adapt (st1, st2) ->
-      let rigid_st1, left_consts = decompose st1 in
-      let rigid_st2, right_consts = decompose st2 in
-      let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
-      let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
-      let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
-      unify c.loc (adapt_word c.loc l_side r_side :: wsys) bst1 bst2
+      unify_decompose WordConstr.Adapt c.loc wsys st1 st2
   in
   List.fold_left solve_constraint [] sys
 

@@ -287,7 +287,7 @@ let assert1 l =
   | x :: _ -> x
 
 let add_overflow x y =
-  let open Nativeint in
+  let open Int in
   let xor = logxor x y in
   (logor
      xor
@@ -295,7 +295,7 @@ let add_overflow x y =
         (add
            (logxor x (logand (lognot xor) min_int))
            y)
-        y)) >= 0n
+        y)) >= Int.zero
 
 let flip f x y = f y x
 

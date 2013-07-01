@@ -26,11 +26,12 @@ let make l u =
   assert (l <= u);
   { l = l; u = u; }
 
-let make_0_n u = make 0n u
+let make_0_n u = make Int.zero u
 
-let print fmt { l; u; } = Format.fprintf fmt "[%nd, %nd]" l u
+let print fmt { l; u; } =
+  Format.fprintf fmt "[%a, %a]" Int.print l Int.print u
 
-let width { l; u; } = Int.abs ((u - l) + 1n)
+let width { l; u; } = Int.abs (Int.succ (u - l))
 
 let singleton i = { l = i; u = i; }
 
@@ -44,7 +45,7 @@ let range { l = l; u = u; } =
 
 (** Useful shortcuts *)
 
-let bool = { l = 0n; u = 1n; }
+let bool = { l = Int.zero; u = Int.one; }
 
 let int = { l = Int.min_int; u = Int.max_int; }
 
@@ -56,7 +57,7 @@ let join { l = a; u = b; } { l = c; u = d; } = make (min a c) (max b d)
 
 let meet { l = a; u = b; } { l = c; u = d; } = make (max a c) (min b d)
 
-let neg { l; u; } = make (0n - u) (0n - l)
+let neg { l; u; } = make (Int.neg u) (Int.neg l)
 
 let add { l = a; u = b; } { l = c; u = d; } =
   if Utils.add_overflow a c || Utils.add_overflow b d
@@ -70,7 +71,7 @@ let mul { l = a; u = b; } { l = c; u = d; } =
   make (min (min ac ad) (min bc bd)) (max (max ac ad) (max bc bd))
 
 let div { l = a; u = b; } { l = c; u = d; } =
-  if c <= 0n && 0n <= d then int
+  if c <= Int.zero && Int.zero <= d then int
   else
     let ac = a / c and ad = a / d and bc = b / c and bd = b / d in
     make (min (min ac ad) (min bc bd)) (max (max ac ad) (max bc bd))

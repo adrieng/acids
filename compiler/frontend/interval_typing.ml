@@ -473,7 +473,7 @@ and type_const env ty c =
 and type_econstr env ty ec =
   let open Ast_misc in
   match ec with
-  | Ec_bool b -> Interval.singleton (if b then 1n else 0n)
+  | Ec_bool b -> Interval.singleton (if b then Int.one else Int.zero)
   | Ec_int i -> Interval.singleton i
   | Ec_constr c ->
     let ln =

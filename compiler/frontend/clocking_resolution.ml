@@ -72,11 +72,11 @@ let print_system fmt sys =
 
 let p f x =
   if !Compiler_options.print_clock_info
-  then Format.printf "(*@[@ %a@ @]*)@." f x
+  then Format.printf "@[(*@[@ %a@]@ *)@]@." f x
 
 let p_sys s sys =
   p
-    (fun fmt sys -> Format.fprintf fmt "%s: %a@." s print_system sys)
+    (fun fmt sys -> Format.fprintf fmt "%s: %a" s print_system sys)
     sys
 
 let occur_check_st loc id orig_st =
@@ -447,6 +447,7 @@ let solve_constraints sys =
   p_sys "System with simplified equality constraints" sys;
 
   let wsys = word_constraints_of_clock_constraints sys in
+  p_sys "System with word variables" sys;
   p
     (fun fmt wsys ->
       Format.fprintf fmt "Word constraints: @[%a@]"

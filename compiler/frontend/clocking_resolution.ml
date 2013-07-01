@@ -72,7 +72,7 @@ let print_system fmt sys =
 
 let p f x =
   if !Compiler_options.print_clock_info
-  then Format.printf "%a@." f x
+  then Format.printf "(*@[@ %a@ @]*)@." f x
 
 let p_sys s sys =
   p
@@ -358,7 +358,6 @@ let fresh_word_var () =
 
 let word_constraints_of_clock_constraints sys =
   let rec unify loc wsys st1 st2 =
-    Format.eprintf "U(%a, %a)@." VarTySt.print st1 VarTySt.print st2;
     let open VarTySt in
     let st1 = unalias_st st1 in
     let st2 = unalias_st st2 in
@@ -382,8 +381,8 @@ let word_constraints_of_clock_constraints sys =
       let rigid_st2, right_consts = decompose st2 in
       let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
       let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
-      let r_side = { WordConstr.var = v1; WordConstr.const = right_consts; } in
-      unify loc (eq_word loc l_side r_side :: wsys) rigid_st1 rigid_st2
+      let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
+      unify loc (eq_word loc l_side r_side :: wsys) bst1 bst2
 
   and decompose st =
     let rigid_st, ce_l = decompose_st st in
@@ -425,8 +424,8 @@ let word_constraints_of_clock_constraints sys =
       let rigid_st2, right_consts = decompose st2 in
       let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
       let l_side = { WordConstr.var = v1; WordConstr.const = left_consts; } in
-      let r_side = { WordConstr.var = v1; WordConstr.const = right_consts; } in
-      unify c.loc (adapt_word c.loc l_side r_side :: wsys) rigid_st1 rigid_st2
+      let r_side = { WordConstr.var = v2; WordConstr.const = right_consts; } in
+      unify c.loc (adapt_word c.loc l_side r_side :: wsys) bst1 bst2
   in
   List.fold_left solve_constraint [] sys
 

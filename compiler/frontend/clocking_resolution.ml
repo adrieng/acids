@@ -349,7 +349,7 @@ let fresh_word_var () =
   (* UGLY AS HELL: we use Ident.t as a type of word variables!
      No risk of confusion with program variables howver since we
      adopt names forbidden by the compiler's lexer. *)
-  let s = "?W" in
+  let s = "W" in
   let id = Ident.make_internal s in
   id, Ce_var (id, Interval.singleton Int.zero) (* TODO *)
 

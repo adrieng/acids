@@ -23,7 +23,7 @@ struct
   let print_const fmt w_l =
     Utils.print_list_r
       (Tree_word.print_upword Int.print Int.print)
-      "on "
+      " on"
       fmt
       w_l
 end

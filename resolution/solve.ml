@@ -54,6 +54,7 @@ let do_sys sys =
 
 let do_file filen =
   let sys_l = parse_file filen in
+  Format.printf "Read %d systems from %s@\n" (List.length sys_l) filen;
   List.iter do_sys sys_l
 
 let _ =

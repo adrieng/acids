@@ -15,42 +15,10 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type word = (Int.t, Int.t) Tree_word.t
+let current_file_name = ref ""
 
-type const = word list
+let set_current_file_name s = current_file_name := s
 
-type side =
-  {
-    var : string option;
-    const : const;
-  }
+let get_current_file_name () = !current_file_name
 
-type constr =
-  {
-    loc : Loc.t;
-    lhs : side;
-    kind : Problem.constr_kind;
-    rhs : side;
-  }
-
-type system =
-  {
-    body : constr list;
-  }
-
-val print_system : Format.formatter -> system -> unit
-
-module Solution :
-sig
-  type t
-  val get : t -> string -> word option
-  val fold : (string -> word -> 'a -> 'a) -> t -> 'a -> 'a
-end
-
-type error =
-| Rate_inconsistency
-| Precedence_inconsistency
-
-exception Could_not_solve of error
-
-val solve : system -> Solution.t
+let make_loc start stop = Loc.make_loc (get_current_file_name ()) start stop

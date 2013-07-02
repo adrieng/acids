@@ -9,3 +9,18 @@ begin library "asc_solve"
       requires = [ "asc_base" ]
       comp += [ "-annot" ]
 end
+
+begin program "solve"
+      sort = true
+      files =
+            [
+                "solver_utils.ml"
+                "lexer.mll"
+                "parser.mly" (ocamlyacc = "menhir_wrapper")
+                "solve.ml"
+            ]
+      requires = [ "menhirLib" "asc_base" "asc_solve" ]
+      comp += [ "-annot" ]
+      asmlink += [ "menhirLib.cmx" ]
+      bytelink += [ "menhirLib.cmo" ]
+end

@@ -21,4 +21,4 @@ clean:
 	rm -rf auto
 
 realclean: clean
-	rm $(TARGET)
+	rm -f $(TARGET)

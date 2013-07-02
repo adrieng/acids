@@ -1,0 +1,8 @@
+#!/bin/sh
+
+PREF=asm
+CDIR=`dirname $0`
+
+make -C $CDIR >/dev/null 2>&1
+C="$CDIR/_obuild/solve/solve.$PREF"
+$C $@

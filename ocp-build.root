@@ -10,8 +10,8 @@
 
 
 
-(* If true, use content digest change to trigger recompilation *)
-(* If false, use timestamps + inode numbers *)
+(* If set, use content digest change to trigger recompilation *)
+(* If not set, use timestamps + inode numbers *)
 digest = None
 
 (* Verbosity for debugging *)
@@ -21,7 +21,7 @@ digest = None
 verbosity = None
 
 (* Maximal number of jobs started in parallel (0 = auto-detect) *)
-njobs = 0
+njobs = 8
 
 (* If set, always scan for new .ocp files *)
 autoscan = None
@@ -41,16 +41,16 @@ meta_dirnames = [
 install_destdir = None
 
 (* where programs should be installed *)
-install_bindir = None
+install_bin = None
 
 (* where libraries should be installed *)
-install_libdir = None
+install_lib = None
 
 (* where multi-arch data should be installed *)
-install_datadir = None
+install_data = None
 
 (* where documentation files should be installed *)
-install_docdir = None
+install_doc = None
 
 (* directory containing ocaml libraries *)
 ocamllib = None
@@ -60,7 +60,7 @@ ocamllib = None
 use_ocamlfind = true
 
 (* The version of ocp-build used to save this file *)
-ocpbuild_version = "1.99.7-beta"
+ocpbuild_version = "1.99.6-beta"
 
 (* All external (absolute) directories to be included in this project *)
 project_external_dirs = [
@@ -68,15 +68,15 @@ project_external_dirs = [
 
 (* List of configuration files for this project *)
 files = [
-  "/home/adrieng/pro/acids/resolution/solve.ocp";
-  "/home/adrieng/pro/acids/compiler/asc.ocp";
-  "/home/adrieng/pro/acids/common/common.ocp";
+  "/Users/adrieng/pro/acids/resolution/solve.ocp";
+  "/Users/adrieng/pro/acids/compiler/asc.ocp";
+  "/Users/adrieng/pro/acids/common/common.ocp";
 ]
 
 (*
  The following options are not used (errors, obsolete, ...) 
 *)
-install_bin = None
-install_lib = None
-install_data = None
-install_doc = None
+install_bindir = None
+install_libdir = None
+install_datadir = None
+install_docdir = None

@@ -15,8 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Resol = Resolution.Make(struct end)
-
 open Clock_types
 open PreTySt
 open PreTy
@@ -28,8 +26,8 @@ type error =
   | Occur_check_ty of Loc.t * int * VarTy.t
   | Could_not_unify_st of Loc.t * VarTySt.t * VarTySt.t
   | Could_not_unify_ty of Loc.t * VarTy.t * VarTy.t
-  | Rate_inconsistency of Loc.t * Resol.system
-  | Precedence_inconsistency of Loc.t * Resol.system
+  | Rate_inconsistency of Loc.t * Resolution.system
+  | Precedence_inconsistency of Loc.t * Resolution.system
 
 exception Resolution_error of error
 
@@ -59,12 +57,12 @@ let print_error fmt err =
     Format.fprintf fmt
       "%aThe following system has inconsistent rates@\n%a"
       Loc.print l
-      Resol.print_system wsys
+      Resolution.print_system wsys
   | Precedence_inconsistency (l, wsys) ->
     Format.fprintf fmt
       "%aThe following system has inconsistent precedences@\n%a"
       Loc.print l
-      Resol.print_system wsys
+      Resolution.print_system wsys
 
 let occur_check_st l id st =
   raise (Resolution_error (Occur_check_st (l, id, st)))
@@ -345,10 +343,10 @@ let word_constraints_of_clock_constraints sys =
     let rigid_st1, left_consts = decompose st1 in
     let rigid_st2, right_consts = decompose st2 in
     let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
-    let l_side = { Resol.var = v1; Resol.const = left_consts; } in
-    let r_side = { Resol.var = v2; Resol.const = right_consts; } in
+    let l_side = { Resolution.var = v1; Resolution.const = left_consts; } in
+    let r_side = { Resolution.var = v2; Resolution.const = right_consts; } in
     let c =
-      let open Resol in
+      let open Resolution in
       { loc = loc; lhs = l_side; kind = kind; rhs = r_side; }
     in
     unify loc (c :: wsys) bst1 bst2
@@ -398,7 +396,7 @@ let word_constraints_of_clock_constraints sys =
     | Tc_adapt (st1, st2) ->
       unify_decompose Problem.Adapt c.loc wsys st1 st2
   in
-  { Resol.body = List.fold_left solve_constraint [] sys; }
+  { Resolution.body = List.fold_left solve_constraint [] sys; }
 
 (** {2 Top-level function} *)
 
@@ -418,14 +416,14 @@ let solve_constraints loc sys =
   p
     (fun fmt wsys ->
       Format.fprintf fmt "Word constraints: @[%a@]"
-        Resol.print_system wsys) wsys;
+        Resolution.print_system wsys) wsys;
 
   let sol =
-    try Resol.solve wsys
+    try Resolution.solve wsys
     with
-    | Resol.Could_not_solve Resol.Rate_inconsistency ->
+    | Resolution.Could_not_solve Resolution.Rate_inconsistency ->
       inconsistent_rates loc wsys
-    | Resol.Could_not_solve Resol.Precedence_inconsistency ->
+    | Resolution.Could_not_solve Resolution.Precedence_inconsistency ->
       inconsistent_precedences loc wsys
   in
 

@@ -37,8 +37,9 @@ let print_word fmt w =
   Format.fprintf fmt "@[%a@]" (Utils.print_list_r print "") w.desc
 
 let print_pword fmt { u = u; v = v; } =
-  Format.fprintf fmt "%a(%a)"
+  Format.fprintf fmt "%a%s(%a)"
     print_word u
+    (if u.size <> Int.zero then " " else "")
     print_word v
 
 (** {2 Low-level functions on words} *)

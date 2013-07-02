@@ -339,7 +339,7 @@ let word_constraints_of_clock_constraints sys =
         unify loc wsys st1' st2'
 
     | Pst_on _, Pst_on _ ->
-      unify_decompose Resol.Equal loc wsys st1 st2
+      unify_decompose Problem.Equal loc wsys st1 st2
 
   and unify_decompose kind loc wsys st1 st2 =
     let rigid_st1, left_consts = decompose st1 in
@@ -396,7 +396,7 @@ let word_constraints_of_clock_constraints sys =
       unify c.loc wsys st1 st2
 
     | Tc_adapt (st1, st2) ->
-      unify_decompose Resol.Adapt c.loc wsys st1 st2
+      unify_decompose Problem.Adapt c.loc wsys st1 st2
   in
   { Resol.body = List.fold_left solve_constraint [] sys; }
 

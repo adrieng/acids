@@ -17,6 +17,20 @@
 
 include Nativeint
 
+let ( + ) = add
+
+let ( - ) = sub
+
+let ( * ) = mul
+
+let ( / ) = div
+
+let ( mod ) = rem
+
+let ( > ) = ( > )
+
+let ( = ) i1 i2 = i1 = i2
+
 let of_char c = of_string (String.make 1 c)
 
 let print fmt i = Format.fprintf fmt "%nd" i
@@ -28,3 +42,7 @@ module Env =
       let compare = Nativeint.compare
     end
   )
+
+let rec gcd a b = if b = zero then a else gcd b (a mod b)
+
+let lcm a b = (a * b) / gcd a b

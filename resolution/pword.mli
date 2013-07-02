@@ -15,44 +15,30 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Make(S : sig end) :
-sig
-  type word = (Int.t, Int.t) Tree_word.t
+type word
 
-  type const = word list
+val print_word : Format.formatter -> word -> unit
 
-  type side =
-    {
-      var : string option;
-      const : const;
-    }
+val empty : word
 
-  type constr =
-    {
-      loc : Loc.t;
-      lhs : side;
-      kind : Problem.constr_kind;
-      rhs : side;
-    }
+val singleton : Int.t -> word
 
-  type system =
-    {
-      body : constr list;
-    }
+val concat : word -> word -> word
 
-  val print_system : Format.formatter -> system -> unit
+val power : word -> Int.t -> word
 
-  module Solution :
-  sig
-    type t
-    val get : t -> string -> word option
-  end
+type pword
 
-  type error =
-  | Rate_inconsistency
-  | Precedence_inconsistency
+val make : word -> word -> pword
 
-  exception Could_not_solve of error
+val print_pword : Format.formatter -> pword -> unit
 
-  val solve : system -> Solution.t
-end
+val ones : pword -> Int.t -> Int.t
+
+val iof : pword -> Int.t -> Int.t
+
+val lengthen_prefix : pword -> Int.t -> pword
+
+val repeat_period : pword -> Int.t -> pword
+
+val on : pword -> pword -> pword

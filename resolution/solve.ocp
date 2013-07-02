@@ -2,7 +2,10 @@ begin library "asc_solve"
       sort = true
       files =
             [
+                "pword.ml"
+                "problem.ml"
                 "resolution.ml"
             ]
       requires = [ "asc_base" ]
+      comp += [ "-annot" ]
 end

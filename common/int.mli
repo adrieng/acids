@@ -29,6 +29,20 @@ val mul : t -> t -> t
 
 val div : t -> t -> t
 
+val ( + ) : t -> t -> t
+
+val ( - ) : t -> t -> t
+
+val ( * ) : t -> t -> t
+
+val ( / ) : t -> t -> t
+
+val ( mod ) : t -> t -> t
+
+val ( > ) : t -> t -> bool
+
+val ( = ) : t -> t -> bool
+
 val zero : t
 
 val one : t
@@ -60,3 +74,5 @@ val of_string : string -> t
 val print : Format.formatter -> t -> unit
 
 module Env : Map.S with type key = t
+
+val lcm : t -> t -> t

@@ -47,4 +47,5 @@ begin program "asc"
       requires = [ "unix" "str" "menhirLib" "asc_base" "asc_solve" ]
       asmlink += [ "menhirLib.cmx" ]
       bytelink += [ "menhirLib.cmo" ]
+      comp += [ "-annot" ]
 end

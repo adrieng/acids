@@ -8,4 +8,5 @@ begin library "asc_base"
                 "tree_word.ml"
             ]
       requires = [ "unix" ]
+      comp += [ "-annot" ]
 end

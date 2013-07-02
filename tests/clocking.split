@@ -16,6 +16,13 @@ $$
 
 let node f (x, y) = (x, y) when <(true)>
 
+let node g (x, y) =
+    f (x when <(true false)> when <(true false)>, y when <(false true false)>)
+
+$$
+
+let node f (x, y) = (x, y) when <(true)>
+
 let node g (x, y) = f (x when <(true false)>, y when <s>) where rec s = true
 
 $$

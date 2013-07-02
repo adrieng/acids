@@ -208,9 +208,9 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
   in
 
   let rec walk u1 u2 res n =
-    if n = zero then u1, u2, res
-    else if u1.size = zero then walk v1 u2 res n
+    if u1.size = zero then walk v1 u2 res n
     else if u2.size = zero then walk u1 v2 res n
+    else if n = zero then u1, u2, rev res
     else
       let i, u1 = pop_1 u1 in
       let u2_pref, u2 = take i u2 in

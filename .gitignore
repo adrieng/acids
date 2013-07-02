@@ -1,4 +1,9 @@
 _build
+_obuild
 *.byte
 *.native
 *.log.*.asc
+*.annot
+*.conflicts
+*.old
+.emacs.desktop

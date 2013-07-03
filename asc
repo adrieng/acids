@@ -1,8 +1,12 @@
 #!/bin/sh
 
-PREF=asm
+PREF=byte
 CDIR=`dirname $0`
 
-make -C $CDIR >/dev/null 2>&1
-C="$CDIR/_obuild/asc/asc.$PREF"
+C=$CDIR/asc.$PREF
+if [ ! -f $C ]
+then
+    make -C $CDIR PREF=$PREF > /dev/null
+fi
+
 $C $@

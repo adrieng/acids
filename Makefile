@@ -1,18 +1,58 @@
 # From Acid Synchrone, (c) Adrien Guatto 2013
-BUILD=ocp-build -no-color
+PREF=byte
 
-.PHONY: all clean distclean
+UNAME := $(shell uname)
+
+NCPU := 1
+
+ifeq ($(UNAME), Linux)
+  NCPU := $(shell grep -c processor /proc/cpuinfo)
+endif
+ifeq ($(UNAME), Darwin)
+  NCPU := $(shell sysctl -n hw.ncpu)
+endif
+ifeq ($(UNAME), FreeBSD)
+  NCPU := $(shell sysctl -n hw.ncpu)
+endif
+
+OCAMLBUILDOPTS=-j $(NCPU) -use-menhir -use-ocamlfind -classic-display
+
+COMPILER=compiler/asc.$(PREF)
+SOLVER=quicksolve/solve.$(PREF)
+
+TARGETS=$(SOLVER) $(COMPILER)
+
+.PHONY: clean all toprun test unit_test doc
 .SUFFIX:
 
-all:
-	$(BUILD)
+all: $(TARGETS)
+
+$(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
+                               -I compiler/frontend \
+                               -I compiler/backend
+
+$(SOLVER): OCAMLBUILDOPTS += -I resolution
+
+%.conflicts: %.mly
+	ocamlbuild $(OCAMLBUILDOPTS) $@
 
 clean:
-	$(BUILD) -clean
-	$(MAKE) -C doc clean
-	$(MAKE) -C tests clean
+	ocamlbuild -clean
 
-realclean: clean
-	rm -f asc.{byte,asm} *.old
-	$(MAKE) -C doc realclean
-	$(MAKE) -C tests realclean
+%.byte:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+%.native:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+%.cma:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+%.cmxa:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+%.inferred.mli:
+	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+.FORCE:
+asc.native asc.byte: .FORCE

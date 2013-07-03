@@ -42,3 +42,9 @@ val lengthen_prefix : pword -> Int.t -> pword
 val repeat_period : pword -> Int.t -> pword
 
 val on : pword -> pword -> pword
+
+val rate : pword -> Rat.t
+
+val equal : pword -> pword -> bool
+
+val adapt : pword -> pword -> bool

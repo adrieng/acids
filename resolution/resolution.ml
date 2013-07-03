@@ -40,15 +40,7 @@ struct
   let fold = Utils.String_map.fold
 end
 
-type error =
-| Rate_inconsistency
-| Precedence_inconsistency
-
-exception Could_not_solve of error
-
 let translate_to_pwords problem =
-  let open Problem in
-
   let rec translate_to_word_tree pt =
     match pt with
     | Tree_word.Leaf i -> Pword.singleton i

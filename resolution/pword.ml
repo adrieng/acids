@@ -102,6 +102,12 @@ let pop_1 w =
     in
     i, w_rest
 
+let unfold_max w1 w2 =
+  let i1, k1, w1 = pop w1 in
+  let i2, k2, w2 = pop w2 in
+  let k = min k1 k2 in
+  Int.(i1, i2, k, push i1 (k1 - k) w1, push i2 (k2 - k) w2)
+
 let take n w =
   let open Int in
   assert (n <= w.size);
@@ -220,3 +226,50 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
   let r1, r2, u = walk u1 u2 empty u_size in
   let _, _, v = walk r1 r2 empty v_size in
   make u v
+
+let rate p = Rat.make p.v.nbones p.v.size
+
+let common_behavior p1 p2 =
+  let open Int in
+  max p1.u.size p2.u.size + lcm p1.u.nbones p2.u.nbones
+
+let equal p1 p2 =
+  p1 == p2
+  || p1 = p2
+  ||
+    let rec walk w1 w2 n =
+      let open Int in
+      (n <= zero)
+      ||
+        if w1.size = zero then walk p1.v w2 n
+        else if w2.size = zero then walk w1 p2.v n
+        else
+          (* This is correct since words are always maximally factored *)
+          let b1, k1, w1 = pop w1 in
+          let b2, k2, w2 = pop w2 in
+          (b1 = b2) && (k1 = k2) && walk w1 w2 (n - k1)
+    in
+    walk p1.u p2.u (common_behavior p1 p2)
+
+let precedes ?(strict = false) p1 p2 =
+  let open Int in
+
+  let max = common_behavior p1 p2 in
+
+  let rec walk w1 w2 o1 o2 j =
+    if j > max then true
+    else
+      if w1.size = zero then walk p1.v w2 o1 o2 j
+      else if w2.size = zero then walk w1 p2.v o1 o2 j
+      else
+        let b1, b2, k, w1, w2 = unfold_max w1 w2 in
+        let o1' = o1 + b1 * k in
+        let o2' = o2 + b2 * k in
+        let prec = o1' >= o2' && (not strict || o1 >= o2') in
+        prec && walk w1 w2 o1' o2' (j + k)
+  in
+  walk p1.u p2.u zero zero zero
+
+let synchro p1 p2 = Rat.(rate p1 = rate p2)
+
+let adapt p1 p2 = synchro p1 p2 && precedes p1 p2

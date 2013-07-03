@@ -26,6 +26,7 @@ type error =
   | Occur_check_ty of Loc.t * int * VarTy.t
   | Could_not_unify_st of Loc.t * VarTySt.t * VarTySt.t
   | Could_not_unify_ty of Loc.t * VarTy.t * VarTy.t
+  | Constant_inconsistency of Loc.t * Resolution.system
   | Rate_inconsistency of Loc.t * Resolution.system
   | Precedence_inconsistency of Loc.t * Resolution.system
 
@@ -53,6 +54,11 @@ let print_error fmt err =
       Loc.print l
       VarTy.print ty1
       VarTy.print ty2
+  | Constant_inconsistency (l, wsys) ->
+    Format.fprintf fmt
+      "%aThe following system has inconsistent constants@\n%a"
+      Loc.print l
+      Resolution.print_system wsys
   | Rate_inconsistency (l, wsys) ->
     Format.fprintf fmt
       "%aThe following system has inconsistent rates@\n%a"
@@ -75,6 +81,9 @@ let could_not_unify_st l st1 st2 =
 
 let could_not_unify_ty l ty1 ty2 =
   raise (Resolution_error (Could_not_unify_ty (l, ty1, ty2)))
+
+let inconsistent_constants l sys =
+  raise (Resolution_error (Constant_inconsistency (l, sys)))
 
 let inconsistent_rates l sys =
   raise (Resolution_error (Rate_inconsistency (l, sys)))
@@ -419,11 +428,14 @@ let solve_constraints loc sys =
         Resolution.print_system wsys) wsys;
 
   let sol =
+    let open Resolution_errors in
     try Resolution.solve wsys
     with
-    | Resolution.Could_not_solve Resolution.Rate_inconsistency ->
+    | Could_not_solve Constant_inconsistency ->
+      inconsistent_constants loc wsys
+    | Could_not_solve Rate_inconsistency ->
       inconsistent_rates loc wsys
-    | Resolution.Could_not_solve Resolution.Precedence_inconsistency ->
+    | Could_not_solve Precedence_inconsistency ->
       inconsistent_precedences loc wsys
   in
 

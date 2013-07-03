@@ -118,6 +118,11 @@ let get_1 l =
   | [] -> invalid_arg "get_1"
   | x :: l -> x, l
 
+let get_single l =
+  match l with
+  | [x] -> x
+  | _ -> invalid_arg "get_single"
+
 (* /!\ watch out aliasing /!\ *)
 let map_opt_ref alias f r acc =
   match !r with

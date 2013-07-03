@@ -16,6 +16,7 @@
  *)
 
 open Resolution
+open Resolution_errors
 
 let parse_file filen =
   try
@@ -51,6 +52,8 @@ let do_sys sys =
     Format.printf "Solution: @[{@ %a@ }@]@."
       (Utils.print_list_r print_aff ",") sol;
   with
+  | Could_not_solve Constant_inconsistency ->
+    Format.printf "Inconsistent constants@."
   | Could_not_solve Rate_inconsistency ->
     Format.printf "Inconsistent rates@."
   | Could_not_solve Precedence_inconsistency ->

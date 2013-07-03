@@ -47,10 +47,4 @@ sig
   val fold : (string -> word -> 'a -> 'a) -> t -> 'a -> 'a
 end
 
-type error =
-| Rate_inconsistency
-| Precedence_inconsistency
-
-exception Could_not_solve of error
-
 val solve : system -> Solution.t

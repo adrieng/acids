@@ -58,11 +58,23 @@ let check_rigid_constraints sys =
   in
   { body = List.fold_right check_rigid_constr sys.body []; }
 
+(* [presolve sys] takes a system [sys] and returns an equivalent list of
+   quadruples [(c_n, p_n, c_n', p_n')] such that the system { c_n on p_n <: c_n'
+   on p_n' } is equivalent to [sys]. *)
+let presolve sys =
+  let sys =
+    lower_equality_constraints (check_rigid_constraints (reduce_on sys))
+  in
+  let extract c =
+    assert (c.kind = Adapt);
+    (Utils.get_opt c.lhs.var, Utils.get_single c.lhs.const,
+     Utils.get_opt c.rhs.var, Utils.get_single c.rhs.const)
+  in
+  Format.eprintf "@[Presolved system:@ %a@]@." print_system sys;
+  List.map extract sys.body
+
 let solve sys =
-  let sys = reduce_on sys in
-  Format.eprintf "@[Reduced pwords:@ %a@]@." print_system sys;
-  let sys = check_rigid_constraints sys in
-  Format.eprintf "@[Non-constant pwords:@ %a@]@." print_system sys;
-  let sys = lower_equality_constraints sys in
-  Format.eprintf "@[Lowered equalities:@ %a@]@." print_system sys;
+  let sys = presolve sys in
+
+  Format.eprintf "@[Presolved system:@ %a@]@." print_system sys;
   exit 0

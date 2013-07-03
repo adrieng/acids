@@ -1,6 +1,6 @@
-(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2013
+(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2012
  *
- * This file is part of Acid Synchrone.
+ * This file is part of nsched.
  *
  * nsched is free software: you can redistribute it and/or modify it under the
  * terms of the GNU General Public License as published by the Free Software
@@ -15,40 +15,26 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-include Nativeint
+type t
+type var
 
-let ( + ) = add
+val make_system : unit -> t * var
 
-let ( - ) = sub
+val print_system : Format.formatter -> t -> unit
 
-let ( * ) = mul
+val print_system_dot : out_channel -> t -> unit
 
-let ( / ) = div
+val add_variable : t -> string -> var
 
-let ( mod ) = rem
+(** [add_constraint sys x y c] returns the system [sys] with the added
+    constraint [y - x >= c]
+*)
+val add_constraint : t -> var -> var -> Int.t -> unit
 
-let ( > ) = ( > )
+exception No_solution
 
-let ( = ) i1 i2 = i1 = i2
+type objective = Maximize | Minimize
 
-let of_char c = of_string (String.make 1 c)
+val solve_system
+  : ?verbose:bool -> ?bound:Int.t -> obj:objective -> t -> Int.t Utils.String_map.t
 
-let print fmt i = Format.fprintf fmt "%nd" i
-
-let equal = (=)
-
-let compare = Pervasives.compare
-
-let hash = Hashtbl.hash
-
-module Env =
-  Map.Make(
-    struct
-      type t = Nativeint.t
-      let compare = Nativeint.compare
-    end
-  )
-
-let rec gcd a b = if b = zero then a else gcd b (a mod b)
-
-let lcm a b = (a * b) / gcd a b

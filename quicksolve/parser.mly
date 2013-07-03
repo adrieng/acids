@@ -97,3 +97,4 @@ system:
 
 file:
 | l = list(system) EOF { l }
+| error { Solver_utils.parse_error $startpos $endpos }

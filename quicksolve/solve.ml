@@ -29,10 +29,14 @@ let parse_file filen =
     let sys_l = Parser.file Lexer.token lexbuf in
     close_in ic;
     sys_l
-  with Lexer.Lexical_error loc ->
+  with
+  | Lexer.Lexical_error loc ->
     Format.eprintf "%aLexical error: %s@."
       Loc.print loc.Loc.l_loc
       loc.Loc.l_contents;
+    exit 1
+  | Solver_utils.Parse_error loc ->
+    Format.printf "%aSyntax error@." Loc.print loc;
     exit 1
 
 let do_sys sys =

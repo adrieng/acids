@@ -15,14 +15,18 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let current_file_name = ref ""
+type error =
+| Constant_inconsistency
+| Rate_inconsistency
+| Precedence_inconsistency
 
-let set_current_file_name s = current_file_name := s
+exception Could_not_solve of error
 
-let get_current_file_name () = !current_file_name
+let constant_inconsistency () =
+  raise (Could_not_solve Constant_inconsistency)
 
-let make_loc start stop = Loc.make_loc (get_current_file_name ()) start stop
+let rate_inconsistency () =
+  raise (Could_not_solve Rate_inconsistency)
 
-exception Parse_error of Loc.t
-
-let parse_error start stop = raise (Parse_error (make_loc start stop))
+let precedence_inconsistency () =
+  raise (Could_not_solve Precedence_inconsistency)

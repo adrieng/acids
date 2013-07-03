@@ -15,14 +15,13 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-let current_file_name = ref ""
+type t =
+  private
+    {
+      num : Int.t;
+      den : Int.t;
+    }
 
-let set_current_file_name s = current_file_name := s
+val make : Int.t -> Int.t -> t
 
-let get_current_file_name () = !current_file_name
-
-let make_loc start stop = Loc.make_loc (get_current_file_name ()) start stop
-
-exception Parse_error of Loc.t
-
-let parse_error start stop = raise (Parse_error (make_loc start stop))
+val ( = ) : t -> t -> bool

@@ -85,6 +85,7 @@ const:
 
 side:
 | s = STRING ON w_l = const { make_side (Some s) w_l }
+| w_l = const { make_side None w_l }
 
 constr_desc:
 | lhs = side kind = KIND rhs = side { lhs, kind, rhs }

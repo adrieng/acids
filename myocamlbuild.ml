@@ -26,8 +26,8 @@ let df = function
       ["ocaml"; "compile"; "parser" ]
       (S [A "-w"; A "-39"]);
 
-    ocaml_lib "common/asc_base";
-    ocaml_lib "resolution/asc_solve";
+    ocaml_lib "base/asc_base";
+    ocaml_lib "resolution/asc_resolution";
 
   | _ -> ()
 

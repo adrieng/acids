@@ -1,4 +1,4 @@
-"common" or "resolution": include
+"base" or "resolution": include
 <**/parser.ml>: parser, package(menhirLib)
 <**/*.{ml,mli}>: annot, debug
-<**/*.{byte,native}>: use_asc_base, use_asc_solve, use_unix, use_str, package(menhirLib)
+<**/*.{byte,native}>: use_asc_base, use_asc_resolution, use_unix, use_str, package(menhirLib)

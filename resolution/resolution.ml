@@ -64,29 +64,27 @@ let translate_to_pwords problem =
 
   let translate_to_pword_side s =
     {
-      Pp.var = s.var;
-      Pp.const = List.map translate_to_pword_tree s.const;
+      Concrete.var = s.var;
+      Concrete.const = List.map translate_to_pword_tree s.const;
     }
   in
 
   let translate_to_pword_constr c =
     {
-      Pp.loc = c.loc;
-      Pp.lhs = translate_to_pword_side c.lhs;
-      Pp.kind = c.kind;
-      Pp.rhs = translate_to_pword_side c.rhs;
+      Concrete.loc = c.loc;
+      Concrete.lhs = translate_to_pword_side c.lhs;
+      Concrete.kind = c.kind;
+      Concrete.rhs = translate_to_pword_side c.rhs;
     }
   in
 
   {
-    Pp.body = List.map translate_to_pword_constr problem.body;
+    Concrete.body = List.map translate_to_pword_constr problem.body;
   }
 
 let solve sys =
   if sys.body = [] then Utils.String_map.empty
   else
     let sys = translate_to_pwords sys in
-    Format.eprintf "@[Pwords:@ %a@]@." Problem.Pp.print_system sys;
-    let sys = Problem.reduce_on_pp sys in
-    Format.eprintf "@[Reduce pwords:@ %a@]@." Problem.Pp.print_system sys;
-    exit 0
+    Format.eprintf "@[Pwords:@ %a@]@." Concrete.print_system sys;
+    Concrete.solve sys

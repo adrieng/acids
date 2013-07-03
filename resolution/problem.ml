@@ -69,28 +69,14 @@ struct
     Format.fprintf fmt "{ @[<v>%a@] }"
       (Utils.print_list_r print_wconstr ";") sys.body
 
+  let lower_equality_constraints sys =
+    let lower_constr c sys =
+      match c.kind with
+      | Equal ->
+        let left = { c with kind = Adapt; } in
+        let right = { loc = c.loc; kind = Adapt; lhs = c.rhs; rhs = c.lhs; } in
+        left :: right :: sys
+      | Adapt -> c :: sys
+    in
+    { body = List.fold_right lower_constr sys.body []; }
 end
-
-module Pp =
-  Make
-    (struct
-      type const = Pword.pword list
-      let print_const = Utils.print_list_r Pword.print_pword " on"
-     end)
-
-open Pp
-
-let reduce_on_pp sys =
-  let reduce_on_side side =
-    { side with const = [Utils.fold_left_1 Pword.on side.const]; }
-  in
-
-  let reduce_on_constr constr =
-    {
-      constr with
-        lhs = reduce_on_side constr.lhs;
-        rhs = reduce_on_side constr.rhs;
-    }
-  in
-
-  { body = List.map reduce_on_constr sys.body; }

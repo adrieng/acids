@@ -309,7 +309,7 @@ let make_imperative_var init =
   (fun () -> !r), (fun s -> r := s)
 
 let make_gen_sym () =
-  let r = ref init in
+  let r = ref 0 in
   fun s -> incr r; s ^ string_of_int !r
 
 module Make = ((functor (S : Map.OrderedType) ->

@@ -17,6 +17,8 @@
 
 type constr_kind = Equal | Adapt
 
+type var = string
+
 module Make(S :
   sig
     type const
@@ -25,7 +27,7 @@ module Make(S :
 struct
   type side =
     {
-      var : string option;
+      var : var option;
       const : S.const;
     }
 

@@ -32,7 +32,7 @@ type concrete_system =
   {
     constraints : (cside * cside) list;
     sampler_size_per_unknown : (Int.t * Int.t) Utils.Env.t;
-    nbones_per_unknown : Int.t Utils.Env.t;
+    nbones_per_unknown : (Int.t * Int.t) Utils.Env.t;
   }
 
 let print_concrete_system fmt cs =
@@ -50,11 +50,17 @@ let print_concrete_system fmt cs =
       Int.print v_size
   in
 
+  let print_nbones fmt (u_nbones, v_nbones) =
+    Format.fprintf fmt "|c.u|_1 = %a, |c.v|_1 = %a"
+      Int.print u_nbones
+      Int.print v_nbones
+  in
+
   Format.fprintf fmt
     "@[@[{@ %a@ }@]@ with sampler sizes @[%a@] and nbones @[%a@]@]"
     (Utils.print_list_r print_side ",") cs.constraints
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
-    (Utils.Env.print Utils.print_string Int.print) cs.nbones_per_unknown
+    (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
 ;;
 
 (* [presolve sys] takes a system [sys] and returns an equivalent concrete system. *)
@@ -148,8 +154,23 @@ let compute_sampler_sizes csys =
       sampler_size_per_unknown = sampler_size_per_unknown;
   }
 
+let choose_nbones_unknowns ?(k = Int.zero) ?(k' = Int.one) csys =
+  let add_nbones c (sampler_u_size, sampler_v_size) nbones =
+    let open Int in
+    let u_nbones = sampler_u_size + k * sampler_v_size in
+    let v_nbones = k' * sampler_v_size in
+    Utils.Env.add c (u_nbones, v_nbones) nbones
+  in
+
+  {
+    csys with
+      nbones_per_unknown =
+      Utils.Env.fold add_nbones csys.sampler_size_per_unknown Utils.Env.empty;
+  }
+
 let solve sys =
   let csys = presolve sys in
   let csys = compute_sampler_sizes csys in
+  let csys = choose_nbones_unknowns csys in
   Format.eprintf "Concrete system: %a@." print_concrete_system csys;
   Utils.Env.empty

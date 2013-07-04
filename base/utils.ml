@@ -201,7 +201,7 @@ module String_set =
 module Int_set = Set.Make(struct type t = int let compare = int_compare end)
 module Int_map = MyMap(struct type t = int let compare = int_compare end)
 module Pint_set = Set.Make(struct type t = int let compare x y = x - y end)
-module String_map = MyMap(struct
+module Env = MyMap(struct
   type t = string
   let compare = Pervasives.compare
 end)

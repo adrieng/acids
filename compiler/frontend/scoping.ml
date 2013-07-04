@@ -226,10 +226,10 @@ let scope_type_name =
 
 let add_var id_env v =
   let id = Ident.make_source v in
-  id, Utils.String_map.add v id id_env
+  id, Utils.Env.add v id id_env
 
 let find_var id_env v loc =
-  try Utils.String_map.find v id_env
+  try Utils.Env.find v id_env
   with Not_found -> unbound_var v loc
 
 (** {2 AST traversal} *)
@@ -606,7 +606,7 @@ let scope_node_def
   Ident.reset_ctx ();
   let ctx = (local_nodes, local_constrs, local_types, imported_mods) in
   let inp, (id_env, intf_env) =
-    scope_pattern ctx node.n_input (Utils.String_map.empty, intf_env)
+    scope_pattern ctx node.n_input (Utils.Env.empty, intf_env)
   in
   let body, intf_env = scope_exp ctx id_env node.n_body intf_env in
   let node =

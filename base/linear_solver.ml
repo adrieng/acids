@@ -250,15 +250,15 @@ let read_solution sys sol_file =
 
     let read_column_solution solutions var =
       let s = read_one_integer () in
-      Utils.String_map.add var s solutions
+      Utils.Env.add var s solutions
     in
 
-    List.fold_left read_column_solution Utils.String_map.empty ordered_vars
+    List.fold_left read_column_solution Utils.Env.empty ordered_vars
   with End_of_file ->
     raise Library_internal_error
 
 let solve_linear_system ?(verbose = false) sys =
-  if sys.ls_variables = Utils.String_set.empty then Utils.String_map.empty
+  if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty
   else
     (
       if sys.ls_objective = [] then raise Ill_formed_objective_function;

@@ -58,4 +58,4 @@ exception Library_internal_error
 exception Could_not_solve
 
 val solve_linear_system
-  : ?verbose:bool -> linear_system -> Int.t Utils.String_map.t
+  : ?verbose:bool -> linear_system -> Int.t Utils.Env.t

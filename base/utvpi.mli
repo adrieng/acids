@@ -36,5 +36,5 @@ exception No_solution
 type objective = Maximize | Minimize
 
 val solve_system
-  : ?verbose:bool -> ?bound:Int.t -> obj:objective -> t -> Int.t Utils.String_map.t
+  : ?verbose:bool -> ?bound:Int.t -> obj:objective -> t -> Int.t Utils.Env.t
 

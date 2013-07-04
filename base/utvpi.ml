@@ -40,7 +40,7 @@ module G = Graph.Imperative.Digraph.ConcreteBidirectionalLabeled(Int_)(Edge)
 type t =
     {
       graph : G.t;
-      mutable env : int Utils.String_map.t;
+      mutable env : int Utils.Env.t;
       mutable last : int;
     }
 
@@ -49,7 +49,7 @@ type var = int
 let make_system () =
   {
     graph = G.create ();
-    env = Utils.String_map.empty;
+    env = Utils.Env.empty;
     last = 1;
   },
   0
@@ -59,7 +59,7 @@ let print_var env fmt i =
   then Format.fprintf fmt "0"
   else
     let print_var v j = if i = j then Format.fprintf fmt "%s" v in
-    Utils.String_map.iter print_var env
+    Utils.Env.iter print_var env
 
 let print_system fmt g =
   let print_constraint edge =
@@ -76,7 +76,7 @@ let print_system fmt g =
   Format.fprintf fmt "@]"
 
 (* UGLY *)
-let r = ref Utils.String_map.empty
+let r = ref Utils.Env.empty
 module D = Graph.Graphviz.Dot(
   struct
     include G
@@ -100,7 +100,7 @@ module D = Graph.Graphviz.Dot(
 let print_system_dot fmt g =
   r := g.env;
   D.output_graph fmt g.graph;
-  r := Utils.String_map.empty
+  r := Utils.Env.empty
 
 (** [add_constraint sys x y c] returns the system [sys] with the added
     constraint [y - x <= c] *)
@@ -109,9 +109,9 @@ let add_constraint g x y c =
   G.add_edge_e g.graph edge
 
 let add_variable g id =
-  if Utils.String_map.mem id g.env
+  if Utils.Env.mem id g.env
   then invalid_arg ("Utvpi.add_variable: " ^ id);
-  g.env <- Utils.String_map.add id g.last g.env;
+  g.env <- Utils.Env.add id g.last g.env;
   (* add_constraint g g.last 0 Z.zero; *)
   g.last <- g.last + 1;
   g.last - 1
@@ -202,9 +202,9 @@ let solve_system
       | Maximize -> dist.(idx)
       | Minimize -> Int.neg dist.(idx)
     in
-    Utils.String_map.add id v sol
+    Utils.Env.add id v sol
   in
-  Utils.String_map.fold add_binding sys.env Utils.String_map.empty
+  Utils.Env.fold add_binding sys.env Utils.Env.empty
 
 
 let _ =
@@ -257,7 +257,7 @@ let _ =
         Format.eprintf "System:@\n%a@?" print_system sys;
         let sol = solve_system ~verbose:true ~obj:Maximize sys in
         Format.eprintf "Solution:@\n";
-        Utils.String_map.iter
+        Utils.Env.iter
           (fun id s ->
             Format.eprintf "  %s = %a@." id Int.print s)
           sol;

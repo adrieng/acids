@@ -35,9 +35,9 @@ include P
 
 module Solution =
 struct
-  type t = word Utils.String_map.t
-  let get (m : t) x = try Some (Utils.String_map.find x m) with Not_found -> None
-  let fold = Utils.String_map.fold
+  type t = word Utils.Env.t
+  let get (m : t) x = try Some (Utils.Env.find x m) with Not_found -> None
+  let fold = Utils.Env.fold
 end
 
 let translate_to_pwords problem =
@@ -75,7 +75,7 @@ let translate_to_pwords problem =
   }
 
 let solve sys =
-  if sys.body = [] then Utils.String_map.empty
+  if sys.body = [] then Utils.Env.empty
   else
     let sys = translate_to_pwords sys in
     Format.eprintf "@[Pwords:@ %a@]@." Concrete.print_system sys;

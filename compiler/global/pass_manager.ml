@@ -31,7 +31,7 @@ type ctx = {
   ctx_serialize_transforms : transform_name list;
   ctx_error_is_internal : exn -> bool;
   ctx_print_error : ctx -> Format.formatter -> exn -> unit;
-  ctx_attr : bool Utils.String_map.t;
+  ctx_attr : bool Utils.Env.t;
 }
 
 let make_ctx
@@ -46,7 +46,7 @@ let make_ctx
     ctx_stop_after = stop_after;
     ctx_error_is_internal = error_is_internal;
     ctx_print_error = print_error;
-    ctx_attr = Utils.String_map.empty;
+    ctx_attr = Utils.Env.empty;
   }
 
 let print_ctx fmt ctx =
@@ -58,7 +58,7 @@ let print_ctx fmt ctx =
     (Utils.print_list_r Utils.print_string ",") ctx.ctx_serialize_transforms;
 
   Format.fprintf fmt "@[<v 2>attributes:";
-  Utils.String_map.iter
+  Utils.Env.iter
     (fun id b -> Format.fprintf fmt "@ %s = %b;" id b)
     ctx.ctx_attr;
   Format.fprintf fmt "@]";
@@ -70,10 +70,10 @@ let ctx_current_file ctx = ctx.ctx_current_file
 let ctx_current_dir ctx = Filename.dirname (ctx_current_file ctx)
 
 let ctx_set_attr ctx (attr, b) =
-  { ctx with ctx_attr = Utils.String_map.add attr b ctx.ctx_attr; }
+  { ctx with ctx_attr = Utils.Env.add attr b ctx.ctx_attr; }
 
 let ctx_get_attr ctx attr =
-  try Utils.String_map.find attr ctx.ctx_attr
+  try Utils.Env.find attr ctx.ctx_attr
   with Not_found -> false
 
 let debug ctx = ctx_get_attr ctx "debug"

@@ -15,7 +15,9 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type terms = (Int.t * string) list
+type var
+
+type terms = (Int.t * var) list
 
 type linear_system
 
@@ -27,6 +29,8 @@ and linear_constraint =
     }
 
 and linear_comp = Leq | Lgt | Lge | Llt | Lle
+
+val add_var : linear_system -> string -> linear_system * var
 
 val negate_terms : terms -> terms
 
@@ -41,7 +45,7 @@ val add_linear_constraint : linear_system -> linear_constraint -> linear_system
 
 (* Bounds *)
 
-val bound_variable : Int.t * Int.t -> linear_system -> string -> linear_system
+val bound_variable : Int.t * Int.t -> linear_system -> var -> linear_system
 
 val bound_all_variables : linear_system -> linear_comp -> Int.t -> linear_system
 
@@ -57,5 +61,7 @@ exception Solver_internal_error of int
 exception Library_internal_error
 exception Could_not_solve
 
+module Env : Map.S with type key = var
+
 val solve_linear_system
-  : ?verbose:bool -> linear_system -> Int.t Utils.Env.t
+  : ?verbose:bool -> linear_system -> Int.t Env.t

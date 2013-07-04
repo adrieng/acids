@@ -15,7 +15,9 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type terms = (Int.t * string) list
+type var = string
+
+type terms = (Int.t * var) list
 
 type linear_system =
     {
@@ -41,6 +43,11 @@ let empty_system =
   }
 
 let negate_terms terms = List.map (fun (c, id) -> Int.neg c, id) terms
+
+let add_var lsys s =
+  if Utils.String_set.mem s lsys.ls_variables
+  then invalid_arg ("add_var: duplicate variable " ^ s);
+  { lsys with ls_variables = Utils.String_set.add s lsys.ls_variables; }, s
 
 let make_equality x c y c' =
   {
@@ -256,6 +263,8 @@ let read_solution sys sol_file =
     List.fold_left read_column_solution Utils.Env.empty ordered_vars
   with End_of_file ->
     raise Library_internal_error
+
+module Env = Utils.Env
 
 let solve_linear_system ?(verbose = false) sys =
   if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty

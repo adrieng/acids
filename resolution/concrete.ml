@@ -30,9 +30,24 @@ type cside = var * Pword.pword
 
 type concrete_system =
   {
-    constraints : (cside * cside) list;
+    (** Initial system description *)
+
+    k : Int.t; (** number of c_n period unfolding in prefix *)
+    k' : Int.t; (** number of c_n period unfolding in period *)
+    constraints : (cside * cside) list; (** adaptability constraints to solve *)
+
+    (** Intermediate info *)
+
     sampler_size_per_unknown : (Int.t * Int.t) Utils.Env.t;
+    (** size of prefix/period for each sampler per unknown *)
     nbones_per_unknown : (Int.t * Int.t) Utils.Env.t;
+    (** number of ones per unknown, choosen according to k and k' *)
+
+    (** Low-level info related to linear solver *)
+
+    size_of_each_unknown : Linear_solver.var Utils.Env.t;
+    indexes_of_each_unknown : (Int.t * Linear_solver.var) list Utils.Env.t;
+
   }
 
 let print_concrete_system fmt cs =
@@ -57,14 +72,13 @@ let print_concrete_system fmt cs =
   in
 
   Format.fprintf fmt
-    "@[@[{@ %a@ }@]@ with sampler sizes @[%a@] and nbones @[%a@]@]"
+    "@[{@[@ @[%a@]@ @]}@ with sampler sizes @[%a@] and nbones @[%a@]@]"
     (Utils.print_list_r print_side ",") cs.constraints
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
     (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
-;;
 
-(* [presolve sys] takes a system [sys] and returns an equivalent concrete system. *)
-let presolve sys =
+(* [make_concrete_system sys] takes a system [sys] and returns an equivalent concrete system. *)
+let make_concrete_system ?(k = Int.zero) ?(k' = Int.one) sys =
   let reduce_on sys =
     let reduce_on_side side =
       { side with const = [Utils.fold_left_1 Pword.on side.const]; }
@@ -108,9 +122,15 @@ let presolve sys =
     (Utils.get_opt c.rhs.var, Utils.get_single c.rhs.const)
   in
   {
+    k = k;
+    k' = k';
     constraints = List.map extract sys.body;
+
     sampler_size_per_unknown = Utils.Env.empty;
     nbones_per_unknown = Utils.Env.empty;
+
+    size_of_each_unknown = Utils.Env.empty;
+    indexes_of_each_unknown = Utils.Env.empty;
   }
 
 (** [compute_sampler_sizes csys] returns an equivalent concrete systems [csys']
@@ -154,11 +174,11 @@ let compute_sampler_sizes csys =
       sampler_size_per_unknown = sampler_size_per_unknown;
   }
 
-let choose_nbones_unknowns ?(k = Int.zero) ?(k' = Int.one) csys =
+let choose_nbones_unknowns csys =
   let add_nbones c (sampler_u_size, sampler_v_size) nbones =
     let open Int in
-    let u_nbones = sampler_u_size + k * sampler_v_size in
-    let v_nbones = k' * sampler_v_size in
+    let u_nbones = sampler_u_size + csys.k * sampler_v_size in
+    let v_nbones = csys.k' * sampler_v_size in
     Utils.Env.add c (u_nbones, v_nbones) nbones
   in
 
@@ -169,7 +189,7 @@ let choose_nbones_unknowns ?(k = Int.zero) ?(k' = Int.one) csys =
   }
 
 let solve sys =
-  let csys = presolve sys in
+  let csys = make_concrete_system sys in
   let csys = compute_sampler_sizes csys in
   let csys = choose_nbones_unknowns csys in
   Format.eprintf "Concrete system: %a@." print_concrete_system csys;

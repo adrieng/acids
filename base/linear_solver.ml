@@ -19,21 +19,52 @@ type var = string
 
 type terms = (Int.t * var) list
 
+type linear_comp = Leq | Lgt | Lge | Llt | Lle
+
+type linear_constraint =
+  {
+    lc_terms : (Int.t * string) list;
+    lc_comp : linear_comp;
+    lc_const : Int.t;
+  }
+
 type linear_system =
-    {
-      ls_variables : Utils.String_set.t;
-      ls_constraints : linear_constraint list;
-      ls_objective : terms;
-    }
+  {
+    ls_variables : Utils.String_set.t;
+    ls_constraints : linear_constraint list;
+    ls_objective : terms;
+  }
 
-and linear_constraint =
-    {
-      lc_terms : (Int.t * string) list;
-      lc_comp : linear_comp;
-      lc_const : Int.t;
-    }
+let print_terms fmt terms =
+  let print_term fmt (i, v) =
+    Format.fprintf fmt "%c %a * %s"
+      (if Int.(i < zero) then '-' else '+')
+      Int.print (Int.abs i)
+      v
+  in
+  Utils.print_list_r print_term "" fmt terms
 
-and linear_comp = Leq | Lgt | Lge | Llt | Lle
+let print_linear_comp fmt cmp =
+  let s =
+    match cmp with
+    | Leq -> "="
+    | Lgt -> ">"
+    | Lge -> ">="
+    | Llt -> "<"
+    | Lle -> "<="
+  in
+  Format.fprintf fmt "%s" s
+
+let print_linear_constraint fmt cstr =
+  Format.fprintf fmt "@[%a@ %a %a@]"
+    print_terms cstr.lc_terms
+    print_linear_comp cstr.lc_comp
+    Int.print cstr.lc_const
+
+let print_linear_system fmt lsys =
+  Format.fprintf fmt "@[minimize @[%a@] with@ {@[@ @[%a@]@ @]}@]"
+    print_terms lsys.ls_objective
+    (Utils.print_list_r print_linear_constraint ";") lsys.ls_constraints
 
 let empty_system =
   {

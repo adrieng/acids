@@ -46,19 +46,18 @@ type concrete_system =
     (** Low-level info related to linear solver *)
 
     size_of_each_unknown : Linear_solver.var Utils.Env.t;
-    indexes_of_each_unknown : (Int.t * Linear_solver.var) list Utils.Env.t;
-
+    indexes_of_each_unknown : Linear_solver.var Int.Env.t Utils.Env.t;
+    lsys : Linear_solver.linear_system;
   }
 
-let print_concrete_system fmt cs =
-  let print_side fmt ((c_x, p_x), (c_y, p_y)) =
-    Format.fprintf fmt "@[%s@ on %a@ <: %s@ on %a@]"
-      c_x
-      Pword.print_pword p_x
-      c_y
-      Pword.print_pword p_y
-  in
+let print_side fmt ((c_x, p_x), (c_y, p_y)) =
+  Format.fprintf fmt "@[%s@ on %a@ <: %s@ on %a@]"
+    c_x
+    Pword.print_pword p_x
+    c_y
+    Pword.print_pword p_y
 
+let print_concrete_system fmt cs =
   let print_size fmt (u_size, v_size) =
     Format.fprintf fmt "|p.u| = %a, |p.v| = %a"
       Int.print u_size
@@ -72,10 +71,18 @@ let print_concrete_system fmt cs =
   in
 
   Format.fprintf fmt
-    "@[{@[@ @[%a@]@ @]}@ with sampler sizes @[%a@] and nbones @[%a@]@]"
+    "@[{@[@ @[%a@]@ @]}@ with sampler sizes @[%a@]@ and nbones @[%a@]@]"
     (Utils.print_list_r print_side ",") cs.constraints
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
     (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
+
+let find_size csys c = Utils.Env.find c csys.size_of_each_unknown
+
+let find_index csys c i =
+  let indexes = Utils.Env.find c csys.indexes_of_each_unknown in
+  Int.Env.find i indexes
+
+let find_nbones csys c = Utils.Env.find c csys.nbones_per_unknown
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent concrete system. *)
 let make_concrete_system ?(k = Int.zero) ?(k' = Int.one) sys =
@@ -131,6 +138,7 @@ let make_concrete_system ?(k = Int.zero) ?(k' = Int.one) sys =
 
     size_of_each_unknown = Utils.Env.empty;
     indexes_of_each_unknown = Utils.Env.empty;
+    lsys = Linear_solver.empty_system;
   }
 
 (** [compute_sampler_sizes csys] returns an equivalent concrete systems [csys']
@@ -188,9 +196,132 @@ let choose_nbones_unknowns csys =
       Utils.Env.fold add_nbones csys.sampler_size_per_unknown Utils.Env.empty;
   }
 
+let add_linear_vars csys =
+  let add_vars c (nbones_u, nbones_v) (lsys, sizes, indexes) =
+    let open Linear_solver in
+
+    let lsys, size_var = add_var lsys (c ^ "_size") in
+    let sizes = Utils.Env.add c size_var sizes in
+
+    let add_precs (i, lsys, indexes_for_c) =
+      let name = c ^ "_i_" ^ Int.to_string i in
+      let lsys, var = add_var lsys name in
+      (Int.succ i, lsys, Int.Env.add i var indexes_for_c)
+    in
+
+    let _, lsys, indexes_for_c =
+      Int.iter add_precs nbones_u (Int.one, lsys, Int.Env.empty)
+    in
+    let _, lsys, indexes_for_c =
+      Int.iter add_precs nbones_v (Int.succ nbones_u, lsys, indexes_for_c)
+    in
+
+    let indexes = Utils.Env.add c indexes_for_c indexes in
+
+    lsys, sizes, indexes
+  in
+  let lsys, sizes, indexes =
+    Utils.Env.fold
+      add_vars
+      csys.nbones_per_unknown
+      (Linear_solver.empty_system, Utils.Env.empty, Utils.Env.empty)
+  in
+  {
+    csys with
+      lsys = lsys;
+      size_of_each_unknown = sizes;
+      indexes_of_each_unknown = indexes;
+  }
+
+let build_synchronizability_constraints csys =
+  let open Linear_solver in
+
+  let add_synchronizability_constraint lsys ((c_x, p_x), (c_y, p_y)) =
+    let size_v_x = find_size csys c_x in
+    let size_v_y = find_size csys c_y in
+
+    let cstr =
+      let open Pword in
+      let t1 = [nbones p_y.v, size_v_x] in
+      let t2 = [nbones p_x.v, size_v_y] in
+      make_equality t1 Int.zero t2 Int.zero
+    in
+    Linear_solver.add_linear_constraint lsys cstr
+  in
+
+  let lsys =
+    List.fold_left add_synchronizability_constraint csys.lsys csys.constraints
+  in
+
+  { csys with lsys = lsys; }
+
+let build_precedence_constraints csys =
+  let add_precedence_constraints lsys ((c_x, p_x), (c_y, p_y)) =
+    let indexes_x = Utils.Env.find c_x csys.indexes_of_each_unknown in
+    let indexes_y = Utils.Env.find c_y csys.indexes_of_each_unknown in
+
+    let nbones_x_u, nbones_x_v = find_nbones csys c_x in
+    let nbones_y_u, nbones_y_v = find_nbones csys c_y in
+
+    let h =
+      let open Int in
+      let open Pword in
+      max
+        (nbones p_x.u + csys.k * nbones p_x.v)
+        (nbones p_y.u + csys.k * nbones p_y.v)
+      + lcm (csys.k' * nbones p_x.v) (csys.k' * nbones p_y.v)
+    in
+
+
+
+    Format.eprintf
+      "-> @[%a, h = %a,@ nbones_x_u = %a,@ nbones_x_v = %a,@ nbones_y_u = %a,@ nbones_y_v = %a@]@.@."
+      print_side ((c_x, p_x), (c_y, p_y))
+      Int.print h
+      Int.print nbones_x_u
+      Int.print nbones_x_v
+      Int.print nbones_y_u
+      Int.print nbones_y_v;
+
+    let rec build lsys j =
+      let open Linear_solver in
+      if j > h then lsys
+      else
+        let iof_c_x =
+          let i_x = Pword.iof p_x j in
+          Int.Env.find i_x indexes_x
+        in
+        let iof_c_y =
+          let i_y = Pword.iof p_y j in
+          Int.Env.find i_y indexes_y
+        in
+        let cstr =
+          {
+            lc_terms = Int.([one, iof_c_x; neg one, iof_c_y]);
+            lc_comp = Lle;
+            lc_const = Int.zero;
+          }
+        in
+        build (add_linear_constraint lsys cstr) (Int.succ j)
+    in
+
+    build lsys Int.one
+  in
+
+  let lsys =
+    List.fold_left add_precedence_constraints csys.lsys csys.constraints
+  in
+
+  { csys with lsys = lsys; }
+
 let solve sys =
   let csys = make_concrete_system sys in
   let csys = compute_sampler_sizes csys in
   let csys = choose_nbones_unknowns csys in
   Format.eprintf "Concrete system: %a@." print_concrete_system csys;
+  let csys = add_linear_vars csys in
+  let csys = build_synchronizability_constraints csys in
+  let csys = build_precedence_constraints csys in
+  Format.eprintf "Linear system:@ %a@."
+    Linear_solver.print_linear_system csys.lsys;
   Utils.Env.empty

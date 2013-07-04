@@ -30,6 +30,8 @@ and linear_constraint =
 
 and linear_comp = Leq | Lgt | Lge | Llt | Lle
 
+val print_linear_system : Format.formatter -> linear_system -> unit
+
 val add_var : linear_system -> string -> linear_system * var
 
 val negate_terms : terms -> terms

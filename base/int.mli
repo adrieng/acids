@@ -90,3 +90,5 @@ val hash : t -> int
 module Env : Map.S with type key = t
 
 val lcm : t -> t -> t
+
+val iter : ('a -> 'a) -> t -> 'a -> 'a

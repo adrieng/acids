@@ -140,9 +140,6 @@ let rec last l =
   | [x] -> x
   | _ :: l -> last l
 
-(* let rec iter f x n = *)
-(*   if n = Z.zero then x else iter f (f x) (Z.pred n) *)
-
 let compare_both c k = if c <> 0 then c else k ()
 
 let int_compare x y = x - y

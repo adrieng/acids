@@ -154,6 +154,10 @@ let rec ones_word acc w i =
     ones_word acc w (i - m)
 
 let rec iof_word acc w j =
+  (* Format.eprintf "{iof_word %a [%a] %a} " *)
+  (*   Int.print acc *)
+  (*   print_word w *)
+  (*   Int.print j; *)
   let open Int in
   assert (j <= w.nbones);
   if j = zero
@@ -162,7 +166,7 @@ let rec iof_word acc w j =
     let b, k, w = pop w in
     if j > b * k
     then iof_word (acc + k) w (j - b * k)
-    else (acc + j / b + one)
+    else (acc + j / succ b)
 
 (** {2 Low-level functions on pwords} *)
 
@@ -188,14 +192,15 @@ let iof w j =
   let open Int in
   assert (j <= w.u.nbones || w.v.nbones >= one);
   if j <= w.u.nbones
-  then iof_word zero w.u j
+  then iof_word one w.u j
   else
     let j = j - w.u.nbones in
-    let base_pos =
-      let nth_iter = j / w.v.nbones in
-      w.u.size + w.v.size * nth_iter
-    in
-    iof_word base_pos w.v (j mod w.v.nbones)
+    let base_pos = w.u.size + w.v.size * (pred j / w.v.nbones) + one in
+    let j = succ (pred j mod w.v.nbones) in
+    Format.eprintf "{ base_pos = %a, j = %a } "
+      Int.print base_pos
+      Int.print j;
+    iof_word base_pos w.v j
 
 let lengthen_prefix { u = u; v = v; } n =
   let v_pref, v = take n v in

@@ -56,3 +56,8 @@ module Env =
 let rec gcd a b = if b = zero then a else gcd b (a mod b)
 
 let lcm a b = (a * b) / gcd a b
+
+let rec iter f i acc =
+  if i = zero
+  then acc
+  else iter f (pred i) (f acc)

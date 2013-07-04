@@ -27,7 +27,16 @@ val concat : word -> word -> word
 
 val power : word -> Int.t -> word
 
-type pword
+val size : word -> Int.t
+
+val nbones : word -> Int.t
+
+type pword =
+  private
+    {
+      u : word;
+      v : word;
+    }
 
 val make : word -> word -> pword
 

@@ -31,6 +31,10 @@ let ( > ) = ( > )
 
 let ( = ) i1 i2 = i1 = i2
 
+let min = Pervasives.min
+
+let max = Pervasives.max
+
 let of_char c = of_string (String.make 1 c)
 
 let print fmt i = Format.fprintf fmt "%nd" i

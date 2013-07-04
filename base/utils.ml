@@ -23,8 +23,6 @@ let comp x y = if x < y then LT else if x > y then GT else EQ
 
 let zclamp x = max 0 x
 
-let flip f x y = f y x
-
 let rec index x l =
   match l with
   | [] -> raise Not_found
@@ -186,14 +184,14 @@ struct
   module M = Map.Make(S)
   include M
   let print print_key print_value fmt map =
-    Format.fprintf fmt "@[";
+    Format.fprintf fmt "[@[";
     iter
       (fun k v ->
         Format.fprintf fmt "%a -> %a;@ "
           print_key k
           print_value v)
       map;
-    Format.fprintf fmt "@]"
+    Format.fprintf fmt "@]]"
 end
 
 module String_set =
@@ -208,7 +206,7 @@ end)
 
 open Format
 
-let print_nothing (fmt : Format.formatter) _ = ()
+let print_nothing (_ : Format.formatter) _ = ()
 
 let print_string fmt s = fprintf fmt "%s" s
 

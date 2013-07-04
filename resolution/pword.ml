@@ -67,9 +67,6 @@ let push i k w =
       size = w.size + k;
     }
 
-let of_desc desc =
-  List.fold_left (fun w (i, k) -> push i k w) empty (List.rev desc)
-
 let rev w = { w with desc = List.rev w.desc; }
 
 let pop w =
@@ -141,6 +138,10 @@ let power w i =
     else walk (concat w acc) (Int.pred i)
   in
   if Int.(i = zero) then empty else walk w i
+
+let size w = w.size
+
+let nbones w = w.nbones
 
 let rec ones_word acc w i =
   let open Int in

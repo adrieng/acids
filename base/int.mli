@@ -43,6 +43,12 @@ val ( > ) : t -> t -> bool
 
 val ( = ) : t -> t -> bool
 
+val min : t -> t -> t
+
+val max : t -> t -> t
+
+val max : t -> t -> t
+
 val zero : t
 
 val one : t

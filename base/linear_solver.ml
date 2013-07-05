@@ -35,37 +35,6 @@ type linear_system =
     ls_objective : terms;
   }
 
-let print_terms fmt terms =
-  let print_term fmt (i, v) =
-    Format.fprintf fmt "%c %a * %s"
-      (if Int.(i < zero) then '-' else '+')
-      Int.print (Int.abs i)
-      v
-  in
-  Utils.print_list_r print_term "" fmt terms
-
-let print_linear_comp fmt cmp =
-  let s =
-    match cmp with
-    | Leq -> "="
-    | Lgt -> ">"
-    | Lge -> ">="
-    | Llt -> "<"
-    | Lle -> "<="
-  in
-  Format.fprintf fmt "%s" s
-
-let print_linear_constraint fmt cstr =
-  Format.fprintf fmt "@[%a@ %a %a@]"
-    print_terms cstr.lc_terms
-    print_linear_comp cstr.lc_comp
-    Int.print cstr.lc_const
-
-let print_linear_system fmt lsys =
-  Format.fprintf fmt "@[minimize @[%a@] with@ {@[@ @[%a@]@ @]}@]"
-    print_terms lsys.ls_objective
-    (Utils.print_list_r print_linear_constraint ";") lsys.ls_constraints
-
 let empty_system =
   {
     ls_variables = Utils.String_set.empty;
@@ -75,7 +44,7 @@ let empty_system =
 
 let negate_terms terms = List.map (fun (c, id) -> Int.neg c, id) terms
 
-let add_var lsys s =
+let add_variable lsys s =
   if Utils.String_set.mem s lsys.ls_variables
   then invalid_arg ("add_var: duplicate variable " ^ s);
   { lsys with ls_variables = Utils.String_set.add s lsys.ls_variables; }, s
@@ -199,7 +168,7 @@ let write_constraint_cplex_format fmt constr =
     write_comparator_cplex_format constr.lc_comp
     write_const_cplex_format constr.lc_const
 
-let print_linear_system fmt lsys =
+let print_system fmt lsys =
   Format.fprintf fmt
     "Minimize @[%a@]@\n"
     write_terms_cplex_format lsys.ls_objective;
@@ -297,7 +266,7 @@ let read_solution sys sol_file =
 
 module Env = Utils.Env
 
-let solve_linear_system ?(verbose = false) sys =
+let solve ?(verbose = false) sys =
   if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty
   else
     (

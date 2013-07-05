@@ -30,9 +30,7 @@ and linear_constraint =
 
 and linear_comp = Leq | Lgt | Lge | Llt | Lle
 
-val print_linear_system : Format.formatter -> linear_system -> unit
-
-val add_var : linear_system -> string -> linear_system * var
+val add_variable : linear_system -> string -> linear_system * var
 
 val negate_terms : terms -> terms
 
@@ -56,7 +54,7 @@ val minimize_all_variables : linear_system -> terms
 val set_objective_function
   : linear_system -> terms -> linear_system
 
-val print_linear_system : Format.formatter -> linear_system -> unit
+val print_system : Format.formatter -> linear_system -> unit
 
 exception Ill_formed_objective_function
 exception Solver_internal_error of int
@@ -65,5 +63,5 @@ exception Could_not_solve
 
 module Env : Map.S with type key = var
 
-val solve_linear_system
+val solve
   : ?verbose:bool -> linear_system -> Int.t Env.t

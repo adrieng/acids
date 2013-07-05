@@ -200,12 +200,12 @@ let add_linear_vars csys =
   let add_vars c (nbones_u, nbones_v) (lsys, sizes, indexes) =
     let open Linear_solver in
 
-    let lsys, size_var = add_var lsys (c ^ "_size") in
+    let lsys, size_var = add_variable lsys (c ^ "_size") in
     let sizes = Utils.Env.add c size_var sizes in
 
     let add_precs (i, lsys, indexes_for_c) =
       let name = c ^ "_i_" ^ Int.to_string i in
-      let lsys, var = add_var lsys name in
+      let lsys, var = add_variable lsys name in
       (Int.succ i, lsys, Int.Env.add i var indexes_for_c)
     in
 
@@ -256,9 +256,23 @@ let build_synchronizability_constraints csys =
   { csys with lsys = lsys; }
 
 let build_precedence_constraints csys =
-  let add_precedence_constraints lsys ((c_x, p_x), (c_y, p_y)) =
-    let indexes_x = Utils.Env.find c_x csys.indexes_of_each_unknown in
-    let indexes_y = Utils.Env.find c_y csys.indexes_of_each_unknown in
+  let add_precedence_constraints
+      (indexes_of_each_unknown, lsys) ((c_x, p_x), (c_y, p_y)) =
+    let find_indexes c =
+      try Utils.Env.find c indexes_of_each_unknown
+      with Not_found -> Int.Env.empty
+    in
+
+    let find_index lsys c indexes i =
+      try Int.Env.find i indexes, lsys, indexes
+      with Not_found ->
+        let s = c ^ "_idx_" ^ Int.to_string i in
+        let lsys, v = Linear_solver.add_variable lsys s in
+        v, lsys, Int.Env.add i v indexes
+    in
+
+    let indexes_x = find_indexes c_x in
+    let indexes_y = find_indexes c_y in
 
     let nbones_x_u, nbones_x_v = find_nbones csys c_x in
     let nbones_y_u, nbones_y_v = find_nbones csys c_y in
@@ -272,29 +286,18 @@ let build_precedence_constraints csys =
       + lcm (csys.k' * nbones p_x.v) (csys.k' * nbones p_y.v)
     in
 
-
-
-    Format.eprintf
-      "-> @[%a, h = %a,@ nbones_x_u = %a,@ nbones_x_v = %a,@ nbones_y_u = %a,@ nbones_y_v = %a@]@.@."
-      print_side ((c_x, p_x), (c_y, p_y))
-      Int.print h
-      Int.print nbones_x_u
-      Int.print nbones_x_v
-      Int.print nbones_y_u
-      Int.print nbones_y_v;
-
-    let rec build lsys j =
+    let rec build (indexes_x, indexes_y, lsys) j =
       let open Linear_solver in
-      if j > h then lsys
+      if j > h then indexes_x, indexes_y, lsys
       else
-        let iof_c_x =
-          let i_x = Pword.iof p_x j in
-          Int.Env.find i_x indexes_x
+        let iof_c_x, lsys, indexes_x =
+          find_index lsys c_x indexes_x (Pword.iof p_x j)
         in
-        let iof_c_y =
-          let i_y = Pword.iof p_y j in
-          Int.Env.find i_y indexes_y
+
+        let iof_c_y, lsys, indexes_y =
+          find_index lsys c_y indexes_y (Pword.iof p_y j)
         in
+
         let cstr =
           {
             lc_terms = Int.([one, iof_c_x; neg one, iof_c_y]);
@@ -302,17 +305,29 @@ let build_precedence_constraints csys =
             lc_const = Int.zero;
           }
         in
-        build (add_linear_constraint lsys cstr) (Int.succ j)
+        build (indexes_x, indexes_y, add_linear_constraint lsys cstr) (Int.succ j)
     in
 
-    build lsys Int.one
+    let indexes_x, indexes_y, lsys =
+      build (indexes_x, indexes_y, lsys) Int.one
+    in
+
+    Utils.Env.add c_y indexes_y (Utils.Env.add c_x indexes_x indexes_of_each_unknown),
+    lsys
   in
 
-  let lsys =
-    List.fold_left add_precedence_constraints csys.lsys csys.constraints
+  let indexes_of_each_unknown, lsys =
+    List.fold_left
+      add_precedence_constraints
+      (Utils.Env.empty, csys.lsys)
+      csys.constraints
   in
 
-  { csys with lsys = lsys; }
+  {
+    csys with
+      lsys = lsys;
+      indexes_of_each_unknown = indexes_of_each_unknown;
+  }
 
 let solve sys =
   let csys = make_concrete_system sys in
@@ -323,5 +338,5 @@ let solve sys =
   let csys = build_synchronizability_constraints csys in
   let csys = build_precedence_constraints csys in
   Format.eprintf "Linear system:@ %a@."
-    Linear_solver.print_linear_system csys.lsys;
+    Linear_solver.print_system csys.lsys;
   Utils.Env.empty

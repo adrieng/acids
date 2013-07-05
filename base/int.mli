@@ -39,6 +39,10 @@ val ( / ) : t -> t -> t
 
 val ( mod ) : t -> t -> t
 
+val mod_b1 : t -> t -> t
+
+val div_b1 : t -> t -> t
+
 val ( > ) : t -> t -> bool
 
 val ( = ) : t -> t -> bool
@@ -88,6 +92,8 @@ val compare : t -> t -> int
 val hash : t -> int
 
 module Env : Map.S with type key = t
+
+module Set : Set.S with type elt = t
 
 val lcm : t -> t -> t
 

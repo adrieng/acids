@@ -183,21 +183,24 @@ let ones w i =
   else
     let i = i - w.u.size in
     let nbones =
-      let nth_iter = i / w.v.size in
+      let nth_iter = div_b1 i w.v.size in
       w.u.nbones + w.v.nbones * nth_iter
     in
-    ones_word nbones w.v (i mod w.v.size)
+    ones_word nbones w.v (mod_b1 i w.v.size)
 
 let iof w j =
   let open Int in
   assert (j <= w.u.nbones || w.v.nbones >= one);
-  if j <= w.u.nbones
-  then iof_word one w.u j
-  else
-    let j = j - w.u.nbones in
-    let base_pos = w.u.size + w.v.size * (pred j / w.v.nbones) + one in
-    let j = succ (pred j mod w.v.nbones) in
-    iof_word base_pos w.v j
+  let r =
+    if j <= w.u.nbones
+    then iof_word one w.u j
+    else
+      let j_v = j - w.u.nbones in
+      let base_pos = w.u.size + w.v.size * Int.div_b1 j_v w.v.nbones + one in
+      let j_v' = mod_b1 j w.v.nbones in
+      iof_word base_pos w.v j_v'
+  in
+  r
 
 let lengthen_prefix { u = u; v = v; } n =
   let v_pref, v = take n v in

@@ -27,6 +27,10 @@ let ( / ) = div
 
 let ( mod ) = rem
 
+let mod_b1 x y = succ (pred x mod y)
+
+let div_b1 x y = pred x / y
+
 let ( > ) = ( > )
 
 let ( = ) i1 i2 = i1 = i2
@@ -47,6 +51,14 @@ let hash = Hashtbl.hash
 
 module Env =
   Map.Make(
+    struct
+      type t = Nativeint.t
+      let compare = Nativeint.compare
+    end
+  )
+
+module Set =
+  Set.Make(
     struct
       type t = Nativeint.t
       let compare = Nativeint.compare

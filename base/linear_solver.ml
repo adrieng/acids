@@ -160,11 +160,13 @@ let write_const_cplex_format fmt cst =
   let sign = if cst < Int.zero then "-" else "+" in
   Format.fprintf fmt "%s %a" sign Int.print (Int.abs cst)
 
+let print_var fmt v = Format.fprintf fmt "%s" v
+
 let write_terms_cplex_format fmt terms =
   let write_term (cst, var) =
-    Format.fprintf fmt " %a %s"
+    Format.fprintf fmt " %a %a"
       write_const_cplex_format cst
-      var
+      print_var var
   in
   List.iter write_term terms
 

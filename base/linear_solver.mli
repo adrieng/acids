@@ -54,6 +54,8 @@ val minimize_all_variables : linear_system -> terms
 val set_objective_function
   : linear_system -> terms -> linear_system
 
+val print_var : Format.formatter -> var -> unit
+
 val print_system : Format.formatter -> linear_system -> unit
 
 exception Ill_formed_objective_function

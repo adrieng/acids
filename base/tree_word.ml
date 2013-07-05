@@ -30,12 +30,30 @@ let rec print_power_tree print_a print_b fmt tr =
       (print_power_tree print_a print_b) tr
       print_b pw
 
+let rec print_power_tree_int print_a fmt tr =
+  match tr with
+  | Leaf a -> print_a fmt a
+  | Concat tr_l ->
+    Utils.print_list_r (print_power_tree_int print_a) "" fmt tr_l
+  | Power (tr, pw) ->
+    if pw = Int.one
+    then print_power_tree_int print_a fmt tr
+    else
+      Format.fprintf fmt "%a^%a"
+        (print_power_tree_int print_a) tr
+        Int.print pw
+
 type ('a, 'b) t = { u : ('a, 'b) power_tree; v : ('a, 'b) power_tree; }
 
 let print_upword print_a print_b fmt { u = u; v = v; } =
   Format.fprintf fmt "%a(%a)"
     (print_power_tree print_a print_b) u
     (print_power_tree print_a print_b) v
+
+let print_upword_int print_a fmt { u = u; v = v; } =
+  Format.fprintf fmt "%a(%a)"
+    (print_power_tree_int print_a) u
+    (print_power_tree_int print_a) v
 
 let rec mapfold_power_tree f g pt acc =
   match pt with

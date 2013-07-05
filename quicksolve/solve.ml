@@ -46,7 +46,7 @@ let do_sys sys =
     let print_aff fmt (k, w) =
       Format.fprintf fmt "%s = %a"
         k
-        (Tree_word.print_upword Int.print Int.print) w
+        (Tree_word.print_upword_int Int.print) w
     in
     let sol = Solution.fold (fun k w acc -> (k, w) :: acc) (solve sys) [] in
     Format.printf "Solution: @[{@ %a@ }@]@."

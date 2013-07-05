@@ -288,7 +288,7 @@ let build_precedence_constraints csys =
 let build_periodicity_constraints csys =
   let open Int in
 
-  let add_precedence_for_iof lsys lv =
+  let add_periodicity_constraint lsys lv =
     match lv with
     | Size _ -> lsys
     | Iof (c, j') ->
@@ -300,17 +300,19 @@ let build_periodicity_constraints csys =
         let l = Int.div_b1 j'_v nbones_c_v in
         assert (j' = j + l * nbones_c_v);
         assert (j > nbones_c_u && j <= nbones_c_u + nbones_c_v);
-        Eq ([one, Iof (c, j'); neg one, Iof (c, j)],
-            l * nbones_c_v) :: lsys
+        let t1 = one, Iof (c, j') in
+        let t2 = neg one, Iof (c, j) in
+        let t3 = neg l, Size c in
+        Eq ([t1; t2; t3], zero) :: lsys
   in
 
-  let add_precedence_constraints lsys lc =
+  let add_periodicity_constraints lsys lc =
     let iof_l = List.map snd (get_linear_term lc) in
-    List.fold_left add_precedence_for_iof lsys iof_l
+    List.fold_left add_periodicity_constraint lsys iof_l
   in
 
   let lsys =
-    List.fold_left add_precedence_constraints csys.lsys csys.lsys
+    List.fold_left add_periodicity_constraints csys.lsys csys.lsys
   in
 
   { csys with lsys = lsys; }
@@ -437,7 +439,7 @@ let solve_linear_system csys =
       csys.lsys
   in
 
-  let lsys = Linear_solver.(bound_all_variables lsys Lge Int.zero) in
+  let lsys = Linear_solver.(bound_all_variables lsys Lge Int.one) in
   let lsys = Linear_solver.(bound_all_variables lsys Lle Int.max_int) in
   let lsys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
@@ -447,8 +449,65 @@ let solve_linear_system csys =
 
   let lsol = Linear_solver.solve ~verbose:true lsys in
 
-  exit 0
+  Linear_solver.Env.iter
+    (fun k i ->
+      Format.eprintf "  %a = %a@."
+        Linear_solver.print_var k
+        Int.print i)
+    lsol;
 
+  let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
+    Format.eprintf "Reconstructing %s@." c;
+
+    let size_c_v =
+      let size_v = Utils.Env.find c size_vars in
+      Linear_solver.Env.find size_v lsol
+    in
+
+    let indexes_for_c = Utils.Env.find c indexes_vars in
+
+    let size_c_u =
+      let first_one_v = Int.Env.find (Int.succ nbones_c_u) indexes_for_c in
+      Int.pred (Linear_solver.Env.find first_one_v lsol)
+    in
+
+    Format.eprintf "Reconstructing %s, |%s|.u = %a, |%s|.v = %a@."
+      c
+      c Int.print size_c_u
+      c Int.print size_c_v
+    ;
+
+    let iof =
+      let add j v_i iof = (j, Linear_solver.Env.find v_i lsol) :: iof in
+      List.rev (Int.Env.fold add indexes_for_c [])
+    in
+
+    let iof_u =
+      List.filter (fun (j, _) -> j <= nbones_c_u) iof
+    in
+    let iof_v =
+      let iof_v = List.filter (fun (j, _) -> j > nbones_c_u && j <= nbones_c_v) iof in
+      List.map (fun (j, i) -> Int.(j - nbones_c_u, i - size_c_u)) iof_v
+    in
+
+    let u =
+      Pword.word_of_iof
+        ~max_burst:csys.max_burst
+        ~size:size_c_u
+        ~nbones:nbones_c_u
+        iof_u
+    in
+    let v =
+      Pword.word_of_iof
+        ~max_burst:csys.max_burst
+        ~size:size_c_v
+        ~nbones:nbones_c_v
+        iof_v
+    in
+
+    Utils.Env.add c (Pword.make u v) sol
+  in
+  Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 
 let solve sys =
   let csys = make_concrete_system sys in
@@ -463,4 +522,4 @@ let solve sys =
   Format.eprintf "Linear system:@ %a@."
     print_lsys csys.lsys;
   let sol = solve_linear_system csys in
-  Utils.Env.empty
+  Utils.Env.map Pword.to_tree_pword sol

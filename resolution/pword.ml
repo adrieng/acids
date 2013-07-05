@@ -154,10 +154,6 @@ let rec ones_word acc w i =
     ones_word acc w (i - m)
 
 let rec iof_word acc w j =
-  (* Format.eprintf "{iof_word %a [%a] %a} " *)
-  (*   Int.print acc *)
-  (*   print_word w *)
-  (*   Int.print j; *)
   let open Int in
   assert (j <= w.nbones);
   if j = zero
@@ -167,6 +163,78 @@ let rec iof_word acc w j =
     if j > b * k
     then iof_word (acc + k) w (j - b * k)
     else (acc + j / succ b)
+
+let word_of_iof (* mk_segment *) ~max_burst ~size ~nbones iof =
+  let open Int in
+
+  Format.eprintf
+    "@[word_of_iof: mb = %a,@ size = %a,@ nbones = %a,@ iof = %a -> @?"
+    Int.print max_burst
+    Int.print size
+    Int.print nbones
+    (let p fmt (j, i) =
+       Format.fprintf fmt "I(%a) = %a" Int.print j Int.print i
+     in
+     Utils.print_list_r p ",") iof;
+
+  assert (Int.of_int (List.length iof) <= nbones);
+  assert (nbones <= size * max_burst);
+
+  (* [push_max_nbones nbones w] adds [nbones] ones by bursts (respecting
+     [max_burst]) in w and returns the number of ticks added. For example:
+
+     push_max_nbones 5 w (with max_burst = 2) ->
+     2^2 1 w, 3
+  *)
+  let push_max_nbones nbones w =
+    let b = min nbones max_burst in
+    let b_k = nbones / b in
+    let r = nbones mod b_k in
+    let r_k = if r = zero then zero else one in
+    push b b_k (push r r_k w), b_k + r_k
+  in
+
+  let rec push_all i j iof w =
+    assert (i >= zero && i <= size);
+    assert (i >= zero && j <= nbones);
+    match iof with
+    | [] ->
+      (* mk_segment (size - i) (nbones - j) Int.zero *)
+      assert false
+
+    | (next_j, next_i) :: iof ->
+      assert (next_j > j && next_j <= nbones);
+      assert (next_i > i && next_i <= size);
+
+      let burst, iof =
+        let rec find_burst burst iof =
+          match iof with
+          | [] -> burst, iof
+          | (next_j', next_i') :: iof' ->
+            if next_i' = next_i
+            then find_burst (succ burst) iof
+            else burst, iof'
+        in
+        find_burst Int.one iof
+      in
+
+      (* let segment_size = next_i - i in *)
+      (* let nb_unc_ones = next_j - j - one in *)
+      (* assert (nb_unc_ones_available <= segment_size * max_burst); *)
+
+      (* let seg = mk_segment ~segment_size ~nb_unc_ones ~burst in *)
+      (* push_all next_i next_j iof (concat (rev seg) w) *)
+      assert false
+  in
+
+  (* let w = rev (push_all nbones Int.zero Int.zero iof empty) in *)
+  (* Format.eprintf "[%a]@." print_word w; *)
+  (* w *)
+  assert false
+
+let to_tree_word w =
+  let open Tree_word in
+  Concat (List.map (fun (i, k) -> Power (Leaf i, k)) w.desc)
 
 (** {2 Low-level functions on pwords} *)
 
@@ -279,3 +347,6 @@ let precedes ?(strict = false) p1 p2 =
 let synchro p1 p2 = Rat.(rate p1 = rate p2)
 
 let adapt p1 p2 = synchro p1 p2 && precedes p1 p2
+
+let to_tree_pword p =
+  { Tree_word.u = to_tree_word p.u; Tree_word.v = to_tree_word p.v; }

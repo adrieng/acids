@@ -5,3 +5,7 @@ Compiler:
 - fix static type variables, see example in static.split
 - interval typing: be more modular, see example in interval.split
 - clock_types: ct -> ty
+
+Resolution:
+- Only compute causal solutions
+- User-supplied word reconstruction choice

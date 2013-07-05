@@ -31,6 +31,9 @@ val size : word -> Int.t
 
 val nbones : word -> Int.t
 
+val word_of_iof :
+  max_burst:Int.t -> size:Int.t -> nbones:Int.t -> (Int.t * Int.t) list -> word
+
 type pword =
   private
     {
@@ -57,3 +60,5 @@ val rate : pword -> Rat.t
 val equal : pword -> pword -> bool
 
 val adapt : pword -> pword -> bool
+
+val to_tree_pword : pword -> (Int.t, Int.t) Tree_word.t

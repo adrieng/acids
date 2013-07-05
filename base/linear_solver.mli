@@ -41,7 +41,7 @@ val make_equality : terms -> Int.t -> terms -> Int.t -> linear_constraint
 
 val empty_system : linear_system
 
-val add_linear_constraint : linear_system -> linear_constraint -> linear_system
+val add_constraint : linear_system -> linear_constraint -> linear_system
 
 (* Bounds *)
 

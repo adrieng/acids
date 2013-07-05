@@ -61,9 +61,27 @@ let add_vars_of_terms sys terms =
   { sys with
     ls_variables = List.fold_right Utils.String_set.add vars sys.ls_variables; }
 
-let add_linear_constraint sys lc =
-  let sys = add_vars_of_terms sys lc.lc_terms in
-  { sys with ls_constraints = lc :: sys.ls_constraints; }
+let factor_variables_in_constraint lc =
+  let open Int in
+
+  let add cstr (i, v) =
+    let i' = try Utils.Env.find v cstr with Not_found -> zero in
+    Utils.Env.add v (i + i') cstr
+  in
+
+  let cstr = List.fold_left add Utils.Env.empty lc.lc_terms in
+
+  let add k i term = if i = Int.zero then term else (i, k) :: term in
+
+  { lc with lc_terms = Utils.Env.fold add cstr []; }
+
+let add_constraint sys lc =
+  let lc = factor_variables_in_constraint lc in
+  match lc.lc_terms with
+  | [] -> sys
+  | _ :: _ ->
+    let sys = add_vars_of_terms sys lc.lc_terms in
+    { sys with ls_constraints = lc :: sys.ls_constraints; }
 
 let minimize_all_variables sys =
   Utils.String_set.fold (fun id obj -> (Int.one, id) :: obj) sys.ls_variables []

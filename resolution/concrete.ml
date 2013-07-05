@@ -299,6 +299,7 @@ let build_periodicity_constraints csys =
         let j = mod_b1 j'_v nbones_c_v + nbones_c_u in
         let l = Int.div_b1 j'_v nbones_c_v in
         assert (j' = j + l * nbones_c_v);
+        assert (j > nbones_c_u && j <= nbones_c_u + nbones_c_v);
         Eq ([one, Iof (c, j'); neg one, Iof (c, j)],
             l * nbones_c_v) :: lsys
   in
@@ -371,6 +372,84 @@ let build_increasing_indexes_constraints csys =
 
   { csys with lsys = lsys; }
 
+let solve_linear_system csys =
+  let find_size_var (size_vars, indexes_vars, lsys) c =
+    try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
+    with Not_found ->
+      let s = "size_" ^ c in
+      let lsys, v = Linear_solver.add_variable lsys s in
+      (Utils.Env.add c v size_vars, indexes_vars, lsys), v
+  in
+
+  let find_index (size_vars, indexes_vars, lsys) c j =
+    let indexes_c =
+      try Utils.Env.find c indexes_vars with Not_found -> Int.Env.empty
+    in
+
+    let v, indexes_c, lsys =
+      try Int.Env.find j indexes_c, indexes_c, lsys
+      with Not_found ->
+        let s = Printf.sprintf "I_%s_%s" c (Int.to_string j) in
+        let lsys, v = Linear_solver.add_variable lsys s in
+        v, Int.Env.add j v indexes_c, lsys
+    in
+
+    (size_vars, Utils.Env.add c indexes_c indexes_vars, lsys), v
+  in
+
+  let translate_linear_term acc (i, lv) =
+    let acc, v =
+      match lv with
+      | Size c -> find_size_var acc c
+      | Iof (c, j) -> find_index acc c j
+    in
+    acc, (i, v)
+  in
+
+  let translate_linear_constr acc cstr =
+    let make_linear_constraint acc terms cmp cst =
+      let acc, terms = Utils.mapfold_left translate_linear_term acc terms in
+      acc,
+      {
+        Linear_solver.lc_terms = terms;
+        Linear_solver.lc_comp = cmp;
+        Linear_solver.lc_const = cst;
+      }
+    in
+
+    let (size_vars, indexes_vars, lsys), lc =
+      match cstr with
+      | Eq (terms, cst) ->
+        make_linear_constraint acc terms Linear_solver.Leq cst
+      | Le (terms, cst) ->
+        make_linear_constraint acc terms Linear_solver.Lle cst
+      | Ge (terms, cst) ->
+        make_linear_constraint acc terms Linear_solver.Lge cst
+    in
+
+    (size_vars, indexes_vars, Linear_solver.add_constraint lsys lc)
+  in
+
+  let size_vars, indexes_vars, lsys =
+    List.fold_left
+      translate_linear_constr
+      (Utils.Env.empty, Utils.Env.empty, Linear_solver.empty_system)
+      csys.lsys
+  in
+
+  let lsys = Linear_solver.(bound_all_variables lsys Lge Int.zero) in
+  let lsys = Linear_solver.(bound_all_variables lsys Lle Int.max_int) in
+  let lsys =
+    Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
+  in
+
+  Format.eprintf "-> @[%a@]@." Linear_solver.print_system lsys;
+
+  let lsol = Linear_solver.solve ~verbose:true lsys in
+
+  exit 0
+
+
 let solve sys =
   let csys = make_concrete_system sys in
   let csys = compute_sampler_sizes csys in
@@ -383,4 +462,5 @@ let solve sys =
   let csys = build_increasing_indexes_constraints csys in
   Format.eprintf "Linear system:@ %a@."
     print_lsys csys.lsys;
+  let sol = solve_linear_system csys in
   Utils.Env.empty

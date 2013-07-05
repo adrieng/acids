@@ -98,3 +98,7 @@ module Set : Set.S with type elt = t
 val lcm : t -> t -> t
 
 val iter : ('a -> 'a) -> t -> 'a -> 'a
+
+val min_int : t
+
+val max_int : t

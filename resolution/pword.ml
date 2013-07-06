@@ -164,11 +164,11 @@ let rec iof_word acc w j =
     then iof_word (acc + k) w (j - b * k)
     else (acc + j / succ b)
 
-let word_of_iof (* mk_segment *) ~max_burst ~size ~nbones iof =
+let make_word_alap ~max_burst ~size ~nbones iof =
   let open Int in
 
   Format.eprintf
-    "@[word_of_iof: mb = %a,@ size = %a,@ nbones = %a,@ iof = %a -> @?"
+    "@[make_word_alap: mb = %a,@ size = %a,@ nbones = %a,@ iof = %a@."
     Int.print max_burst
     Int.print size
     Int.print nbones
@@ -177,60 +177,139 @@ let word_of_iof (* mk_segment *) ~max_burst ~size ~nbones iof =
      in
      Utils.print_list_r p ",") iof;
 
-  assert (Int.of_int (List.length iof) <= nbones);
-  assert (nbones <= size * max_burst);
+  assert (nbones <= max_burst * size);
+  assert (of_int (List.length iof) <= nbones);
 
-  (* [push_max_nbones nbones w] adds [nbones] ones by bursts (respecting
-     [max_burst]) in w and returns the number of ticks added. For example:
-
-     push_max_nbones 5 w (with max_burst = 2) ->
-     2^2 1 w, 3
-  *)
-  let push_max_nbones nbones w =
-    let b = min nbones max_burst in
-    let b_k = nbones / b in
-    let r = nbones mod b_k in
-    let r_k = if r = zero then zero else one in
-    push b b_k (push r r_k w), b_k + r_k
-  in
-
-  let rec push_all i j iof w =
-    assert (i >= zero && i <= size);
-    assert (i >= zero && j <= nbones);
-    match iof with
-    | [] ->
-      (* mk_segment (size - i) (nbones - j) Int.zero *)
-      assert false
-
-    | (next_j, next_i) :: iof ->
-      assert (next_j > j && next_j <= nbones);
-      assert (next_i > i && next_i <= size);
-
-      let burst, iof =
-        let rec find_burst burst iof =
+  if size = zero then empty
+  else
+    (
+      (* First pass: find ones at the same index and build bursts out of them *)
+      let iof =
+        let rec make_iof_burst acc iof =
           match iof with
-          | [] -> burst, iof
-          | (next_j', next_i') :: iof' ->
-            if next_i' = next_i
-            then find_burst (succ burst) iof
-            else burst, iof'
+          | [] -> acc
+          | (j, i) :: iof ->
+            let burst, iof =
+              let rec find_burst burst iof =
+                match iof with
+                | [] -> burst, iof
+                | (j', i') :: iof' ->
+                  assert (i' >= i);
+                  assert (j' >= j);
+                  if i' > i then burst, iof else find_burst (succ burst) iof'
+              in
+              find_burst one iof
+            in
+            make_iof_burst ((j, i, burst) :: acc) iof
         in
-        find_burst Int.one iof
+
+        make_iof_burst [] iof
       in
 
-      (* let segment_size = next_i - i in *)
-      (* let nb_unc_ones = next_j - j - one in *)
-      (* assert (nb_unc_ones_available <= segment_size * max_burst); *)
+      Format.eprintf "  adjusted iof = @[%a@]@."
+        (let print_info fmt (j, i, b) =
+           Format.fprintf fmt "(j = %a, i = %a, b = %a)" print j print i print b
+         in
+         Utils.print_list_r print_info ",") iof;
 
-      (* let seg = mk_segment ~segment_size ~nb_unc_ones ~burst in *)
-      (* push_all next_i next_j iof (concat (rev seg) w) *)
-      assert false
-  in
+      let push_segment_alap b0 b1 size nbones w =
+        (* b0 [ ... [size] times ? ... ] b1,
 
-  (* let w = rev (push_all nbones Int.zero Int.zero iof empty) in *)
-  (* Format.eprintf "[%a]@." print_word w; *)
-  (* w *)
-  assert false
+           ALAP strategy: we fill b1 first, then
+           from the right to b0.
+        *)
+        assert (b0 + b1 + nbones <= max_burst * (size + of_int 2));
+
+        Format.eprintf
+          "  push_segment_alap: b0 = %a, b1 = %a, size = %a, nbones = %a, w = %a@."
+          Int.print b0
+          Int.print b1
+          Int.print size
+          Int.print nbones
+          print_word w
+        ;
+
+        (* last burst *)
+        let b1' = min max_burst (b1 + nbones) in
+        let nbones = nbones - (b1' - b1) in
+
+        (* middle segment >>> *)
+
+        let b = min max_burst nbones in
+        let b_k =
+          let b_k = if b = zero then zero else nbones / b in
+          if b_k > size then size else b_k
+        in
+
+        let r = if b = zero then zero else nbones mod b in
+        let r_k = if r = zero || b_k = size then zero else one in
+
+        assert (b_k + r_k <= size);
+
+        (* number of ones consumed through b_k and r_k *)
+        let nbones = nbones - b * b_k - r * r_k in
+
+        (* number of zeroes to insert to reach size *)
+        let z_k = size - b_k - r_k in
+
+        (* <<< end of middle segment *)
+
+        (* last bit *)
+        let b0' = min max_burst (b0 + nbones) in
+        let nbones = nbones - (b0' - b0) in
+        let b0'_k = if b0' = zero then zero else b0' in
+
+        assert (nbones = zero);
+
+        (* push everything except b1' in reverse order *)
+        let w = push b b_k (push zero z_k (push r r_k (push b0' b0'_k w))) in
+        Format.eprintf "  -> w = %a, b1' = %a@."
+          print_word w
+          Int.print b1';
+
+        w, b1'
+      in
+
+      let rec make w iof =
+        match iof with
+        | [] -> assert false
+
+        | [(j, i, b)] ->
+          let size_between = i - one in
+          let nbones_between = j - one in
+
+          let w, b' = push_segment_alap zero b size_between nbones_between w in
+          push b' one w
+
+        | (j, i, b) :: (j', i', b') :: iof ->
+          assert (j > j' + b' - one);
+          assert (i > i');
+
+          let size_between = i - i' - one in
+          let nbones_between = j - j' - b' - one in
+
+          let w, b' = push_segment_alap b' b size_between nbones_between w in
+          make w ((j', i', b') :: iof)
+      in
+
+      let w =
+        match iof with
+        | [] ->
+          Format.eprintf "HAHA@.";
+          let w, b =
+            push_segment_alap zero zero (size - of_int 1) nbones empty
+          in
+          push b one w
+        | _ :: _ ->
+          make empty iof
+      in
+      let w = rev w in
+      Format.eprintf "-> %a@." print_word w;
+      assert (w.size = size);
+      assert (w.nbones = nbones);
+      (* exit 0; *)
+      w
+    )
 
 let to_tree_word w =
   let open Tree_word in

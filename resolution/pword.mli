@@ -31,7 +31,7 @@ val size : word -> Int.t
 
 val nbones : word -> Int.t
 
-val word_of_iof :
+val make_word_alap :
   max_burst:Int.t -> size:Int.t -> nbones:Int.t -> (Int.t * Int.t) list -> word
 
 type pword =

@@ -9,3 +9,4 @@ Compiler:
 Resolution:
 - Only compute causal solutions
 - User-supplied word reconstruction choice
+- Add missing first one in period in linear system

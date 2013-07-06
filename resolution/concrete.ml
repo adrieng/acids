@@ -457,8 +457,6 @@ let solve_linear_system csys =
     lsol;
 
   let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
-    Format.eprintf "Reconstructing %s@." c;
-
     let size_c_v =
       let size_v = Utils.Env.find c size_vars in
       Linear_solver.Env.find size_v lsol
@@ -471,10 +469,13 @@ let solve_linear_system csys =
       Int.pred (Linear_solver.Env.find first_one_v lsol)
     in
 
-    Format.eprintf "Reconstructing %s, |%s|.u = %a, |%s|.v = %a@."
+    Format.eprintf
+      "Reconstructing %s, |%s.u| = %a, |%s.u|_1 = %a, |%s.v| = %a, |%s.v| = %a@."
       c
       c Int.print size_c_u
+      c Int.print nbones_c_u
       c Int.print size_c_v
+      c Int.print nbones_c_v
     ;
 
     let iof =
@@ -490,15 +491,17 @@ let solve_linear_system csys =
       List.map (fun (j, i) -> Int.(j - nbones_c_u, i - size_c_u)) iof_v
     in
 
+    Format.eprintf "Making u@.";
     let u =
-      Pword.word_of_iof
+      Pword.make_word_alap
         ~max_burst:csys.max_burst
         ~size:size_c_u
         ~nbones:nbones_c_u
         iof_u
     in
+    Format.eprintf "Making v@.";
     let v =
-      Pword.word_of_iof
+      Pword.make_word_alap
         ~max_burst:csys.max_burst
         ~size:size_c_v
         ~nbones:nbones_c_v

@@ -40,22 +40,12 @@ struct
   let fold = Utils.Env.fold
 end
 
-let rec translate_to_word_tree pt =
-  match pt with
-  | Tree_word.Leaf i -> Pword.singleton i
-  | Tree_word.Concat pt_l ->
-    let w_l = List.map translate_to_word_tree pt_l in
-    List.fold_right Pword.concat w_l Pword.empty
-  | Tree_word.Power (pt, i) -> Pword.power (translate_to_word_tree pt) i
-
-let translate_to_pword_tree { Tree_word.u = u; Tree_word.v = v; } =
-  Pword.make (translate_to_word_tree u) (translate_to_word_tree v)
-
 let translate_to_pwords problem =
   let translate_to_pword_side s =
     {
       Concrete.var = s.var;
-      Concrete.const = List.map translate_to_pword_tree s.const;
+      Concrete.const =
+        List.map Resolution_utils.pword_of_tree s.const;
     }
   in
 
@@ -81,7 +71,7 @@ let check_solution sys sol =
       match side.var with
       | None -> side.const
       | Some c ->
-        translate_to_pword_tree (Utils.Env.find c sol) :: side.const
+        Resolution_utils.pword_of_tree (Utils.Env.find c sol) :: side.const
     in
     Utils.fold_left_1 Pword.on l
   in

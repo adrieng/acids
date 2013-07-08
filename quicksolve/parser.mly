@@ -48,6 +48,9 @@
    { Tree_word.u = u; Tree_word.v = v; }
 %}
 
+%start word
+%type <(Int.t, Int.t) Tree_word.t> word
+
 %start system
 %type <Resolution.system> system
 

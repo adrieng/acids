@@ -164,6 +164,25 @@ let rec iof_word acc w j =
     then iof_word (acc + k) w (j - b * k)
     else (acc + j / succ b)
 
+let print_iof_list fmt iof_l =
+  let print_couple fmt (j, i) =
+    Format.fprintf fmt "(%a, %a)"
+      Int.print j
+      Int.print i
+  in
+  Format.fprintf fmt "@[[%a]@]"
+    (Utils.print_list_r print_couple ",") iof_l
+
+let print_iofb_list fmt iofb_l =
+  let print_triple fmt (j, i, b) =
+    Format.fprintf fmt "(%a, %a, %a)"
+      Int.print j
+      Int.print i
+      Int.print b
+  in
+  Format.fprintf fmt "@[[%a]@]"
+    (Utils.print_list_r print_triple ",") iofb_l
+
 let make_word_alap ~max_burst ~size ~nbones iof =
   let open Int in
 
@@ -237,6 +256,13 @@ let make_word_alap ~max_burst ~size ~nbones iof =
       in
 
       let rec make_iof prev_j prev_i iof w =
+        Format.eprintf
+          "@[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
+          print prev_j
+          print prev_i
+          print_iofb_list iof
+          print_word w;
+
         match iof with
         | [] ->
           (* Here we are creating the initial segment, if any *)
@@ -261,14 +287,41 @@ let make_word_alap ~max_burst ~size ~nbones iof =
 
           make_iof (j + b - one) i iof w
       in
+      Format.eprintf "-> %a, %a@." print nbones print size;
 
       let w = make_iof (succ nbones) (succ size) iof empty in
-
-      let w = rev w in
-      assert (w.size = size);
-      assert (w.nbones = nbones);
       w
     )
+
+let make_word_alap ~max_burst ~size ~nbones iof =
+  Format.eprintf "@.@.@.";
+  let w = make_word_alap ~max_burst ~size ~nbones iof in
+
+  Format.eprintf
+    "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@."
+    Int.print max_burst
+    Int.print size
+    Int.print nbones
+    print_iof_list iof
+    print_word w
+  ;
+
+  let check_iof (j, i) =
+    Format.eprintf "(%a, %a) vs. I_[%a](%a) = %a@."
+      Int.print j
+      Int.print i
+      print_word w
+      Int.print j
+      Int.print (iof_word Int.one w j)
+    ;
+    assert (Int.equal (iof_word Int.one w j) i);
+  in
+
+  assert (w.size = size);
+  assert (w.nbones = nbones);
+  assert (List.iter check_iof iof = ());
+
+  w
 
 let to_tree_word w =
   let open Tree_word in

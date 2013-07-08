@@ -48,8 +48,11 @@
    { Tree_word.u = u; Tree_word.v = v; }
 %}
 
-%start word
-%type <(Int.t, Int.t) Tree_word.t> word
+%start word_start
+%type <(Int.t, Int.t) Tree_word.power_tree> word_start
+
+%start pword_start
+%type <(Int.t, Int.t) Tree_word.t> pword_start
 
 %start system
 %type <Resolution.system> system
@@ -82,20 +85,20 @@ simple_ptree(X, Y):
 %inline ptree(X, Y):
 | pt = nonempty_list(simple_ptree(X, Y)) { make_concat pt }
 
-simple_tree:
+simple_word:
 | b = INT { Tree_word.Leaf b }
-| w = simple_tree CARET k = INT { Tree_word.Power (w, k) }
-| LBRACE w = tree RBRACE { w }
-
-tree:
-| w_l = nonempty_list(simple_tree) { Tree_word.Concat w_l }
+| w = simple_word CARET k = INT { Tree_word.Power (w, k) }
+| LBRACE w = word RBRACE { w }
 
 word:
-| LPAREN v = tree RPAREN { make_pword v }
-| u = tree LPAREN v = tree RPAREN { make_pword ~u v }
+| w_l = nonempty_list(simple_word) { Tree_word.Concat w_l }
+
+pword:
+| LPAREN v = word RPAREN { make_pword v }
+| u = word LPAREN v = word RPAREN { make_pword ~u v }
 
 const:
-| w_l = separated_nonempty_list(ON, word) { w_l }
+| w_l = separated_nonempty_list(ON, pword) { w_l }
 
 side:
 | s = STRING ON w_l = const { make_side (Some s) w_l }
@@ -128,3 +131,9 @@ system:
 file:
 | l = list(system) EOF { l }
 | error { Solver_utils.parse_error $startpos $endpos }
+
+word_start:
+| w = word EOF { w }
+
+pword_start:
+| p = pword EOF { p }

@@ -153,16 +153,16 @@ let rec ones_word acc w i =
     let acc = acc + b * m in
     ones_word acc w (i - m)
 
-let rec iof_word acc w j =
-  let open Int in
-  assert (j <= w.nbones);
-  if j = zero
-  then acc
-  else
+let iof_word w j =
+  let rec iof_word acc w j =
+    let open Int in
+    assert (j >= one && j <= w.nbones);
     let b, k, w = pop w in
     if j > b * k
     then iof_word (acc + k) w (j - b * k)
-    else (acc + j / succ b)
+    else acc + div_b1 j b
+  in
+  iof_word Int.one w j
 
 let print_iof_list fmt iof_l =
   let print_couple fmt (j, i) =
@@ -312,9 +312,9 @@ let make_word_alap ~max_burst ~size ~nbones iof =
       Int.print i
       print_word w
       Int.print j
-      Int.print (iof_word Int.one w j)
+      Int.print (iof_word w j)
     ;
-    assert (Int.equal (iof_word Int.one w j) i);
+    assert (Int.equal (iof_word w j) i);
   in
 
   assert (w.size = size);
@@ -352,12 +352,12 @@ let iof w j =
   assert (j <= w.u.nbones || w.v.nbones >= one);
   let r =
     if j <= w.u.nbones
-    then iof_word one w.u j
+    then iof_word w.u j
     else
       let j_v = j - w.u.nbones in
-      let base_pos = w.u.size + w.v.size * Int.div_b1 j_v w.v.nbones + one in
-      let j_v' = mod_b1 j w.v.nbones in
-      iof_word base_pos w.v j_v'
+      let base_pos = w.u.size + w.v.size * Int.div_b1 j_v w.v.nbones in
+      let j_v' = mod_b1 j_v w.v.nbones in
+      base_pos + iof_word w.v j_v'
   in
   r
 

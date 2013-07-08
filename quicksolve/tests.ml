@@ -15,24 +15,67 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+let eq ?(eq = (=)) print act exp =
+  let b = eq exp act in
+  if not b
+  then
+    Format.printf "{unexpected %a,@ expected %a} "
+      print act
+      print exp;
+  b
+
+let eq_int = eq Int.print
+
+let eq_word =
+  let print_word fmt w = Format.fprintf fmt "[%a]" Pword.print_word w in
+  eq print_word
+
 (* Testing Pword *)
+
+let i = Int.of_int
 
 let p s =
   let lexbuf = Lexing.from_string s in
-  let w = Parser.word Lexer.token lexbuf in
+  let w = Parser.pword_start Lexer.token lexbuf in
   Resolution_utils.pword_of_tree w
 
+let w s =
+  let lexbuf = Lexing.from_string s in
+  let w = Parser.word_start Lexer.token lexbuf in
+  Resolution_utils.word_of_tree w
+
 let iof =
-  let open Int in
-  let w = p "1^4 (1)" in
+  let w1 = p "1^4 (1)" in
+  let w2 = p "0^3 1 (2 0 3^2 0)" in
+  let w3 = p "0 2^3 4 (1)" in
   [
-    (fun () -> Pword.iof w (of_int 1) = of_int 1);
-    (fun () -> Pword.iof w (of_int 2) = of_int 2);
-    (fun () -> Pword.iof w (of_int 3) = of_int 3);
-    (fun () -> Pword.iof w (of_int 4) = of_int 4);
-    (fun () -> Pword.iof w (of_int 7) = of_int 7);
-    (fun () -> Pword.iof w (of_int 9) = of_int 9);
+    (fun () -> eq_int (Pword.iof w1 (i 1)) (i 1));
+    (fun () -> eq_int (Pword.iof w1 (i 2)) (i 2));
+    (fun () -> eq_int (Pword.iof w1 (i 3)) (i 3));
+    (fun () -> eq_int (Pword.iof w1 (i 4)) (i 4));
+    (fun () -> eq_int (Pword.iof w1 (i 7)) (i 7));
+    (fun () -> eq_int (Pword.iof w1 (i 9)) (i 9));
+
+    (fun () -> eq_int (Pword.iof w2 (i 3)) (i 5));
+    (fun () -> eq_int (Pword.iof w2 (i 5)) (i 7));
+    (fun () -> eq_int (Pword.iof w2 (i 15)) (i 13));
+
+    (fun () -> eq_int (Pword.iof w3 (i 3)) (i 3));
   ]
+
+let alap =
+  let l =
+    [
+      w "0^3 1", i 1, i 4, i 1, [(i 1, i 4)];
+      w "1 0^3", i 1, i 4, i 1, [(i 1, i 1)];
+    ]
+  in
+  let make (w, max_burst, size, nbones, iof) () =
+    eq_word
+      (Pword.make_word_alap ~max_burst ~size ~nbones iof)
+      w
+  in
+  List.map make l
 
 (* Stupid unit test framework *)
 
@@ -48,15 +91,17 @@ let name_tests base_name tests =
 
 let tests =
   name_tests "iof" iof
+  @ name_tests "make_word_alap" alap
 
 let run_test (failed, passed, total) (test_name, test) =
+  Format.printf "%s: @[" test_name;
   let nfailed, npassed =
-    if (try test () with _ -> false)
+    (* if (try test () with _ -> Format.printf "{exception} "; false) *)
+    if test ()
     then failed, passed + 1
     else failed + 1, passed
   in
-  Printf.printf "%s: %s\n"
-    test_name
+  Format.printf "%s@]@."
     (if nfailed > failed then "KO" else "OK")
   ;
   flush stdout;
@@ -66,7 +111,8 @@ let init = 0, 0, 0
 
 let self_test () =
   let failed, passed, total = List.fold_left run_test init tests in
-  Printf.printf "%d tests, %d passed, %d failed\n"
+  Format.printf "%d tests, %d passed, %d failed@."
     total
     passed
-    failed
+    failed;
+  flush stdout

@@ -40,6 +40,8 @@ let parse_file filen =
     Format.printf "%aSyntax error@." Loc.print loc;
     exit 1
 
+let exit_code = ref 0
+
 let do_sys sys =
   Format.printf "System: @[%a@]@\n" print_system sys;
   try
@@ -53,11 +55,14 @@ let do_sys sys =
       (Utils.print_list_r print_aff ",") sol;
   with
   | Could_not_solve Constant_inconsistency ->
-    Format.printf "Inconsistent constants@."
+    Format.printf "Inconsistent constants@.";
+    exit_code := 1
   | Could_not_solve Rate_inconsistency ->
-    Format.printf "Inconsistent rates@."
+    Format.printf "Inconsistent rates@.";
+    exit_code := 1
   | Could_not_solve Precedence_inconsistency ->
-    Format.printf "Inconsistent precedences@."
+    Format.printf "Inconsistent precedences@.";
+    exit_code := 1
 
 let do_file filen =
   let sys_l = parse_file filen in
@@ -70,4 +75,6 @@ let _ =
   else
     for i = 1 to Array.length Sys.argv - 1 do
       do_file Sys.argv.(i)
-    done
+    done;
+  flush stdout;
+  exit !exit_code

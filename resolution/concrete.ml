@@ -127,7 +127,7 @@ let get_linear_term lc =
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent concrete system. *)
 let make_concrete_system
-    ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 1)
+    ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 2)
     sys =
   assert (k >= Int.zero);
   assert (k' >= Int.one);
@@ -466,16 +466,11 @@ let solve_linear_system csys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in
 
-  Format.eprintf "-> @[%a@]@." Linear_solver.print_system lsys;
-
-  let lsol = Linear_solver.solve ~verbose:true lsys in
-
-  Linear_solver.Env.iter
-    (fun k i ->
-      Format.eprintf "  %a = %a@."
-        Linear_solver.print_var k
-        Int.print i)
-    lsol;
+  let lsol =
+    try Linear_solver.solve ~verbose:true lsys
+    with Linear_solver.Could_not_solve ->
+      Resolution_errors.precedence_inconsistency ()
+  in
 
   let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
     let size_c_v =
@@ -490,15 +485,6 @@ let solve_linear_system csys =
       Int.pred (Linear_solver.Env.find first_one_v lsol)
     in
 
-    Format.eprintf
-      "Reconstructing %s, |%s.u| = %a, |%s.u|_1 = %a, |%s.v| = %a, |%s.v| = %a@."
-      c
-      c Int.print size_c_u
-      c Int.print nbones_c_u
-      c Int.print size_c_v
-      c Int.print nbones_c_v
-    ;
-
     let iof =
       let add j v_i iof = (j, Linear_solver.Env.find v_i lsol) :: iof in
       List.rev (Int.Env.fold add indexes_for_c [])
@@ -512,7 +498,6 @@ let solve_linear_system csys =
       List.map (fun (j, i) -> Int.(j - nbones_c_u, i - size_c_u)) iof_v
     in
 
-    Format.eprintf "Making u@.";
     let u =
       Pword.make_word_alap
         ~max_burst:csys.max_burst
@@ -520,7 +505,6 @@ let solve_linear_system csys =
         ~nbones:nbones_c_u
         iof_u
     in
-    Format.eprintf "Making v@.";
     let v =
       Pword.make_word_alap
         ~max_burst:csys.max_burst

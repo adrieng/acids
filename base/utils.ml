@@ -15,6 +15,10 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+let curry f x y = f (x, y)
+
+let uncurry f (x, y) = f x y
+
 type ('a, 'b) sum = Left of 'a | Right of 'a
 
 type cmp = LT | GT | EQ
@@ -180,15 +184,19 @@ module MyMap(S : Map.OrderedType) =
 struct
   module M = Map.Make(S)
   include M
-  let print print_key print_value fmt map =
-    Format.fprintf fmt "[@[";
+  let print ?(sep = ",") print_key print_value fmt map =
+    let r = ref (cardinal map) in
+    Format.fprintf fmt "@[";
     iter
       (fun k v ->
-        Format.fprintf fmt "%a -> %a;@ "
+        decr r;
+        Format.fprintf fmt "%a = %a"
           print_key k
-          print_value v)
+          print_value v;
+        if !r > 0
+        then Format.fprintf fmt "%s@ " sep)
       map;
-    Format.fprintf fmt "@]]"
+    Format.fprintf fmt "@]"
 end
 
 module String_set =

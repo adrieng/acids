@@ -42,6 +42,7 @@ struct
   type system =
     {
       body : constr list;
+      options : Resolution_options.env;
     }
 
   let print_side fmt s =
@@ -68,8 +69,13 @@ struct
       Loc.print_short wc.loc
 
   let print_system fmt sys =
-    Format.fprintf fmt "{ @[<v>%a@] }"
-      (Utils.print_list_r print_wconstr ";") sys.body
+    Format.fprintf fmt "@[{ @[<v>%a@] }"
+      (Utils.print_list_r print_wconstr ";") sys.body;
+    if not (Resolution_options.is_empty sys.options)
+    then
+      Format.fprintf fmt "@ with @[%a@]"
+        Resolution_options.print_env sys.options;
+    Format.fprintf fmt "@]"
 
   let lower_equality_constraints sys =
     let lower_constr c sys =
@@ -80,5 +86,8 @@ struct
         left :: right :: sys
       | Adapt -> c :: sys
     in
-    { body = List.fold_right lower_constr sys.body []; }
+    {
+      sys with
+        body = List.fold_right lower_constr sys.body [];
+    }
 end

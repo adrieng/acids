@@ -50,10 +50,15 @@ rule token = parse
 | "{" { LBRACE }
 | "}" { RBRACE }
 | "^" { CARET }
-| "=" { KIND Problem.Equal }
-| "<:" { KIND Problem.Adapt }
+| "," { COMMA }
+| "=" { EQUAL }
+| "<:" { ADAPT }
 
 | "on" { ON }
+| "with" { WITH }
+
+| "true" { BOOL true }
+| "false" { BOOL false }
 
 | digit+ as i { INT (Int.of_string i) }
 | ident+ as s { STRING s }

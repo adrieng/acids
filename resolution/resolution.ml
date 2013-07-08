@@ -72,6 +72,7 @@ let translate_to_pwords problem =
 
   {
     Concrete.body = List.map translate_to_pword_constr problem.body;
+    Concrete.options = problem.options;
   }
 
 let solve sys =

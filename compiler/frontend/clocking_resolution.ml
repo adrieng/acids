@@ -405,7 +405,10 @@ let word_constraints_of_clock_constraints sys =
     | Tc_adapt (st1, st2) ->
       unify_decompose Problem.Adapt c.loc wsys st1 st2
   in
-  { Resolution.body = List.fold_left solve_constraint [] sys; }
+  {
+    Resolution.body = List.fold_left solve_constraint [] sys;
+    Resolution.options = Resolution_options.empty; (* TODO *)
+  }
 
 (** {2 Top-level function} *)
 

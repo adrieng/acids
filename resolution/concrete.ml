@@ -56,7 +56,6 @@ type concrete_system =
     (** number of ones per unknown, choosen according to k and k' *)
 
     (** Linear system *)
-
     lsys : lconstr list;
   }
 
@@ -145,7 +144,7 @@ let make_concrete_system
           rhs = reduce_on_side constr.rhs;
       }
     in
-    { body = List.map reduce_on_constr sys.body; }
+    { sys with body = List.map reduce_on_constr sys.body; }
   in
 
   let check_rigid_constraints sys =
@@ -164,7 +163,7 @@ let make_concrete_system
         sys
       | _ -> c :: sys
     in
-    { body = List.fold_right check_rigid_constr sys.body []; }
+    { sys with body = List.fold_right check_rigid_constr sys.body []; }
   in
 
   let sys =
@@ -518,7 +517,14 @@ let solve_linear_system csys =
   Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 
 let solve sys =
-  let csys = make_concrete_system sys in
+  let csys =
+    let k = Resolution_options.find_int ~default:Int.zero sys.options "k" in
+    let k' = Resolution_options.find_int ~default:Int.one sys.options "k'" in
+    let max_burst =
+      Resolution_options.find_int ~default:Int.one sys.options "max_burst"
+    in
+    make_concrete_system ~k ~k' ~max_burst sys
+  in
   let csys = compute_sampler_sizes csys in
   let csys = choose_nbones_unknowns csys in
   let csys = build_synchronizability_constraints csys in

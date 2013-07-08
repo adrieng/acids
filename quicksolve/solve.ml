@@ -63,6 +63,12 @@ let do_sys sys =
   | Could_not_solve Precedence_inconsistency ->
     Format.printf "Inconsistent precedences@.";
     exit_code := 1
+  | Resolution_options.Option_error (opt, exp_ty, act_ty) ->
+    Format.printf "Option %s is of type %s but was expected to be of type %s@."
+      opt
+      act_ty
+      exp_ty;
+    exit_code := 1
 
 let do_file filen =
   let sys_l = parse_file filen in

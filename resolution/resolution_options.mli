@@ -15,37 +15,37 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type word = (Int.t, Int.t) Tree_word.t
+type value =
+  | Bool of bool
+  | Int of Int.t
 
-type const = word list
+type t
 
-type side =
-  {
-    var : string option;
-    const : const;
-  }
+val print : Format.formatter -> t -> unit
 
-type constr =
-  {
-    loc : Loc.t;
-    lhs : side;
-    kind : Problem.constr_kind;
-    rhs : side;
-  }
+val make : string -> value -> t
 
-type system =
-  {
-    body : constr list;
-    options : Resolution_options.env;
-  }
+type env
 
-val print_system : Format.formatter -> system -> unit
+val print_env : Format.formatter -> env -> unit
 
-module Solution :
-sig
-  type t
-  val get : t -> string -> word option
-  val fold : (string -> word -> 'a -> 'a) -> t -> 'a -> 'a
-end
+val empty : env
 
-val solve : system -> Solution.t
+val is_empty : env -> bool
+
+val add : env -> t -> env
+
+(* may raise Not_found *)
+val find : env -> string -> value
+
+type option_name = string
+type expected_type = string
+type actual_type = string
+
+exception Option_error of option_name * expected_type * actual_type
+
+(* convenience function, may raise Option_error *)
+val find_bool : default : bool -> env -> string -> bool
+
+(* convenience function, may raise Option_error *)
+val find_int : default : Int.t -> env -> string -> Int.t

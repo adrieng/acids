@@ -30,9 +30,14 @@
      Resolution.rhs = rhs;
    }
 
- let make_system sys =
+ let make_system sys options =
+   let open Resolution_options in
+
+   let options = List.map (Utils.uncurry make) options in
+
    {
      Resolution.body = sys;
+     Resolution.options = List.fold_left add empty options;
    }
 
  let make_pword ?(u = Tree_word.Concat []) v =
@@ -47,11 +52,13 @@
 
 
 %token LPAREN RPAREN LBRACE RBRACE CARET
-%token ON
+%token ON EQUAL ADAPT
 
 %token<string> STRING
+%token<bool> BOOL
 %token<Int.t> INT
-%token<Problem.constr_kind> KIND
+
+%token COMMA WITH
 
 %token EOF
 
@@ -87,14 +94,29 @@ side:
 | s = STRING ON w_l = const { make_side (Some s) w_l }
 | w_l = const { make_side None w_l }
 
+kind:
+| EQUAL { Problem.Equal }
+| ADAPT { Problem.Adapt }
+
 constr_desc:
-| lhs = side kind = KIND rhs = side { lhs, kind, rhs }
+| lhs = side kind = kind rhs = side { lhs, kind, rhs }
 
 constr:
 | with_loc(constr_desc) { make_constr $1 }
 
+value:
+| INT { Resolution_options.Int $1 }
+| BOOL { Resolution_options.Bool $1 }
+
+option:
+| s = STRING EQUAL v = value { s, v }
+
+options:
+| { [] }
+| WITH o_l = separated_list(COMMA, option) { o_l }
+
 system:
-| LBRACE c_l = nonempty_list(constr) RBRACE { make_system c_l }
+| LBRACE c_l = nonempty_list(constr) RBRACE o_l = options { make_system c_l o_l }
 
 file:
 | l = list(system) EOF { l }

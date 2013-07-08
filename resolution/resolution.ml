@@ -78,5 +78,4 @@ let solve sys =
   if sys.body = [] then Utils.Env.empty
   else
     let sys = translate_to_pwords sys in
-    Format.eprintf "@[Pwords:@ %a@]@." Concrete.print_system sys;
     Concrete.solve sys

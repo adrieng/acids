@@ -127,7 +127,7 @@ let get_linear_term lc =
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent concrete system. *)
 let make_concrete_system
-    ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 2)
+    ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 1)
     sys =
   assert (k >= Int.zero);
   assert (k' >= Int.one);
@@ -467,7 +467,7 @@ let solve_linear_system csys =
   in
 
   let lsol =
-    try Linear_solver.solve ~verbose:true lsys
+    try Linear_solver.solve lsys
     with Linear_solver.Could_not_solve ->
       Resolution_errors.precedence_inconsistency ()
   in
@@ -521,14 +521,11 @@ let solve sys =
   let csys = make_concrete_system sys in
   let csys = compute_sampler_sizes csys in
   let csys = choose_nbones_unknowns csys in
-  Format.eprintf "Concrete system: %a@." print_concrete_system csys;
   let csys = build_synchronizability_constraints csys in
   let csys = build_precedence_constraints csys in
   let csys = build_periodicity_constraints csys in
   let csys = build_sufficient_size_constraints csys in
   let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
-  Format.eprintf "Linear system:@ %a@."
-    print_lsys csys.lsys;
   let sol = solve_linear_system csys in
   Utils.Env.map Pword.to_tree_pword sol

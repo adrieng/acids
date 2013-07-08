@@ -244,10 +244,6 @@ let make_word_alap ~max_burst ~size ~nbones iof =
           else
             let initial_size = prev_i - one in
             let initial_nbones = prev_j - one in
-            Format.eprintf "initial_size = %a, initial_nbones = %a@."
-              print initial_size
-              print initial_nbones
-            ;
             let w, _ =
               push_segment_alap zero (pred initial_size) initial_nbones w
             in

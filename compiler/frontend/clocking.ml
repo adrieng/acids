@@ -48,17 +48,21 @@ let print_error fmt err =
 
 type env =
   {
+    ctx : Pass_manager.ctx;
     intf_env : Interface.env;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
 
-let initial_env intf_env =
+let initial_env ctx intf_env =
   {
+    ctx = ctx;
     intf_env = intf_env;
     local_nodes = Names.ShortEnv.empty;
     ck_vars = Utils.Int_map.empty;
   }
+
+let get_ctx env = env.ctx
 
 let reset_env env = { env with ck_vars = Utils.Int_map.empty; }
 
@@ -630,16 +634,19 @@ and clock_dom env loc dom e acc =
      3. Generate a fresh stream type bst
      4. If the domain is annotated with a base clock,
      add a constraint between bst and the former
-     5. For each x : st free in e, add a constraint relating st[alpha/bst] and its type
+     5. For each x : st free in e, add a constraint relating st[alpha/bst]
+     and its type
      in the environment.
      6. Remap the output type
   *)
 
   (* 1. Clock e in isolation *)
-  let (e, ty), (local_ctx, local_constrs) = clock_exp env e (Ident.Env.empty, []) in
+  let (e, ty), (local_ctx, local_constrs) =
+    clock_exp env e (Ident.Env.empty, [])
+  in
 
   (* 2. Solve constraints *)
-  Clocking_resolution.solve_constraints loc local_constrs;
+  Clocking_resolution.solve_constraints (get_ctx env) loc local_constrs;
 
   (* 3. Fresh base clock *)
 
@@ -682,9 +689,11 @@ and clock_dom env loc dom e acc =
 
 let clock_node_def env nd =
   let env = reset_env env in
-  let (input, ty_in), acc = clock_pattern env nd.n_input (Ident.Env.empty, []) in
+  let (input, ty_in), acc =
+    clock_pattern env nd.n_input (Ident.Env.empty, [])
+  in
   let (body, ty_out), (_, cstrs) = clock_exp env nd.n_body acc in
-  Clocking_resolution.solve_constraints nd.n_loc cstrs;
+  Clocking_resolution.solve_constraints (get_ctx env) nd.n_loc cstrs;
   let csig = Clock_types.generalize_clock_sig ty_in ty_out [] in
   add_local_node env nd.n_name csig,
   {
@@ -726,8 +735,8 @@ let clock_phrase env phr =
   | Phr_type_def td ->
     env, M.Phr_type_def (clock_type_decl td)
 
-let clock_file file =
-  let env = initial_env file.f_info#interfaces in
+let clock_file ctx file =
+  let env = initial_env ctx file.f_info#interfaces in
   let _, body = Utils.mapfold_left clock_phrase env file.f_body in
   {
     M.f_name = file.f_name;
@@ -739,13 +748,15 @@ let clock_file file =
 (** {2 Putting it all together} *)
 
 let clock_file ctx file =
-  let file = clock_file file in
+  let file = clock_file ctx file in
   let file = EXTRACT.extract_file file in
   ctx, file
 
 let clock :
-    (< interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_preclock.file ->
-     < interfaces : Interface.env; static_nodes : Acids_static.node_def list > Acids_clocked.file)
+    (< interfaces : Interface.env; static_nodes : Acids_static.node_def list >
+      Acids_preclock.file ->
+     < interfaces : Interface.env; static_nodes : Acids_static.node_def list >
+       Acids_clocked.file)
     Pass_manager.pass
     =
   let open Pass_manager in

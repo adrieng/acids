@@ -40,20 +40,18 @@ struct
   let fold = Utils.Env.fold
 end
 
+let rec translate_to_word_tree pt =
+  match pt with
+  | Tree_word.Leaf i -> Pword.singleton i
+  | Tree_word.Concat pt_l ->
+    let w_l = List.map translate_to_word_tree pt_l in
+    List.fold_right Pword.concat w_l Pword.empty
+  | Tree_word.Power (pt, i) -> Pword.power (translate_to_word_tree pt) i
+
+let translate_to_pword_tree { Tree_word.u = u; Tree_word.v = v; } =
+  Pword.make (translate_to_word_tree u) (translate_to_word_tree v)
+
 let translate_to_pwords problem =
-  let rec translate_to_word_tree pt =
-    match pt with
-    | Tree_word.Leaf i -> Pword.singleton i
-    | Tree_word.Concat pt_l ->
-      let w_l = List.map translate_to_word_tree pt_l in
-      List.fold_right Pword.concat w_l Pword.empty
-    | Tree_word.Power (pt, i) -> Pword.power (translate_to_word_tree pt) i
-  in
-
-  let translate_to_pword_tree { Tree_word.u = u; Tree_word.v = v; } =
-    Pword.make (translate_to_word_tree u) (translate_to_word_tree v)
-  in
-
   let translate_to_pword_side s =
     {
       Concrete.var = s.var;
@@ -75,8 +73,38 @@ let translate_to_pwords problem =
     Concrete.options = problem.options;
   }
 
+let check_solution sys sol =
+  let open Concrete in
+
+  let simplify_side side =
+    let l =
+      match side.var with
+      | None -> side.const
+      | Some c ->
+        translate_to_pword_tree (Utils.Env.find c sol) :: side.const
+    in
+    Utils.fold_left_1 Pword.on l
+  in
+
+  let check_constraint constr =
+    let lhs = simplify_side constr.lhs in
+    let rhs = simplify_side constr.rhs in
+    let check_fun =
+      match constr.kind with
+      | Problem.Equal -> Pword.equal
+      | Problem.Adapt -> Pword.adapt
+    in
+    if not (check_fun lhs rhs)
+    then Resolution_errors.internal_error sol
+  in
+
+  List.iter check_constraint sys.body
+
 let solve sys =
   if sys.body = [] then Utils.Env.empty
   else
     let sys = translate_to_pwords sys in
-    Concrete.solve sys
+    let sol = Concrete.solve sys in
+    if Resolution_options.find_bool ~default:false sys.Concrete.options "check"
+    then check_solution sys sol;
+    sol

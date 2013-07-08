@@ -63,6 +63,12 @@ let do_sys sys =
   | Could_not_solve Precedence_inconsistency ->
     Format.printf "Inconsistent precedences@.";
     exit_code := 1
+  | Could_not_solve (Internal_error sol) ->
+    Format.printf "The solver returned an incorrect solution@\n@[{@ %a@ }@]@."
+      (Utils.Env.print
+         Utils.print_string
+         (Tree_word.print_upword_int Int.print)) sol;
+    exit_code := 1
   | Resolution_options.Option_error (opt, exp_ty, act_ty) ->
     Format.printf "Option %s is of type %s but was expected to be of type %s@."
       opt

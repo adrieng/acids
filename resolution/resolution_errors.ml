@@ -15,10 +15,13 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type reason = string
+
 type error =
 | Constant_inconsistency
 | Rate_inconsistency
 | Precedence_inconsistency
+| Internal_error of (Int.t, Int.t) Tree_word.t Utils.Env.t
 
 exception Could_not_solve of error
 
@@ -30,3 +33,6 @@ let rate_inconsistency () =
 
 let precedence_inconsistency () =
   raise (Could_not_solve Precedence_inconsistency)
+
+let internal_error bad_sol =
+  raise (Could_not_solve (Internal_error bad_sol))

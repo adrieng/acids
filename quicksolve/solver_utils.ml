@@ -15,6 +15,8 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+let check_by_default = ref true
+
 let current_file_name = ref ""
 
 let set_current_file_name s = current_file_name := s

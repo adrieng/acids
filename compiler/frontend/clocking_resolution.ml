@@ -29,6 +29,8 @@ type error =
   | Constant_inconsistency of Loc.t * Resolution.system
   | Rate_inconsistency of Loc.t * Resolution.system
   | Precedence_inconsistency of Loc.t * Resolution.system
+  | Internal_solver_error
+      of Loc.t * Resolution.system * (Int.t, Int.t) Tree_word.t Utils.Env.t
 
 exception Resolution_error of error
 
@@ -69,6 +71,15 @@ let print_error fmt err =
       "%aThe following system has inconsistent precedences@\n%a"
       Loc.print l
       Resolution.print_system wsys
+  | Internal_solver_error (l, wsys, sol) ->
+    Format.fprintf fmt
+      "%aThe solver returned an incorrect solution to the following system@\n%a"
+      Loc.print l
+      Resolution.print_system wsys;
+    Format.fprintf fmt "This bad solution was@\n@[{@ %a@ }@]"
+      (Utils.Env.print
+         Utils.print_string
+         (Tree_word.print_upword_int Int.print)) sol
 
 let occur_check_st l id st =
   raise (Resolution_error (Occur_check_st (l, id, st)))
@@ -90,6 +101,9 @@ let inconsistent_rates l sys =
 
 let inconsistent_precedences l sys =
   raise (Resolution_error (Precedence_inconsistency (l, sys)))
+
+let internal_solver_error l sys reason =
+  raise (Resolution_error (Internal_solver_error (l, sys, reason)))
 
 (** {2 Utilities} *)
 
@@ -325,7 +339,7 @@ let fresh_word_var () =
   let id = Ident.make_internal s in
   id, Ce_var (id, Interval.singleton Int.zero) (* TODO *)
 
-let word_constraints_of_clock_constraints sys =
+let word_constraints_of_clock_constraints ?(check = false) sys =
   let rec unify loc wsys st1 st2 =
     let open VarTySt in
     let st1 = unalias_st st1 in
@@ -405,15 +419,22 @@ let word_constraints_of_clock_constraints sys =
     | Tc_adapt (st1, st2) ->
       unify_decompose Problem.Adapt c.loc wsys st1 st2
   in
+
+  let options =
+    let open Resolution_options in
+    let options = add empty (make "check" (Bool check)) in
+    options (* TODO *)
+  in
+
   {
     Resolution.body = List.fold_left solve_constraint [] sys;
-    Resolution.options = Resolution_options.empty; (* TODO *)
+    Resolution.options = options;
   }
 
 (** {2 Top-level function} *)
 
-let solve_constraints loc sys =
-  let ctx = Ident.get_current_ctx () in
+let solve_constraints ctx loc sys =
+  let ictx = Ident.get_current_ctx () in
   Ident.reset_ctx ();
 
   try
@@ -423,7 +444,10 @@ let solve_constraints loc sys =
   let sys = simplify_equality_constraints sys in
   p_sys "System with simplified equality constraints" sys;
 
-  let wsys = word_constraints_of_clock_constraints sys in
+  let wsys =
+    let debug = Pass_manager.ctx_get_attr ctx "debug" in
+    word_constraints_of_clock_constraints ~check:debug sys
+  in
   p_sys "System with word variables" sys;
   p
     (fun fmt wsys ->
@@ -432,7 +456,8 @@ let solve_constraints loc sys =
 
   let sol =
     let open Resolution_errors in
-    try Resolution.solve wsys
+    try
+      Resolution.solve wsys
     with
     | Could_not_solve Constant_inconsistency ->
       inconsistent_constants loc wsys
@@ -440,11 +465,13 @@ let solve_constraints loc sys =
       inconsistent_rates loc wsys
     | Could_not_solve Precedence_inconsistency ->
       inconsistent_precedences loc wsys
+    | Could_not_solve (Internal_error reason) ->
+      internal_solver_error loc wsys reason
   in
 
-  Ident.set_current_ctx ctx;
+  Ident.set_current_ctx ictx;
   ()
 
   with exn ->
-    Ident.set_current_ctx ctx;
+    Ident.set_current_ctx ictx;
     raise exn

@@ -35,9 +35,13 @@
 
    let options = List.map (Utils.uncurry make) options in
 
+   let init =
+     add empty (make "check" (Bool (!Solver_utils.check_by_default)))
+   in
+
    {
      Resolution.body = sys;
-     Resolution.options = List.fold_left add empty options;
+     Resolution.options = List.fold_left add init options;
    }
 
  let make_pword ?(u = Tree_word.Concat []) v =

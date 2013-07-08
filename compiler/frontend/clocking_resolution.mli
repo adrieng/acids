@@ -21,4 +21,5 @@ exception Resolution_error of error
 
 val print_error : Format.formatter -> error -> unit
 
-val solve_constraints : Loc.t -> Clock_types.ty_constr list -> unit
+val solve_constraints :
+  Pass_manager.ctx -> Loc.t -> Clock_types.ty_constr list -> unit

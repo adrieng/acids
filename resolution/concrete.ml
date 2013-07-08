@@ -333,6 +333,27 @@ let build_sufficient_size_constraints csys =
 
   { csys with lsys = lsys; }
 
+let build_split_prefix_period_constraints csys =
+  let open Int in
+
+  (* I_c(|c.u|_1) < I_c(|c.u|_1 + 1) == I_c(|c.u|_1 + 1) - I_c(|c.u|_1) >= 1 *)
+  let add_split_prefix_period_constraint c (nbones_c_u, _) lsys =
+    if nbones_c_u = zero then lsys
+    else
+      let t1 = one, Iof (c, succ nbones_c_u) in
+      let t2 = neg one, Iof (c, nbones_c_u) in
+      Ge ([t1; t2], one) :: lsys
+  in
+
+  let lsys =
+    Utils.Env.fold
+      add_split_prefix_period_constraint
+      csys.nbones_per_unknown
+      csys.lsys
+  in
+
+  { csys with lsys = lsys; }
+
 let build_increasing_indexes_constraints csys =
   let open Int in
 
@@ -521,6 +542,7 @@ let solve sys =
   let csys = build_precedence_constraints csys in
   let csys = build_periodicity_constraints csys in
   let csys = build_sufficient_size_constraints csys in
+  let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
   Format.eprintf "Linear system:@ %a@."
     print_lsys csys.lsys;

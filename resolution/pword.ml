@@ -251,17 +251,17 @@ let make_word_alap ~max_burst ~size ~nbones iof =
         assert (bm * bm_k + rm * rm_k + (b' - b) = additional_nbones);
 
         (* b'^one 0^z_k rm^rm_k bm^bm_k *)
-        push bm bm_k (push rm rm_k (push zero z_k (push b' one w))),
+        push b' one (push zero z_k (push rm rm_k (push bm bm_k w))),
         b'
       in
 
       let rec make_iof prev_j prev_i iof w =
-        Format.eprintf
-          "@[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
-          print prev_j
-          print prev_i
-          print_iofb_list iof
-          print_word w;
+        (* Format.eprintf *)
+        (*   "@[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@." *)
+        (*   print prev_j *)
+        (*   print prev_i *)
+        (*   print_iofb_list iof *)
+        (*   print_word w; *)
 
         match iof with
         | [] ->
@@ -287,33 +287,33 @@ let make_word_alap ~max_burst ~size ~nbones iof =
 
           make_iof (j + b - one) i iof w
       in
-      Format.eprintf "-> %a, %a@." print nbones print size;
+      (* Format.eprintf "-> %a, %a@." print nbones print size; *)
 
       let w = make_iof (succ nbones) (succ size) iof empty in
       w
     )
 
 let make_word_alap ~max_burst ~size ~nbones iof =
-  Format.eprintf "@.@.@.";
+  (* Format.eprintf "@.@.@."; *)
   let w = make_word_alap ~max_burst ~size ~nbones iof in
 
-  Format.eprintf
-    "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@."
-    Int.print max_burst
-    Int.print size
-    Int.print nbones
-    print_iof_list iof
-    print_word w
-  ;
+  (* Format.eprintf *)
+  (*   "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@." *)
+  (*   Int.print max_burst *)
+  (*   Int.print size *)
+  (*   Int.print nbones *)
+  (*   print_iof_list iof *)
+  (*   print_word w *)
+  (* ; *)
 
   let check_iof (j, i) =
-    Format.eprintf "(%a, %a) vs. I_[%a](%a) = %a@."
-      Int.print j
-      Int.print i
-      print_word w
-      Int.print j
-      Int.print (iof_word w j)
-    ;
+    (* Format.eprintf "(%a, %a) vs. I_[%a](%a) = %a@." *)
+    (*   Int.print j *)
+    (*   Int.print i *)
+    (*   print_word w *)
+    (*   Int.print j *)
+    (*   Int.print (iof_word w j) *)
+    (* ; *)
     assert (Int.equal (iof_word w j) i);
   in
 

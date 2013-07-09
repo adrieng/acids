@@ -235,7 +235,7 @@ let make_word_alap ~max_burst ~size ~nbones iof =
         if debug
         then
           Format.eprintf
-            "    @[<hv 2>push_segment_alap:@ b = %a,@ suffix_size = %a,@ additional_nbones = %a,@ w = [%a]@."
+            "        @[<hv 2>push_segment_alap:@ b = %a,@ suffix_size = %a,@ additional_nbones = %a,@ w = [%a]@."
             Int.print b
             Int.print suffix_size
             Int.print additional_nbones
@@ -279,7 +279,7 @@ let make_word_alap ~max_burst ~size ~nbones iof =
         if debug
         then
           Format.eprintf
-            "@[<hv 2>   make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
+            "    @[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
             print prev_j
             print prev_i
             print_iofb_list iof
@@ -441,10 +441,10 @@ let equal p1 p2 =
         if w1.size = zero then walk p1.v w2 n
         else if w2.size = zero then walk w1 p2.v n
         else
-          (* This is correct since words are always maximally factored *)
-          let b1, k1, w1 = pop w1 in
-          let b2, k2, w2 = pop w2 in
-          (b1 = b2) && (k1 = k2) && walk w1 w2 (n - k1)
+          (* TODO more efficient *)
+          let b1, w1 = pop_1 w1 in
+          let b2, w2 = pop_1 w2 in
+          (b1 = b2) && walk w1 w2 (pred n)
     in
     walk p1.u p2.u (common_behavior_size p1 p2)
 

@@ -68,11 +68,21 @@ let iof =
 let alap =
   let l =
     [
-      w "0^3 1", i 1, i 4, i 1, [(i 1, i 4)];
-      w "1 0^3", i 1, i 4, i 1, [(i 1, i 1)];
+      w "0^3 1", 1, 4, 1, [(1, 4)];
+      w "1 0^3", 1, 4, 1, [(1, 1)];
+      w "1 1", 1, 2, 2, [(2, 2)];
+      w "0 2", 2, 2, 2, [(1, 2)];
+      w "1 0 2", 2, 3, 3, [(1, 1); (2, 3)];
+      w "1 0 2", 2, 3, 3, [(1, 1); (3, 3)];
+      w "0 2 1", 2, 3, 3, [2, 2; 3, 3];
+      w "2 2 1 3", 3, 4, 8, [1, 1; 2, 1; 4, 2; 6, 2; 8, 4];
     ]
   in
   let make (w, max_burst, size, nbones, iof) () =
+    let max_burst = i max_burst in
+    let size = i size in
+    let nbones = i nbones in
+    let iof = List.map (fun (i1, i2) -> i i1, i i2) iof in
     eq_word
       (Pword.make_word_alap ~max_burst ~size ~nbones iof)
       w

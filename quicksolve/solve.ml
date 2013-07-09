@@ -64,7 +64,7 @@ let do_sys sys =
     Format.printf "Inconsistent precedences@.";
     exit_code := 1
   | Could_not_solve (Internal_error sol) ->
-    Format.printf "The solver returned an incorrect solution@\n@[{@ %a@ }@]@."
+    Format.printf "The solver returned the following incorrect solution:@\n@[{@ %a@ }@]@."
       (Utils.Env.print
          Utils.print_string
          (Tree_word.print_upword_int Int.print)) sol;

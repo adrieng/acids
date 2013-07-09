@@ -180,7 +180,19 @@ let rec gcd a b = if b = 0 then a else gcd b (a mod b)
 
 let lcm a b = (a * b) / gcd a b
 
-module MyMap(S : Map.OrderedType) =
+module type MyMap =
+sig
+  include Map.S
+  val print :
+    ?sep:string ->
+    (Format.formatter -> key -> unit) ->
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter ->
+    'a t ->
+    unit
+end
+
+module MakeMap(S : Map.OrderedType) : MyMap with type key = S.t =
 struct
   module M = Map.Make(S)
   include M
@@ -202,9 +214,9 @@ end
 module String_set =
   Set.Make(struct type t = string let compare = Pervasives.compare end)
 module Int_set = Set.Make(struct type t = int let compare = int_compare end)
-module Int_map = MyMap(struct type t = int let compare = int_compare end)
+module Int_map = MakeMap(struct type t = int let compare = int_compare end)
 module Pint_set = Set.Make(struct type t = int let compare x y = x - y end)
-module Env = MyMap(struct
+module Env = MakeMap(struct
   type t = string
   let compare = Pervasives.compare
 end)

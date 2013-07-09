@@ -183,8 +183,19 @@ let print_iofb_list fmt iofb_l =
   Format.fprintf fmt "@[[%a]@]"
     (Utils.print_list_r print_triple ",") iofb_l
 
+let debug = false
+
 let make_word_alap ~max_burst ~size ~nbones iof =
   let open Int in
+  if debug
+  then
+    Format.eprintf
+      "@[<hv 2>make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = %a@."
+      print max_burst
+      print size
+      print nbones
+      print_iof_list iof
+  ;
 
   assert (nbones <= max_burst * size);
   assert (of_int (List.length iof) <= nbones);
@@ -221,6 +232,15 @@ let make_word_alap ~max_burst ~size ~nbones iof =
           returns [b'] which is [b] plus the amount of [additional_nbones] added
           to it. *)
       let push_segment_alap b suffix_size additional_nbones w =
+        if debug
+        then
+          Format.eprintf
+            "    @[<hv 2>push_segment_alap:@ b = %a,@ suffix_size = %a,@ additional_nbones = %a,@ w = [%a]@."
+            Int.print b
+            Int.print suffix_size
+            Int.print additional_nbones
+            print_word w
+        ;
 
         assert (suffix_size >= zero);
         assert (additional_nbones >= zero);
@@ -256,12 +276,14 @@ let make_word_alap ~max_burst ~size ~nbones iof =
       in
 
       let rec make_iof prev_j prev_i iof w =
-        (* Format.eprintf *)
-        (*   "@[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@." *)
-        (*   print prev_j *)
-        (*   print prev_i *)
-        (*   print_iofb_list iof *)
-        (*   print_word w; *)
+        if debug
+        then
+          Format.eprintf
+            "@[<hv 2>   make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
+            print prev_j
+            print prev_i
+            print_iofb_list iof
+            print_word w;
 
         match iof with
         | [] ->
@@ -281,39 +303,40 @@ let make_word_alap ~max_burst ~size ~nbones iof =
           let suffix_size = prev_i - i - one in
           let additional_nbones = prev_j - j - b in
 
-          let w, b =
+          let w, _ =
             push_segment_alap b suffix_size additional_nbones w
           in
 
-          make_iof (j + b - one) i iof w
+          make_iof j i iof w
       in
-      (* Format.eprintf "-> %a, %a@." print nbones print size; *)
-
       let w = make_iof (succ nbones) (succ size) iof empty in
       w
     )
 
 let make_word_alap ~max_burst ~size ~nbones iof =
-  (* Format.eprintf "@.@.@."; *)
   let w = make_word_alap ~max_burst ~size ~nbones iof in
 
-  (* Format.eprintf *)
-  (*   "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@." *)
-  (*   Int.print max_burst *)
-  (*   Int.print size *)
-  (*   Int.print nbones *)
-  (*   print_iof_list iof *)
-  (*   print_word w *)
-  (* ; *)
+  if debug
+  then
+    Format.eprintf
+      "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@."
+      Int.print max_burst
+      Int.print size
+      Int.print nbones
+      print_iof_list iof
+      print_word w
+  ;
 
   let check_iof (j, i) =
-    (* Format.eprintf "(%a, %a) vs. I_[%a](%a) = %a@." *)
-    (*   Int.print j *)
-    (*   Int.print i *)
-    (*   print_word w *)
-    (*   Int.print j *)
-    (*   Int.print (iof_word w j) *)
-    (* ; *)
+    if debug
+    then
+      Format.eprintf "(%a, %a) vs. I_[%a](%a) = %a@."
+        Int.print j
+        Int.print i
+        print_word w
+        Int.print j
+        Int.print (iof_word w j)
+    ;
     assert (Int.equal (iof_word w j) i);
   in
 
@@ -378,14 +401,23 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
     else ((lcm v1.nbones v2.size) / v1.nbones) * v1.size
   in
 
+  let rec sum_burst acc i u2 =
+    if i = zero then acc, u2
+    else if u2.size = zero then sum_burst acc i v2
+    else
+      let b, n, u2 = pop u2 in
+      let m = min i n in
+      sum_burst (acc + b * m) (i - m) (push b (n - m) u2)
+  in
+
   let rec walk u1 u2 res n =
     if u1.size = zero then walk v1 u2 res n
     else if u2.size = zero then walk u1 v2 res n
     else if n = zero then u1, u2, rev res
     else
       let i, u1 = pop_1 u1 in
-      let u2_pref, u2 = take i u2 in
-      walk u1 u2 (push u2_pref.nbones one res) (n - one)
+      let b, u2 = sum_burst zero i u2 in
+      walk u1 u2 (push b one res) (pred n)
   in
 
   let r1, r2, u = walk u1 u2 empty u_size in
@@ -394,9 +426,9 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
 
 let rate p = Rat.make p.v.nbones p.v.size
 
-let common_behavior p1 p2 =
+let common_behavior_size p1 p2 =
   let open Int in
-  max p1.u.size p2.u.size + lcm p1.u.nbones p2.u.nbones
+  max p1.u.size p2.u.size + lcm p1.v.size p2.v.size
 
 let equal p1 p2 =
   p1 == p2
@@ -414,12 +446,16 @@ let equal p1 p2 =
           let b2, k2, w2 = pop w2 in
           (b1 = b2) && (k1 = k2) && walk w1 w2 (n - k1)
     in
-    walk p1.u p2.u (common_behavior p1 p2)
+    walk p1.u p2.u (common_behavior_size p1 p2)
+
+let common_behavior_nbones p1 p2 =
+  let open Int in
+  max p1.u.nbones p2.u.nbones + lcm p1.v.nbones p2.v.nbones
 
 let precedes ?(strict = false) p1 p2 =
   let open Int in
 
-  let max = common_behavior p1 p2 in
+  let max = common_behavior_nbones p1 p2 in
 
   let rec walk w1 w2 o1 o2 j =
     if j > max then true

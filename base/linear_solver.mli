@@ -63,7 +63,7 @@ exception Solver_internal_error of int
 exception Library_internal_error
 exception Could_not_solve
 
-module Env : Map.S with type key = var
+module Env : Utils.MyMap with type key = var
 
 val solve
   : ?verbose:bool -> linear_system -> Int.t Env.t

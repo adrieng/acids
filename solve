@@ -7,4 +7,5 @@ if [ ! -f $C ]
 then
   make -C $CDIR PREF=$PREF >/dev/null
 fi
+export OCAMLRUNPARAM=b
 $C $@

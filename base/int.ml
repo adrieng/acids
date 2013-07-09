@@ -67,7 +67,10 @@ module Set =
 
 let rec gcd a b = if b = zero then a else gcd b (a mod b)
 
-let lcm a b = (a * b) / gcd a b
+let lcm a b =
+  let g = gcd a b in
+  let g = if g <> zero then g else one in
+  (a * b) / g
 
 let rec iter f i acc =
   if i = zero

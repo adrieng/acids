@@ -26,7 +26,10 @@ module M =
 
       let make num den =
         let open Int in
-        let k = lcm num den in
+        let k =
+          let k = lcm num den in
+          if k <> zero then k else one
+        in
         { num = num / k; den = den / k; }
      end) :
       (sig

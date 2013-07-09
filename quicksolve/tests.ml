@@ -30,6 +30,8 @@ let eq_word =
   let print_word fmt w = Format.fprintf fmt "[%a]" Pword.print_word w in
   eq print_word
 
+let eq_pword = eq ~eq:Pword.equal Pword.print_pword
+
 (* Testing Pword *)
 
 let i = Int.of_int
@@ -77,6 +79,17 @@ let alap =
   in
   List.map make l
 
+let on =
+  let w1 = p "(1)" in
+  let w2 = p "(2)" in
+  let l =
+    [
+      w2, w1, w2;
+      p "(3 1)", p "(0 1 0 1)", p "(1 1)";
+    ]
+  in
+  List.map (fun (w, w', w_on) () -> eq_pword (Pword.on w w') w_on) l
+
 (* Stupid unit test framework *)
 
 let name_tests base_name tests =
@@ -92,6 +105,7 @@ let name_tests base_name tests =
 let tests =
   name_tests "iof" iof
   @ name_tests "make_word_alap" alap
+  @ name_tests "on" on
 
 let run_test (failed, passed, total) (test_name, test) =
   Format.printf "%s: @[" test_name;

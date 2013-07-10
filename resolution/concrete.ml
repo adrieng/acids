@@ -21,7 +21,9 @@ module M =
   Make
     (struct
       type const = Pword.pword list
-      let print_const = Utils.print_list_r Pword.print_pword " on"
+      let print_const ~has_var fmt p_l =
+        if has_var && List.length p_l >= 1 then Format.fprintf fmt "on ";
+        Utils.print_list_r Pword.print_pword " on" fmt p_l
      end)
 
 include M
@@ -135,7 +137,7 @@ let make_concrete_system
 
   let reduce_on sys =
     let reduce_on_side side =
-      { side with const = [Utils.fold_left_1 Pword.on side.const]; }
+      { side with const = [List.fold_left Pword.on Pword.unit_pword side.const]; }
     in
 
     let reduce_on_constr constr =

@@ -43,6 +43,8 @@ type pword =
 
 val make : word -> word -> pword
 
+val unit_pword : pword
+
 val print_pword : Format.formatter -> pword -> unit
 
 val ones : pword -> Int.t -> Int.t

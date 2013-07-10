@@ -22,7 +22,7 @@ type var = string
 module Make(S :
   sig
     type const
-    val print_const : Format.formatter -> const -> unit
+    val print_const : has_var : bool -> Format.formatter -> const -> unit
   end) =
 struct
   type side =
@@ -47,11 +47,9 @@ struct
 
   let print_side fmt s =
     match s.var with
-    | None -> S.print_const fmt s.const
+    | None -> S.print_const ~has_var:false fmt s.const
     | Some v ->
-      Format.fprintf fmt "%s on @[%a@]"
-        v
-        S.print_const s.const
+      Format.fprintf fmt "%s %a" v (S.print_const ~has_var:true) s.const
 
   let print_kind fmt k =
     let s =

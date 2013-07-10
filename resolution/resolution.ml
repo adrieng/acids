@@ -20,12 +20,13 @@ type word = (Int.t, Int.t) Tree_word.t
 module S =
 struct
   type const = word list
-  let print_const fmt w_l =
+  let print_const ~has_var fmt p_l =
+    if has_var && List.length p_l >= 1 then Format.fprintf fmt "on ";
     Utils.print_list_r
       (Tree_word.print_upword Int.print Int.print)
       " on"
       fmt
-      w_l
+      p_l
 end
 
 module P = Problem.Make(S)

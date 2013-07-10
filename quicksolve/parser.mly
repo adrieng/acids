@@ -98,11 +98,11 @@ pword:
 | u = word LPAREN v = word RPAREN { make_pword ~u v }
 
 const:
-| w_l = separated_nonempty_list(ON, pword) { w_l }
+| ON pword { $2 }
 
 side:
-| s = STRING ON w_l = const { make_side (Some s) w_l }
-| w_l = const { make_side None w_l }
+| s = STRING  w_l = list(const) { make_side (Some s) w_l }
+| w_l = separated_nonempty_list(ON, const) { make_side None w_l }
 
 kind:
 | EQUAL { Problem.Equal }

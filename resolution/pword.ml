@@ -311,8 +311,10 @@ let to_tree_word w =
 (** {2 Exported functions on pwords} *)
 
 let make u v =
-  assert (v.size <> Int.zero);
+  assert (v.size > Int.zero);
   { u = u; v = v; }
+
+let unit_pword = make empty (singleton Int.one)
 
 let ones w i =
   let open Int in

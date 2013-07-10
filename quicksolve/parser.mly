@@ -102,7 +102,7 @@ const:
 
 side:
 | s = STRING  w_l = list(const) { make_side (Some s) w_l }
-| w_l = separated_nonempty_list(ON, const) { make_side None w_l }
+| w_l = separated_nonempty_list(ON, pword) { make_side None w_l }
 
 kind:
 | EQUAL { Problem.Equal }

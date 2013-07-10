@@ -173,16 +173,6 @@ let print_iof_list fmt iof_l =
   Format.fprintf fmt "@[[%a]@]"
     (Utils.print_list_r print_couple ",") iof_l
 
-let print_iofb_list fmt iofb_l =
-  let print_triple fmt (j, i, b) =
-    Format.fprintf fmt "(%a, %a, %a)"
-      Int.print j
-      Int.print i
-      Int.print b
-  in
-  Format.fprintf fmt "@[[%a]@]"
-    (Utils.print_list_r print_triple ",") iofb_l
-
 let debug = false
 
 let make_word_alap ~max_burst ~size ~nbones iof =
@@ -190,7 +180,7 @@ let make_word_alap ~max_burst ~size ~nbones iof =
   if debug
   then
     Format.eprintf
-      "@[<hv 2>make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = %a@."
+      "@[<hv 2>make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = %a@]@."
       print max_burst
       print size
       print nbones
@@ -203,113 +193,79 @@ let make_word_alap ~max_burst ~size ~nbones iof =
   if size = zero then empty
   else
     (
-      (* First pass: find ones at the same index and build bursts out of them *)
-      let iof =
-        let rec make_iof_burst acc iof =
-          match iof with
-          | [] -> acc
-          | (j, i) :: iof ->
-            let burst, iof =
-              let rec find_burst burst iof =
-                match iof with
-                | [] -> burst, iof
-                | (j', i') :: iof' ->
-                  assert (i' >= i);
-                  assert (j' >= j);
-                  if i' > i then burst, iof else find_burst (succ burst) iof'
-              in
-              find_burst one iof
-            in
-            make_iof_burst ((j, i, burst) :: acc) iof
-        in
+      let iof = List.rev iof in
 
-        make_iof_burst [] iof
+      let fill_head w n =
+        assert (max_burst > zero);
+        if w.size = zero then w, n
+        else
+          let b, k, w = pop w in
+          assert (b >= zero && b <= max_burst);
+          let m = min max_burst (b + n) in
+          let d = m - b in
+          push m one (push b (pred k) w), n - d
       in
 
-      (** [push_segment_alap b prefix_size additional_nbones w] adds a word [w']
-          of size [suffix_size + 1] to [w] with [additional_nbones] ones inside,
-          such that [w'] begins with an integer greater than [b]. It also
-          returns [b'] which is [b] plus the amount of [additional_nbones] added
-          to it. *)
-      let push_segment_alap b suffix_size additional_nbones w =
+      let add_alap size nbones w =
+        assert (nbones >= zero && nbones <= size * max_burst);
+
+        (* let w', nbones_r = fill_head w nbones in *)
+        let bm = min max_burst nbones in
+        let bm_k = if bm = zero then zero else nbones / bm in
+        let rm = if bm = zero then zero else nbones mod bm in
+        let rm_k = if rm = zero then zero else one in
+
+        assert (bm_k + rm_k <= size);
+        let z_k = size - bm_k - rm_k in
+
+        let w' = push zero z_k (push rm rm_k (push bm bm_k w)) in
+        assert (w'.nbones = w.nbones + nbones);
+        assert (w'.size = w.size + size);
+        w'
+      in
+
+      let rec make_iof prev_j prev_i acc iof =
         if debug
         then
           Format.eprintf
-            "        @[<hv 2>push_segment_alap:@ b = %a,@ suffix_size = %a,@ additional_nbones = %a,@ w = [%a]@."
-            Int.print b
-            Int.print suffix_size
-            Int.print additional_nbones
-            print_word w
-        ;
-
-        assert (suffix_size >= zero);
-        assert (additional_nbones >= zero);
-        assert (b >= zero && b <= max_burst);
-        assert (b + additional_nbones <= max_burst * succ suffix_size);
-
-        (* First fill the suffix *)
-        let bm = min max_burst additional_nbones in
-        let bm_k =
-          let bm_k = if bm = zero then zero else additional_nbones / bm in
-          if bm_k > suffix_size then suffix_size else bm_k
-        in
-
-        (* (including some residual int if max_burst does not divide additional_nbones *)
-        let rm = if bm = zero then zero else additional_nbones mod bm in
-        let rm_k = if rm = zero || bm_k = suffix_size then zero else one in
-        let remaining_nbones = additional_nbones - bm * bm_k - rm * rm_k in
-
-        assert (bm_k + rm_k <= suffix_size);
-
-        (* Fill the rest of the suffix with zeroes *)
-        let z_k = suffix_size - bm_k - rm_k in
-
-        (* Finally fill b *)
-
-        let b' = min max_burst (b + remaining_nbones) in
-
-        assert (bm * bm_k + rm * rm_k + (b' - b) = additional_nbones);
-
-        (* b'^one 0^z_k rm^rm_k bm^bm_k *)
-        push b' one (push zero z_k (push rm rm_k (push bm bm_k w))),
-        b'
-      in
-
-      let rec make_iof prev_j prev_i iof w =
-        if debug
-        then
-          Format.eprintf
-            "    @[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ iof = %a,@ w = %a@]@."
+            "  @[<hv 2>make_iof:@ prev_j = %a,@ prev_i = %a,@ acc = [%a],@ iof = [%a]@."
             print prev_j
             print prev_i
-            print_iofb_list iof
-            print_word w;
-
+            print_word acc
+            print_iof_list iof
+        ;
+        assert (prev_i >= one && prev_i <= succ size);
+        assert (prev_j >= one && prev_j <= succ nbones);
         match iof with
         | [] ->
-          (* Here we are creating the initial segment, if any *)
-          if prev_i = one then w
-          else
-            let initial_size = prev_i - one in
-            let initial_nbones = prev_j - one in
-            let w, _ =
-              push_segment_alap zero (pred initial_size) initial_nbones w
-            in
-            w
+          (* fill in the initial segment *)
+          let prefix_size = pred prev_i in
+          let remaining_ones = pred prev_j in
+          let acc, remaining_ones = fill_head acc remaining_ones in
+          add_alap prefix_size remaining_ones acc
 
-        | (j, i, b) :: iof ->
-          assert (prev_i > i);
-          assert (prev_j > j + b - one);
-          let suffix_size = prev_i - i - one in
-          let additional_nbones = prev_j - j - b in
+        | (j, i) :: iof ->
+          assert (prev_i >= i);
+          assert (prev_j > j);
 
-          let w, _ =
-            push_segment_alap b suffix_size additional_nbones w
-          in
+          (* segment size strictly between i and prev_i *)
+          let segment_size = prev_i - i in
+          (* number of ones strictly between j and prev_j *)
+          let additional_nbones = prev_j - j - one in
 
-          make_iof j i iof w
+          (* try to fill prev_j with additional ones *)
+          let acc, remaining_nbones = fill_head acc additional_nbones in
+
+          (* create the middle segment *)
+          let segment_nbones = min (segment_size * max_burst) remaining_nbones in
+          let acc = add_alap segment_size segment_nbones acc in
+
+          (* put the I_w(j) = i one, filling in remaining nbones *)
+          let acc, rem = fill_head acc one in
+          assert (rem = zero);
+          make_iof j i acc iof
       in
-      let w = make_iof (succ nbones) (succ size) iof empty in
+      let w = make_iof (succ nbones) (succ size) empty iof in
       w
     )
 
@@ -319,7 +275,7 @@ let make_word_alap ~max_burst ~size ~nbones iof =
   if debug
   then
     Format.eprintf
-      "@[make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@."
+      "@[<hv 2>make_word_alap:@ max_burst = %a,@ size = %a,@ nbones = %a,@ iof = [@[%a@]]@ -> %a@]@."
       Int.print max_burst
       Int.print size
       Int.print nbones

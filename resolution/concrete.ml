@@ -144,7 +144,12 @@ let make_concrete_system
 
   let reduce_on sys =
     let reduce_on_side side =
-      { side with const = [List.fold_left Pword.on Pword.unit_pword side.const]; }
+      let const =
+        match side.const with
+        | [] -> [Pword.unit_pword]
+        | _ :: _ -> [Utils.fold_left_1 Pword.on side.const]
+      in
+      { side with const = const; }
     in
 
     let reduce_on_constr constr =

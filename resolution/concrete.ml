@@ -28,11 +28,12 @@ module M =
 
 include M
 
-type cside = var * Pword.pword
+type cside = var option * Pword.pword
 
 type lvar =
   | Iof of var * Int.t
   | Size of var
+  | One (* pseudo-variable for convenience *)
 
 type lexp = (Int.t * lvar) list
 
@@ -61,17 +62,23 @@ type concrete_system =
     lsys : lconstr list;
   }
 
+let print_var_option fmt co =
+  match co with
+  | None -> ()
+  | Some c -> Format.fprintf fmt "%s@ on " c
+
 let print_side fmt ((c_x, p_x), (c_y, p_y)) =
-  Format.fprintf fmt "@[%s@ on %a@ <: %s@ on %a@]"
-    c_x
+  Format.fprintf fmt "@[%a%a@ <: %a%a@]"
+    print_var_option c_x
     Pword.print_pword p_x
-    c_y
+    print_var_option c_y
     Pword.print_pword p_y
 
 let print_lvar fmt lv =
   match lv with
   | Iof (c, j) -> Format.fprintf fmt "I_{%s}(%a)" c Int.print j
   | Size c -> Format.fprintf fmt "|%s|" c
+  | One -> Format.fprintf fmt "1"
 
 let print_lexp fmt le =
   let print_term fmt (i, lv) =
@@ -174,8 +181,8 @@ let make_concrete_system
   in
   let extract c =
     assert (c.kind = Adapt);
-    (Utils.get_opt c.lhs.var, Utils.get_single c.lhs.const),
-    (Utils.get_opt c.rhs.var, Utils.get_single c.rhs.const)
+    (c.lhs.var, Utils.get_single c.lhs.const),
+    (c.rhs.var, Utils.get_single c.rhs.const)
   in
   {
     k = k;
@@ -194,16 +201,19 @@ let make_concrete_system
     sizes. These lengths are stored in the [csys'.sampler_size_per_unknown]
     field. *)
 let compute_sampler_sizes csys =
-  let walk_side env (c, p) =
+  let walk_side env (co, p) =
     let open Int in
     let open Pword in
 
-    let size_u, size_v = try Utils.Env.find c env with Not_found -> zero, one in
+    match co with
+    | None -> env
+    | Some c ->
+      let size_u, size_v = try Utils.Env.find c env with Not_found -> zero, one in
 
-    let size_u = max size_u (size p.u) in
-    let size_v = lcm size_v (size p.v) in
+      let size_u = max size_u (size p.u) in
+      let size_v = lcm size_v (size p.v) in
 
-    Utils.Env.add c (size_u, size_v) env
+      Utils.Env.add c (size_u, size_v) env
   in
 
   let walk_constr env (s1, s2) = walk_side (walk_side env s1) s2 in
@@ -212,14 +222,18 @@ let compute_sampler_sizes csys =
     List.fold_left walk_constr Utils.Env.empty csys.constraints
   in
 
-  let adjust_size (c, p) =
+  let adjust_size (co, p) =
     let open Pword in
 
-    let max_u, max_v = Utils.Env.find c sampler_size_per_unknown in
+    co,
+    match co with
+    | None -> p
+    | Some c ->
+      let max_u, max_v = Utils.Env.find c sampler_size_per_unknown in
 
-    let p = Pword.lengthen_prefix p Int.(max_u - size p.u) in
-    let p = Pword.repeat_period p Int.(max_v / size p.v) in
-    c, p
+      let p = Pword.lengthen_prefix p Int.(max_u - size p.u) in
+      let p = Pword.repeat_period p Int.(max_v / size p.v) in
+      p
   in
 
   let adjust_constr (s1, s2) = adjust_size s1, adjust_size s2 in
@@ -245,10 +259,25 @@ let choose_nbones_unknowns csys =
   }
 
 let build_synchronizability_constraints csys =
-  let add_synchronizability_constraint lsys ((c_x, p_x), (c_y, p_y)) =
+  let add_synchronizability_constraint lsys ((co_x, p_x), (co_y, p_y)) =
     let open Pword in
-    Eq ([nbones p_y.v, Size c_x; Int.neg (nbones p_x.v), Size c_y], Int.zero)
-    :: lsys
+    let open Int in
+
+    let c =
+      match co_x, co_y with
+      | None, None -> assert false
+      | Some c_x, Some c_y ->
+        Eq ([nbones p_y.v, Size c_x; Int.neg (nbones p_x.v), Size c_y],
+            Int.zero)
+      | None, Some c_y ->
+        Eq ([nbones p_x.v, Size c_y],
+            csys.k' * nbones p_y.v * size p_x.v)
+
+      | Some c_x, None ->
+        Eq ([nbones p_y.v, Size c_x],
+            csys.k' * nbones p_x.v * size p_y.v)
+    in
+    c :: lsys
   in
 
   let lsys =
@@ -258,25 +287,40 @@ let build_synchronizability_constraints csys =
   { csys with lsys = lsys; }
 
 let build_precedence_constraints csys =
-  let add_precedence_constraints lsys ((c_x, p_x), (c_y, p_y)) =
+  let add_precedence_constraints lsys ((co_x, p_x), (co_y, p_y)) =
     let open Int in
     let open Pword in
 
     let h =
-      max
-        (nbones p_x.u + csys.k * nbones p_x.v)
-        (nbones p_y.u + csys.k * nbones p_y.v)
-      + lcm (csys.k' * nbones p_x.v) (csys.k' * nbones p_y.v)
+      let on_u_size co p =
+        match co with
+        | None -> size p.u
+        | Some _ -> nbones p.u + csys.k * nbones p.v
+      in
+
+      let on_v_size co p =
+        match co with
+        | None -> size p.v
+        | Some _ -> csys.k' * nbones p.v
+      in
+
+      max (on_u_size co_x p_x) (on_u_size co_y p_y)
+      + lcm (on_v_size co_x p_x) (on_v_size co_y p_y)
+    in
+
+    let neg (i, c) = (Int.neg i, c) in
+
+    let iof co p j =
+      let i = Pword.iof p j in
+      match co with
+      | None -> i, One
+      | Some c -> one, Iof (c, i)
     in
 
     let rec build lsys j =
       if j > h then lsys
       else
-        let cstr =
-          Le ([one, Iof (c_x, Pword.iof p_x j);
-               neg one, Iof (c_y, Pword.iof p_y j)],
-              Int.zero)
-        in
+        let cstr = Le ([iof co_x p_x j; neg (iof co_y p_y j)], Int.zero) in
         build (cstr :: lsys) (Int.succ j)
     in
     build lsys Int.one
@@ -292,7 +336,7 @@ let build_periodicity_constraints csys =
 
   let add_periodicity_constraint lsys lv =
     match lv with
-    | Size _ -> lsys
+    | Size _ | One -> lsys
     | Iof (c, j') ->
       let nbones_c_u, nbones_c_v = find_nbones csys c in
       if j' <= nbones_c_u + nbones_c_v then lsys
@@ -363,7 +407,7 @@ let build_increasing_indexes_constraints csys =
     let gather_iof indexes lc =
       let add indexes (_, c) =
         match c with
-        | Size _ -> indexes
+        | Size _ | One -> indexes
         | Iof (c, j) ->
           let indexes_for_c =
             try Utils.Env.find c indexes
@@ -427,18 +471,24 @@ let solve_linear_system debug csys =
     (size_vars, Utils.Env.add c indexes_c indexes_vars, lsys), v
   in
 
-  let translate_linear_term acc (i, lv) =
-    let acc, v =
-      match lv with
-      | Size c -> find_size_var acc c
-      | Iof (c, j) -> find_index acc c j
-    in
-    acc, (i, v)
+  let translate_linear_term (acc, cst, terms) (i, lv) =
+    let open Int in
+    match lv with
+    | Size c ->
+      let acc, c = find_size_var acc c in
+      acc, cst, (i, c) :: terms
+    | Iof (c, j) ->
+      let acc, c = find_index acc c j in
+      acc, cst, (i, c) :: terms
+    | One ->
+      acc, cst - i, terms
   in
 
   let translate_linear_constr acc cstr =
     let make_linear_constraint acc terms cmp cst =
-      let acc, terms = Utils.mapfold_left translate_linear_term acc terms in
+      let acc, cst, terms =
+        List.fold_left translate_linear_term (acc, cst, []) terms
+      in
       acc,
       {
         Linear_solver.lc_terms = terms;
@@ -490,12 +540,12 @@ let solve_linear_system debug csys =
       (Linear_solver.Env.print Linear_solver.print_var Int.print) lsol;
 
   let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
+    let indexes_for_c = Utils.Env.find c indexes_vars in
+
     let size_c_v =
       let size_v = Utils.Env.find c size_vars in
       Linear_solver.Env.find size_v lsol
     in
-
-    let indexes_for_c = Utils.Env.find c indexes_vars in
 
     let size_c_u =
       let first_one_v = Int.Env.find (Int.succ nbones_c_u) indexes_for_c in

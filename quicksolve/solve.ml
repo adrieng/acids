@@ -19,6 +19,7 @@ open Resolution
 open Resolution_errors
 
 let parse_file filen =
+  Solver_utils.set_current_file_name filen;
   try
     let ic =
       try open_in filen

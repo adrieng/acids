@@ -299,10 +299,10 @@ let solve ?(verbose = false) sys =
 
       if verbose then
         begin
-          Printf.eprintf "Problem file:\t%s\n" sys_fn;
-          Printf.eprintf "Solution file:\t%s\n" sol_fn;
-          Printf.eprintf "Output file:\t%s\n" out_fn;
-          Printf.eprintf "Log file:\t%s\n" log_fn;
+          Format.printf "Problem file:\t%s@\n" sys_fn;
+          Format.printf "Solution file:\t%s@\n" sol_fn;
+          Format.printf "Output file:\t%s@\n" out_fn;
+          Format.printf "Log file:\t%s@\n" log_fn;
         end;
 
       write_system_cplex_format sys sys_file;
@@ -311,7 +311,7 @@ let solve ?(verbose = false) sys =
       let cmd = create_solver_command ~sys_fn ~sol_fn ~out_fn ~log_fn in
       let status = Sys.command cmd in
 
-      if verbose then Format.eprintf "Solving process terminated.@.";
+      if verbose then Format.printf "Solving process terminated.";
 
       if status <> 0 then raise (Solver_internal_error status);
       let sol_file = open_in sol_fn in

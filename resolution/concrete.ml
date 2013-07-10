@@ -95,7 +95,7 @@ let print_lconstr fmt lc =
       print_lexp le
       Int.print i
 
-let print_lsys fmt lsys =
+let print_linear_system fmt lsys =
   Format.fprintf fmt "{ @[%a@] }"
     (Utils.print_list_eol print_lconstr) lsys
 
@@ -113,7 +113,7 @@ let print_concrete_system fmt cs =
   in
 
   Format.fprintf fmt
-    "@[{@[@ @[%a@]@ @]}@ with sampler sizes @[%a@]@ and nbones @[%a@]@]"
+    "@[@[<hv 2>{ @[%a@] }@]@ with sampler sizes @[%a@]@ and nbones @[%a@]@]"
     (Utils.print_list_r print_side ",") cs.constraints
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
     (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
@@ -124,7 +124,8 @@ let get_linear_term lc =
   match lc with
   | Eq (term, _) | Le (term, _) | Ge (term, _) -> term
 
-(* [make_concrete_system sys] takes a system [sys] and returns an equivalent concrete system. *)
+(* [make_concrete_system sys] takes a system [sys] and returns an equivalent
+   concrete system. *)
 let make_concrete_system
     ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 1)
     sys =
@@ -396,7 +397,10 @@ let build_increasing_indexes_constraints csys =
 
   { csys with lsys = lsys; }
 
-let solve_linear_system csys =
+let is_in_debug_mode sys =
+  Resolution_options.find_bool ~default:false sys.options "debug"
+
+let solve_linear_system debug csys =
   let find_size_var (size_vars, indexes_vars, lsys) c =
     try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
     with Not_found ->
@@ -467,11 +471,21 @@ let solve_linear_system csys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in
 
+  if debug then Format.printf "(* @[";
+
   let lsol =
-    try Linear_solver.solve lsys
+    try Linear_solver.solve ~verbose:debug lsys
     with Linear_solver.Could_not_solve ->
+      if debug then Format.printf "@] *)@.";
       Resolution_errors.precedence_inconsistency ()
   in
+
+  if debug then Format.printf "@] *)@.";
+
+  if debug
+  then
+    Format.printf "(* Solution: @[%a@] *)@."
+      (Linear_solver.Env.print Linear_solver.print_var Int.print) lsol;
 
   let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
     let size_c_v =
@@ -486,6 +500,14 @@ let solve_linear_system csys =
       Int.pred (Linear_solver.Env.find first_one_v lsol)
     in
 
+    Format.eprintf
+      "|%s.u| = %a, |%s.u|_1 = %a, |%s.v| = %a, |%s.v|_1 = %a@."
+      c Int.print size_c_u
+      c Int.print nbones_c_u
+      c Int.print size_c_v
+      c Int.print nbones_c_v
+    ;
+
     let iof =
       let add j v_i iof = (j, Linear_solver.Env.find v_i lsol) :: iof in
       List.rev (Int.Env.fold add indexes_for_c [])
@@ -495,8 +517,14 @@ let solve_linear_system csys =
       List.filter (fun (j, _) -> j <= nbones_c_u) iof
     in
     let iof_v =
-      let iof_v = List.filter (fun (j, _) -> j > nbones_c_u && j <= nbones_c_v) iof in
-      List.map (fun (j, i) -> Int.(j - nbones_c_u, i - size_c_u)) iof_v
+      let open Int in
+      let iof_v =
+        let is_in_period (j, _) =
+          j > nbones_c_u && j <= nbones_c_u + nbones_c_v
+        in
+        List.filter is_in_period iof
+      in
+      List.map (fun (j, i) -> j - nbones_c_u, i - size_c_u) iof_v
     in
 
     let u =
@@ -519,6 +547,7 @@ let solve_linear_system csys =
   Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 
 let solve sys =
+  let debug = is_in_debug_mode sys in
   let csys =
     let k = Resolution_options.find_int ~default:Int.zero sys.options "k" in
     let k' = Resolution_options.find_int ~default:Int.one sys.options "k'" in
@@ -529,11 +558,19 @@ let solve sys =
   in
   let csys = compute_sampler_sizes csys in
   let csys = choose_nbones_unknowns csys in
+  if debug
+  then
+    Format.printf "(* Adjusted concrete system: @[%a@] *)@."
+      print_concrete_system csys;
   let csys = build_synchronizability_constraints csys in
   let csys = build_precedence_constraints csys in
   let csys = build_periodicity_constraints csys in
   let csys = build_sufficient_size_constraints csys in
   let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
-  let sol = solve_linear_system csys in
+  if debug
+  then
+    Format.printf "(* Linear system: @[%a@] *)@."
+      print_linear_system csys.lsys;
+  let sol = solve_linear_system debug csys in
   Utils.Env.map Pword.to_tree_pword sol

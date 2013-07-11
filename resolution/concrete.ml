@@ -46,8 +46,8 @@ type concrete_system =
   {
     (** Initial system description *)
 
-    k : Int.t; (** number of c_n period unfolding in prefix *)
-    k' : Int.t; (** number of c_n period unfolding in period *)
+    global_k : Int.t; (** global number of c_n period unfolding in prefix *)
+    global_k' : Int.t; (** global number of c_n period unfolding in period *)
     max_burst : Int.t; (** maximal number of ones per unit of time *)
     constraints : (cside * cside) list; (** adaptability constraints to solve *)
 
@@ -55,6 +55,9 @@ type concrete_system =
 
     sampler_size_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** size of prefix/period for each sampler per unknown *)
+    unfolding_per_unknown : (Int.t * Int.t) Utils.Env.t;
+    (** (k * k') unfolding factors, per unknown. Guaranteed to be greater than
+        g_k (resp. g_k') *)
     nbones_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** number of ones per unknown, choosen according to k and k' *)
 
@@ -148,6 +151,14 @@ let print_concrete_system fmt cs =
 
 let find_nbones csys c = Utils.Env.find c csys.nbones_per_unknown
 
+let find_k csys c =
+  try fst (Utils.Env.find c csys.unfolding_per_unknown)
+  with Not_found -> csys.global_k
+
+let find_k' csys c =
+    try snd (Utils.Env.find c csys.unfolding_per_unknown)
+    with Not_found -> csys.global_k'
+
 let get_linear_term lc =
   match lc with
   | Eq (term, _) | Le (term, _) | Ge (term, _) -> term
@@ -220,12 +231,13 @@ let make_concrete_system
     (c.rhs.var, Utils.get_single c.rhs.const)
   in
   {
-    k = k;
-    k' = k';
+    global_k = k;
+    global_k' = k';
     max_burst = max_burst;
     constraints = List.map extract sys.body;
 
     sampler_size_per_unknown = Utils.Env.empty;
+    unfolding_per_unknown = Utils.Env.empty;
     nbones_per_unknown = Utils.Env.empty;
 
     synchronizability = [];
@@ -287,8 +299,8 @@ let compute_sampler_sizes csys =
 let choose_nbones_unknowns csys =
   let add_nbones c (sampler_u_size, sampler_v_size) nbones =
     let open Int in
-    let u_nbones = sampler_u_size + csys.k * sampler_v_size in
-    let v_nbones = csys.k' * sampler_v_size in
+    let u_nbones = sampler_u_size + find_k csys c * sampler_v_size in
+    let v_nbones = find_k' csys c * sampler_v_size in
     Utils.Env.add c (u_nbones, v_nbones) nbones
   in
 
@@ -303,14 +315,21 @@ let build_synchronizability_constraints csys =
     let open Pword in
     let open Int in
 
-    let var_term co_x p_x p_y =
-      nbones p_y.v,
+    let var_term co_x co_y p_x p_y =
+      let k' =
+        match co_y with
+        | None -> one
+        | Some c_y -> find_k' csys c_y
+      in
+      nbones p_y.v * k',
       match co_x with
-      | None -> Const (csys.k' * size p_x.v)
+      | None -> Const (size p_x.v)
       | Some c_x -> Size c_x
     in
 
-    Eq ([var_term co_x p_x p_y; neg_term (var_term co_y p_y p_x)], zero) :: lsys
+    Eq ([var_term co_x co_y p_x p_y; neg_term (var_term co_y co_x p_y p_x)],
+        zero)
+    :: lsys
   in
 
   let synchronizability =
@@ -328,13 +347,13 @@ let build_precedence_constraints csys =
       let on_u_size co p =
         match co with
         | None -> size p.u
-        | Some _ -> nbones p.u + csys.k * nbones p.v
+        | Some c -> nbones p.u + find_k csys c * nbones p.v
       in
 
       let on_v_size co p =
         match co with
         | None -> size p.v
-        | Some _ -> csys.k' * nbones p.v
+        | Some c -> find_k' csys c * nbones p.v
       in
 
       max (on_u_size co_x p_x) (on_u_size co_y p_y)

@@ -33,7 +33,7 @@ type cside = var option * Pword.pword
 type lvar =
   | Iof of var * Int.t
   | Size of var
-  | One (* pseudo-variable for convenience *)
+  | Const of Int.t (* pseudo-variable for convenience *)
 
 type lexp = (Int.t * lvar) list
 
@@ -78,7 +78,7 @@ let print_lvar fmt lv =
   match lv with
   | Iof (c, j) -> Format.fprintf fmt "I_{%s}(%a)" c Int.print j
   | Size c -> Format.fprintf fmt "|%s|" c
-  | One -> Format.fprintf fmt "1"
+  | Const i -> Int.print fmt i
 
 let print_lexp fmt le =
   let print_term fmt (i, lv) =
@@ -132,6 +132,8 @@ let find_nbones csys c = Utils.Env.find c csys.nbones_per_unknown
 let get_linear_term lc =
   match lc with
   | Eq (term, _) | Le (term, _) | Ge (term, _) -> term
+
+let neg_term (i, l) = Int.neg i, l
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent
    concrete system. *)
@@ -268,21 +270,14 @@ let build_synchronizability_constraints csys =
     let open Pword in
     let open Int in
 
-    let c =
-      match co_x, co_y with
-      | None, None -> assert false
-      | Some c_x, Some c_y ->
-        Eq ([nbones p_y.v, Size c_x; Int.neg (nbones p_x.v), Size c_y],
-            Int.zero)
-      | None, Some c_y ->
-        Eq ([nbones p_x.v, Size c_y],
-            csys.k' * nbones p_y.v * size p_x.v)
-
-      | Some c_x, None ->
-        Eq ([nbones p_y.v, Size c_x],
-            csys.k' * nbones p_x.v * size p_y.v)
+    let var_term co_x p_x p_y =
+      nbones p_y.v,
+      match co_x with
+      | None -> Const (csys.k' * size p_x.v)
+      | Some c_x -> Size c_x
     in
-    c :: lsys
+
+    Eq ([var_term co_x p_x p_y; neg_term (var_term co_y p_y p_x)], zero) :: lsys
   in
 
   let lsys =
@@ -313,19 +308,17 @@ let build_precedence_constraints csys =
       + lcm (on_v_size co_x p_x) (on_v_size co_y p_y)
     in
 
-    let neg (i, c) = (Int.neg i, c) in
-
     let iof co p j =
       let i = Pword.iof p j in
       match co with
-      | None -> i, One
+      | None -> i, Const Int.one
       | Some c -> one, Iof (c, i)
     in
 
     let rec build lsys j =
       if j > h then lsys
       else
-        let cstr = Le ([iof co_x p_x j; neg (iof co_y p_y j)], Int.zero) in
+        let cstr = Le ([iof co_x p_x j; neg_term (iof co_y p_y j)], Int.zero) in
         build (cstr :: lsys) (Int.succ j)
     in
     build lsys Int.one
@@ -341,7 +334,7 @@ let build_periodicity_constraints csys =
 
   let add_periodicity_constraint lsys lv =
     match lv with
-    | Size _ | One -> lsys
+    | Size _ | Const _ -> lsys
     | Iof (c, j') ->
       let nbones_c_u, nbones_c_v = find_nbones csys c in
       if j' <= nbones_c_u + nbones_c_v then lsys
@@ -412,7 +405,7 @@ let build_increasing_indexes_constraints csys =
     let gather_iof indexes lc =
       let add indexes (_, c) =
         match c with
-        | Size _ | One -> indexes
+        | Size _ | Const _ -> indexes
         | Iof (c, j) ->
           let indexes_for_c =
             try Utils.Env.find c indexes
@@ -485,8 +478,8 @@ let solve_linear_system debug csys =
     | Iof (c, j) ->
       let acc, c = find_index acc c j in
       acc, cst, (i, c) :: terms
-    | One ->
-      acc, cst - i, terms
+    | Const k ->
+      acc, cst - i * k, terms
   in
 
   let translate_linear_constr acc cstr =

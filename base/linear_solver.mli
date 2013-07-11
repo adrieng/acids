@@ -47,7 +47,7 @@ val add_constraint : linear_system -> linear_constraint -> linear_system
 
 val bound_variable : Int.t * Int.t -> linear_system -> var -> linear_system
 
-val bound_all_variables : linear_system -> linear_comp -> Int.t -> linear_system
+val bound_all_variables : linear_system -> Int.t * Int.t -> linear_system
 
 val minimize_all_variables : linear_system -> terms
 

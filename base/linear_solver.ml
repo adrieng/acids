@@ -32,12 +32,14 @@ type linear_system =
   {
     ls_variables : Utils.String_set.t;
     ls_constraints : linear_constraint list;
+    ls_bounds : (Int.t * Int.t) Utils.Env.t;
     ls_objective : terms;
   }
 
 let empty_system =
   {
     ls_variables = Utils.String_set.empty;
+    ls_bounds = Utils.Env.empty;
     ls_constraints = [];
     ls_objective = [];
   }
@@ -90,37 +92,19 @@ let set_objective_function sys obj =
   let sys = add_vars_of_terms sys obj in
   { sys with ls_objective = obj; }
 
-let bound_variable
-    (min, max)
-    { ls_constraints = constraints;
-      ls_variables = variables;
-      ls_objective = objective; }
-    id =
-  let new_constraints =
-    [
-      { lc_terms = [(Int.one, id)]; lc_comp = Lge; lc_const = min; };
-      { lc_terms = [(Int.one, id)]; lc_comp = Lle; lc_const = max; };
-    ]
-  in
+let bound_variable (min, max) sys id =
   {
-    ls_constraints = new_constraints @ constraints;
-    ls_variables = Utils.String_set.add id variables;
-    ls_objective = objective;
+    sys with
+      ls_bounds = Utils.Env.add id (min, max) sys.ls_bounds;
+      ls_variables = Utils.String_set.add id sys.ls_variables;
   }
 
-let bound_all_variables sys comp z =
-  let make_bounding_constr id constraints =
-    {
-      lc_terms = [(Int.one, id)];
-      lc_comp = comp;
-      lc_const = z;
-    }
-    :: constraints
+let bound_all_variables sys (min, max) =
+  let bound id bounds = Utils.Env.add id (min, max) bounds in
+  let bounds =
+    Utils.String_set.fold bound sys.ls_variables sys.ls_bounds
   in
-  let constraints =
-    Utils.String_set.fold make_bounding_constr sys.ls_variables sys.ls_constraints
-  in
-  { sys with ls_constraints = constraints; }
+  { sys with ls_bounds = bounds; }
 
 (********** I/O RELATED FUNCTIONS **********)
 
@@ -214,6 +198,19 @@ let write_system_cplex_format sys sys_file =
   (* Constraints *)
   Format.fprintf fmt "Subject To@\n";
   List.iter (write_constraint_cplex_format fmt) sys.ls_constraints;
+  Format.fprintf fmt "@\n";
+
+  (* Bounds *)
+
+  let write_bound_cplex_format fmt id (min, max) =
+    Format.fprintf fmt " %a <= %s <= %a@\n"
+      Int.print min
+      id
+      Int.print max
+  in
+
+  Format.fprintf fmt "Bounds@\n";
+  Utils.Env.iter (write_bound_cplex_format fmt) sys.ls_bounds;
   Format.fprintf fmt "@\n";
 
   (* Variable declarations *)
@@ -325,11 +322,11 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
         replace_vars_in_command ~sys_fn ~sol_fn ~out_fn ~log_fn command
       in
 
-      if verbose then Format.printf "Running: %s@\n" cmd;
+      if verbose then Format.printf "Running: %s *)@." cmd;
 
       let status = Sys.command cmd in
 
-      if verbose then Format.printf "Solving process terminated.";
+      if verbose then Format.printf "(* Solving process terminated.";
 
       if status <> 0 then raise (Solver_internal_error status);
       let solution = read_solution sys sol_fn in

@@ -576,8 +576,9 @@ let solve_linear_system debug csys =
       csys
   in
 
-  let lsys = Linear_solver.(bound_all_variables lsys Lge Int.one) in
-  let lsys = Linear_solver.(bound_all_variables lsys Lle Int.max_int) in
+  let lsys =
+    Linear_solver.bound_all_variables lsys (Int.one, Int.max_int)
+  in
   let lsys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in

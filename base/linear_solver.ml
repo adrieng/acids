@@ -232,7 +232,8 @@ exception Library_internal_error
 exception Could_not_solve
 
 (* Read solution in GLP MIP format *)
-let read_solution sys sol_file =
+let read_solution sys sol_fn =
+  let sol_file = open_in sol_fn in
   (* Format:
 
      m n
@@ -288,9 +289,13 @@ let read_solution sys sol_file =
       Utils.Env.add var s solutions
     in
 
-    List.fold_left read_column_solution Utils.Env.empty ordered_vars
-  with End_of_file ->
-    raise Library_internal_error
+    let res = List.fold_left read_column_solution Utils.Env.empty ordered_vars in
+    close_in sol_file;
+    res
+  with
+  | End_of_file | Scanf.Scan_failure _ ->
+    close_in sol_file;
+    raise (Could_not_parse_solution sol_fn)
 
 module Env = Utils.Env
 
@@ -327,11 +332,6 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
       if verbose then Format.printf "Solving process terminated.";
 
       if status <> 0 then raise (Solver_internal_error status);
-      let sol_file = open_in sol_fn in
-      let solution =
-        try read_solution sys sol_file
-        with _ -> raise (Could_not_parse_solution sol_fn)
-      in
-      close_in sol_file;
+      let solution = read_solution sys sol_fn in
       solution
     )

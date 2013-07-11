@@ -59,7 +59,12 @@ type concrete_system =
     (** number of ones per unknown, choosen according to k and k' *)
 
     (** Linear system *)
-    lsys : lconstr list;
+    synchronizability : lconstr list;
+    precedence : lconstr list;
+    periodicity : lconstr list;
+    sufficient_size : lconstr list;
+    split_prefix_period : lconstr list;
+    increasing_indexes : lconstr list;
   }
 
 let print_var_option fmt co =
@@ -108,6 +113,20 @@ let print_linear_system fmt lsys =
   Format.fprintf fmt "{ @[%a@] }"
     (Utils.print_list_eol print_lconstr) lsys
 
+let print_linear_systems fmt csys =
+  let p_header header fmt lsys =
+    Format.fprintf fmt "@[<v 2>%s constraints:@ %a@]@\n"
+      header
+      print_linear_system lsys
+  in
+  Format.fprintf fmt "%a%a%a%a%a%a"
+    (p_header "Synchronizability") csys.synchronizability
+    (p_header "Precedence") csys.precedence
+    (p_header "Periodicity") csys.periodicity
+    (p_header "Sufficient size") csys.sufficient_size
+    (p_header "Split prefix period") csys.split_prefix_period
+    (p_header "Increasing indexes") csys.increasing_indexes
+
 let print_concrete_system fmt cs =
   let print_size fmt (u_size, v_size) =
     Format.fprintf fmt "|p.u| = %a, |p.v| = %a"
@@ -134,6 +153,15 @@ let get_linear_term lc =
   | Eq (term, _) | Le (term, _) | Ge (term, _) -> term
 
 let neg_term (i, l) = Int.neg i, l
+
+let fold_left_over_linear_constraints f acc csys =
+  let acc = List.fold_left f acc csys.synchronizability in
+  let acc = List.fold_left f acc csys.precedence in
+  let acc = List.fold_left f acc csys.periodicity in
+  let acc = List.fold_left f acc csys.sufficient_size in
+  let acc = List.fold_left f acc csys.split_prefix_period in
+  let acc = List.fold_left f acc csys.increasing_indexes in
+  acc
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent
    concrete system. *)
@@ -200,7 +228,12 @@ let make_concrete_system
     sampler_size_per_unknown = Utils.Env.empty;
     nbones_per_unknown = Utils.Env.empty;
 
-    lsys = [];
+    synchronizability = [];
+    precedence = [];
+    periodicity = [];
+    sufficient_size = [];
+    split_prefix_period = [];
+    increasing_indexes = [];
   }
 
 (** [compute_sampler_sizes csys] returns an equivalent concrete systems [csys']
@@ -280,11 +313,11 @@ let build_synchronizability_constraints csys =
     Eq ([var_term co_x p_x p_y; neg_term (var_term co_y p_y p_x)], zero) :: lsys
   in
 
-  let lsys =
-    List.fold_left add_synchronizability_constraint csys.lsys csys.constraints
+  let synchronizability =
+    List.fold_left add_synchronizability_constraint csys.synchronizability csys.constraints
   in
 
-  { csys with lsys = lsys; }
+  { csys with synchronizability = synchronizability; }
 
 let build_precedence_constraints csys =
   let add_precedence_constraints lsys ((co_x, p_x), (co_y, p_y)) =
@@ -324,10 +357,10 @@ let build_precedence_constraints csys =
     build lsys Int.one
   in
 
-  let lsys =
-    List.fold_left add_precedence_constraints csys.lsys csys.constraints
+  let precedence =
+    List.fold_left add_precedence_constraints csys.precedence csys.constraints
   in
-  { csys with lsys = lsys; }
+  { csys with precedence = precedence; }
 
 let build_periodicity_constraints csys =
   let open Int in
@@ -355,11 +388,14 @@ let build_periodicity_constraints csys =
     List.fold_left add_periodicity_constraint lsys iof_l
   in
 
-  let lsys =
-    List.fold_left add_periodicity_constraints csys.lsys csys.lsys
+  let periodicity =
+    fold_left_over_linear_constraints
+      add_periodicity_constraints
+      csys.periodicity
+      csys
   in
 
-  { csys with lsys = lsys; }
+  { csys with periodicity = periodicity; }
 
 let build_sufficient_size_constraints csys =
   let open Int in
@@ -371,11 +407,14 @@ let build_sufficient_size_constraints csys =
     Le ([t1; t2; t3], neg one) :: lsys
   in
 
-  let lsys =
-    Utils.Env.fold add_sufficient_size csys.nbones_per_unknown csys.lsys
+  let sufficient_size =
+    Utils.Env.fold
+      add_sufficient_size
+      csys.nbones_per_unknown
+      csys.sufficient_size
   in
 
-  { csys with lsys = lsys; }
+  { csys with sufficient_size = sufficient_size; }
 
 let build_split_prefix_period_constraints csys =
   let open Int in
@@ -389,14 +428,14 @@ let build_split_prefix_period_constraints csys =
       Ge ([t1; t2], one) :: lsys
   in
 
-  let lsys =
+  let split_prefix_period =
     Utils.Env.fold
       add_split_prefix_period_constraint
       csys.nbones_per_unknown
-      csys.lsys
+      csys.split_prefix_period
   in
 
-  { csys with lsys = lsys; }
+  { csys with split_prefix_period = split_prefix_period; }
 
 let build_increasing_indexes_constraints csys =
   let open Int in
@@ -416,7 +455,7 @@ let build_increasing_indexes_constraints csys =
       in
       List.fold_left add indexes (get_linear_term lc)
     in
-    List.fold_left gather_iof Utils.Env.empty csys.lsys
+    fold_left_over_linear_constraints gather_iof Utils.Env.empty csys
   in
 
   let add_increasing_indexes_constraints c indexes_for_c lsys =
@@ -435,11 +474,14 @@ let build_increasing_indexes_constraints csys =
     Int.Set.fold add_constraint indexes_for_c lsys
   in
 
-  let lsys =
-    Utils.Env.fold add_increasing_indexes_constraints indexes csys.lsys
+  let increasing_indexes =
+    Utils.Env.fold
+      add_increasing_indexes_constraints
+      indexes
+      csys.increasing_indexes
   in
 
-  { csys with lsys = lsys; }
+  { csys with increasing_indexes = increasing_indexes; }
 
 let is_in_debug_mode sys =
   Resolution_options.find_bool ~default:false sys.options "debug"
@@ -509,10 +551,10 @@ let solve_linear_system debug csys =
   in
 
   let size_vars, indexes_vars, lsys =
-    List.fold_left
+    fold_left_over_linear_constraints
       translate_linear_constr
       (Utils.Env.empty, Utils.Env.empty, Linear_solver.empty_system)
-      csys.lsys
+      csys
   in
 
   let lsys = Linear_solver.(bound_all_variables lsys Lge Int.one) in
@@ -613,6 +655,6 @@ let solve sys =
   if debug
   then
     Format.printf "(* Linear system: @[%a@] *)@."
-      print_linear_system csys.lsys;
+      print_linear_systems csys;
   let sol = solve_linear_system debug csys in
   Utils.Env.map Pword.to_tree_pword sol

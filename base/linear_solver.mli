@@ -60,10 +60,14 @@ val print_system : Format.formatter -> linear_system -> unit
 
 exception Ill_formed_objective_function
 exception Solver_internal_error of int
+exception Could_not_parse_solution of string
 exception Library_internal_error
 exception Could_not_solve
 
 module Env : Utils.MyMap with type key = var
 
+(** ex. gpsol --cpxlp -o %OUT -w %SOL --log %LOG %SYS >/dev/null *)
+type solver_command = string
+
 val solve
-  : ?verbose:bool -> linear_system -> Int.t Env.t
+  : ?command : solver_command -> ?verbose:bool -> linear_system -> Int.t Env.t

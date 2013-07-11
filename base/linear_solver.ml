@@ -149,12 +149,19 @@ let variables_in_textual_order sys =
   in
   List.rev variables
 
-let create_solver_command ~sys_fn ~sol_fn ~out_fn ~log_fn =
-  Printf.sprintf "glpsol --cpxlp -o %s -w %s --log %s %s >/dev/null"
-    out_fn
-    sol_fn
-    log_fn
-    sys_fn
+type solver_command = string
+
+let replace_vars_in_command ~sys_fn ~sol_fn ~out_fn ~log_fn cmd =
+  let open Str in
+  let cmd = replace_first (regexp "%SYS") sys_fn cmd in
+  let cmd = replace_first (regexp "%SOL") sol_fn cmd in
+  let cmd = replace_first (regexp "%OUT") out_fn cmd in
+  let cmd = replace_first (regexp "%LOG") log_fn cmd in
+  cmd
+
+let default_solver_command : solver_command =
+  "glpsol --cpxlp -o %OUT -w %SOL --log %LOG %SYS >/dev/null"
+  (* "gurobi_cl LogFile=%LOG ResultFile=%SOL %SYS" *)
 
 let write_const_cplex_format fmt cst =
   let sign = if cst < Int.zero then "-" else "+" in
@@ -212,7 +219,7 @@ let write_system_cplex_format sys sys_file =
   (* Variable declarations *)
   (* Only integer variables for now *)
 
-  Format.fprintf fmt "Integer@\n";
+  Format.fprintf fmt "Integers@\n";
   Utils.String_set.iter
     (fun s -> Format.fprintf fmt " %s@\n" s)
     sys.ls_variables;
@@ -220,6 +227,7 @@ let write_system_cplex_format sys sys_file =
 
 exception Ill_formed_objective_function
 exception Solver_internal_error of int
+exception Could_not_parse_solution of string
 exception Library_internal_error
 exception Could_not_solve
 
@@ -286,7 +294,7 @@ let read_solution sys sol_file =
 
 module Env = Utils.Env
 
-let solve ?(verbose = false) sys =
+let solve ?(command = default_solver_command) ?(verbose = false) sys =
   if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty
   else
     (
@@ -308,14 +316,22 @@ let solve ?(verbose = false) sys =
       write_system_cplex_format sys sys_file;
       close_out sys_file;
 
-      let cmd = create_solver_command ~sys_fn ~sol_fn ~out_fn ~log_fn in
+      let cmd =
+        replace_vars_in_command ~sys_fn ~sol_fn ~out_fn ~log_fn command
+      in
+
+      if verbose then Format.printf "Running: %s@\n" cmd;
+
       let status = Sys.command cmd in
 
       if verbose then Format.printf "Solving process terminated.";
 
       if status <> 0 then raise (Solver_internal_error status);
       let sol_file = open_in sol_fn in
-      let solution = read_solution sys sol_file in
+      let solution =
+        try read_solution sys sol_file
+        with _ -> raise (Could_not_parse_solution sol_fn)
+      in
       close_in sol_file;
       solution
     )

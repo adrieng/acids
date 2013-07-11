@@ -10,14 +10,14 @@ TOOLS=$(SPLIT) $(RUN_TEST) $(ASC_TEST)
 SPLIT_CMD=$(SPLIT) -ext $(EXT)
 RUN_TEST_CMD=$(RUN_TEST) -verbose $(VERBOSE) -ext $(EXT)
 
-SPLIT_FILES=$(wildcard *.split)
+SPLIT_FILES=$(wildcard code/*.split)
 
 .PHONY: all split test clean realclean regen
 
 all: test
 
 test: $(RUN_TEST)
-	$(RUN_TEST_CMD) $(wildcard *.as)
+	$(RUN_TEST_CMD) $(wildcard code/*.as)
 
 split: $(SPLIT) $(SPLIT_FILES)
 	$(SPLIT_CMD) $(SPLIT_FILES)

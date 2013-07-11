@@ -550,14 +550,6 @@ let solve_linear_system debug csys =
       Int.pred (Linear_solver.Env.find first_one_v lsol)
     in
 
-    Format.eprintf
-      "|%s.u| = %a, |%s.u|_1 = %a, |%s.v| = %a, |%s.v|_1 = %a@."
-      c Int.print size_c_u
-      c Int.print nbones_c_u
-      c Int.print size_c_v
-      c Int.print nbones_c_v
-    ;
-
     let iof =
       let add j v_i iof = (j, Linear_solver.Env.find v_i lsol) :: iof in
       List.rev (Int.Env.fold add indexes_for_c [])

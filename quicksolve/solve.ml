@@ -18,6 +18,8 @@
 open Resolution
 open Resolution_errors
 
+let debug = ref false
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -44,6 +46,15 @@ let parse_file filen =
 let exit_code = ref 0
 
 let do_sys sys =
+  let sys =
+    let open Resolution in
+    let open Resolution_options in
+    let opts = [make "debug" (Bool !debug); make "check" (Bool !debug)] in
+    if !debug
+    then { sys with options = List.fold_left add sys.options opts; }
+    else sys
+  in
+
   Format.printf "System: @[%a@]@\n" print_system sys;
   try
     let print_aff fmt (k, w) =
@@ -88,6 +99,7 @@ let _ =
     align
       [
         "-test", Unit Tests.self_test, " run self tests";
+        "-debug", Unit (fun () -> debug := true), " enable debug mode";
       ]
   in
   let files = ref [] in

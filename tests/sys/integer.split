@@ -9,5 +9,8 @@ ${
 $}
 
 {
-  c1 on (2) <: c2 on (3)
+  c on (1 0) <: c on (0 1)
 }
+with max_burst = 2
+
+$$

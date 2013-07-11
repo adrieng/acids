@@ -1,0 +1,39 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "solve"
+        ]
+*)
+$}
+
+{
+  c on 1 1(1 1) <: c on 0 1(1 1)
+  c on 1 1(1 1) <: (2)
+}
+with max_burst = 15
+
+$$
+
+{
+  c <: c on 0(1)
+  c <: (2)
+}
+with max_burst = 15, k = 1, k' = 2
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "solve"
+        ]
+*)
+$}
+
+{
+  c <: c on 0(1)
+  c <: (2)
+}
+with max_burst = 15

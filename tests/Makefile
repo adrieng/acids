@@ -1,5 +1,5 @@
 VERBOSE=0
-EXT=.as
+EXTS=.as
 
 SPLIT=tools/split
 RUN_TEST=tools/run_test
@@ -7,17 +7,21 @@ ASC_TEST=tools/asc_test
 
 TOOLS=$(SPLIT) $(RUN_TEST) $(ASC_TEST)
 
-SPLIT_CMD=$(SPLIT) -ext $(EXT)
-RUN_TEST_CMD=$(RUN_TEST) -verbose $(VERBOSE) -ext $(EXT)
+SPLIT_CMD=$(SPLIT) $(foreach EXT,$(EXTS),-ext $(EXT))
+RUN_TEST_CMD=$(RUN_TEST) -verbose $(VERBOSE) $(foreach EXT,$(EXTS),-ext $(EXT))
 
-SPLIT_FILES=$(wildcard code/*.split)
+DIRS=\
+	code \
+	sys
+
+SPLIT_FILES=$(foreach DIR,$(DIRS),$(wildcard $(DIR)/*.split))
 
 .PHONY: all split test clean realclean regen
 
 all: test
 
 test: $(RUN_TEST)
-	$(RUN_TEST_CMD) $(wildcard code/*.as)
+	$(RUN_TEST_CMD) $(foreach DIR,$(DIRS),$(wildcard $(DIR)/*.as))
 
 split: $(SPLIT) $(SPLIT_FILES)
 	$(SPLIT_CMD) $(SPLIT_FILES)
@@ -26,7 +30,7 @@ $(TOOLS): FORCE
 	make -C tools all
 
 clean:
-	rm -f *.as *.log*
+	rm -f $(foreach DIR,$(DIRS),$(wildcard $(DIR)/*.as) $(wildcard $(DIR)/*.log*))
 	make -C tools clean
 
 realclean: clean

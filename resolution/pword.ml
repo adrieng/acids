@@ -343,8 +343,12 @@ let iof w j =
   r
 
 let lengthen_prefix { u = u; v = v; } n =
+  let open Int in
+  let period_count = n / v.size in
+  let full_periods = power v period_count in
+  let n = n mod v.size in
   let v_pref, v = take n v in
-  make (concat u v_pref) (concat v v_pref)
+  make (concat (concat u full_periods) v_pref) (concat v v_pref)
 
 let repeat_period w n = make w.u (power w.v n)
 

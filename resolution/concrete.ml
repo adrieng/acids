@@ -383,10 +383,7 @@ let build_precedence_constraints csys =
 
 let build_periodicity_constraints csys =
   let module S =
-        Set.Make
-          (Utils.OrderedTuple
-             (Utils.OrderedString)
-             (Int.Ordered))
+    Set.Make(Utils.OrderedTuple(Utils.OrderedString)(Int.Ordered))
   in
 
   let open Int in

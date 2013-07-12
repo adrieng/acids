@@ -146,7 +146,9 @@ let rec last l =
 
 let compare_both c k = if c <> 0 then c else k ()
 
-let int_compare x y = x - y
+let string_compare x y = Pervasives.compare x y
+
+let int_compare x y = Pervasives.compare x y
 
 let nativeint_compare x y = Pervasives.compare x y
 
@@ -214,7 +216,7 @@ end
 module OrderedString =
 struct
   type t = string
-  let compare = Pervasives.compare
+  let compare = string_compare
 end
 
 module OrderedInt =

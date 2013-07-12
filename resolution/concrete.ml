@@ -149,6 +149,63 @@ let print_concrete_system fmt cs =
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
     (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
 
+(* >>> Comparison functions *)
+
+let lvar_compare lv1 lv2 =
+  let tag_to_int lv =
+    match lv with
+    | Iof _ -> 0
+    | Size _ -> 1
+    | Const _ -> 2
+  in
+  match lv1, lv2 with
+  | Iof (v1, i1), Iof (v2, i2) ->
+    Utils.compare_both
+      (Utils.string_compare v1 v2)
+      (fun () -> Int.compare i1 i2)
+
+  | Size v1, Size v2 ->
+    Utils.string_compare v1 v2
+
+  | Const i1, Const i2 ->
+    Int.compare i1 i2
+
+  | (Iof _ | Size _ | Const _), _ ->
+    Utils.int_compare (tag_to_int lv1) (tag_to_int lv2)
+
+let lterm_compare (i1, lv1) (i2, lv2) =
+  Utils.compare_both
+    (Int.compare i1 i2)
+    (fun () -> lvar_compare lv1 lv2)
+
+let lexp_compare lexp1 lexp2 = Utils.list_compare lterm_compare lexp1 lexp2
+
+let lconstr_compare lc1 lc2 =
+  let tag_to_int lc =
+    match lc with
+    | Eq _ -> 0
+    | Le _ -> 1
+    | Ge _ -> 2
+  in
+  match lc1, lc2 with
+  | Eq (le1, i1), Eq (le2, i2)
+  | Le (le1, i1), Le (le2, i2)
+  | Ge (le1, i1), Ge (le2, i2) ->
+    Utils.compare_both
+      (lexp_compare le1 le2)
+      (fun () -> Int.compare i1 i2)
+  | (Eq _ | Le _ | Ge _), _ ->
+    Utils.int_compare (tag_to_int lc1) (tag_to_int lc2)
+
+module ConstrSet =
+  Set.Make
+    (struct
+        type t = lconstr
+        let compare = lconstr_compare
+     end)
+
+(* <<< *)
+
 let find_nbones csys c = Utils.Env.find c csys.nbones_per_unknown
 
 let find_k csys c =
@@ -382,7 +439,7 @@ let build_precedence_constraints csys =
   { csys with precedence = precedence; }
 
 let build_refined_precedence_constraints csys =
-  let add_precedence_constraints lsys ((co_x, p_x), (co_y, p_y)) =
+  let add_precedence_constraints (lsys, seen_set) ((co_x, p_x), (co_y, p_y)) =
     let open Int in
     let open Pword in
 
@@ -409,26 +466,38 @@ let build_refined_precedence_constraints csys =
       | Some c -> one, Iof (c, i)
     in
 
-    let rec build lsys prev_o_i_x j =
-      if j > h then lsys
+    let check_seen seen_set cstr =
+      let seen = ConstrSet.mem cstr seen_set in
+      seen, if seen then seen_set else ConstrSet.add cstr seen_set
+    in
+
+    let rec build lsys seen_set prev_o_i_x j =
+      if j > h then lsys, seen_set
       else
         let i_x = Pword.iof p_x j in
         let i_y = Pword.iof p_y j in
         let o_i_x = Pword.ones p_x i_x in
         let o_i_y = Pword.ones p_y i_y in
-        let lsys =
+        let lsys, seen_set =
           if o_i_x >= o_i_y && prev_o_i_x < o_i_x
-          then Le ([iof co_x i_x; neg_term (iof co_y i_y)], Int.zero) :: lsys
-          else lsys
+          then
+            let cstr = Le ([iof co_x i_x; neg_term (iof co_y i_y)], Int.zero) in
+            let seen, seen_set = check_seen seen_set cstr in
+            (if seen then lsys else cstr :: lsys), seen_set
+          else lsys, seen_set
         in
-        build lsys o_i_x (Int.succ j)
+        build lsys seen_set o_i_x (Int.succ j)
     in
-    build lsys zero one
+    build lsys seen_set zero one
   in
 
-  let precedence =
-    List.fold_left add_precedence_constraints csys.precedence csys.constraints
+  let precedence, _ =
+    List.fold_left
+      add_precedence_constraints
+      (csys.precedence, ConstrSet.empty)
+      csys.constraints
   in
+
   { csys with precedence = precedence; }
 
 let build_precedence_constraints = build_refined_precedence_constraints

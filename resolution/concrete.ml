@@ -721,9 +721,17 @@ let solve_linear_system debug csys =
 
   let lsol =
     try Linear_solver.solve ~verbose:debug lsys
-    with Linear_solver.Could_not_solve ->
-      if debug then Format.printf "@] *)@.";
-      Resolution_errors.precedence_inconsistency ()
+    with
+      Linear_solver.Error err ->
+        (
+          match err with
+          | Linear_solver.Could_not_solve ->
+            if debug then Format.printf "@] *)@.";
+            Resolution_errors.precedence_inconsistency ()
+          | _ ->
+            Resolution_errors.solver_error err
+        )
+
   in
 
   if debug then Format.printf "@] *)@.";

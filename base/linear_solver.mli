@@ -15,6 +15,21 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+(* {2 Errors} *)
+
+type error =
+  | Ill_formed_objective_function
+  | Solver_internal_error of int
+  | Could_not_parse_solution of string (* file name *)
+  | Library_internal_error
+  | Could_not_solve
+
+exception Error of error
+
+val print_error : Format.formatter -> error -> unit
+
+(* {2 Building linear systems} *)
+
 type var
 
 type terms = (Int.t * var) list
@@ -54,15 +69,13 @@ val minimize_all_variables : linear_system -> terms
 val set_objective_function
   : linear_system -> terms -> linear_system
 
+(** {2 Printing linear systems} *)
+
 val print_var : Format.formatter -> var -> unit
 
 val print_system : Format.formatter -> linear_system -> unit
 
-exception Ill_formed_objective_function
-exception Solver_internal_error of int
-exception Could_not_parse_solution of string
-exception Library_internal_error
-exception Could_not_solve
+(** {2 Solving linear systems} *)
 
 module Env : Utils.MyMap with type key = var
 

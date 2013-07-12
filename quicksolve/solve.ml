@@ -66,23 +66,11 @@ let do_sys sys =
     Format.printf "Solution: @[{@ %a@ }@]@."
       (Utils.print_list_r print_aff ",") sol;
   with
-  | Could_not_solve Constant_inconsistency ->
-    Format.printf "Inconsistent constants@.";
-    exit_code := 1
-  | Could_not_solve Rate_inconsistency ->
-    Format.printf "Inconsistent rates@.";
-    exit_code := 1
-  | Could_not_solve Precedence_inconsistency ->
-    Format.printf "Inconsistent precedences@.";
-    exit_code := 1
-  | Could_not_solve (Internal_error sol) ->
-    Format.printf "The solver returned the following incorrect solution:@\n@[{@ %a@ }@]@."
-      (Utils.Env.print
-         Utils.print_string
-         (Tree_word.print_upword_int Int.print)) sol;
+  | Could_not_solve err ->
+    Format.printf "%a@." Resolution_errors.print_error err;
     exit_code := 1
   | Resolution_options.Option_error (opt, exp_ty, act_ty) ->
-    Format.printf "Option %s is of type %s but was expected to be of type %s@."
+    Format.printf "option %s is of type %s but was expected to be of type %s@."
       opt
       act_ty
       exp_ty;

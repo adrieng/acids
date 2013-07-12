@@ -15,6 +15,43 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type error =
+  | Ill_formed_objective_function
+  | Solver_internal_error of int
+  | Could_not_parse_solution of string (* file name *)
+  | Library_internal_error
+  | Could_not_solve
+
+exception Error of error
+
+let print_error fmt err =
+  match err with
+  | Ill_formed_objective_function ->
+    Format.fprintf fmt "ill-formed objective function"
+  | Solver_internal_error exit_code ->
+    Format.fprintf fmt "solver exited with code %d" exit_code
+  | Could_not_parse_solution sol_fn ->
+    Format.fprintf fmt "could not parse linear solver output (%s)" sol_fn
+  | Library_internal_error ->
+    Format.fprintf fmt "linear solver internal error"
+  | Could_not_solve ->
+    Format.fprintf fmt "could not solve linear system"
+
+let ill_formed_objective_function () =
+  raise (Error Ill_formed_objective_function)
+
+let solver_internal_error exit_code =
+  raise (Error (Solver_internal_error exit_code))
+
+let could_not_parse_solution sol_fn =
+  raise (Error (Could_not_parse_solution sol_fn))
+
+let library_internal_error () =
+  raise (Error Library_internal_error)
+
+let could_not_solve () =
+  raise (Error Could_not_solve)
+
 type var = string
 
 type terms = (Int.t * var) list
@@ -222,12 +259,6 @@ let write_system_cplex_format sys sys_file =
     sys.ls_variables;
   Format.fprintf fmt "end@."
 
-exception Ill_formed_objective_function
-exception Solver_internal_error of int
-exception Could_not_parse_solution of string
-exception Library_internal_error
-exception Could_not_solve
-
 (* Read solution in GLP MIP format *)
 let read_solution sys sol_fn =
   let sol_file = open_in sol_fn in
@@ -265,10 +296,10 @@ let read_solution sys sol_fn =
     let m, n = read_two_integers () in
     let stat, _ = read_two_integers () in
 
-    if stat <> Int.of_int 2 && stat <> Int.of_int 5 then raise Could_not_solve;
+    if stat <> Int.of_int 2 && stat <> Int.of_int 5 then could_not_solve ();
 
     if n <> Int.of_int (Utils.String_set.cardinal sys.ls_variables)
-    then raise Library_internal_error;
+    then library_internal_error ();
 
     let rec skip_rows m =
       if m = Int.zero then ()
@@ -279,7 +310,7 @@ let read_solution sys sol_fn =
     let ordered_vars = variables_in_textual_order sys in
 
     if Int.of_int (List.length ordered_vars) <> n
-    then raise Library_internal_error;
+    then library_internal_error ();
 
     let read_column_solution solutions var =
       let s = read_one_integer () in
@@ -292,7 +323,7 @@ let read_solution sys sol_fn =
   with
   | End_of_file | Scanf.Scan_failure _ ->
     close_in sol_file;
-    raise (Could_not_parse_solution sol_fn)
+    could_not_parse_solution sol_fn
 
 module Env = Utils.Env
 
@@ -300,7 +331,7 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
   if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty
   else
     (
-      if sys.ls_objective = [] then raise Ill_formed_objective_function;
+      if sys.ls_objective = [] then ill_formed_objective_function ();
 
       let sys_fn, sys_file = Filename.open_temp_file "sys-" ".lp" in
       let sol_fn = Filename.temp_file "sol-" ".sol" in
@@ -328,7 +359,7 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
 
       if verbose then Format.printf "(* Solving process terminated.";
 
-      if status <> 0 then raise (Solver_internal_error status);
+      if status <> 0 then solver_internal_error status;
       let solution = read_solution sys sol_fn in
       solution
     )

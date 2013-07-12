@@ -26,11 +26,7 @@ type error =
   | Occur_check_ty of Loc.t * int * VarTy.t
   | Could_not_unify_st of Loc.t * VarTySt.t * VarTySt.t
   | Could_not_unify_ty of Loc.t * VarTy.t * VarTy.t
-  | Constant_inconsistency of Loc.t * Resolution.system
-  | Rate_inconsistency of Loc.t * Resolution.system
-  | Precedence_inconsistency of Loc.t * Resolution.system
-  | Internal_solver_error
-      of Loc.t * Resolution.system * (Int.t, Int.t) Tree_word.t Utils.Env.t
+  | Word_solver_error of Loc.t * Resolution.system * Resolution_errors.error
 
 exception Resolution_error of error
 
@@ -56,30 +52,12 @@ let print_error fmt err =
       Loc.print l
       VarTy.print ty1
       VarTy.print ty2
-  | Constant_inconsistency (l, wsys) ->
+  | Word_solver_error (l, wsys, err) ->
     Format.fprintf fmt
-      "%aThe following system has inconsistent constants@\n%a"
+      "%aThe following system could not be solved@\n%a@\n%a"
       Loc.print l
       Resolution.print_system wsys
-  | Rate_inconsistency (l, wsys) ->
-    Format.fprintf fmt
-      "%aThe following system has inconsistent rates@\n%a"
-      Loc.print l
-      Resolution.print_system wsys
-  | Precedence_inconsistency (l, wsys) ->
-    Format.fprintf fmt
-      "%aThe following system has inconsistent precedences@\n%a"
-      Loc.print l
-      Resolution.print_system wsys
-  | Internal_solver_error (l, wsys, sol) ->
-    Format.fprintf fmt
-      "%aThe solver returned an incorrect solution to the following system@\n%a"
-      Loc.print l
-      Resolution.print_system wsys;
-    Format.fprintf fmt "This bad solution was@\n@[{@ %a@ }@]"
-      (Utils.Env.print
-         Utils.print_string
-         (Tree_word.print_upword_int Int.print)) sol
+      Resolution_errors.print_error err
 
 let occur_check_st l id st =
   raise (Resolution_error (Occur_check_st (l, id, st)))
@@ -93,17 +71,8 @@ let could_not_unify_st l st1 st2 =
 let could_not_unify_ty l ty1 ty2 =
   raise (Resolution_error (Could_not_unify_ty (l, ty1, ty2)))
 
-let inconsistent_constants l sys =
-  raise (Resolution_error (Constant_inconsistency (l, sys)))
-
-let inconsistent_rates l sys =
-  raise (Resolution_error (Rate_inconsistency (l, sys)))
-
-let inconsistent_precedences l sys =
-  raise (Resolution_error (Precedence_inconsistency (l, sys)))
-
-let internal_solver_error l sys reason =
-  raise (Resolution_error (Internal_solver_error (l, sys, reason)))
+let word_solver_error l wsys err =
+  raise (Resolution_error (Word_solver_error (l, wsys, err)))
 
 (** {2 Utilities} *)
 
@@ -456,17 +425,8 @@ let solve_constraints ctx loc sys =
 
   let sol =
     let open Resolution_errors in
-    try
-      Resolution.solve wsys
-    with
-    | Could_not_solve Constant_inconsistency ->
-      inconsistent_constants loc wsys
-    | Could_not_solve Rate_inconsistency ->
-      inconsistent_rates loc wsys
-    | Could_not_solve Precedence_inconsistency ->
-      inconsistent_precedences loc wsys
-    | Could_not_solve (Internal_error reason) ->
-      internal_solver_error loc wsys reason
+    try Resolution.solve wsys
+    with Could_not_solve err -> word_solver_error loc wsys err
   in
 
   Ident.set_current_ctx ictx;

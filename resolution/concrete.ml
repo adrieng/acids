@@ -55,6 +55,8 @@ type concrete_system =
 
     sampler_size_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** size of prefix/period for each sampler per unknown *)
+    balance_results : (Int.t * Int.t) Utils.Env.t;
+    (** solution of balance equations for each unknown *)
     unfolding_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** (k * k') unfolding factors, per unknown. Guaranteed to be greater than
         g_k (resp. g_k') *)
@@ -294,6 +296,7 @@ let make_concrete_system
     constraints = List.map extract sys.body;
 
     sampler_size_per_unknown = Utils.Env.empty;
+    balance_results = Utils.Env.empty;
     unfolding_per_unknown = Utils.Env.empty;
     nbones_per_unknown = Utils.Env.empty;
 
@@ -352,6 +355,19 @@ let compute_sampler_sizes csys =
       constraints = List.map adjust_constr csys.constraints;
       sampler_size_per_unknown = sampler_size_per_unknown;
   }
+
+(**
+   c_x on p_x <: c_y on p_y
+
+   ->
+
+        |p_x.u|_1 + k_x * |p_x.v|_1 = |p_x.u|_1 + k_y * |p_y.v|_1
+   and
+        k'_x * |p_x.v|_1 = k'_y * |p_y.v|_1
+
+*)
+let solve_balance_equations csys =
+  csys
 
 let choose_nbones_unknowns csys =
   let add_nbones c (sampler_u_size, sampler_v_size) nbones =

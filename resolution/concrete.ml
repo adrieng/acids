@@ -382,22 +382,18 @@ let build_precedence_constraints csys =
   { csys with precedence = precedence; }
 
 let build_periodicity_constraints csys =
+  let module S =
+        Set.Make
+          (Utils.OrderedTuple
+             (Utils.OrderedString)
+             (Int.Ordered))
+  in
+
   let open Int in
 
   let check_seen seen_set c j =
-    try
-      let c_set = Utils.Env.find c seen_set in
-      (
-        let seen = Int.Set.mem j c_set in
-        let seen_set =
-          if seen
-          then seen_set
-          else Utils.Env.add c (Int.Set.add j c_set) seen_set
-        in
-        seen, seen_set
-      )
-    with Not_found ->
-      false, Utils.Env.add c (Int.Set.singleton j) seen_set
+    let seen = S.mem (c, j) seen_set in
+    seen, if seen then seen_set else S.add (c, j) seen_set
   in
 
   let add_periodicity_constraint (seen_set, lsys) lv =
@@ -430,7 +426,7 @@ let build_periodicity_constraints csys =
   let _, periodicity =
     fold_left_over_linear_constraints
       add_periodicity_constraints
-      (Utils.Env.empty, csys.periodicity)
+      (S.empty, csys.periodicity)
       csys
   in
 

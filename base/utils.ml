@@ -211,15 +211,22 @@ struct
     Format.fprintf fmt "@]"
 end
 
-module String_set =
-  Set.Make(struct type t = string let compare = Pervasives.compare end)
-module Int_set = Set.Make(struct type t = int let compare = int_compare end)
-module Int_map = MakeMap(struct type t = int let compare = int_compare end)
-module Pint_set = Set.Make(struct type t = int let compare x y = x - y end)
-module Env = MakeMap(struct
+module OrderedString =
+struct
   type t = string
   let compare = Pervasives.compare
-end)
+end
+
+module OrderedInt =
+struct
+  type t = int
+  let compare = int_compare
+end
+
+module String_set = Set.Make(OrderedString)
+module Env = MakeMap(OrderedString)
+module Int_set = Set.Make(OrderedInt)
+module Int_map = MakeMap(OrderedInt)
 
 open Format
 
@@ -362,6 +369,15 @@ functor (S : Map.OrderedType) ->
     val find_elem : t -> key -> S.t
   end
 ))
+
+module OrderedTuple(T1 : Map.OrderedType)(T2 : Map.OrderedType)
+  : Map.OrderedType with type t = T1.t * T2.t =
+struct
+  type t = T1.t * T2.t
+  let compare (x1, y1) (x2, y2) =
+    let c = T1.compare x1 x2 in
+    if c <> 0 then T2.compare y1 y2 else c
+end
 
 type 'a bin_tree =
   | Leaf of 'a

@@ -91,6 +91,8 @@ val compare : t -> t -> int
 
 val hash : t -> int
 
+module Ordered : Map.OrderedType with type t = t
+
 module Env : Map.S with type key = t
 
 module Set : Set.S with type elt = t

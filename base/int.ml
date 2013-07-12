@@ -49,21 +49,14 @@ let compare = Pervasives.compare
 
 let hash = Hashtbl.hash
 
-module Env =
-  Map.Make(
-    struct
-      type t = Nativeint.t
-      let compare = Nativeint.compare
-    end
-  )
+module Ordered =
+struct
+  type t = Nativeint.t
+  let compare = Nativeint.compare
+end
 
-module Set =
-  Set.Make(
-    struct
-      type t = Nativeint.t
-      let compare = Nativeint.compare
-    end
-  )
+module Env = Map.Make(Ordered)
+module Set = Set.Make(Ordered)
 
 let rec gcd a b = if b = zero then a else gcd b (a mod b)
 

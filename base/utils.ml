@@ -376,7 +376,7 @@ struct
   type t = T1.t * T2.t
   let compare (x1, y1) (x2, y2) =
     let c = T1.compare x1 x2 in
-    if c <> 0 then T2.compare y1 y2 else c
+    if c = 0 then T2.compare y1 y2 else c
 end
 
 type 'a bin_tree =

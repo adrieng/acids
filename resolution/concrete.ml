@@ -384,33 +384,53 @@ let build_precedence_constraints csys =
 let build_periodicity_constraints csys =
   let open Int in
 
-  let add_periodicity_constraint lsys lv =
+  let check_seen seen_set c j =
+    try
+      let c_set = Utils.Env.find c seen_set in
+      (
+        let seen = Int.Set.mem j c_set in
+        let seen_set =
+          if seen
+          then seen_set
+          else Utils.Env.add c (Int.Set.add j c_set) seen_set
+        in
+        seen, seen_set
+      )
+    with Not_found ->
+      false, Utils.Env.add c (Int.Set.singleton j) seen_set
+  in
+
+  let add_periodicity_constraint (seen_set, lsys) lv =
     match lv with
-    | Size _ | Const _ -> lsys
+    | Size _ | Const _ -> seen_set, lsys
     | Iof (c, j') ->
-      let nbones_c_u, nbones_c_v = find_nbones csys c in
-      if j' <= nbones_c_u + nbones_c_v then lsys
+      let seen, seen_set = check_seen seen_set c j' in
+      if seen
+      then seen_set, lsys
       else
-        let j'_v = j' - nbones_c_u in
-        let j = mod_b1 j'_v nbones_c_v + nbones_c_u in
-        let l = Int.div_b1 j'_v nbones_c_v in
-        assert (j' = j + l * nbones_c_v);
-        assert (j > nbones_c_u && j <= nbones_c_u + nbones_c_v);
-        let t1 = one, Iof (c, j') in
-        let t2 = neg one, Iof (c, j) in
-        let t3 = neg l, Size c in
-        Eq ([t1; t2; t3], zero) :: lsys
+        let nbones_c_u, nbones_c_v = find_nbones csys c in
+        if j' <= nbones_c_u + nbones_c_v then seen_set, lsys
+        else
+          let j'_v = j' - nbones_c_u in
+          let j = mod_b1 j'_v nbones_c_v + nbones_c_u in
+          let l = Int.div_b1 j'_v nbones_c_v in
+          assert (j' = j + l * nbones_c_v);
+          assert (j > nbones_c_u && j <= nbones_c_u + nbones_c_v);
+          let t1 = one, Iof (c, j') in
+          let t2 = neg one, Iof (c, j) in
+          let t3 = neg l, Size c in
+          seen_set, Eq ([t1; t2; t3], zero) :: lsys
   in
 
-  let add_periodicity_constraints lsys lc =
+  let add_periodicity_constraints (seen_set, lsys) lc =
     let iof_l = List.map snd (get_linear_term lc) in
-    List.fold_left add_periodicity_constraint lsys iof_l
+    List.fold_left add_periodicity_constraint (seen_set, lsys) iof_l
   in
 
-  let periodicity =
+  let _, periodicity =
     fold_left_over_linear_constraints
       add_periodicity_constraints
-      csys.periodicity
+      (Utils.Env.empty, csys.periodicity)
       csys
   in
 

@@ -381,6 +381,58 @@ let build_precedence_constraints csys =
   in
   { csys with precedence = precedence; }
 
+let build_refined_precedence_constraints csys =
+  let add_precedence_constraints lsys ((co_x, p_x), (co_y, p_y)) =
+    let open Int in
+    let open Pword in
+
+    let h =
+      let on_u_size co p =
+        match co with
+        | None -> size p.u
+        | Some c -> nbones p.u + find_k csys c * nbones p.v
+      in
+
+      let on_v_size co p =
+        match co with
+        | None -> size p.v
+        | Some c -> find_k' csys c * nbones p.v
+      in
+
+      max (on_u_size co_x p_x) (on_u_size co_y p_y)
+      + lcm (on_v_size co_x p_x) (on_v_size co_y p_y)
+    in
+
+    let iof co i =
+      match co with
+      | None -> i, Const Int.one
+      | Some c -> one, Iof (c, i)
+    in
+
+    let rec build lsys prev_o_i_x j =
+      if j > h then lsys
+      else
+        let i_x = Pword.iof p_x j in
+        let i_y = Pword.iof p_y j in
+        let o_i_x = Pword.ones p_x i_x in
+        let o_i_y = Pword.ones p_y i_y in
+        let lsys =
+          if o_i_x >= o_i_y && prev_o_i_x < o_i_x
+          then Le ([iof co_x i_x; neg_term (iof co_y i_y)], Int.zero) :: lsys
+          else lsys
+        in
+        build lsys o_i_x (Int.succ j)
+    in
+    build lsys zero one
+  in
+
+  let precedence =
+    List.fold_left add_precedence_constraints csys.precedence csys.constraints
+  in
+  { csys with precedence = precedence; }
+
+let build_precedence_constraints = build_refined_precedence_constraints
+
 let build_periodicity_constraints csys =
   let module S =
     Set.Make(Utils.OrderedTuple(Utils.OrderedString)(Int.Ordered))

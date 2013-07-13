@@ -337,7 +337,8 @@ and type_clock_exp env ce =
     | Ce_pword w ->
       let ty = fresh_ty () in
       let expect = expect_static_exp env ty in
-      let w = Ast_misc.map_upword expect expect w in
+      let expect_int = expect_static_exp env int_ty in
+      let w = Ast_misc.map_upword expect expect_int w in
       M.Ce_pword w, ty
 
     | Ce_equal (ce, se) ->

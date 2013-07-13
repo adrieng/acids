@@ -367,6 +367,38 @@ let compute_sampler_sizes csys =
 
 *)
 let solve_balance_equations csys =
+  let open Int in
+
+  let find_c lsys env c =
+    try Utils.Env.find c env, lsys, env
+    with Not_found ->
+      let lsys, k = Linear_solver.add_variable lsys (c ^ "_k") in
+      let lsys, k' = Linear_solver.add_variable lsys (c ^ "_k'") in
+      (k, k'), lsys, Utils.Env.add c (k, k') env
+  in
+
+  let find_k lsys env c =
+    let (k, _), lsys, env = find_c lsys env c in
+    k, lsys, env
+  in
+
+  let find_k' lsys env c =
+    let (_, k'), lsys, env = find_c lsys env c in
+    k', lsys, env
+  in
+
+  let add_balance_equations (lsys, env) ((co_x, p_x), (co_y, p_y)) =
+    let open Linear_solver in
+    match co_x, co_y with
+    | None, None -> lsys, env
+    | Some c_x, None ->
+      assert false
+    | None, Some c_x ->
+      assert false
+    | Some c_x, Some c_y ->
+      assert false
+  in
+
   csys
 
 let choose_nbones_unknowns csys =

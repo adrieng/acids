@@ -516,7 +516,7 @@ let build_refined_precedence_constraints csys =
 
   { csys with precedence = precedence; }
 
-let build_precedence_constraints = build_refined_precedence_constraints
+let build_precedence_constraints = build_precedence_constraints
 
 let build_periodicity_constraints csys =
   let module S =

@@ -318,6 +318,7 @@ let unit_pword = make empty (singleton Int.one)
 
 let ones w i =
   let open Int in
+  assert (i >= one);
   if i <= w.u.size
   then ones_word zero w.u i
   else

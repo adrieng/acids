@@ -98,15 +98,30 @@ let alap =
   List.map make l
 
 let on =
-  let w1 = p "(1)" in
-  let w2 = p "(2)" in
+  let p1 = p "(1)" in
+  let p2 = p "(2)" in
   let l =
     [
-      w2, w1, w2;
+      p2, p1, p2;
       p "(3 1)", p "(0 1 0 1)", p "(1 1)";
     ]
   in
-  List.map (fun (w, w', w_on) () -> eq_pword (Pword.on w w') w_on) l
+  List.map (fun (p, p', p_on) () -> eq_pword (Pword.on p p') p_on) l
+
+let ones =
+  let w1 = p "3^2 (1 0^4 2)" in
+  let l =
+    [
+      w1, 2, 6;
+      w1, 10, 10;
+      w1, 11, 10;
+      w1, 14, 12;
+      w1, 15, 13;
+    ]
+  in
+  List.map
+    (fun (p, i, o) () -> eq_int (Pword.ones p (Int.of_int i)) (Int.of_int o))
+    l
 
 (* Stupid unit test framework *)
 
@@ -124,6 +139,7 @@ let tests =
   name_tests "iof" iof
   @ name_tests "make_word_alap" alap
   @ name_tests "on" on
+  @ name_tests "ones" ones
 
 let run_test (failed, passed, total) (test_name, test) =
   Format.printf "%s: @[" test_name;

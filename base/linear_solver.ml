@@ -333,6 +333,36 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
     (
       if sys.ls_objective = [] then ill_formed_objective_function ();
 
+      let sys =
+        if sys.ls_constraints <> []
+        then sys
+        else
+          (* Since stupid linear solvers such as GLPK do not accept empty Subject To sections,
+             we add a dummy variable and trivial constraint "dummy = 0". *)
+          let dummy_v =
+            let rec find i =
+              let v = "dummy" ^ string_of_int i in
+              if Utils.String_set.mem v sys.ls_variables
+              then find (i + 1) else v
+            in
+            find 0
+          in
+
+          let sys, dummy_v = add_variable sys dummy_v in
+
+          let sys = bound_variable (Int.zero, Int.zero) sys dummy_v in
+
+          let dummy_constraint =
+            {
+              lc_terms = [Int.one, dummy_v];
+              lc_comp = Leq;
+              lc_const = Int.zero;
+            }
+          in
+
+          add_constraint sys dummy_constraint
+      in
+
       let sys_fn, sys_file = Filename.open_temp_file "sys-" ".lp" in
       let sol_fn = Filename.temp_file "sol-" ".sol" in
       let out_fn = Filename.temp_file "out-" ".out" in
@@ -340,10 +370,10 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
 
       if verbose then
         begin
-          Format.printf "Problem file:\t%s@\n" sys_fn;
+          Format.printf "(* @[Problem file:\t%s@\n" sys_fn;
           Format.printf "Solution file:\t%s@\n" sol_fn;
           Format.printf "Output file:\t%s@\n" out_fn;
-          Format.printf "Log file:\t%s@\n" log_fn;
+          Format.printf "Log file:\t%s@] *)@\n" log_fn;
         end;
 
       write_system_cplex_format sys sys_file;
@@ -353,11 +383,11 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
         replace_vars_in_command ~sys_fn ~sol_fn ~out_fn ~log_fn command
       in
 
-      if verbose then Format.printf "Running: %s *)@." cmd;
+      if verbose then Format.printf "(* Running: %s *)@." cmd;
 
       let status = Sys.command cmd in
 
-      if verbose then Format.printf "(* Solving process terminated.";
+      if verbose then Format.printf "(* Solving process terminated. *)@\n";
 
       if status <> 0 then solver_internal_error status;
       let solution = read_solution sys sol_fn in

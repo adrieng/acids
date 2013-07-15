@@ -30,3 +30,12 @@ $$
 {
   c1 on (1 0 1) <: c2 on (3)
 }
+
+$$
+
+{
+  c_x on (4) <: c_y on (4)
+  c_y on (4) <: c_z on (3)
+  c_z on (3) <: c_b on 0(1)
+  c_b on 10(1) <: c_x on (4)
+}

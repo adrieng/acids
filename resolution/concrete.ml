@@ -55,7 +55,7 @@ type concrete_system =
 
     sampler_size_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** size of prefix/period for each sampler per unknown *)
-    balance_results : (Int.t * Int.t) Utils.Env.t;
+    balance_results : Int.t Utils.Env.t;
     (** solution of balance equations for each unknown *)
     unfolding_per_unknown : (Int.t * Int.t) Utils.Env.t;
     (** (k * k') unfolding factors, per unknown. Guaranteed to be greater than
@@ -146,9 +146,10 @@ let print_concrete_system fmt cs =
   in
 
   Format.fprintf fmt
-    "@[@[<hv 2>{ @[%a@] }@]@ with sampler sizes @[%a@]@ and nbones @[%a@]@]"
+    "@[@[<hv 2>{ @[%a@] }@]@ with sampler sizes @[%a@]@ and balance @[%a@]@ and nbones @[%a@]@]"
     (Utils.print_list_r print_side ",") cs.constraints
     (Utils.Env.print Utils.print_string print_size) cs.sampler_size_per_unknown
+    (Utils.Env.print Utils.print_string Int.print) cs.balance_results
     (Utils.Env.print Utils.print_string print_nbones) cs.nbones_per_unknown
 
 (* >>> Comparison functions *)
@@ -361,45 +362,99 @@ let compute_sampler_sizes csys =
 
    ->
 
-        |p_x.u|_1 + k_x * |p_x.v|_1 = |p_x.u|_1 + k_y * |p_y.v|_1
+        |p_x.u|_1 + k_x * (|p_x.v|_1 <> 0) = |p_y.u|_1 + k_y * (|p_y.v|_1 <> 0)
    and
         k'_x * |p_x.v|_1 = k'_y * |p_y.v|_1
 
 *)
-let solve_balance_equations csys =
+let solve_balance_equations debug csys =
   let open Int in
+
+  let r = ref 0 in
 
   let find_c lsys env c =
     try Utils.Env.find c env, lsys, env
     with Not_found ->
-      let lsys, k = Linear_solver.add_variable lsys (c ^ "_k") in
-      let lsys, k' = Linear_solver.add_variable lsys (c ^ "_k'") in
-      (k, k'), lsys, Utils.Env.add c (k, k') env
-  in
-
-  let find_k lsys env c =
-    let (k, _), lsys, env = find_c lsys env c in
-    k, lsys, env
-  in
-
-  let find_k' lsys env c =
-    let (_, k'), lsys, env = find_c lsys env c in
-    k', lsys, env
+      let open Linear_solver in
+      let lsys, k' = add_variable lsys (c ^ "_k'") in
+      let lsys =
+        bound_variable (Int.one, Int.of_int Pervasives.max_int) lsys k'
+      in
+      k', lsys, Utils.Env.add c k' env
   in
 
   let add_balance_equations (lsys, env) ((co_x, p_x), (co_y, p_y)) =
     let open Linear_solver in
-    match co_x, co_y with
-    | None, None -> lsys, env
-    | Some c_x, None ->
-      assert false
-    | None, Some c_x ->
-      assert false
-    | Some c_x, Some c_y ->
-      assert false
+    let open Pword in
+
+    let find_vars lsys env co =
+      let c =
+        match co with
+        | None ->
+          incr r;
+          "u" ^ string_of_int !r
+        | Some c ->
+          c
+      in
+      find_c lsys env c
+    in
+
+    let k'_x, lsys, env = find_vars lsys env co_x in
+    let k'_y, lsys, env = find_vars lsys env co_y in
+
+    let bal_eq_k' =
+      (* |p_x.v|_1 * k'_x - |p_y.v|_1 * k'_y = 0 *)
+      {
+        lc_terms =
+          [
+            nbones p_x.v, k'_x;
+            neg (nbones p_y.v), k'_y;
+          ];
+        lc_comp = Leq;
+        lc_const = zero;
+      }
+    in
+
+    add_constraint lsys bal_eq_k', env
   in
 
-  csys
+  (* Build linear system *)
+  let lsys, env =
+    List.fold_left
+      add_balance_equations
+      (Linear_solver.empty_system, Utils.Env.empty)
+      csys.constraints
+  in
+
+  (* Minimize variables *)
+  let lsys =
+    let open Linear_solver in
+    set_objective_function lsys (minimize_all_variables lsys)
+  in
+
+  (* Solve it *)
+  let sol =
+    let open Linear_solver in
+    try solve ~verbose:debug lsys
+    with
+    | Error Could_not_solve ->
+      Resolution_errors.rate_inconsistency ()
+    | Error err ->
+      Resolution_errors.solver_error err
+  in
+
+  (* Reconstruct per-unknown solution *)
+  let reconstruct c _ balance_results =
+    let k'_c = Utils.Env.find c env in
+    let k' = Linear_solver.Env.find k'_c sol in
+    Utils.Env.add c k' balance_results
+  in
+
+  let balance_results =
+    Utils.Env.fold reconstruct csys.sampler_size_per_unknown Utils.Env.empty
+  in
+
+  { csys with balance_results = balance_results; }
 
 let choose_nbones_unknowns csys =
   let add_nbones c (sampler_u_size, sampler_v_size) nbones =
@@ -765,8 +820,6 @@ let solve_linear_system debug csys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in
 
-  if debug then Format.printf "(* @[";
-
   let lsol =
     try Linear_solver.solve ~verbose:debug lsys
     with
@@ -774,15 +827,12 @@ let solve_linear_system debug csys =
         (
           match err with
           | Linear_solver.Could_not_solve ->
-            if debug then Format.printf "@] *)@.";
             Resolution_errors.precedence_inconsistency ()
           | _ ->
             Resolution_errors.solver_error err
         )
 
   in
-
-  if debug then Format.printf "@] *)@.";
 
   if debug
   then
@@ -851,6 +901,7 @@ let solve sys =
     make_concrete_system ~k ~k' ~max_burst sys
   in
   let csys = compute_sampler_sizes csys in
+  let csys = solve_balance_equations debug csys in
   let csys = choose_nbones_unknowns csys in
   if debug
   then

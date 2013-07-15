@@ -235,7 +235,6 @@
 /* Keywords */
 
 %token LET NODE STATIC OPEN FST SND
-%token ITER
 %token FBY IF THEN ELSE
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
@@ -275,7 +274,6 @@
 
 /* Precedence and associativity */
 
-%nonassoc ITER
 %left EQUAL
 
 %left WHERE
@@ -386,7 +384,6 @@ const:
 
 clock_exp_desc:
 | v = IDENT { Acids_parsetree.Ce_var v }
-| ITER ce = clock_exp { Acids_parsetree.Ce_iter ce }
 | ce = clock_exp EQUAL se = static_exp { Acids_parsetree.Ce_equal (ce, se) }
 | pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
 
@@ -546,7 +543,6 @@ clock_exp_ty:
 | id = IDENT IN it = interval { Clock_types.Ce_var (sig_scope_ident id, it) }
 | w = upword(econstr_singleton, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL ec = econstr { Clock_types.Ce_equal (ce, ec) }
-| ITER ce = clock_exp_ty { Clock_types.Ce_iter ce }
 
 clock_ty:
 | STVAR { Clock_types.St_var $1 }

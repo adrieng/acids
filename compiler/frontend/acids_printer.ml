@@ -38,8 +38,6 @@ struct
         (Ast_misc.print_power_tree print_static_exp print_static_exp) v
     | Ce_equal (ce, se) ->
       Format.fprintf fmt "%a = %a" print_clock_exp ce print_static_exp se
-    | Ce_iter ce ->
-      Format.fprintf fmt "iter %a" print_clock_exp ce
 
   and print_static_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"

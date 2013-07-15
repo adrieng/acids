@@ -23,14 +23,14 @@ let error_is_internal exn =
   | Parsing_pass.Could_not_open _
   | Lexer.Lexical_error _
   | Parser_utils.Parse_error _
-  | Scoping.Scoping_error _
-  | Interface.Interface_error _
-  | Data_typing.Typing_error _
-  | Interval_typing.Typing_error _
-  | Static_typing.Typing_error _
-  | Static_simpl.Simplification_error _
-  | Clocking.Clocking_error _
-  | Clocking_resolution.Resolution_error _
+  (* | Scoping.Scoping_error _ *)
+  (* | Interface.Interface_error _ *)
+  (* | Data_typing.Typing_error _ *)
+  (* | Interval_typing.Typing_error _ *)
+  (* | Static_typing.Typing_error _ *)
+  (* | Static_simpl.Simplification_error _ *)
+  (* | Clocking.Clocking_error _ *)
+  (* | Clocking_resolution.Resolution_error _ *)
     ->
     false
   | _
@@ -47,22 +47,22 @@ let print_error _ fmt exn =
   | Parser_utils.Parse_error reason ->
     Loc.print fmt reason;
     Format.fprintf fmt "Syntax error"
-  | Scoping.Scoping_error err ->
-    Scoping.print_error fmt err
-  | Interface.Interface_error err ->
-    Interface.print_error fmt err
-  | Data_typing.Typing_error err ->
-    Data_typing.print_error fmt err
-  | Interval_typing.Typing_error err ->
-    Interval_typing.print_error fmt err
-  | Static_typing.Typing_error err ->
-    Static_typing.print_error fmt err
-  | Static_simpl.Simplification_error err ->
-    Static_simpl.print_error fmt err
-  | Clocking.Clocking_error err ->
-    Clocking.print_error fmt err
-  | Clocking_resolution.Resolution_error err ->
-    Clocking_resolution.print_error fmt err
+  (* | Scoping.Scoping_error err -> *)
+  (*   Scoping.print_error fmt err *)
+  (* | Interface.Interface_error err -> *)
+  (*   Interface.print_error fmt err *)
+  (* | Data_typing.Typing_error err -> *)
+  (*   Data_typing.print_error fmt err *)
+  (* | Interval_typing.Typing_error err -> *)
+  (*   Interval_typing.print_error fmt err *)
+  (* | Static_typing.Typing_error err -> *)
+  (*   Static_typing.print_error fmt err *)
+  (* | Static_simpl.Simplification_error err -> *)
+  (*   Static_simpl.print_error fmt err *)
+  (* | Clocking.Clocking_error err -> *)
+  (*   Clocking.print_error fmt err *)
+  (* | Clocking_resolution.Resolution_error err -> *)
+  (*   Clocking_resolution.print_error fmt err *)
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -72,12 +72,12 @@ let print_error _ fmt exn =
 let flow =
   let open Pass_manager in
   Parsing_pass.parse
-  +>+ Scoping.scope
-  +>+ Data_typing.type_
-  +>+ Interval_typing.type_
-  +>+ Static_typing.type_
-  +>+ Static_simpl.simpl
-  +>+ Clocking.clock
+  (* +>+ Scoping.scope *)
+  (* +>+ Data_typing.type_ *)
+  (* +>+ Interval_typing.type_ *)
+  (* +>+ Static_typing.type_ *)
+  (* +>+ Static_simpl.simpl *)
+  (* +>+ Clocking.clock *)
 
 (*****************************************************************************)
 (* File handling *)

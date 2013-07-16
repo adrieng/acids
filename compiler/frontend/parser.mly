@@ -231,6 +231,7 @@
 %token EQUAL
 %token LT GT LE GE
 %token PLUS MINUS TIMES DIV
+%token BACKQUOTE
 
 /* Keywords */
 
@@ -242,6 +243,7 @@
 %token VAL IN IS WITH END
 %token TYPE BY
 %token BUFFER
+%token VALOF
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY (* BOT_TY *)
 
@@ -383,15 +385,12 @@ const:
 | FLOAT { Ast_misc.Cfloat $1 }
 
 clock_exp_desc:
-| v = IDENT { Acids_parsetree.Ce_var v }
+| BACKQUOTE e = parens(exp) { Acids_parsetree.Ce_exp e }
 | ce = clock_exp EQUAL se = static_exp { Acids_parsetree.Ce_equal (ce, se) }
 | pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
 
 %inline clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
-
-clock_exp_exp:
-| ce = chevrons(clock_exp) { ce }
 
 %inline static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
@@ -446,16 +445,16 @@ exp_desc:
 | IF e1 = exp THEN e2 = exp ELSE e3 = exp %prec IF
             { Acids_parsetree.E_ifthenelse (e1, e2, e3) }
 
-| e = exp WHEN ce = clock_exp_exp { Acids_parsetree.E_when (e, ce) }
-| MERGE ce = clock_exp_exp e1 = simple_exp e2 = simple_exp
+| e = exp WHEN ce = clock_exp { Acids_parsetree.E_when (e, ce) }
+| MERGE ce = clock_exp e1 = simple_exp e2 = simple_exp
             { Acids_parsetree.E_bmerge (ce, e1, e2) }
-| MERGE ce = clock_exp_exp WITH c_l = nonempty_list(merge_clause) END
+| MERGE ce = clock_exp WITH c_l = nonempty_list(merge_clause) END
             { Acids_parsetree.E_merge (ce, c_l) }
 | SPLIT e = exp
-  WITH ce = clock_exp_exp BY c_l = parens(separated_nonempty_list(COMMA, econstr))
+  WITH ce = clock_exp BY c_l = parens(separated_nonempty_list(COMMA, econstr))
             { Acids_parsetree.E_split (ce, e, c_l) }
 
-| ce = clock_exp_exp { Acids_parsetree.E_valof ce }
+| VALOF ce = clock_exp { Acids_parsetree.E_valof ce }
 
 | e = exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
 | par = DOM e = simple_exp ba = option(base_annot)

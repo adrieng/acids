@@ -102,7 +102,9 @@ struct
   let rec extract_clock_exp ce =
     let ced =
       match ce.ce_desc with
-      | Ce_var id -> OUT.Ce_var id
+      | Ce_exp e ->
+        let e = extract_exp e in
+        OUT.Ce_exp e
       | Ce_pword w ->
         let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
         OUT.Ce_pword w
@@ -272,7 +274,7 @@ struct
 
   let rec fv_clock_exp fv ce =
     match ce.ce_desc with
-    | Ce_var v -> Ident.Set.add v fv
+    | Ce_exp e -> fv_exp fv e
     | Ce_pword _ -> fv
     | Ce_equal (ce, _) -> fv_clock_exp fv ce
     | Ce_iter ce -> fv_clock_exp fv ce
@@ -362,9 +364,9 @@ struct
   let rec refresh_clock_exp ce env =
     let ced, env =
       match ce.ce_desc with
-      | Ce_var v ->
-        let env, v = refresh_var env v in
-        Ce_var v, env
+      | Ce_exp e ->
+        let e, env = refresh_exp e env in
+        Ce_exp e, env
       | Ce_pword pw ->
         let pw, env =
           Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env

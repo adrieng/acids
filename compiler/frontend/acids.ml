@@ -62,7 +62,7 @@ sig
   }
 
   and clock_exp_desc =
-  | Ce_var of I.var
+  | Ce_exp of exp
   | Ce_pword of (static_exp, static_exp) Tree_word.t
   | Ce_equal of clock_exp * static_exp
 
@@ -184,7 +184,7 @@ module Make = functor (S : S) ->
       }
 
     and clock_exp_desc =
-    | Ce_var of S.var
+    | Ce_exp of exp
     | Ce_pword of (static_exp, static_exp) Tree_word.t
     | Ce_equal of clock_exp * static_exp
 

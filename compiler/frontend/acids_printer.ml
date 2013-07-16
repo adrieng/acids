@@ -31,7 +31,7 @@ struct
 
   and print_clock_exp_desc fmt ced =
     match ced with
-    | Ce_var v -> I.print_var fmt v
+    | Ce_exp e -> Format.fprintf fmt "<%a>" print_exp e
     | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
       Format.fprintf fmt "%a(%a)"
         (Ast_misc.print_power_tree print_static_exp print_static_exp) u

@@ -116,6 +116,8 @@ rule token = parse
 
 | "buffer" { BUFFER }
 
+| "valof" { VALOF }
+
 | "val" { VAL }
 | "in" { IN }
 | "is" { IS }

@@ -2,31 +2,25 @@
 
 \grammar{
   \grammardef{e}{}{expression}
-  \grammarcase{v}{variable}
+  \grammarcase{v_e}{variable}
   \grammarcase{c}{constant}
 
   \grammarcase{\Where{e}{\eqs}}{local definitions}
   % \grammarcase{\App{f}{e}}{function application}
-
-  \grammarcase{\Fst{e}}{left projection}
-  \grammarcase{\Snd{e}}{right projection}
   \grammarcase{(e,\dots,e)}{tuple}
+
+  \grammarcase{\Is{e}{\spec}}{specified value}
 
   \grammarcase{\Fby{e}{e}}{initialized unit delay}
 
   \grammarcase{\When{e}{\ce}}{sampling}
   \grammarcase{\Split{\ce}{e}}{n-ary sampling}
   \grammarcase{\Merge{\ce}{e}{e}}{binary merge}
-  \grammarcase{\Merge{\ce}{\grammarlist{(c \rightarrow e)}}{}}{n-ary merge}
+  \grammarcase{\Merge{\ce}{(c \rightarrow e)\;\dots\;(c \rightarrow e)}{}}{n-ary merge}
   \grammarcase{\Buf{e}}{buffer}
 
   \grammarcase{\Valof{\ce}}{condition}
   \grammarcase{\Dom{e}}{domain}
-
-  \grammardef{\ce}{}{condition expression}
-  \grammarcase{\Quote{e}}{expression}
-  \grammarcase{\pw}{ultimately periodic word}
-  \grammarcase{ce = c}{test condition}
 
   \grammardef{\eqs}{}{equations}
   \grammarcase{p = e}{equation}
@@ -34,5 +28,17 @@
 
   \grammardef{p}{}{pattern}
   \grammarcase{x}{variable}
+  \grammarcase{\Is{p}{\spec}}{specified pattern}
   \grammarcase{(p,\dots,p)}{tuple}
+
+  \grammardef{\spec}{}{specification}
+  \grammarcase{v_\spec}{specification variable}
+  \grammarcase{\pw}{ultimately periodic word}
+  \grammarcase{\Unspec{}}{no specification}
+
+  \grammardef{\ce}{}{condition expression}
+  \grammarcase{v_\ce}{variable}
+  \grammarcase{\pw}{ultimately periodic word}
+  \grammarcase{ce = c}{test condition}
+  \grammarcase{\OnCe{ce}{ce}}{sampled condition}
 }

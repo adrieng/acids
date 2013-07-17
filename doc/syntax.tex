@@ -1,0 +1,38 @@
+\chapter{Syntax}
+
+\grammar{
+  \grammardef{e}{}{expression}
+  \grammarcase{v}{variable}
+  \grammarcase{c}{constant}
+
+  \grammarcase{\Where{e}{\eqs}}{local definitions}
+  % \grammarcase{\App{f}{e}}{function application}
+
+  \grammarcase{\Fst{e}}{left projection}
+  \grammarcase{\Snd{e}}{right projection}
+  \grammarcase{(e,\dots,e)}{tuple}
+
+  \grammarcase{\Fby{e}{e}}{initialized unit delay}
+
+  \grammarcase{\When{e}{\ce}}{sampling}
+  \grammarcase{\Split{\ce}{e}}{n-ary sampling}
+  \grammarcase{\Merge{\ce}{e}{e}}{binary merge}
+  \grammarcase{\Merge{\ce}{\grammarlist{(c \rightarrow e)}}{}}{n-ary merge}
+  \grammarcase{\Buf{e}}{buffer}
+
+  \grammarcase{\Valof{\ce}}{condition}
+  \grammarcase{\Dom{e}}{domain}
+
+  \grammardef{\ce}{}{condition expression}
+  \grammarcase{\Quote{e}}{expression}
+  \grammarcase{\pw}{ultimately periodic word}
+  \grammarcase{ce = c}{test condition}
+
+  \grammardef{\eqs}{}{equations}
+  \grammarcase{p = e}{equation}
+  \grammarcase{\Par{\eqs}{\eqs}}{synchronous product}
+
+  \grammardef{p}{}{pattern}
+  \grammarcase{x}{variable}
+  \grammarcase{(p,\dots,p)}{tuple}
+}

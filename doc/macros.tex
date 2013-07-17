@@ -46,6 +46,8 @@
 \newcommand{\grammarcasenonewline}[2]{& \mid & #1 & \mbox{#2}}
 \newcommand{\grammarcase}[2]{\grammarcasenonewline{#1}{#2} \\}
 \newcommand{\grammarpar}{\; \mid \;}
+\newcommand{\grammarlist}[1]{{#1}^{*}}
+\newcommand{\grammarlistne}[1]{{#1}^{+}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % LANGUAGE SYNTAX MACROS
@@ -77,16 +79,27 @@
 \newcommand{\Where}[2]{{#1}\;\WhereOp\;{#2}}
 \newcommand{\WhenOp}{\mbox{\tt when}}
 \newcommand{\When}[2]{{#1}\;\WhenOp\;{#2}}
+\newcommand{\SplitOp}{\mbox{\tt split}}
+\newcommand{\Split}[2]{\SplitOp\;{#1}\;{#2}}
 \newcommand{\WhenotOp}{\mbox{{\tt whenot}}}
 \newcommand{\Whenot}[2]{{#1}\;\WhenotOp\;{#2}}
 \newcommand{\MergeOp}{\mbox{{\tt merge}}}
 \newcommand{\Merge}[3]{\MergeOp\;{#1}\;{#2}\;{#3}}
+\newcommand{\ValofOp}{\mbox{{\tt valof}}}
+\newcommand{\Valof}[1]{\ValofOp\;{#1}}
 \newcommand{\FbyOp}{\mbox{{\tt fby}}}
 \newcommand{\Fby}[2]{{#1}\;\FbyOp\;{#2}}
 \newcommand{\BufOp}{\mbox{{\tt buffer}}}
-\newcommand{\Buf}[2]{\BufOp{}\;{#1}\;{#2}}
+\newcommand{\Buf}[1]{\BufOp{}\;{#1}}
 \newcommand{\SyncOp}{\mbox{{\tt sync}}}
 \newcommand{\Sync}[1]{\SyncOp{}\;{#1}}
+\newcommand{\DomOp}{\mbox{{\tt dom}}}
+\newcommand{\Dom}[1]{\DomOp{}\;{#1}}
+\newcommand{\Quote}[1]{`(#1)}
+
+% Words
+
+\newcommand{\pw}{\ensuremath{\mathit{pw}}}
 
 % Equations
 

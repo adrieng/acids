@@ -1,0 +1,31 @@
+\section{Clock typing}
+
+The goal of static typing is to identify which programs enjoy efficient
+compilation into finite-state co-iterative code, and reject those which do not.
+
+\subsection{Unification}
+
+\[
+\begin{array}{rl}
+  \Unif{\alpha}{\alpha} & \\
+  \Unif{\alpha}{\st} \mbox{ or } \Unif{\st}{\alpha} &
+  \mbox{with } \theta(\alpha) = \st \mbox{ if } \alpha \mbox{ does not occur in } \st
+
+  \\
+
+  \Unif{\On{(\On{\st_1}{\ce_1})}{\ce_2}}{\st_2} &
+  \mbox{if } \ce_1 \mbox{ and } \ce_2 \mbox{ are constants and }
+  \Unif{\On{\st_1}{(\OnCe{\ce_1}{\ce_2})}}{\st_2}
+  \\
+  \Unif{\st_1}{\On{(\On{\st_2}{\ce_1})}{\ce_2}} &
+  \mbox{if } \ce_1 \mbox{ and } \ce_2 \mbox{ are constants and }
+  \Unif{\st_1}{\On{\st_2}{(\OnCe{\ce_1}{\ce_2})}}
+
+  \\
+
+  \Unif{\st_1}{\st_2}
+  &
+  
+
+\end{array}
+\]

@@ -58,7 +58,6 @@ let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 let op = ['+' '-' '*' '-' '/' '^' '%' '#']+
 
 rule token = parse
-| "(*-" { BEGIN_PRAGMA; pragma lexbuf }
 | "(*" { comment lexbuf }
 
 | "(" { LPAREN }
@@ -137,7 +136,7 @@ rule token = parse
 | "T" { TOP_TY }
 (* | "B" { BOT_TY } *)
 
-| '\'' (['0' - '9']+ as s) '\'' { WORD (int_list_of_string s) }
+| '\'' { word lexbuf }
 
 | "'a"(posint as i) { STVAR (int_of_string i) }
 | "'a"              { STVAR 0 }
@@ -161,16 +160,13 @@ rule token = parse
 
 | eof { EOF }
 
-and pragma = parse
-| ":" { COLON }
-| "," { COMMA }
-| alpha+ as s { PRAGMA_KEY s }
-| (alpha | '_' | digit)+ as s { PRAGMA_VAL s }
-| "-*)" { END_PRAGMA }
-
 and comment = parse
 | "*)" { token lexbuf }
 | "(*" { comment lexbuf }
 | '\n' { newline lexbuf; comment lexbuf }
 | _ { comment lexbuf }
 | eof { lexical_error lexbuf "unterminated comment" }
+
+and word = parse
+| digit as c { INT (Int.of_char c) }
+| '\'' { token lexbuf }

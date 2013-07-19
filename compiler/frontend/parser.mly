@@ -396,14 +396,12 @@ clock_exp_desc:
 %inline static_exp_desc:
 | v = IDENT { Acids_parsetree.Info.Se_var v }
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
-| w = WORD { Acids_parsetree.Info.Se_fword w }
 
 %inline static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
 %inline static_exp_desc_novar:
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
-| w = WORD { Acids_parsetree.Info.Se_fword w }
 
 %inline static_exp_novar:
 | sed = with_loc(static_exp_desc_novar) { make_located make_static_exp sed }

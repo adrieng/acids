@@ -381,20 +381,32 @@ const:
 | FLOAT { Ast_misc.Cfloat $1 }
 
 clock_exp_desc:
-| v = IDENT { Acids_parsetree.Ce_condvar v }
-| ce = clock_exp EQUAL se = static_exp { Acids_parsetree.Ce_equal (ce, se) }
-| pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
+| v = IDENT
+   { Acids_parsetree.Ce_condvar v }
+| ce = clock_exp EQUAL se = static_exp
+   { Acids_parsetree.Ce_equal (ce, se) }
+| pt = chevrons(upword(static_exp, static_exp, parens))
+   { Acids_parsetree.Ce_pword pt }
+| pt = upword(static_exp_novar, static_exp_novar, parens)
+   { Acids_parsetree.Ce_pword pt }
 
 %inline clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
-
-%inline static_exp:
-| sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
 %inline static_exp_desc:
 | v = IDENT { Acids_parsetree.Info.Se_var v }
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 | w = WORD { Acids_parsetree.Info.Se_fword w }
+
+%inline static_exp:
+| sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
+
+%inline static_exp_desc_novar:
+| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
+| w = WORD { Acids_parsetree.Info.Se_fword w }
+
+%inline static_exp_novar:
+| sed = with_loc(static_exp_desc_novar) { make_located make_static_exp sed }
 
 simple_exp_desc:
 | c = const { Acids_parsetree.E_const c }

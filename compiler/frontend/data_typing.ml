@@ -59,6 +59,7 @@ let occur_check loc id ty =
     | Pty_var { v_link = None; v_id = id'; } ->
       if id = id' then unification_occur loc ty
     | Pty_scal _ -> ()
+    | Pty_cond ty -> walk ty
     | Pty_prod ty_l -> List.iter walk ty_l
   in
   walk ty
@@ -187,9 +188,9 @@ let add_fresh_type_for_var env id =
 
 let rec add_fresh_types_for_pat env p =
   match p.p_desc with
-  | P_var (id, _) -> add_fresh_type_for_var env id
+  | P_var id | P_condvar id -> add_fresh_type_for_var env id
   | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
-  | P_clock_annot (p, _) | P_type_annot (p, _) ->
+  | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     add_fresh_types_for_pat env p
   | P_split w ->
     Ast_misc.fold_upword
@@ -208,6 +209,9 @@ let rec pre_ty_of_ty_annotation env ty =
         { env with exists = Utils.Int_map.add i ty env.exists; }, ty
     )
   | Ty_scal tys -> env, PreTy.Pty_scal tys
+  | Ty_cond ty ->
+    let env, pty = pre_ty_of_ty_annotation env ty in
+    env, PreTy.Pty_cond pty
   | Ty_prod ty_l ->
     let env, pty_l = Utils.mapfold_left pre_ty_of_ty_annotation env ty_l in
     env, PreTy.Pty_prod pty_l
@@ -219,6 +223,7 @@ let bool_ty = PreTy.Pty_scal Tys_bool
 let float_ty = PreTy.Pty_scal Tys_float
 let user_ty ln = PreTy.Pty_scal (Tys_user ln)
 let tuple_ty ty_l = PreTy.Pty_prod ty_l
+let cond_ty ty = PreTy.Pty_cond ty
 
 module A =
 struct
@@ -331,24 +336,19 @@ and type_const env c =
 and type_clock_exp env ce =
   let ced, ty =
     match ce.ce_desc with
-    | Ce_var id ->
-      M.Ce_var id, find_ident env id
+    | Ce_condvar id ->
+      let ty = cond_ty (fresh_ty ()) in
+      unify ce.ce_loc ty (find_ident env id);
+      M.Ce_condvar id, ty
 
     | Ce_pword w ->
-      let ty = fresh_ty () in
-      let expect = expect_static_exp env ty in
-      let expect_int = expect_static_exp env int_ty in
-      let w = Ast_misc.map_upword expect expect_int w in
+      let w, ty = type_static_word env w in
       M.Ce_pword w, ty
 
     | Ce_equal (ce, se) ->
       let ce, ty = type_clock_exp env ce in
       let se = expect_static_exp env ty se in
       M.Ce_equal (ce, se), bool_ty
-
-    | Ce_iter ce ->
-      let ce = expect_clock_exp env int_ty ce in
-      M.Ce_iter ce, int_ty
   in
   {
     M.ce_desc = ced;
@@ -466,7 +466,8 @@ and type_exp env e =
       M.E_merge (ce, List.map type_merge_clause c_l), body_ty
 
     | E_valof ce ->
-      let ce, ty = type_clock_exp env ce in
+      let ty = fresh_ty () in
+      let ce = expect_clock_exp env (cond_ty ty) ce in
       M.E_valof ce, ty
 
     | E_clock_annot (e, ca) ->
@@ -478,6 +479,11 @@ and type_exp env e =
       let env, ty = pre_ty_of_ty_annotation env ta in
       let e = expect_exp env ty e in
       M.E_type_annot (e, ta), ty
+
+    | E_spec_annot (e, spec) ->
+      let spec, ty = type_spec env spec in
+      let e = expect_exp env ty e in
+      M.E_spec_annot (e, spec), ty
 
     | E_dom (e, dom) ->
       let e, ty = type_exp env e in
@@ -515,14 +521,14 @@ and type_app env app =
 and type_pattern p env =
   let pd, ty, env =
     match p.p_desc with
-    | P_var (id, info) ->
-      let ty = find_ident env id in
-      (
-        match info with
-        | None -> ()
-        | Some _ -> unify p.p_loc ty int_ty
-      );
-      M.P_var (id, info), find_ident env id, env
+    | P_var id ->
+      M.P_var id, find_ident env id, env
+
+    | P_condvar id ->
+      let ty = cond_ty (fresh_ty ()) in
+      let ty' = find_ident env id in
+      unify p.p_loc ty ty';
+      M.P_condvar id, ty, env
 
     | P_tuple p_l ->
       let pty_l, env = Utils.mapfold type_pattern p_l env in
@@ -537,6 +543,11 @@ and type_pattern p env =
       let env, ty = pre_ty_of_ty_annotation env ta in
       let p, env = expect_pat ty p env in
       M.P_type_annot (p, ta), ty, env
+
+    | P_spec_annot (p, spec) ->
+      let spec, ty = type_spec env spec in
+      let p, env = expect_pat ty p env in
+      M.P_spec_annot (p, spec), ty, env
 
     | P_split w ->
       let ty = fresh_ty () in
@@ -597,6 +608,23 @@ and type_domain env dom =
     M.d_par = dom.d_par;
     M.d_info = annotate_dummy dom.d_info;
   }
+
+and type_spec env spec =
+  match spec with
+  | Unspec -> M.Unspec, fresh_ty ()
+  | Word w ->
+    let w, ty = type_static_word env w in
+    M.Word w, ty
+  | Interval (l, u) ->
+    let l = expect_static_exp env int_ty l in
+    let u = expect_static_exp env int_ty u in
+    M.Interval (l, u), int_ty
+
+and type_static_word env w =
+  let ty = fresh_ty () in
+  let expect = expect_static_exp env ty in
+  let expect_int = expect_static_exp env int_ty in
+  Ast_misc.map_upword expect expect_int w, ty
 
 let type_node_def env nd =
   reset_ty ();

@@ -102,16 +102,13 @@ struct
   let rec extract_clock_exp ce =
     let ced =
       match ce.ce_desc with
-      | Ce_exp e ->
-        let e = extract_exp e in
-        OUT.Ce_exp e
+      | Ce_condvar v ->
+        OUT.Ce_condvar v
       | Ce_pword w ->
         let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
         OUT.Ce_pword w
       | Ce_equal (ce, se) ->
         OUT.Ce_equal (extract_clock_exp ce, extract_static_exp se)
-      | Ce_iter ce ->
-        OUT.Ce_iter (extract_clock_exp ce)
     in
     {
       OUT.ce_desc = ced;
@@ -152,6 +149,8 @@ struct
         OUT.E_clock_annot (extract_exp e, extract_clock_annot ca)
       | E_type_annot (e, ty) ->
         OUT.E_type_annot (extract_exp e, ty)
+      | E_spec_annot (e, spec) ->
+        OUT.E_spec_annot (extract_exp e, extract_spec spec)
       | E_dom (e, dom) ->
         OUT.E_dom (extract_exp e, extract_domain dom)
       | E_buffer e ->
@@ -180,12 +179,15 @@ struct
   and extract_pattern p =
     let pd =
       match p.p_desc with
-      | P_var (id, info) -> OUT.P_var (id, info)
+      | P_var id -> OUT.P_var id
+      | P_condvar id -> OUT.P_condvar id
       | P_tuple p_l -> OUT.P_tuple (List.map extract_pattern p_l)
       | P_clock_annot (p, ca) ->
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
       | P_type_annot (p, ty) ->
         OUT.P_type_annot (extract_pattern p, ty)
+      | P_spec_annot (p, spec) ->
+        OUT.P_spec_annot (extract_pattern p, extract_spec spec)
       | P_split w ->
         OUT.P_split (Ast_misc.map_upword extract_pattern extract_static_exp w)
     in
@@ -221,6 +223,15 @@ struct
       OUT.d_par = dom.d_par;
       OUT.d_info = M.update_domain_info dom.d_info;
     }
+
+  and extract_spec spec =
+    match spec with
+    | Unspec -> OUT.Unspec
+    | Word w ->
+      let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
+      OUT.Word w
+    | Interval (l, u) ->
+      OUT.Interval (extract_static_exp l, extract_static_exp u)
 
   and extract_node_def nd =
     {
@@ -272,12 +283,13 @@ module FREEVARS(A : Acids.A
 struct
   open A
 
+  (* TODO: we currently do not consider static exps *)
+
   let rec fv_clock_exp fv ce =
     match ce.ce_desc with
-    | Ce_exp e -> fv_exp fv e
+    | Ce_condvar v -> Ident.Set.add v fv
     | Ce_pword _ -> fv
     | Ce_equal (ce, _) -> fv_clock_exp fv ce
-    | Ce_iter ce -> fv_clock_exp fv ce
 
   and fv_exp fv e =
     match e.e_desc with
@@ -311,6 +323,9 @@ struct
     | E_clock_annot (e, cka) ->
       fv_exp (fv_clock_annot fv cka) e
 
+    | E_spec_annot (e, spec) ->
+      fv_exp (fv_spec fv spec) e
+
     | E_dom (e, dom) ->
       let fv =
         match dom.d_base_clock with
@@ -326,7 +341,8 @@ struct
 
   and fv_pattern ?(gather_clock_vars = true) fv p =
     match p.p_desc with
-    | P_var (v, _) -> Ident.Set.add v fv
+    | P_var v -> Ident.Set.add v fv
+    | P_condvar v -> Ident.Set.add v fv
     | P_tuple p_l -> List.fold_left fv_pattern fv p_l
     | P_clock_annot (p, cka) ->
       let fv =
@@ -336,8 +352,15 @@ struct
       in
       fv_pattern fv p
     | P_type_annot (p, _) -> fv_pattern fv p
+    | P_spec_annot (p, _) -> fv_pattern fv p
     | P_split pw ->
       Ast_misc.fold_upword (Utils.flip fv_pattern) (fun _ l -> l) pw fv
+
+  and fv_spec fv spec =
+    match spec with
+    | Unspec -> fv
+    | Word _ -> fv
+    | Interval _ -> fv
 
   and fv_block fv block =
     let bv_eq bv eq = fv_pattern ~gather_clock_vars:false bv eq.eq_lhs in
@@ -364,9 +387,9 @@ struct
   let rec refresh_clock_exp ce env =
     let ced, env =
       match ce.ce_desc with
-      | Ce_exp e ->
-        let e, env = refresh_exp e env in
-        Ce_exp e, env
+      | Ce_condvar v ->
+        let env, v = refresh_var env v in
+        Ce_condvar v, env
       | Ce_pword pw ->
         let pw, env =
           Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
@@ -376,9 +399,6 @@ struct
         let ce, env = refresh_clock_exp ce env in
         let se, env = refresh_static_exp se env in
         Ce_equal (ce, se), env
-      | Ce_iter ce ->
-        let ce, env = refresh_clock_exp ce env in
-        Ce_iter ce, env
     in
     { ce with ce_desc = ced; }, env
 
@@ -481,6 +501,11 @@ struct
         let e, env = refresh_exp e env in
         E_type_annot (e, tya), env
 
+      | E_spec_annot (e, spec) ->
+        let e, env = refresh_exp e env in
+        let spec, env = refresh_spec spec env in
+        E_spec_annot (e, spec), env
+
       | E_dom (e, dom) ->
         let e, env = refresh_exp e env in
         let dom, env = refresh_domain dom env in
@@ -496,6 +521,20 @@ struct
     let cka, env = Utils.mapfold_opt refresh_clock_annot dom.d_base_clock env in
     { dom with d_base_clock = cka; }, env
 
+  and refresh_spec spec env =
+    match spec with
+    | Unspec -> Unspec, env
+    | Word pw ->
+      let pw, env =
+        Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
+      in
+      Word pw, env
+    | Interval (l, u) ->
+      let l, env = refresh_static_exp l env in
+      let u, env = refresh_static_exp u env in
+      Interval (l, u), env
+
+
   and refresh_block block env =
     let body, env = Utils.mapfold refresh_eq block.b_body env in
     { block with b_body = body; }, env
@@ -508,9 +547,13 @@ struct
   and refresh_pattern p env =
     let pd, env =
       match p.p_desc with
-      | P_var (v, ita) ->
+      | P_var v ->
         let env, v = refresh_var env v in
-        P_var (v, ita), env
+        P_var v, env
+
+      | P_condvar v ->
+        let env, v = refresh_var env v in
+        P_condvar v, env
 
       | P_tuple p_l ->
         let p_l, env = Utils.mapfold refresh_pattern p_l env in
@@ -524,6 +567,11 @@ struct
       | P_type_annot (p, tya) ->
         let p, env = refresh_pattern p env in
         P_type_annot (p, tya), env
+
+      | P_spec_annot (p, spec) ->
+        let p, env = refresh_pattern p env in
+        let spec, env = refresh_spec spec env in
+        P_spec_annot (p, spec), env
 
       | P_split pt ->
         let pt, env =

@@ -24,8 +24,8 @@ let error_is_internal exn =
   | Lexer.Lexical_error _
   | Parser_utils.Parse_error _
   | Scoping.Scoping_error _
-  (* | Interface.Interface_error _ *)
-  (* | Data_typing.Typing_error _ *)
+  | Interface.Interface_error _
+  | Data_typing.Typing_error _
   (* | Interval_typing.Typing_error _ *)
   (* | Static_typing.Typing_error _ *)
   (* | Static_simpl.Simplification_error _ *)
@@ -49,10 +49,10 @@ let print_error _ fmt exn =
     Format.fprintf fmt "Syntax error"
   | Scoping.Scoping_error err ->
     Scoping.print_error fmt err
-  (* | Interface.Interface_error err -> *)
-  (*   Interface.print_error fmt err *)
-  (* | Data_typing.Typing_error err -> *)
-  (*   Data_typing.print_error fmt err *)
+  | Interface.Interface_error err ->
+    Interface.print_error fmt err
+  | Data_typing.Typing_error err ->
+    Data_typing.print_error fmt err
   (* | Interval_typing.Typing_error err -> *)
   (*   Interval_typing.print_error fmt err *)
   (* | Static_typing.Typing_error err -> *)
@@ -73,7 +73,7 @@ let flow =
   let open Pass_manager in
   Parsing_pass.parse
   +>+ Scoping.scope
-  (* +>+ Data_typing.type_ *)
+  +>+ Data_typing.type_
   (* +>+ Interval_typing.type_ *)
   (* +>+ Static_typing.type_ *)
   (* +>+ Static_simpl.simpl *)

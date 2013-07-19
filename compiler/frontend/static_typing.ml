@@ -279,25 +279,14 @@ let check_and_transform_non_static_sig name ssig =
 let is_constant_pword w =
   let open Ast_misc in
 
-  let is_constant_static_exp se =
-    let open Acids_scoped.Info in
-    match se.se_desc with
-    | Se_var _ | Se_econstr _ | Se_fword [_] -> true
-    | Se_fword _ -> false
-  in
-
   let check_constant se acc =
-    if not (is_constant_static_exp se) then raise Non_constant_pword
-    else
-      (
-        match acc with
-        | Some prev_se ->
-          if se.se_desc <> prev_se.se_desc
-          then raise Non_constant_pword
-          else acc
-        | None ->
-          Some se
-      )
+    match acc with
+    | Some prev_se ->
+      if se.se_desc <> prev_se.se_desc
+      then raise Non_constant_pword
+      else acc
+    | None ->
+      Some se
   in
   try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
   with Non_constant_pword -> false
@@ -336,7 +325,7 @@ and type_static_exp env se =
       let ty = find_ident env v in
       unify se.se_loc static_ty ty;
       ty
-    | Se_econstr _ | Se_fword _ ->
+    | Se_econstr _ ->
       static_ty
   in
   {

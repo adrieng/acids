@@ -39,8 +39,6 @@ let econstr ec = const (Ast_misc.Cconstr ec)
 
 let bool b = econstr (Ast_misc.Ec_bool b)
 
-let int i = econstr (Ast_misc.Ec_int i)
-
 let tuple v_l = Tuple v_l
 
 let get_econstr v =
@@ -77,12 +75,12 @@ let access_funs_pat p =
   let project_pat id p value =
     let rec find value p =
       match p.p_desc with
-      | P_var (id', _) ->
+      | P_var id' | P_condvar id' ->
         if Ident.equal id id' then raise (Found value)
       | P_tuple p_l ->
         let v_l = get_tuple value in
         List.iter2 find v_l p_l
-      | P_clock_annot (p, _) | P_type_annot (p, _) ->
+      | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
         find value p
       | P_split pt ->
         Ast_misc.iter_upword (find value) (fun _ -> ()) pt
@@ -97,9 +95,9 @@ let access_funs_pat p =
 
   let rec compute_pat_access_funs acc p =
     match p.p_desc with
-    | P_var (v, _) -> (v, project_pat v orig_p) :: acc
+    | P_var v | P_condvar v -> (v, project_pat v orig_p) :: acc
     | P_tuple p_l -> List.fold_left compute_pat_access_funs acc p_l
-    | P_clock_annot (p, _) | P_type_annot (p, _) ->
+    | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
       compute_pat_access_funs acc p
     | P_split pt ->
       Ast_misc.fold_upword
@@ -173,7 +171,7 @@ let rec eval_var env v = force (find_var env v)
 and eval_clock_exp env ce =
   assert (ce.ce_info#ci_static <> Static_types.S_dynamic);
   match ce.ce_desc with
-  | Ce_var v ->
+  | Ce_condvar v ->
     eval_var env v
   | Ce_pword w ->
     let rec find_any pt =
@@ -188,8 +186,6 @@ and eval_clock_exp env ce =
     let val_ce = eval_clock_exp env ce in
     let val_se = eval_static_exp se env in
     bool (equal_val val_ce val_se)
-  | Ce_iter _ ->
-    not_static "eval_static_clock_exp"
 
 and eval_exp env e =
   assert (e.e_info#ei_static
@@ -238,7 +234,7 @@ and eval_exp env e =
     eval_clock_exp env ce
 
   | E_when (e, _) | E_split (_, e, _)
-  | E_clock_annot (e, _) | E_type_annot (e, _)
+  | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _)
   | E_dom (e, _) | E_buffer e ->
     eval_exp env e
 
@@ -250,8 +246,6 @@ and eval_static_exp se env =
     eval_var env v
   | Se_econstr ec ->
     econstr ec
-  | Se_fword ec_l ->
-    int (List.hd ec_l)
 
 and add_local_defs env block =
   (* Since equations are mutually recursive, we update the mutable [eval_env]

@@ -368,7 +368,6 @@ and type_static_exp env se =
     match se.se_desc with
     | Se_var v -> find_ident env v
     | Se_econstr ec -> type_econstr env ec
-    | Se_fword _ -> int_ty
   in
   {
     M.se_desc = se.se_desc;

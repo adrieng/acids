@@ -27,8 +27,8 @@ let error_is_internal exn =
   | Interface.Interface_error _
   | Data_typing.Typing_error _
   | Static_typing.Typing_error _
+  | Static_simpl.Simplification_error _
   (* | Interval_typing.Typing_error _ *)
-  (* | Static_simpl.Simplification_error _ *)
   (* | Clocking.Clocking_error _ *)
   (* | Clocking_resolution.Resolution_error _ *)
     ->
@@ -55,10 +55,10 @@ let print_error _ fmt exn =
     Data_typing.print_error fmt err
   | Static_typing.Typing_error err ->
     Static_typing.print_error fmt err
+  | Static_simpl.Simplification_error err ->
+    Static_simpl.print_error fmt err
   (* | Interval_typing.Typing_error err -> *)
   (*   Interval_typing.print_error fmt err *)
-  (* | Static_simpl.Simplification_error err -> *)
-  (*   Static_simpl.print_error fmt err *)
   (* | Clocking.Clocking_error err -> *)
   (*   Clocking.print_error fmt err *)
   (* | Clocking_resolution.Resolution_error err -> *)
@@ -75,8 +75,8 @@ let flow =
   +>+ Scoping.scope
   +>+ Data_typing.type_
   +>+ Static_typing.type_
+  +>+ Static_simpl.simpl
   (* +>+ Interval_typing.type_ *)
-  (* +>+ Static_simpl.simpl *)
   (* +>+ Clocking.clock *)
 
 (*****************************************************************************)

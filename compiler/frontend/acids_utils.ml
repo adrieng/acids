@@ -409,7 +409,7 @@ struct
       | Se_var v ->
         let env, v = refresh_var env v in
         Se_var v, env
-      | Se_econstr _ | Se_fword _ -> se.se_desc, env
+      | Se_econstr _ -> se.se_desc, env
     in
     { se with se_desc = sed; }, env
 

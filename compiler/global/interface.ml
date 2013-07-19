@@ -96,7 +96,7 @@ let data_signature_of_node_item ni =
 
 let interval_signature_of_node_item ni =
   match ni with
-  | I_static snd -> invalid_arg "interval_signature_of_node_item: static node"
+  | I_static _ -> invalid_arg "interval_signature_of_node_item: static node"
   | I_dynamic dnd -> dnd.dn_info#ni_interv
 
 let static_signature_of_node_item ni =

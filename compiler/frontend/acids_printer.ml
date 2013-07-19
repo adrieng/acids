@@ -31,7 +31,7 @@ struct
 
   and print_clock_exp_desc fmt ced =
     match ced with
-    | Ce_exp e -> Format.fprintf fmt "<%a>" print_exp e
+    | Ce_condvar v -> I.print_var fmt v
     | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
       Format.fprintf fmt "%a(%a)"
         (Ast_misc.print_power_tree print_static_exp print_static_exp) u
@@ -135,6 +135,8 @@ struct
   and print_pat_desc fmt pd =
     match pd with
     | P_var v -> I.print_var fmt v
+    | P_condvar v ->
+      Format.fprintf fmt "@[cond %a@]" I.print_var v
     | P_tuple p_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r print_pat ",") p_l

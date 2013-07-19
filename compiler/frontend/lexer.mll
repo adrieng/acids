@@ -125,6 +125,8 @@ rule token = parse
 | "end" { END }
 | "type" { TYPE }
 | "by" { BY }
+| "cond" { COND }
+| "unspec" { UNSPEC }
 
 | "bool" { BOOL_TY }
 | "int" { INT_TY }

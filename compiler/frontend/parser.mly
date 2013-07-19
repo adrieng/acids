@@ -136,16 +136,11 @@
       Acids_parsetree.decl_loc = loc;
     }
 
-  let make_ty_sig mk_s =
-    let mk_prod ty_l = Data_types.Ty_prod ty_l in
-    let mk_scal ty = Data_types.Ty_scal ty in
-    let mk_sig inp out =
-      {
-        Data_types.data_sig_input = inp;
-        Data_types.data_sig_output = out;
-      }
-    in
-    mk_s mk_sig (mk_prod, mk_scal)
+  let make_ty_sig inp out =
+    {
+      Data_types.data_sig_input = inp;
+      Data_types.data_sig_output = out;
+    }
 
   let make_static_sig mk_s =
     let mk_prod ty_l = Static_types.Sy_prod ty_l in
@@ -231,7 +226,6 @@
 %token EQUAL
 %token LT GT LE GE
 %token PLUS MINUS TIMES DIV
-%token BACKQUOTE
 
 /* Keywords */
 
@@ -244,6 +238,8 @@
 %token TYPE BY
 %token BUFFER
 %token VALOF
+%token COND
+%token UNSPEC
 
 %token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY (* BOT_TY *)
 
@@ -385,7 +381,7 @@ const:
 | FLOAT { Ast_misc.Cfloat $1 }
 
 clock_exp_desc:
-| BACKQUOTE e = parens(exp) { Acids_parsetree.Ce_exp e }
+| v = IDENT { Acids_parsetree.Ce_condvar v }
 | ce = clock_exp EQUAL se = static_exp { Acids_parsetree.Ce_equal (ce, se) }
 | pt = upword(static_exp, static_exp, parens) { Acids_parsetree.Ce_pword pt }
 
@@ -406,6 +402,10 @@ simple_exp_desc:
 | ed = parens(exp_desc) { ed }
 | LPAREN e = exp DCOLON ck = clock_annot RPAREN
                         { Acids_parsetree.E_clock_annot (e, ck) }
+| LPAREN e = exp COLON ty = data_ty RPAREN
+                        { Acids_parsetree.E_type_annot (e, ty) }
+| LPAREN e = exp IN s = spec RPAREN
+                        { Acids_parsetree.E_spec_annot (e, s) }
 
 %inline simple_exp:
 | ed = with_loc(simple_exp_desc) { make_located make_exp ed }
@@ -489,26 +489,33 @@ clock_annot:
 | v = STVAR { Acids_parsetree.Ca_var v }
 | cka = clock_annot ON ce = clock_exp { Acids_parsetree.Ca_on (cka, ce) }
 
-it_annot:
-| IN it = interval { it }
-
 %inline tuple_pat:
 | { [] }
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var id }
+| COND id = IDENT { Acids_parsetree.P_condvar id }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
 | pt = chevrons(upword(pat, static_exp, parens))
    { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
    { Acids_parsetree.P_clock_annot (p, ck) }
+| LPAREN p = pat COLON tya = data_ty RPAREN
+   { Acids_parsetree.P_type_annot (p, tya) }
+| LPAREN p = pat IN s = spec RPAREN
+   { Acids_parsetree.P_spec_annot (p, s) }
 
 %inline general_pat(PD):
 | pd = with_loc(PD) { make_located make_pat pd }
 
 pat:
 | p = general_pat(pat_desc) { p }
+
+spec:
+| UNSPEC { Acids_parsetree.Unspec }
+| p = upword(static_exp, static_exp, parens) { Acids_parsetree.Word p }
+| LBRACKET l = static_exp COMMA u = static_exp RBRACKET { Acids_parsetree.Interval (l, u) }
 
 pragma_desc:
 | key = PRAGMA_KEY COLON value = PRAGMA_VAL { (key, value) }
@@ -529,11 +536,18 @@ node:
 
 // Declarations
 
-data_ty:
+data_ty_scal:
 | BOOL_TY { Data_types.Tys_bool }
 | INT_TY { Data_types.Tys_int }
 | FLOAT_TY { Data_types.Tys_float }
 | ln = longname { Data_types.Tys_user ln }
+
+data_ty:
+| tys = data_ty_scal { Data_types.Ty_scal tys }
+| ty_l = parens(separated_list(COMMA, data_ty)) { Data_types.Ty_prod ty_l }
+
+data_ty_signature:
+| inp = data_ty ARROW out = data_ty { make_ty_sig inp out }
 
 econstr_singleton:
 | econstr { [$1] }
@@ -561,13 +575,13 @@ placeholder_sig_init:
 node_decl_desc:
 | placeholder_sig_init
   VAL nn = nodename
-  COLON ty_sig = signature(data_ty)
+  COLON ty_sig = data_ty_signature
   DCOLON ck_sig = signature(clock_ty)
   IS static_sig = signature(static_ty)
   IN interval_sig = signature(interval_ty)
         {
            (nn,
-            make_ty_sig ty_sig,
+            ty_sig,
             make_static_sig static_sig,
             make_interval_sig interval_sig,
             make_clock_sig ck_sig)

@@ -62,7 +62,7 @@ sig
   }
 
   and clock_exp_desc =
-  | Ce_exp of exp
+  | Ce_condvar of I.var
   | Ce_pword of (static_exp, static_exp) Tree_word.t
   | Ce_equal of clock_exp * static_exp
 
@@ -117,6 +117,7 @@ sig
 
   and pat_desc =
   | P_var of I.var
+  | P_condvar of I.var
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
@@ -191,7 +192,7 @@ module Make = functor (S : S) ->
       }
 
     and clock_exp_desc =
-    | Ce_exp of exp
+    | Ce_condvar of S.var
     | Ce_pword of (static_exp, static_exp) Tree_word.t
     | Ce_equal of clock_exp * static_exp
 
@@ -274,6 +275,7 @@ module Make = functor (S : S) ->
 
     and pat_desc =
     | P_var of S.var
+    | P_condvar of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty

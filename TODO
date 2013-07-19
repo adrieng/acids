@@ -1,4 +1,5 @@
 Compiler:
+- Fix typing rule for merge and when: require types of the form (cond 'a)
 - Ct variables
 - properly print "forall"s for type variables
 - record type instantiations for future monomorphization

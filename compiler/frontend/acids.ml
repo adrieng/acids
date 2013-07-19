@@ -94,6 +94,7 @@ sig
   | E_valof of clock_exp
   | E_clock_annot of exp * clock_annot
   | E_type_annot of exp * Data_types.data_ty
+  | E_spec_annot of exp * spec
   | E_dom of exp * domain
   | E_buffer of exp
 
@@ -115,10 +116,11 @@ sig
   and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
 
   and pat_desc =
-  | P_var of I.var * Interval.t option
+  | P_var of I.var
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
+  | P_spec_annot of pat * spec
   | P_split of (pat, static_exp) Tree_word.t
 
   and merge_clause = {
@@ -132,6 +134,11 @@ sig
     d_par : bool;
     d_info : I.domain_info;
   }
+
+  and spec =
+  | Unspec
+  | Word of (static_exp, static_exp) Tree_word.t
+  | Interval of static_exp * static_exp
 
   type node_def = {
     n_name : Names.shortname;
@@ -230,6 +237,7 @@ module Make = functor (S : S) ->
 
     | E_clock_annot of exp * clock_annot (** annotations for clock inference *)
     | E_type_annot of exp * Data_types.data_ty
+    | E_spec_annot of exp * spec
     (** annotations for type inference *)
 
     | E_dom of exp * domain (** clock domain *)
@@ -265,10 +273,11 @@ module Make = functor (S : S) ->
       }
 
     and pat_desc =
-    | P_var of S.var * Interval.t option
+    | P_var of S.var
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty
+    | P_spec_annot of pat * spec
     | P_split of (pat, static_exp) Tree_word.t
 
     and merge_clause =
@@ -284,6 +293,11 @@ module Make = functor (S : S) ->
         d_par : bool;
         d_info : S.domain_info;
       }
+
+    and spec =
+    | Unspec
+    | Word of (static_exp, static_exp) Tree_word.t
+    | Interval of static_exp * static_exp
 
     type node_def =
       {

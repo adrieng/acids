@@ -101,6 +101,10 @@ struct
       Format.fprintf fmt "(%a : %a)"
         print_exp e
         Data_types.print_ty ty
+    | E_spec_annot (e, spec) ->
+      Format.fprintf fmt "%a in %a"
+        print_exp e
+        print_spec spec
     | E_dom (e, dom) ->
       print_dom fmt dom e
     | E_buffer e ->
@@ -130,11 +134,7 @@ struct
 
   and print_pat_desc fmt pd =
     match pd with
-    | P_var (v, None) -> I.print_var fmt v
-    | P_var (v, Some it) ->
-      Format.fprintf fmt "%a in %a"
-        I.print_var v
-        Interval.print it
+    | P_var v -> I.print_var fmt v
     | P_tuple p_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r print_pat ",") p_l
@@ -146,6 +146,10 @@ struct
       Format.fprintf fmt "(%a : %a)"
         print_pat p
         Data_types.print_ty ty
+    | P_spec_annot (p, spec) ->
+      Format.fprintf fmt "(%a in %a)"
+        print_pat p
+        print_spec spec
     | P_split p_t ->
       Ast_misc.print_upword print_pat print_static_exp fmt p_t
 
@@ -170,6 +174,15 @@ struct
       (if dom.d_par then "par" else "")
       print_exp e
       (Utils.print_opt print_base_clock) dom.d_base_clock
+
+  and print_spec fmt spec =
+    match spec with
+    | Unspec -> Format.fprintf fmt "unspec"
+    | Word w -> Tree_word.print_upword print_static_exp print_static_exp fmt w
+    | Interval (l, u) ->
+      Format.fprintf fmt "@[[%a,@ %a]@]"
+        print_static_exp l
+        print_static_exp u
 
   let print_node_def fmt nd =
     Format.fprintf fmt "@[<hov 2>let %snode@ %a%a@ %a =@ %a@]"

@@ -497,7 +497,7 @@ it_annot:
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
 pat_desc:
-| id = IDENT ita = option(it_annot) { Acids_parsetree.P_var (id, ita) }
+| id = IDENT { Acids_parsetree.P_var id }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
 | pt = chevrons(upword(pat, static_exp, parens))
    { Acids_parsetree.P_split pt }

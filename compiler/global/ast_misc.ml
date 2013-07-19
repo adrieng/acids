@@ -49,6 +49,17 @@ let print_const fmt c =
   | Cconstr c -> print_econstr fmt c
   | Cfloat f -> Format.fprintf fmt "%f" f
 
+type spec =
+  | Unspec
+  | Word of (Int.t, Int.t) Tree_word.t
+  | Interval of Interval.t
+
+let print_spec fmt spec =
+  match spec with
+  | Unspec -> Format.fprintf fmt "unspec"
+  | Word w -> Tree_word.print_upword_int Int.print fmt w
+  | Interval it -> Interval.print fmt it
+
 (** Generic module for unification variables *)
 module MakeVar =
   functor

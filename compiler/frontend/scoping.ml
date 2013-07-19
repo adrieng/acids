@@ -242,14 +242,14 @@ let check_pattern block_loc block_env p =
   let pat_loc = p.p_loc in
   let rec walk pat_env p =
     match p.p_desc with
-    | P_var (s, _) ->
+    | P_var s | P_condvar s ->
         if Utils.String_set.mem s pat_env
         then multiple_binding_pattern s pat_loc;
         if Utils.String_set.mem s block_env
         then multiple_binding_block s block_loc;
         Utils.String_set.add s pat_env
     | P_tuple p_l -> List.fold_left walk pat_env p_l
-    | P_clock_annot (p, _) | P_type_annot (p, _) ->
+    | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
       walk pat_env p
     | P_split pw ->
         let rec walk_ptree pat_env pt =
@@ -318,21 +318,18 @@ and scope_clock_exp ctx id_env ce intf_env =
   let scope_clock_exp = scope_clock_exp ctx id_env in
   let ced, intf_env =
     match ce.ce_desc with
-    | Ce_var v ->
+    | Ce_condvar v ->
       let id = find_var id_env v ce.ce_loc in
-      Acids_scoped.Ce_var id, intf_env
+      Acids_scoped.Ce_condvar id, intf_env
     | Ce_pword upw ->
-      let pw, intf_env =
+      let upw, intf_env =
         Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
       in
-      Acids_scoped.Ce_pword pw, intf_env
+      Acids_scoped.Ce_pword upw, intf_env
     | Ce_equal (ce, se) ->
       let ce, intf_env = scope_clock_exp ce intf_env in
       let se, intf_env = scope_static_exp se intf_env in
       Acids_scoped.Ce_equal (ce, se), intf_env
-    | Ce_iter ce ->
-      let ce, intf_env = scope_clock_exp ce intf_env in
-      Acids_scoped.Ce_iter ce, intf_env
   in
   {
     Acids_scoped.ce_desc = ced;
@@ -349,8 +346,6 @@ and scope_static_exp id_env se intf_env =
       Acids_scoped.Info.Se_var id, intf_env
     | Acids_parsetree.Info.Se_econstr ec ->
       Acids_scoped.Info.Se_econstr ec, intf_env
-    | Acids_parsetree.Info.Se_fword i_l ->
-      Acids_scoped.Info.Se_fword i_l, intf_env
   in
   {
     Acids_scoped.se_desc = sed;
@@ -442,6 +437,11 @@ and scope_exp
         scope_type local_types imported_mods e.Acids_scoped.e_loc intf_env ty
       in
       Acids_scoped.E_type_annot (e, ty), intf_env
+
+    | E_spec_annot (e, spec) ->
+      let e, intf_env = scope_exp' e intf_env in
+      let spec, intf_env = scope_spec id_env spec intf_env in
+      Acids_scoped.E_spec_annot (e, spec), intf_env
 
     | E_dom (e, dom) ->
       let e, intf_env = scope_exp' e intf_env in
@@ -554,9 +554,12 @@ and scope_pattern
   let scope_pattern = scope_pattern ctx in
   let pd, acc =
     match p.p_desc with
-    | P_var (v, info) ->
+    | P_var v ->
       let id, id_env = add_var id_env v in
-      Acids_scoped.P_var (id, info), (id_env, intf_env)
+      Acids_scoped.P_var id, (id_env, intf_env)
+    | P_condvar v ->
+      let id, id_env = add_var id_env v in
+      Acids_scoped.P_condvar id, (id_env, intf_env)
     | P_tuple p_l ->
       let p_l, acc = Utils.mapfold scope_pattern p_l acc in
       Acids_scoped.P_tuple p_l, acc
@@ -570,6 +573,10 @@ and scope_pattern
         scope_type imported_mods local_types p.Acids_scoped.p_loc intf_env ty
       in
       Acids_scoped.P_type_annot (p, ty), (id_env, intf_env)
+    | P_spec_annot (p, spec) ->
+      let p, (id_env, intf_env) = scope_pattern p acc in
+      let spec, intf_env = scope_spec id_env spec intf_env in
+      Acids_scoped.P_spec_annot (p, spec), (id_env, intf_env)
     | P_split upw ->
       let scope_static_exp se (id_env, intf_env) =
         let e, intf_env = scope_static_exp id_env se intf_env in
@@ -598,6 +605,21 @@ and scope_domain ctx id_env dom intf_env =
     Acids_scoped.d_info = dom.d_info;
   },
   intf_env
+
+and scope_spec id_env spec intf_env =
+  let scope_static_exp = scope_static_exp id_env in
+  match spec with
+  | Unspec ->
+    Acids_scoped.Unspec, intf_env
+  | Word upw ->
+    let upw, intf_env =
+      Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
+    in
+    Acids_scoped.Word upw, intf_env
+  | Interval (l, u) ->
+    let l, intf_env = scope_static_exp l intf_env in
+    let u, intf_env = scope_static_exp u intf_env in
+    Acids_scoped.Interval (l, u), intf_env
 
 let scope_node_def
     imported_mods node (local_nodes, local_constrs, local_types, intf_env) =

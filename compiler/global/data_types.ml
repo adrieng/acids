@@ -24,6 +24,7 @@ type data_ty_scal =
 type data_ty =
   | Ty_var of int
   | Ty_scal of data_ty_scal
+  | Ty_cond of data_ty
   | Ty_prod of data_ty list
 
 type data_sig =
@@ -43,6 +44,7 @@ let rec print_ty fmt ty =
   match ty with
   | Ty_var id -> Format.fprintf fmt "'x%d" id
   | Ty_scal tys -> print_ty_scal fmt tys
+  | Ty_cond ty -> Format.fprintf fmt "cond %a" print_ty ty
   | Ty_prod ty_l ->
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
@@ -77,12 +79,15 @@ module PreTy =
     type 'a pre_ty =
       | Pty_var of 'a
       | Pty_scal of data_ty_scal
+      | Pty_cond of 'a pre_ty
       | Pty_prod of 'a pre_ty list
 
     let rec print print_var fmt pty =
       match pty with
       | Pty_var v -> print_var fmt v
       | Pty_scal tys -> print_ty_scal fmt tys
+      | Pty_cond pty ->
+        Format.fprintf fmt "cond %a" (print print_var) pty
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l
@@ -94,6 +99,7 @@ let rec ty_of_pre_ty pty =
   match pty with
   | Pty_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ty_var i) v
   | Pty_scal tys -> Ty_scal tys
+  | Pty_cond pty -> Ty_cond (ty_of_pre_ty pty)
   | Pty_prod ty_l -> Ty_prod (List.map ty_of_pre_ty ty_l)
 
 let instantiate_sig fresh tysig =
@@ -109,6 +115,9 @@ let instantiate_sig fresh tysig =
     match ty with
     | Ty_var i -> find env i
     | Ty_scal tys -> env, Pty_scal tys
+    | Ty_cond ty ->
+      let env, ty = instantiate_ty env ty in
+      env, Pty_cond ty
     | Ty_prod ty_l ->
       let env, pty_l = Utils.mapfold_left instantiate_ty env ty_l in
       env, Pty_prod pty_l

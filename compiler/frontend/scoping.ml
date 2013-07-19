@@ -531,6 +531,7 @@ and scope_type_scal local_types imported_mods loc intf_env tys =
 
 and scope_type local_types imported_mods loc intf_env ty =
   let open Data_types in
+  let scope_type = scope_type local_types imported_mods loc in
   match ty with
   | Ty_var i -> intf_env, Ty_var i
   | Ty_scal tys ->
@@ -538,13 +539,11 @@ and scope_type local_types imported_mods loc intf_env ty =
       scope_type_scal local_types imported_mods loc intf_env tys
     in
     intf_env, Ty_scal tys
+  | Ty_cond ty ->
+    let intf_env, ty = scope_type intf_env ty in
+    intf_env, Ty_cond ty
   | Ty_prod ty_l ->
-    let intf_env, ty_l =
-      Utils.mapfold_left
-        (scope_type local_types imported_mods loc)
-        intf_env
-        ty_l
-    in
+    let intf_env, ty_l = Utils.mapfold_left scope_type intf_env ty_l in
     intf_env, Ty_prod ty_l
 
 and scope_pattern

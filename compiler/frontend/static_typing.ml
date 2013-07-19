@@ -17,7 +17,7 @@
 
 (** {1 Static typing} *)
 
-open Acids_interval
+open Acids_typed
 open Static_types
 
 (** Static typing is a very simple (two-element) type system used to distinguish
@@ -137,7 +137,7 @@ struct
       Format.fprintf fmt "app is%s static" (if is_static then " not" else "")
 end
 
-module ANN_INFO = Acids_utils.MakeAnnot(Acids_interval)(A)
+module ANN_INFO = Acids_utils.MakeAnnot(Acids_typed)(A)
 module M = Acids.Make(ANN_INFO)
 
 let annotate_exp e ty = ANN_INFO.annotate e.e_info (A.Exp ty)
@@ -167,13 +167,11 @@ struct
         | Sy_scal tys ->
           object
             method ci_data = info#ci_data
-            method ci_interv = info#ci_interv
             method ci_static = tys
           end
         | Sy_var _ -> (* default to dynamic *)
           object
             method ci_data = info#ci_data
-            method ci_interv = info#ci_interv
             method ci_static = S_dynamic
           end
         | _ ->
@@ -190,7 +188,6 @@ struct
         | Sy_scal tys ->
           object
             method pwi_data = info#pwi_data
-            method pwi_interv = info#pwi_interv
             method pwi_static = tys
           end
         | _ -> invalid_arg "update_static_exp_info"
@@ -203,7 +200,6 @@ struct
       let ty = ty_of_pre_ty pty in
       object
         method ei_data = info#ei_data
-        method ei_interv = info#ei_interv
         method ei_static = ty
       end
 
@@ -221,7 +217,6 @@ struct
       let ty = ty_of_pre_ty pty in
       object
         method pi_data = info#pi_data
-        method pi_interv = info#pi_interv
         method pi_static = ty
       end
 
@@ -236,7 +231,6 @@ struct
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
-        method ni_interv = info#ni_interv
         method ni_static = make_ty_sig static inp out
       end
 end
@@ -248,11 +242,12 @@ let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
 let rec enrich_pat env p =
   match p.p_desc with
-  | P_var (v, _) ->
+  | P_var v | P_condvar v ->
     add_fresh_type_for_var env v
   | P_tuple p_l ->
     List.fold_left enrich_pat env p_l
-  | P_clock_annot (p, _) | P_type_annot (p, _) -> enrich_pat env p
+  | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
+    enrich_pat env p
   | P_split pt ->
     Ast_misc.fold_upword
       (fun p env -> enrich_pat env p)
@@ -312,8 +307,8 @@ let is_constant_pword w =
 let rec type_clock_exp env ce =
   let ced, ty =
     match ce.ce_desc with
-    | Ce_var id ->
-      M.Ce_var id, find_ident env id
+    | Ce_condvar id ->
+      M.Ce_condvar id, find_ident env id
 
     | Ce_pword w ->
       let type_fun = type_static_exp env in
@@ -325,10 +320,6 @@ let rec type_clock_exp env ce =
       let ce, ty = type_clock_exp env ce in
       let se = type_static_exp env se in
       M.Ce_equal (ce, se), ty
-
-    | Ce_iter ce ->
-      let ce, ty = type_clock_exp env ce in
-      M.Ce_iter ce, ty
   in
   {
     M.ce_desc = ced;
@@ -460,6 +451,11 @@ and type_exp env e =
       let e, ty = type_exp env e in
       M.E_type_annot (e, ta), ty
 
+    | E_spec_annot (e, spec) ->
+      let spec = type_spec env spec in
+      let e, ty = type_exp env e in
+      M.E_spec_annot (e, spec), ty
+
     | E_dom (e, dom) ->
       let e, ty = type_exp env e in
       let dom = type_domain env dom in
@@ -515,8 +511,10 @@ and type_pat env p =
   let loc = p.p_loc in
   let pd, ty =
     match p.p_desc with
-    | P_var (id, ann) ->
-      M.P_var (id, ann), find_ident env id
+    | P_var id ->
+      M.P_var id, find_ident env id
+    | P_condvar id ->
+      M.P_condvar id, find_ident env id
     | P_tuple p_l ->
       let pty_l = List.map (type_pat env) p_l in
       let p_l, ty_l = List.split pty_l in
@@ -528,6 +526,10 @@ and type_pat env p =
     | P_type_annot (p, tya) ->
       let p, ty = type_pat env p in
       M.P_type_annot (p, tya), ty
+    | P_spec_annot (p, spec) ->
+      let p, ty = type_pat env p in
+      let spec = type_spec env spec in
+      M.P_spec_annot (p, spec), ty
     | P_split pt ->
       let ty = fresh_ty () in
       let pt =
@@ -571,6 +573,18 @@ and type_block env block =
     M.b_loc = block.b_loc;
   },
   new_env
+
+and type_spec env spec =
+  match spec with
+  | Unspec -> M.Unspec
+  | Word w ->
+    let type_fun = type_static_exp env in
+    let w = Ast_misc.map_upword type_fun type_fun w in
+    M.Word w
+  | Interval (l, u) ->
+    let l = type_static_exp env l in
+    let u = type_static_exp env u in
+    M.Interval (l, u)
 
 let type_node_def env nd =
   let env = reset_env env in
@@ -652,7 +666,7 @@ let type_file file =
 let type_file
     ctx
     (file
-       : < interfaces : Interface.env > Acids_interval.file) =
+       : < interfaces : Interface.env > Acids_typed.file) =
   let intermediate_file = type_file file in
   let final_file = EXTRACT.extract_file intermediate_file in
   ctx, final_file

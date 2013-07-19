@@ -23,25 +23,21 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
-        ci_interv : Interval.t;
         ci_static : Static_types.ty_scal;
       >
   let print_clock_exp_info fmt cei =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann cei#ci_data
-      Interval_types.print_interval_ann cei#ci_interv
       Static_types.print_ty_scal_ann cei#ci_static
 
   type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
         pwi_static : Static_types.ty_scal;
-        pwi_interv : Interval.t;
       >
   let print_static_exp_info fmt (pwi : static_exp_info) =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann pwi#pwi_data
-      Interval_types.print_interval_ann pwi#pwi_interv
       Static_types.print_ty_scal_ann pwi#pwi_static
 
   type static_exp_desc = Acids_scoped.Info.static_exp_desc
@@ -50,13 +46,10 @@ struct
   type exp_info =
       <
         ei_data : Data_types.data_ty;
-        ei_interv : Interval_types.ty;
         ei_static : Static_types.ty;
       >
   let print_exp_info fmt ei =
     Data_types.print_ty_ann fmt ei#ei_data;
-    if ei#ei_interv <> Interval_types.It_scal Interval_types.Is_top
-    then Interval_types.print_ty_ann fmt ei#ei_interv;
     Static_types.print_ty_ann fmt ei#ei_static
 
   type app_info = { ai_is_static : bool; }
@@ -70,13 +63,10 @@ struct
   type pat_info =
       <
         pi_data : Data_types.data_ty;
-        pi_interv : Interval_types.ty;
         pi_static : Static_types.ty;
       >
   let print_pat_info fmt pi =
     Data_types.print_ty_ann fmt pi#pi_data;
-    if pi#pi_interv <> Interval_types.It_scal Interval_types.Is_top
-    then Interval_types.print_ty_ann fmt pi#pi_interv;
     Static_types.print_ty_ann fmt pi#pi_static
 
   type eq_info = unit
@@ -86,13 +76,11 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_interv : Interval_types.ty_sig;
         ni_static : Static_types.ty_sig;
       >
   let print_node_info fmt ni =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_sig_ann ni#ni_data
-      Interval_types.print_sig_ann ni#ni_interv
       Static_types.print_sig_ann ni#ni_static
 
   type domain_info = unit

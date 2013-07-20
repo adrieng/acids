@@ -3,7 +3,7 @@
 PREF=byte
 CDIR=`dirname $0`
 
-C=$CDIR/asc.$PREF
+C=$CDIR/compiler/asc.$PREF
 if [ ! -f $C ]
 then
     make -C $CDIR PREF=$PREF > /dev/null

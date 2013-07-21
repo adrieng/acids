@@ -101,23 +101,23 @@ and simpl_clock_exp env ce =
   let ced =
     match ce.ce_desc with
     | Ce_condvar v ->
-      Acids_preinter.Ce_condvar v
+      Acids_prespec.Ce_condvar v
 
     | Ce_pword pw ->
       let pw =
         Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
       in
-      Acids_preinter.Ce_pword pw
+      Acids_prespec.Ce_pword pw
 
     | Ce_equal (ce, se) ->
       let ce = simpl_clock_exp env ce in
       let se = simpl_static_exp env se in
-      Acids_preinter.Ce_equal (ce, se)
+      Acids_prespec.Ce_equal (ce, se)
   in
   {
-    Acids_preinter.ce_desc = ced;
-    Acids_preinter.ce_loc = ce.ce_loc;
-    Acids_preinter.ce_info = ce.ce_info;
+    Acids_prespec.ce_desc = ced;
+    Acids_prespec.ce_loc = ce.ce_loc;
+    Acids_prespec.ce_info = ce.ce_info;
   }
 
 and simpl_static_exp env se =
@@ -128,81 +128,81 @@ and simpl_static_exp env se =
     | Se_econstr ec -> ec
   in
   {
-    Acids_preinter.se_desc = ec;
-    Acids_preinter.se_loc = se.se_loc;
-    Acids_preinter.se_info = se.se_info;
+    Acids_prespec.se_desc = ec;
+    Acids_prespec.se_loc = se.se_loc;
+    Acids_prespec.se_info = se.se_info;
   }
 
 and simpl_pattern env p =
   let pd =
     match p.p_desc with
-    | P_var v -> Acids_preinter.P_var v
+    | P_var v -> Acids_prespec.P_var v
 
-    | P_condvar v -> Acids_preinter.P_condvar v
+    | P_condvar v -> Acids_prespec.P_condvar v
 
     | P_tuple p_l ->
-      Acids_preinter.P_tuple (List.map (simpl_pattern env) p_l)
+      Acids_prespec.P_tuple (List.map (simpl_pattern env) p_l)
 
     | P_clock_annot (p, cka) ->
       let p = simpl_pattern env p in
       let cka = simpl_clock_annot env cka in
-      Acids_preinter.P_clock_annot (p, cka)
+      Acids_prespec.P_clock_annot (p, cka)
 
     | P_type_annot (p, tya) ->
-      Acids_preinter.P_type_annot (simpl_pattern env p, tya)
+      Acids_prespec.P_type_annot (simpl_pattern env p, tya)
 
     | P_spec_annot (p, spec) ->
       let p = simpl_pattern env p in
       let spec = simpl_spec env spec in
-      Acids_preinter.P_spec_annot (p, spec)
+      Acids_prespec.P_spec_annot (p, spec)
 
     | P_split pt ->
       let pt =
         Ast_misc.map_upword (simpl_pattern env) (simpl_static_exp env) pt
       in
-      Acids_preinter.P_split pt
+      Acids_prespec.P_split pt
   in
   {
-    Acids_preinter.p_desc = pd;
-    Acids_preinter.p_loc = p.p_loc;
-    Acids_preinter.p_info = p.p_info;
+    Acids_prespec.p_desc = pd;
+    Acids_prespec.p_loc = p.p_loc;
+    Acids_prespec.p_info = p.p_info;
   }
 
 and simpl_clock_annot env cka =
   match cka with
-  | Ca_var v -> Acids_preinter.Ca_var v
+  | Ca_var v -> Acids_prespec.Ca_var v
   | Ca_on (cka, ce) ->
     let cka = simpl_clock_annot env cka in
     let ce = simpl_clock_exp env ce in
-    Acids_preinter.Ca_on (cka, ce)
+    Acids_prespec.Ca_on (cka, ce)
 
 and simpl_exp env e =
   let ed =
     match e.e_desc with
     | E_var v ->
-      Acids_preinter.E_var v
+      Acids_prespec.E_var v
 
     | E_const c ->
-      Acids_preinter.E_const c
+      Acids_prespec.E_const c
 
 
     | E_fst e ->
-      Acids_preinter.E_fst (simpl_exp env e)
+      Acids_prespec.E_fst (simpl_exp env e)
 
     | E_snd e ->
-      Acids_preinter.E_snd (simpl_exp env e)
+      Acids_prespec.E_snd (simpl_exp env e)
 
     | E_tuple e_l ->
-      Acids_preinter.E_tuple (List.map (simpl_exp env) e_l)
+      Acids_prespec.E_tuple (List.map (simpl_exp env) e_l)
 
     | E_fby (e1, e2) ->
-      Acids_preinter.E_fby (simpl_exp env e1, simpl_exp env e2)
+      Acids_prespec.E_fby (simpl_exp env e1, simpl_exp env e2)
 
     | E_ifthenelse (e1, e2, e3) ->
       let e1 = simpl_exp env e1 in
       let e2 = simpl_exp env e2 in
       let e3 = simpl_exp env e3 in
-      Acids_preinter.E_ifthenelse (e1, e2, e3)
+      Acids_prespec.E_ifthenelse (e1, e2, e3)
 
     | E_app (app, e_arg) ->
       if app.a_info.Info.ai_is_static
@@ -210,89 +210,89 @@ and simpl_exp env e =
       else
         let app =
           {
-            Acids_preinter.a_op = app.a_op;
-            Acids_preinter.a_loc = app.a_loc;
-            Acids_preinter.a_info = ();
+            Acids_prespec.a_op = app.a_op;
+            Acids_prespec.a_loc = app.a_loc;
+            Acids_prespec.a_info = ();
           }
         in
-        Acids_preinter.E_app (app, simpl_exp env e_arg)
+        Acids_prespec.E_app (app, simpl_exp env e_arg)
 
     | E_where (e, block) ->
       let block, env = simpl_block env block in
       let e = simpl_exp env e in
-      Acids_preinter.E_where (e, block)
+      Acids_prespec.E_where (e, block)
 
     | E_when (e, ce) ->
-      Acids_preinter.E_when (simpl_exp env e, simpl_clock_exp env ce)
+      Acids_prespec.E_when (simpl_exp env e, simpl_clock_exp env ce)
 
     | E_split (ce, e, ec_l) ->
-      Acids_preinter.E_split (simpl_clock_exp env ce, simpl_exp env e, ec_l)
+      Acids_prespec.E_split (simpl_clock_exp env ce, simpl_exp env e, ec_l)
 
     | E_bmerge (ce, e1, e2) ->
       let ce = simpl_clock_exp env ce in
       let e1 = simpl_exp env e1 in
       let e2 = simpl_exp env e2 in
-      Acids_preinter.E_bmerge (ce, e1, e2)
+      Acids_prespec.E_bmerge (ce, e1, e2)
 
     | E_merge (ce, c_l) ->
       let simpl_clause c =
         {
-          Acids_preinter.c_sel = c.c_sel;
-          Acids_preinter.c_body = simpl_exp env c.c_body;
-          Acids_preinter.c_loc = c.c_loc;
+          Acids_prespec.c_sel = c.c_sel;
+          Acids_prespec.c_body = simpl_exp env c.c_body;
+          Acids_prespec.c_loc = c.c_loc;
         }
       in
-      Acids_preinter.E_merge (simpl_clock_exp env ce, List.map simpl_clause c_l)
+      Acids_prespec.E_merge (simpl_clock_exp env ce, List.map simpl_clause c_l)
 
     | E_valof ce ->
-      Acids_preinter.E_valof (simpl_clock_exp env ce)
+      Acids_prespec.E_valof (simpl_clock_exp env ce)
 
     | E_clock_annot (e, cka) ->
       let e = simpl_exp env e in
       let cka = simpl_clock_annot env cka in
-      Acids_preinter.E_clock_annot (e, cka)
+      Acids_prespec.E_clock_annot (e, cka)
 
     | E_type_annot (e, tya) ->
-      Acids_preinter.E_type_annot (simpl_exp env e, tya)
+      Acids_prespec.E_type_annot (simpl_exp env e, tya)
 
     | E_spec_annot (e, spec) ->
-      Acids_preinter.E_spec_annot (simpl_exp env e, simpl_spec env spec)
+      Acids_prespec.E_spec_annot (simpl_exp env e, simpl_spec env spec)
 
     | E_dom (e, dom) ->
-      Acids_preinter.E_dom (simpl_exp env e, simpl_domain env dom)
+      Acids_prespec.E_dom (simpl_exp env e, simpl_domain env dom)
 
     | E_buffer e ->
-      Acids_preinter.E_buffer (simpl_exp env e)
+      Acids_prespec.E_buffer (simpl_exp env e)
   in
   {
-    Acids_preinter.e_desc = ed;
-    Acids_preinter.e_loc = e.e_loc;
-    Acids_preinter.e_info = e.e_info;
+    Acids_prespec.e_desc = ed;
+    Acids_prespec.e_loc = e.e_loc;
+    Acids_prespec.e_info = e.e_info;
   }
 
 and simpl_block env block =
   let env = add_local_defs env block in
   {
-    Acids_preinter.b_body = List.map (simpl_eq env) block.b_body;
-    Acids_preinter.b_loc = block.b_loc;
-    Acids_preinter.b_info = block.b_info;
+    Acids_prespec.b_body = List.map (simpl_eq env) block.b_body;
+    Acids_prespec.b_loc = block.b_loc;
+    Acids_prespec.b_info = block.b_info;
   },
   env
 
 and simpl_eq env eq =
   {
-    Acids_preinter.eq_lhs = simpl_pattern env eq.eq_lhs;
-    Acids_preinter.eq_rhs = simpl_exp env eq.eq_rhs;
-    Acids_preinter.eq_loc = eq.eq_loc;
-    Acids_preinter.eq_info = eq.eq_info;
+    Acids_prespec.eq_lhs = simpl_pattern env eq.eq_lhs;
+    Acids_prespec.eq_rhs = simpl_exp env eq.eq_rhs;
+    Acids_prespec.eq_loc = eq.eq_loc;
+    Acids_prespec.eq_info = eq.eq_info;
   }
 
 and simpl_domain env dom =
   let bck = Utils.map_opt (simpl_clock_annot env) dom.d_base_clock in
   {
-    Acids_preinter.d_base_clock = bck;
-    Acids_preinter.d_par = dom.d_par;
-    Acids_preinter.d_info = dom.d_info;
+    Acids_prespec.d_base_clock = bck;
+    Acids_prespec.d_par = dom.d_par;
+    Acids_prespec.d_info = dom.d_info;
   }
 
 and simpl_inline env ln e_app e_arg =
@@ -327,21 +327,21 @@ and simpl_inline env ln e_app e_arg =
     }
   in
   let e = simpl_exp env e in
-  e.Acids_preinter.e_desc
+  e.Acids_prespec.e_desc
 
 and simpl_spec env spec =
   match spec with
-  | Unspec -> Acids_preinter.Unspec
+  | Unspec -> Acids_prespec.Unspec
   | Word pw ->
     let simpl_static_exp = simpl_static_exp env in
     let pw =
       Ast_misc.map_upword simpl_static_exp simpl_static_exp pw
     in
-    Acids_preinter.Word pw
+    Acids_prespec.Word pw
   | Interval (l, u) ->
     let l = simpl_static_exp env l in
     let u = simpl_static_exp env u in
-    Acids_preinter.Interval (l, u)
+    Acids_prespec.Interval (l, u)
 
 let simpl_node_def env nd =
   assert (not nd.n_static);
@@ -349,32 +349,32 @@ let simpl_node_def env nd =
     (* /!\ NEEDED FOR INLINING /!\ *)
     Ident.set_current_ctx nd.n_info#ni_ctx;
     {
-      Acids_preinter.n_name = nd.n_name;
-      Acids_preinter.n_input = simpl_pattern env nd.n_input;
-      Acids_preinter.n_body = simpl_exp env nd.n_body;
-      Acids_preinter.n_pragma = nd.n_pragma;
-      Acids_preinter.n_static = nd.n_static;
-      Acids_preinter.n_loc = nd.n_loc;
-      Acids_preinter.n_info = nd.n_info;
+      Acids_prespec.n_name = nd.n_name;
+      Acids_prespec.n_input = simpl_pattern env nd.n_input;
+      Acids_prespec.n_body = simpl_exp env nd.n_body;
+      Acids_prespec.n_pragma = nd.n_pragma;
+      Acids_prespec.n_static = nd.n_static;
+      Acids_prespec.n_loc = nd.n_loc;
+      Acids_prespec.n_info = nd.n_info;
     }
   with Static_eval.Non_causal v ->
     non_causal nd.n_loc nd.n_name v
 
 let simpl_node_decl nd =
   {
-    Acids_preinter.decl_name = nd.decl_name;
-    Acids_preinter.decl_data = nd.decl_data;
-    Acids_preinter.decl_static = nd.decl_static;
-    Acids_preinter.decl_interv = nd.decl_interv;
-    Acids_preinter.decl_clock = nd.decl_clock;
-    Acids_preinter.decl_loc = nd.decl_loc;
+    Acids_prespec.decl_name = nd.decl_name;
+    Acids_prespec.decl_data = nd.decl_data;
+    Acids_prespec.decl_static = nd.decl_static;
+    Acids_prespec.decl_interv = nd.decl_interv;
+    Acids_prespec.decl_clock = nd.decl_clock;
+    Acids_prespec.decl_loc = nd.decl_loc;
   }
 
 let simpl_type_def td =
   {
-    Acids_preinter.ty_name = td.ty_name;
-    Acids_preinter.ty_body = td.ty_body;
-    Acids_preinter.ty_loc = td.ty_loc;
+    Acids_prespec.ty_name = td.ty_name;
+    Acids_prespec.ty_body = td.ty_body;
+    Acids_prespec.ty_loc = td.ty_loc;
   }
 
 let simpl_phrase (body, env) phr =
@@ -383,15 +383,15 @@ let simpl_phrase (body, env) phr =
     let body, env =
       if nd.n_static
       then body, add_static_node_def env nd
-      else Acids_preinter.Phr_node_def (simpl_node_def env nd) :: body, env
+      else Acids_prespec.Phr_node_def (simpl_node_def env nd) :: body, env
     in
     body, add_node_def env nd
 
   | Phr_node_decl nd ->
-    Acids_preinter.Phr_node_decl (simpl_node_decl nd) :: body, env
+    Acids_prespec.Phr_node_decl (simpl_node_decl nd) :: body, env
 
   | Phr_type_def td ->
-    Acids_preinter.Phr_type_def (simpl_type_def td) :: body, env
+    Acids_prespec.Phr_type_def (simpl_type_def td) :: body, env
 
 let simpl_file file =
   let env = initial_env file.f_info#interfaces in
@@ -403,10 +403,10 @@ let simpl_file file =
     end
   in
   {
-    Acids_preinter.f_name = file.f_name;
-    Acids_preinter.f_imports = file.f_imports;
-    Acids_preinter.f_info = info;
-    Acids_preinter.f_body = List.rev body;
+    Acids_prespec.f_name = file.f_name;
+    Acids_prespec.f_imports = file.f_imports;
+    Acids_prespec.f_info = info;
+    Acids_prespec.f_body = List.rev body;
   }
 
 let simpl_file
@@ -418,6 +418,6 @@ let simpl =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
-       ~print_out:Acids_preinter.print_file
+       ~print_out:Acids_prespec.print_file
        "static_simpl"
        simpl_file)

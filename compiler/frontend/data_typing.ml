@@ -431,11 +431,12 @@ and type_exp env e =
 
     | E_when (e, ce) ->
       let e, ty = type_exp env e in
-      let ce = expect_clock_exp env bool_ty ce in
+      let ce = expect_clock_exp env (cond_ty bool_ty) ce in
       M.E_when (e, ce), ty
 
     | E_split (ce, e', ec_l) ->
-      let ce, ce_ty = type_clock_exp env ce in
+      let ce_ty = fresh_ty () in
+      let ce = expect_clock_exp env (cond_ty ce_ty) ce in
       List.iter
         (fun ec ->
           let ty = type_econstr env ec in
@@ -445,13 +446,14 @@ and type_exp env e =
       M.E_split (ce, e', ec_l), ty
 
     | E_bmerge (ce, e1, e2) ->
-      let ce = expect_clock_exp env bool_ty ce in
+      let ce = expect_clock_exp env (cond_ty bool_ty) ce in
       let e1, ty = type_exp env e1 in
       let e2 = expect_exp env ty e2 in
       M.E_bmerge (ce, e1, e2), ty
 
     | E_merge (ce, c_l) ->
-      let ce, ce_ty = type_clock_exp env ce in
+      let ce_ty = fresh_ty () in
+      let ce = expect_clock_exp env (cond_ty ce_ty) ce in
       let body_ty = fresh_ty () in
       let type_merge_clause cl =
         let sel_ty = type_econstr env cl.c_sel in

@@ -600,7 +600,8 @@ and type_clock_annot env ca =
   | Ca_var i -> M.Ca_var i
   | Ca_on (ca, ce) ->
     let ca = type_clock_annot env ca in
-    let ce, _ = type_clock_exp env ce in
+    let ty = fresh_ty () in
+    let ce = expect_clock_exp env (cond_ty ty) ce in
     M.Ca_on (ca, ce)
 
 and type_domain env dom =

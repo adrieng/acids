@@ -135,8 +135,14 @@ struct
   and print_pat_desc fmt pd =
     match pd with
     | P_var v -> I.print_var fmt v
-    | P_condvar v ->
-      Format.fprintf fmt "@[cond %a@]" I.print_var v
+    | P_condvar (v, specs) ->
+      let print_spec fmt spec =
+        Format.fprintf fmt " in %a"
+          print_spec spec
+      in
+      Format.fprintf fmt "@[cond %a%a@]"
+        I.print_var v
+        (Utils.print_list print_spec) specs
     | P_tuple p_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r print_pat ",") p_l

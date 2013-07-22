@@ -75,7 +75,7 @@ let access_funs_pat p =
   let project_pat id p value =
     let rec find value p =
       match p.p_desc with
-      | P_var id' | P_condvar id' ->
+      | P_var id' | P_condvar (id', _) ->
         if Ident.equal id id' then raise (Found value)
       | P_tuple p_l ->
         let v_l = get_tuple value in
@@ -95,7 +95,7 @@ let access_funs_pat p =
 
   let rec compute_pat_access_funs acc p =
     match p.p_desc with
-    | P_var v | P_condvar v -> (v, project_pat v orig_p) :: acc
+    | P_var v | P_condvar (v, _) -> (v, project_pat v orig_p) :: acc
     | P_tuple p_l -> List.fold_left compute_pat_access_funs acc p_l
     | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
       compute_pat_access_funs acc p

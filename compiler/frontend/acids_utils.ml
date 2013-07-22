@@ -180,7 +180,7 @@ struct
     let pd =
       match p.p_desc with
       | P_var id -> OUT.P_var id
-      | P_condvar id -> OUT.P_condvar id
+      | P_condvar (id, specs) -> OUT.P_condvar (id, List.map extract_spec specs)
       | P_tuple p_l -> OUT.P_tuple (List.map extract_pattern p_l)
       | P_clock_annot (p, ca) ->
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
@@ -342,7 +342,7 @@ struct
   and fv_pattern ?(gather_clock_vars = true) fv p =
     match p.p_desc with
     | P_var v -> Ident.Set.add v fv
-    | P_condvar v -> Ident.Set.add v fv
+    | P_condvar (v, _) -> Ident.Set.add v fv
     | P_tuple p_l -> List.fold_left fv_pattern fv p_l
     | P_clock_annot (p, cka) ->
       let fv =
@@ -551,9 +551,10 @@ struct
         let env, v = refresh_var env v in
         P_var v, env
 
-      | P_condvar v ->
+      | P_condvar (v, specs) ->
         let env, v = refresh_var env v in
-        P_condvar v, env
+        let specs, env = Utils.mapfold refresh_spec specs env in
+        P_condvar (v, specs), env
 
       | P_tuple p_l ->
         let p_l, env = Utils.mapfold refresh_pattern p_l env in

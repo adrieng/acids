@@ -503,9 +503,12 @@ clock_annot:
 | { [] }
 | p = pat COMMA p_l = separated_nonempty_list(COMMA, pat) { p :: p_l }
 
+spec_ann:
+| IN s = spec { s }
+
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var id }
-| COND id = IDENT { Acids_parsetree.P_condvar id }
+| COND id = IDENT specs = list(spec_ann) { Acids_parsetree.P_condvar (id, specs) }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
 | pt = chevrons(upword(pat, static_exp, parens))
    { Acids_parsetree.P_split pt }

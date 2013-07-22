@@ -188,7 +188,7 @@ let add_fresh_type_for_var env id =
 
 let rec add_fresh_types_for_pat env p =
   match p.p_desc with
-  | P_var id | P_condvar id -> add_fresh_type_for_var env id
+  | P_var id | P_condvar (id, _) -> add_fresh_type_for_var env id
   | P_tuple p_l -> List.fold_left add_fresh_types_for_pat env p_l
   | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     add_fresh_types_for_pat env p
@@ -525,11 +525,13 @@ and type_pattern p env =
     | P_var id ->
       M.P_var id, find_ident env id, env
 
-    | P_condvar id ->
-      let ty = cond_ty (fresh_ty ()) in
+    | P_condvar (id, specs) ->
+      let ty = fresh_ty () in
+      let specs = List.map (expect_spec p.p_loc env ty) specs in
+      let ty = cond_ty ty in
       let ty' = find_ident env id in
       unify p.p_loc ty ty';
-      M.P_condvar id, ty, env
+      M.P_condvar (id, specs), ty, env
 
     | P_tuple p_l ->
       let pty_l, env = Utils.mapfold type_pattern p_l env in
@@ -621,6 +623,11 @@ and type_spec env spec =
     let l = expect_static_exp env int_ty l in
     let u = expect_static_exp env int_ty u in
     M.Interval (l, u), int_ty
+
+and expect_spec loc env expected_ty spec =
+  let spec, actual_ty = type_spec env spec in
+  unify loc expected_ty actual_ty;
+  spec
 
 and type_static_word env w =
   let ty = fresh_ty () in

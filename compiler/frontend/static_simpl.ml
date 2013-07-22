@@ -27,7 +27,8 @@ exception Simplification_error of error
 let print_error fmt err =
   match err with
   | Non_causal (l, nn, v) ->
-    Format.fprintf fmt "%aStatic variable %a in node %a is defined in terms of itself"
+    Format.fprintf fmt
+      "%aStatic variable %a in node %a is defined in terms of itself"
       Loc.print l
       Ident.print v
       Names.print_shortname nn
@@ -138,7 +139,9 @@ and simpl_pattern env p =
     match p.p_desc with
     | P_var v -> Acids_prespec.P_var v
 
-    | P_condvar v -> Acids_prespec.P_condvar v
+    | P_condvar (v, specs) ->
+      let specs = List.map (simpl_spec env) specs in
+      Acids_prespec.P_condvar (v, specs)
 
     | P_tuple p_l ->
       Acids_prespec.P_tuple (List.map (simpl_pattern env) p_l)

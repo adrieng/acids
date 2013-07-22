@@ -242,7 +242,7 @@ let check_pattern block_loc block_env p =
   let pat_loc = p.p_loc in
   let rec walk pat_env p =
     match p.p_desc with
-    | P_var s | P_condvar s ->
+    | P_var s | P_condvar (s, _) ->
         if Utils.String_set.mem s pat_env
         then multiple_binding_pattern s pat_loc;
         if Utils.String_set.mem s block_env
@@ -556,9 +556,10 @@ and scope_pattern
     | P_var v ->
       let id, id_env = add_var id_env v in
       Acids_scoped.P_var id, (id_env, intf_env)
-    | P_condvar v ->
+    | P_condvar (v, specs) ->
       let id, id_env = add_var id_env v in
-      Acids_scoped.P_condvar id, (id_env, intf_env)
+      let specs, intf_env = Utils.mapfold (scope_spec id_env) specs intf_env in
+      Acids_scoped.P_condvar (id, specs), (id_env, intf_env)
     | P_tuple p_l ->
       let p_l, acc = Utils.mapfold scope_pattern p_l acc in
       Acids_scoped.P_tuple p_l, acc

@@ -35,7 +35,9 @@ val bool : t
 
 val int : t
 
-val subset : t -> t -> bool
+(** [le x y] is true iff the concretization of x is a subset of the
+    concretization of y *)
+val le : t -> t -> bool
 
 val meet : t -> t -> t
 

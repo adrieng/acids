@@ -87,7 +87,7 @@ let subset_scal ts1 ts2 =
   match ts1, ts2 with
   | _, Is_top -> ()
   | Is_inter i1, Is_inter i2 ->
-    if not (Interval.subset i1 i2) then raise Not_subset
+    if not (Interval.le i1 i2) then raise Not_subset
   | Is_top, Is_inter _ -> raise Not_subset
 
 let rec subset ty1 ty2 =

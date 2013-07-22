@@ -149,7 +149,7 @@ module PreTy =
 struct
   type 'a pre_ty =
     | Pct_var of 'a
-    | Pct_stream of VarTySt.ty_var PreTySt.pre_ty
+    | Pct_stream of VarTySt.t
     | Pct_prod of 'a pre_ty list
 
   let rec print print_var fmt pty =

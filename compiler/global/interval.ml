@@ -51,7 +51,7 @@ let int = { l = Int.min_int; u = Int.max_int; }
 
 (** Abstract operators *)
 
-let subset { l = a; u = b; } { l = c; u = d; } = a >= c && b <= d
+let le { l = a; u = b; } { l = c; u = d; } = a >= c && b <= d
 
 let join { l = a; u = b; } { l = c; u = d; } = make (min a c) (max b d)
 

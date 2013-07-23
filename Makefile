@@ -39,10 +39,10 @@ $(SOLVER): OCAMLBUILDOPTS += -I resolution
 clean:
 	ocamlbuild -clean
 
-%.byte:
+%.byte: .FORCE
 	ocamlbuild ${OCAMLBUILDOPTS} $@
 
-%.native:
+%.native: .FORCE
 	ocamlbuild ${OCAMLBUILDOPTS} $@
 
 %.cma:

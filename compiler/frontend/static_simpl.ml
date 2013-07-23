@@ -333,18 +333,24 @@ and simpl_inline env ln e_app e_arg =
   e.Acids_prespec.e_desc
 
 and simpl_spec env spec =
-  match spec with
-  | Unspec -> Acids_prespec.Unspec
-  | Word pw ->
-    let simpl_static_exp = simpl_static_exp env in
-    let pw =
-      Ast_misc.map_upword simpl_static_exp simpl_static_exp pw
-    in
-    Acids_prespec.Word pw
-  | Interval (l, u) ->
-    let l = simpl_static_exp env l in
-    let u = simpl_static_exp env u in
-    Acids_prespec.Interval (l, u)
+  let sd =
+    match spec.s_desc with
+    | Unspec -> Acids_prespec.Unspec
+    | Word pw ->
+      let simpl_static_exp = simpl_static_exp env in
+      let pw =
+        Ast_misc.map_upword simpl_static_exp simpl_static_exp pw
+      in
+      Acids_prespec.Word pw
+    | Interval (l, u) ->
+      let l = simpl_static_exp env l in
+      let u = simpl_static_exp env u in
+      Acids_prespec.Interval (l, u)
+  in
+  {
+    Acids_prespec.s_desc = sd;
+    Acids_prespec.s_loc = spec.s_loc;
+  }
 
 let simpl_node_def env nd =
   assert (not nd.n_static);

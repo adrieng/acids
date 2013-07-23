@@ -225,13 +225,19 @@ struct
     }
 
   and extract_spec spec =
-    match spec with
-    | Unspec -> OUT.Unspec
-    | Word w ->
-      let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
-      OUT.Word w
-    | Interval (l, u) ->
-      OUT.Interval (extract_static_exp l, extract_static_exp u)
+    let sd =
+      match spec.s_desc with
+      | Unspec -> OUT.Unspec
+      | Word w ->
+        let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
+        OUT.Word w
+      | Interval (l, u) ->
+        OUT.Interval (extract_static_exp l, extract_static_exp u)
+    in
+    {
+      OUT.s_desc = sd;
+      OUT.s_loc = spec.s_loc;
+    }
 
   and extract_node_def nd =
     {
@@ -357,7 +363,7 @@ struct
       Ast_misc.fold_upword (Utils.flip fv_pattern) (fun _ l -> l) pw fv
 
   and fv_spec fv spec =
-    match spec with
+    match spec.s_desc with
     | Unspec -> fv
     | Word _ -> fv
     | Interval _ -> fv
@@ -522,18 +528,24 @@ struct
     { dom with d_base_clock = cka; }, env
 
   and refresh_spec spec env =
-    match spec with
-    | Unspec -> Unspec, env
-    | Word pw ->
-      let pw, env =
-        Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
-      in
-      Word pw, env
-    | Interval (l, u) ->
-      let l, env = refresh_static_exp l env in
-      let u, env = refresh_static_exp u env in
-      Interval (l, u), env
-
+    let sd, env =
+      match spec.s_desc with
+      | Unspec -> Unspec, env
+      | Word pw ->
+        let pw, env =
+          Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
+        in
+        Word pw, env
+      | Interval (l, u) ->
+        let l, env = refresh_static_exp l env in
+        let u, env = refresh_static_exp u env in
+        Interval (l, u), env
+    in
+    {
+      s_desc = sd;
+      s_loc = spec.s_loc;
+    },
+    env
 
   and refresh_block block env =
     let body, env = Utils.mapfold refresh_eq block.b_body env in

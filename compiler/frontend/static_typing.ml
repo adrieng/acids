@@ -565,16 +565,22 @@ and type_block env block =
   new_env
 
 and type_spec env spec =
-  match spec with
-  | Unspec -> M.Unspec
-  | Word w ->
-    let type_fun = type_static_exp env in
-    let w = Ast_misc.map_upword type_fun type_fun w in
-    M.Word w
-  | Interval (l, u) ->
-    let l = type_static_exp env l in
-    let u = type_static_exp env u in
-    M.Interval (l, u)
+  let sd =
+    match spec.s_desc with
+    | Unspec -> M.Unspec
+    | Word w ->
+      let type_fun = type_static_exp env in
+      let w = Ast_misc.map_upword type_fun type_fun w in
+      M.Word w
+    | Interval (l, u) ->
+      let l = type_static_exp env l in
+      let u = type_static_exp env u in
+      M.Interval (l, u)
+  in
+  {
+    M.s_desc = sd;
+    M.s_loc = spec.s_loc;
+  }
 
 let type_node_def env nd =
   let env = reset_env env in

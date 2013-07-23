@@ -52,6 +52,12 @@
     in
     Acids_parsetree.E_dom (e, d)
 
+  let make_spec (sd, loc) =
+    {
+      Acids_parsetree.s_desc = sd;
+      Acids_parsetree.s_loc = loc;
+    }
+
   let make_exp ed loc =
     {
       Acids_parsetree.e_desc = ed;
@@ -525,10 +531,13 @@ pat_desc:
 pat:
 | p = general_pat(pat_desc) { p }
 
-spec:
+spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
 | p = upword(static_exp, static_exp, parens) { Acids_parsetree.Word p }
 | LBRACKET l = static_exp COMMA u = static_exp RBRACKET { Acids_parsetree.Interval (l, u) }
+
+spec:
+| sdl = with_loc(spec_desc) { make_spec sdl }
 
 pragma_desc:
 | key = PRAGMA_KEY COLON value = PRAGMA_VAL { (key, value) }

@@ -527,7 +527,7 @@ and type_pattern p env =
 
     | P_condvar (id, specs) ->
       let ty = fresh_ty () in
-      let specs = List.map (expect_spec p.p_loc env ty) specs in
+      let specs = List.map (expect_spec env ty) specs in
       let ty = cond_ty ty in
       let ty' = find_ident env id in
       unify p.p_loc ty ty';
@@ -614,19 +614,26 @@ and type_domain env dom =
   }
 
 and type_spec env spec =
-  match spec with
-  | Unspec -> M.Unspec, fresh_ty ()
-  | Word w ->
-    let w, ty = type_static_word env w in
-    M.Word w, ty
-  | Interval (l, u) ->
-    let l = expect_static_exp env int_ty l in
-    let u = expect_static_exp env int_ty u in
-    M.Interval (l, u), int_ty
+  let sd, ty =
+    match spec.s_desc with
+    | Unspec -> M.Unspec, fresh_ty ()
+    | Word w ->
+      let w, ty = type_static_word env w in
+      M.Word w, ty
+    | Interval (l, u) ->
+      let l = expect_static_exp env int_ty l in
+      let u = expect_static_exp env int_ty u in
+      M.Interval (l, u), int_ty
+  in
+  {
+    M.s_desc = sd;
+    M.s_loc = spec.s_loc;
+  },
+  ty
 
-and expect_spec loc env expected_ty spec =
+and expect_spec env expected_ty spec =
   let spec, actual_ty = type_spec env spec in
-  unify loc expected_ty actual_ty;
+  unify spec.M.s_loc expected_ty actual_ty;
   spec
 
 and type_static_word env w =

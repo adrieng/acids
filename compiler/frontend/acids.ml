@@ -137,6 +137,12 @@ sig
   }
 
   and spec =
+    {
+      s_desc : spec_desc;
+      s_loc : Loc.t;
+    }
+
+  and spec_desc =
   | Unspec
   | Word of (static_exp, static_exp) Tree_word.t
   | Interval of static_exp * static_exp
@@ -297,6 +303,12 @@ module Make = functor (S : S) ->
       }
 
     and spec =
+      {
+        s_desc : spec_desc;
+        s_loc : Loc.t;
+      }
+
+    and spec_desc =
     | Unspec
     | Word of (static_exp, static_exp) Tree_word.t
     | Interval of static_exp * static_exp

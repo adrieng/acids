@@ -608,18 +608,25 @@ and scope_domain ctx id_env dom intf_env =
 
 and scope_spec id_env spec intf_env =
   let scope_static_exp = scope_static_exp id_env in
-  match spec with
-  | Unspec ->
-    Acids_scoped.Unspec, intf_env
-  | Word upw ->
-    let upw, intf_env =
-      Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
-    in
-    Acids_scoped.Word upw, intf_env
-  | Interval (l, u) ->
-    let l, intf_env = scope_static_exp l intf_env in
-    let u, intf_env = scope_static_exp u intf_env in
-    Acids_scoped.Interval (l, u), intf_env
+  let sd, intf_env =
+    match spec.s_desc with
+    | Unspec ->
+      Acids_scoped.Unspec, intf_env
+    | Word upw ->
+      let upw, intf_env =
+        Ast_misc.mapfold_upword scope_static_exp scope_static_exp upw intf_env
+      in
+      Acids_scoped.Word upw, intf_env
+    | Interval (l, u) ->
+      let l, intf_env = scope_static_exp l intf_env in
+      let u, intf_env = scope_static_exp u intf_env in
+      Acids_scoped.Interval (l, u), intf_env
+  in
+  {
+    Acids_scoped.s_desc = sd;
+    Acids_scoped.s_loc = spec.s_loc;
+  },
+  intf_env
 
 let scope_node_def
     imported_mods node (local_nodes, local_constrs, local_types, intf_env) =

@@ -184,7 +184,7 @@ struct
       (Utils.print_opt print_base_clock) dom.d_base_clock
 
   and print_spec fmt spec =
-    match spec with
+    match spec.s_desc with
     | Unspec -> Format.fprintf fmt "unspec"
     | Word w -> Tree_word.print_upword print_static_exp print_static_exp fmt w
     | Interval (l, u) ->

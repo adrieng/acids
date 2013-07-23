@@ -55,4 +55,3 @@ clean:
 	ocamlbuild ${OCAMLBUILDOPTS} $@
 
 .FORCE:
-asc.native asc.byte: .FORCE

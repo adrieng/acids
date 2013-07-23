@@ -618,7 +618,6 @@ let type_node_decl env nd =
     M.decl_name = nd.decl_name;
     M.decl_data = nd.decl_data;
     M.decl_static = nd.decl_static;
-    M.decl_interv = nd.decl_interv;
     M.decl_clock = nd.decl_clock;
     M.decl_loc = nd.decl_loc;
   },

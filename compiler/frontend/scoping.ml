@@ -679,7 +679,6 @@ let scope_node_decl
       Acids_scoped.decl_name = decl.decl_name;
       Acids_scoped.decl_data = dsig;
       Acids_scoped.decl_static = decl.decl_static;
-      Acids_scoped.decl_interv = decl.decl_interv;
       Acids_scoped.decl_clock = decl.decl_clock;
       Acids_scoped.decl_loc = decl.decl_loc;
     }

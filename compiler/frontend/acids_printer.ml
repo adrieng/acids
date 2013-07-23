@@ -202,12 +202,11 @@ struct
 
   let print_node_decl fmt decl =
     Format.fprintf fmt
-      "@[val %a@ : %a@ :: %a@ is %a@ in %a@]"
+      "@[val %a@ : %a@ :: %a@ is %a@]"
       Names.print_shortname decl.decl_name
       Data_types.print_sig decl.decl_data
-      Static_types.print_sig decl.decl_static
-      Interval_types.print_sig decl.decl_interv
       Clock_types.print_sig decl.decl_clock
+      Static_types.print_sig decl.decl_static
 
   let print_type_def fmt tydef =
     Format.fprintf fmt "@[type %a =@ %a@]"

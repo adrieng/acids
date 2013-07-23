@@ -132,12 +132,11 @@
       Acids_parsetree.n_info = ();
     }
 
-  let make_node_decl (name, data, static, interv, clock) loc =
+  let make_node_decl (name, data, static, clock) loc =
     {
       Acids_parsetree.decl_name = name;
       Acids_parsetree.decl_data = data;
       Acids_parsetree.decl_static = static;
-      Acids_parsetree.decl_interv = interv;
       Acids_parsetree.decl_clock = clock;
       Acids_parsetree.decl_loc = loc;
     }
@@ -159,17 +158,6 @@
           if Static_types.is_static inp
           then Static_types.S_static
           else Static_types.S_dynamic;
-      }
-    in
-    mk_s mk_sig (mk_prod, mk_scal)
-
-  let make_interval_sig mk_s =
-    let mk_prod ty_l = Interval_types.It_prod ty_l in
-    let mk_scal ty = Interval_types.It_scal ty in
-    let mk_sig inp out =
-      {
-        Interval_types.input = inp;
-        Interval_types.output = out;
       }
     in
     mk_s mk_sig (mk_prod, mk_scal)
@@ -219,6 +207,9 @@
       let id = Ident.make_source v in
       Hashtbl.add ht v id;
       id
+
+  let make_ce_var id specs =
+    Clock_types.Ce_var (sig_scope_ident id, Interval.singleton Int.zero, specs)
 %}
 
 /* Punctuation */
@@ -574,8 +565,16 @@ data_ty_signature:
 econstr_singleton:
 | econstr { [$1] }
 
+concrete_spec:
+| UNSPEC { Ast_misc.Unspec }
+| it = interval { Ast_misc.Interval it }
+| p = upword(INT, INT, parens) { Ast_misc.Word p }
+
+concrete_spec_ann:
+| IN s = concrete_spec { s }
+
 clock_exp_ty:
-| id = IDENT IN it = interval { Clock_types.Ce_var (sig_scope_ident id, it) }
+| id = IDENT specs = list(concrete_spec_ann) { make_ce_var id specs }
 | w = upword(econstr_singleton, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL ec = econstr { Clock_types.Ce_equal (ce, ec) }
 
@@ -600,12 +599,10 @@ node_decl_desc:
   COLON ty_sig = data_ty_signature
   DCOLON ck_sig = signature(clock_ty)
   IS static_sig = signature(static_ty)
-  IN interval_sig = signature(interval_ty)
         {
            (nn,
             ty_sig,
             make_static_sig static_sig,
-            make_interval_sig interval_sig,
             make_clock_sig ck_sig)
         }
 

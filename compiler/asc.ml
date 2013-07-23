@@ -28,6 +28,7 @@ let error_is_internal exn =
   | Data_typing.Typing_error _
   | Static_typing.Typing_error _
   | Static_simpl.Simplification_error _
+  | Spec_annot.Annotation_error _
   (* | Interval_typing.Typing_error _ *)
   (* | Clocking.Clocking_error _ *)
   (* | Clocking_resolution.Resolution_error _ *)
@@ -57,6 +58,8 @@ let print_error _ fmt exn =
     Static_typing.print_error fmt err
   | Static_simpl.Simplification_error err ->
     Static_simpl.print_error fmt err
+  | Spec_annot.Annotation_error err ->
+    Spec_annot.print_error fmt err
   (* | Interval_typing.Typing_error err -> *)
   (*   Interval_typing.print_error fmt err *)
   (* | Clocking.Clocking_error err -> *)

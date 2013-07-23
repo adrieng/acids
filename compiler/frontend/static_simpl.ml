@@ -374,7 +374,6 @@ let simpl_node_decl nd =
     Acids_prespec.decl_name = nd.decl_name;
     Acids_prespec.decl_data = nd.decl_data;
     Acids_prespec.decl_static = nd.decl_static;
-    Acids_prespec.decl_interv = nd.decl_interv;
     Acids_prespec.decl_clock = nd.decl_clock;
     Acids_prespec.decl_loc = nd.decl_loc;
   }

@@ -102,3 +102,19 @@ let print_annot r prefix p fmt x =
   if !Compiler_options.print_full_info || !r
   then Format.fprintf fmt " %s %a" prefix p x
   else ()
+
+(** Printing annotated specs *)
+
+let printing_prefix = "in"
+
+let print_interval_annot =
+  print_annot
+    Compiler_options.print_spec_info
+    printing_prefix
+    Interval.print
+
+let print_spec_annot =
+  print_annot
+    Compiler_options.print_spec_info
+    printing_prefix
+    print_spec

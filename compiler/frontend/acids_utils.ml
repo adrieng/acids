@@ -255,7 +255,6 @@ struct
       OUT.decl_name = nd.decl_name;
       OUT.decl_data = nd.decl_data;
       OUT.decl_static = nd.decl_static;
-      OUT.decl_interv = nd.decl_interv;
       OUT.decl_clock = nd.decl_clock;
       OUT.decl_loc = nd.decl_loc;
     }

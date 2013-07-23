@@ -40,6 +40,11 @@ let print_econstr fmt ec =
   | Ec_int i -> Int.print fmt i
   | Ec_constr cstr -> print_constr fmt cstr
 
+let get_int ec =
+  match ec with
+  | Ec_int i -> i
+  | Ec_bool _ | Ec_constr _ -> invalid_arg "get_int: not an int"
+
 type const =
   | Cconstr of econstr
   | Cfloat of float

@@ -79,6 +79,7 @@ let flow =
   +>+ Data_typing.type_
   +>+ Static_typing.type_
   +>+ Static_simpl.simpl
+  +>+ Spec_annot.annot
   (* +>+ Interval_typing.type_ *)
   (* +>+ Clocking.clock *)
 

@@ -77,6 +77,8 @@ val logand : t -> t -> t
 
 val lognot : t -> t
 
+val of_bool : bool -> t
+
 val of_char : char -> t
 
 val of_string : string -> t

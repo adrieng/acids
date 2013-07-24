@@ -23,22 +23,16 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
-        ci_static : Static_types.ty_scal;
       >
   let print_clock_exp_info fmt cei =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_ty_scal_ann cei#ci_data
-      Static_types.print_ty_scal_ann cei#ci_static
+    Data_types.print_ty_scal_ann fmt cei#ci_data
 
   type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
-        pwi_static : Static_types.ty_scal;
       >
   let print_static_exp_info fmt (pwi : static_exp_info) =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_ty_scal_ann pwi#pwi_data
-      Static_types.print_ty_scal_ann pwi#pwi_static
+    Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
   type static_exp_desc = Ast_misc.econstr
   let print_static_exp_desc fmt ec = Ast_misc.print_econstr fmt ec
@@ -46,11 +40,9 @@ struct
   type exp_info =
       <
         ei_data : Data_types.data_ty;
-        ei_static : Static_types.ty;
       >
   let print_exp_info fmt ei =
-    Data_types.print_ty_ann fmt ei#ei_data;
-    Static_types.print_ty_ann fmt ei#ei_static
+    Data_types.print_ty_ann fmt ei#ei_data
 
   type app_info = unit
   let print_app_info (_ : Format.formatter) _ = ()
@@ -61,11 +53,9 @@ struct
   type pat_info =
       <
         pi_data : Data_types.data_ty;
-        pi_static : Static_types.ty;
       >
   let print_pat_info fmt pi =
-    Data_types.print_ty_ann fmt pi#pi_data;
-    Static_types.print_ty_ann fmt pi#pi_static
+    Data_types.print_ty_ann fmt pi#pi_data
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -74,12 +64,9 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
       >
   let print_node_info fmt ni =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_sig_ann ni#ni_data
-      Static_types.print_sig_ann ni#ni_static
+    Data_types.print_sig_ann fmt ni#ni_data
 
   type domain_info = unit
   let print_domain_info (_ : Format.formatter) _ = ()

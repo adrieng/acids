@@ -136,7 +136,10 @@ and simpl_clock_exp env ce =
   {
     Acids_prespec.ce_desc = ced;
     Acids_prespec.ce_loc = ce.ce_loc;
-    Acids_prespec.ce_info = ce.ce_info;
+    Acids_prespec.ce_info =
+      object
+        method ci_data = ce.ce_info#ci_data;
+      end
   }
 
 and simpl_static_exp env se =
@@ -149,7 +152,10 @@ and simpl_static_exp env se =
   {
     Acids_prespec.se_desc = ec;
     Acids_prespec.se_loc = se.se_loc;
-    Acids_prespec.se_info = se.se_info;
+    Acids_prespec.se_info =
+      object
+        method pwi_data = se.se_info#pwi_data;
+      end
   }
 
 and simpl_pattern env p =
@@ -186,7 +192,10 @@ and simpl_pattern env p =
   {
     Acids_prespec.p_desc = pd;
     Acids_prespec.p_loc = p.p_loc;
-    Acids_prespec.p_info = p.p_info;
+    Acids_prespec.p_info =
+      object
+        method pi_data = p.p_info#pi_data
+      end;
   }
 
 and simpl_clock_annot env cka =
@@ -288,7 +297,10 @@ and simpl_exp env e =
   {
     Acids_prespec.e_desc = ed;
     Acids_prespec.e_loc = e.e_loc;
-    Acids_prespec.e_info = e.e_info;
+    Acids_prespec.e_info =
+      object
+        method ei_data = e.e_info#ei_data
+      end;
   }
 
 and simpl_block env block =
@@ -382,7 +394,11 @@ let simpl_node_def env nd =
       Acids_prespec.n_pragma = nd.n_pragma;
       Acids_prespec.n_static = nd.n_static;
       Acids_prespec.n_loc = nd.n_loc;
-      Acids_prespec.n_info = nd.n_info;
+      Acids_prespec.n_info =
+        object
+          method ni_ctx = nd.n_info#ni_ctx
+          method ni_data = nd.n_info#ni_data
+        end;
     }
   with Static_eval.Non_causal v ->
     non_causal nd.n_loc nd.n_name v

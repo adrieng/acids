@@ -113,6 +113,9 @@ let find_node intf shortn = Names.ShortEnv.find shortn intf.i_nodes
 
 let find_type intf shortn = Names.ShortEnv.find shortn intf.i_types
 
+let find_constructor_rank intf cstr =
+  assert false
+
 (** {2 Consistency check and recovery functions} *)
 
 let check_type_and_constrs intf =

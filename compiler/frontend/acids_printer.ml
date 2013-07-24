@@ -29,13 +29,15 @@ struct
       print_clock_exp_desc ce.ce_desc
       (print_info I.print_clock_exp_info) ce.ce_info
 
-  and print_clock_exp_desc fmt ced =
-    match ced with
-    | Ce_condvar v -> I.print_var fmt v
-    | Ce_pword { Ast_misc.u = u; Ast_misc.v = v; } ->
+  and print_static_word fmt { Ast_misc.u = u; Ast_misc.v = v; } =
       Format.fprintf fmt "%a(%a)"
         (Ast_misc.print_power_tree print_static_exp print_static_exp) u
         (Ast_misc.print_power_tree print_static_exp print_static_exp) v
+
+  and print_clock_exp_desc fmt ced =
+    match ced with
+    | Ce_condvar v -> I.print_var fmt v
+    | Ce_pword p -> print_static_word fmt p
     | Ce_equal (ce, se) ->
       Format.fprintf fmt "%a = %a" print_clock_exp ce print_static_exp se
 

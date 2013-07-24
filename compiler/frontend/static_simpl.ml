@@ -21,6 +21,9 @@ open Acids_static
 
 type error =
   | Non_causal of Loc.t * Names.shortname * Ident.t
+  | Negative_pword of
+      Loc.t *
+      (Acids_prespec.static_exp, Acids_prespec.static_exp) Tree_word.t
 
 exception Simplification_error of error
 
@@ -32,9 +35,17 @@ let print_error fmt err =
       Loc.print l
       Ident.print v
       Names.print_shortname nn
+  | Negative_pword (l, p) ->
+    Format.fprintf fmt
+      "%aThe expression %a should be positive"
+      Loc.print l
+      Acids_prespec.print_static_word p
 
 let non_causal loc nn v =
   raise (Simplification_error (Non_causal (loc, nn, v)))
+
+let negative_pword loc ce =
+  raise (Simplification_error (Negative_pword (loc, ce)))
 
 (** {2 Utility functions} *)
 
@@ -108,6 +119,13 @@ and simpl_clock_exp env ce =
       let pw =
         Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
       in
+
+      let check_pos se =
+        let i = Ast_misc.get_int se.Acids_prespec.se_desc in
+        if i < Int.zero then negative_pword ce.ce_loc pw
+      in
+      Tree_word.iter_upword check_pos (fun _ -> ()) pw;
+
       Acids_prespec.Ce_pword pw
 
     | Ce_equal (ce, se) ->

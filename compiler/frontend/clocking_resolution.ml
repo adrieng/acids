@@ -116,7 +116,15 @@ let occur_check_ty loc id orig_ty =
 
 let rec is_rigid_ce ce =
   match ce with
-  | Ce_condvar _ -> true
+  | Ce_condvar cev ->
+    let rec has_stream_spec specs =
+      let open Ast_misc in
+      match specs with
+      | [] -> false
+      | (Unspec | Interval _) :: specs -> has_stream_spec specs
+      | Word _ :: _ -> true
+    in
+    has_stream_spec cev.cev_specs
   | Ce_pword _ -> false
   | Ce_equal (ce, _) -> is_rigid_ce ce
 
@@ -138,27 +146,36 @@ let rec ce_equal ce1 ce2 =
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
   | _ -> false
 
-let int_pword_of_econst_pword int_of_constr pw =
+let get_int int_of_constr ec =
   let open Ast_misc in
+  match ec with
+  | Ec_bool false -> Int.zero
+  | Ec_bool true -> Int.one
+  | Ec_int i -> i
+  | Ec_constr ec -> int_of_constr ec
 
-  let get_int ec =
-    match ec with
-    | Ec_bool false -> Int.zero
-    | Ec_bool true -> Int.one
-    | Ec_int i -> i
-    | Ec_constr ec -> int_of_constr ec
-  in
+let int_pword_of_econstr_pword int_of_constr pw =
+  Tree_word.map_upword (get_int int_of_constr) (fun x -> x) pw
 
-  Tree_word.map_upword get_int (fun x -> x) pw
-
-let rec eval_rigid_ce ce =
+let rec eval_non_rigid_ce ce =
   let open Ast_misc in
+  let int_of_constr _ = assert false in (* TODO find_constructor_rank *)
   match ce with
-  | Ce_condvar _ -> invalid_arg "eval_rigid_ce"
-  | Ce_pword pw -> pw
+  | Ce_condvar cev ->
+    let rec find_stream_spec specs =
+      let open Ast_misc in
+      match specs with
+      | [] -> invalid_arg "eval_non_rigid_ce"
+      | (Unspec | Interval _) :: specs -> find_stream_spec specs
+      | Word p :: _ -> p
+    in
+    find_stream_spec cev.cev_specs
+  | Ce_pword pw ->
+    int_pword_of_econstr_pword int_of_constr pw
   | Ce_equal (ce, ec) ->
-    let pw = eval_rigid_ce ce in
-    Ast_misc.map_upword (fun ec' -> Ec_bool (ec = ec')) (fun x -> x) pw
+    let p = eval_non_rigid_ce ce in
+    let i = get_int ec in
+    Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
 let unit_ipword =
   let open Ast_misc in
@@ -322,15 +339,11 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
     unify loc (c :: wsys) bst1 bst2
 
   and decompose st =
-    let rigid_st, ce_l = decompose_st st in
+    let rigid_st, non_rigid_ce_l = decompose_st st in
     let iw_l =
-      match ce_l with
-      | [] ->
-        [unit_ipword]
-      | _ :: _ ->
-        let pw_l = List.map eval_rigid_ce ce_l in
-        let int_of_constr _ = assert false in (* TODO find_constructor_rank *)
-        List.map (int_pword_of_econst_pword int_of_constr) pw_l
+      match non_rigid_ce_l with
+      | [] -> [unit_ipword]
+      | _ :: _ -> List.map eval_non_rigid_ce non_rigid_ce_l
     in
     rigid_st, iw_l
 

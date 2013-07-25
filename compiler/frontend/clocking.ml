@@ -138,7 +138,6 @@ let int_pword_of_pword pw =
 
 let rec psplit_length pt =
   let open Ast_misc in
-  let open Info in
   match pt with
   | Leaf _ -> Int.of_int 1
   | Power (pt, se) ->
@@ -470,7 +469,7 @@ and clock_exp env e acc =
 
   | E_spec_annot (e, spec) ->
     let (e, ty), acc = clock_exp env e acc in
-    let spec, acc = expect_spec env ty spec acc in
+    let spec, acc = expect_spec ty spec acc in
     M.E_spec_annot (e, spec), ty, acc
 
   | E_dom (e, dom) ->
@@ -521,7 +520,7 @@ and clock_pattern env p acc =
 
     | P_condvar (v, specs) ->
       let ty, acc = clock_var v acc in
-      let specs, acc = Utils.mapfold (expect_spec env ty) specs acc in
+      let specs, acc = Utils.mapfold (expect_spec ty) specs acc in
       M.P_condvar (v, specs), ty, acc
 
     | P_tuple p_l ->
@@ -541,7 +540,7 @@ and clock_pattern env p acc =
 
     | P_spec_annot (p, spec) ->
       let (p, ty), acc = clock_pattern env p acc in
-      let spec, acc = expect_spec env ty spec acc in
+      let spec, acc = expect_spec ty spec acc in
       M.P_spec_annot (p, spec), ty, acc
 
     | P_split pw ->
@@ -562,7 +561,7 @@ and expect_pattern env expected_ty p acc =
   let (p, actual_ty), (ctx, constrs) = clock_pattern env p acc in
   p, (ctx, unify p.M.p_loc expected_ty actual_ty constrs)
 
-and clock_spec env spec acc =
+and clock_spec spec acc =
   let ty = fresh_ty () in
   let sd, acc =
     match spec.s_desc with
@@ -588,8 +587,8 @@ and clock_spec env spec acc =
   ty,
   acc
 
-and expect_spec env expected_ty spec acc =
-  let spec, actual_ty, (ctx, constrs) = clock_spec env spec acc in
+and expect_spec expected_ty spec acc =
+  let spec, actual_ty, (ctx, constrs) = clock_spec spec acc in
   spec, (ctx, unify spec.M.s_loc expected_ty actual_ty constrs)
 
 and clock_psplit env loc pw acc =

@@ -271,7 +271,7 @@ let simplify_equality_constraints sys =
 
 *)
 
-let fresh_word_var () =
+let fresh_word_var unknowns_ht =
   let s = "c" in
   let id = Ident.make_internal s in
   let cev =
@@ -281,9 +281,12 @@ let fresh_word_var () =
       cev_specs = [];
     }
   in
+  Hashtbl.add unknowns_ht id cev;
   id, Ce_condvar cev
 
 let word_constraints_of_clock_constraints ?(check = false) sys =
+  let unknowns_ht = Hashtbl.create 100 in
+
   let rec unify loc wsys st1 st2 =
     let open VarTySt in
     let st1 = unalias_st st1 in
@@ -336,7 +339,7 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
     match unalias_st st1, unalias_st st2 with
     | Pst_var v1, Pst_var v2 when v1.v_id = v2.v_id -> (* special case *)
       let bst = fresh_st () in
-      let id, ce = fresh_word_var () in
+      let id, ce = fresh_word_var unknowns_ht in
       v1.v_link <- Some (Pst_on (bst, ce));
       (bst, Some (Ident.to_string id)), (bst, Some (Ident.to_string id))
     | _ ->
@@ -346,7 +349,7 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
     match unalias_st st with
     | Pst_var v ->
       let bst = fresh_st () in
-      let id, ce = fresh_word_var () in
+      let id, ce = fresh_word_var unknowns_ht in
       v.VarTySt.v_link <- Some (Pst_on (bst, ce));
       bst, Some (Ident.to_string id)
     | _ ->
@@ -373,7 +376,8 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
   {
     Resolution.body = List.fold_left solve_constraint [] sys;
     Resolution.options = options;
-  }
+  },
+  unknowns_ht
 
 (** {2 Top-level function} *)
 
@@ -383,7 +387,7 @@ let solve_constraints ctx loc sys =
   let sys = simplify_equality_constraints sys in
   p_sys "System with simplified equality constraints" sys;
 
-  let wsys =
+  let wsys, unknowns_ht =
     let debug = Pass_manager.ctx_get_attr ctx "debug" in
     word_constraints_of_clock_constraints ~check:debug sys
   in
@@ -393,9 +397,21 @@ let solve_constraints ctx loc sys =
       Format.fprintf fmt "Word constraints: @[%a@]"
         Resolution.print_system wsys) wsys;
 
+  (* Solve the system of inequations on words *)
   let sol =
     let open Resolution_errors in
     try Resolution.solve wsys
     with Could_not_solve err -> word_solver_error loc wsys err
   in
-  () (* TODO *)
+
+  (* Propagate the solutions back into the clocks *)
+  let update_unknown v cev =
+    match Resolution.Solution.get sol (Ident.to_string v) with
+    | Some p ->
+      cev.cev_specs <- Ast_misc.([Word p]);
+      ()
+    | None ->
+      let err = "no solution to " ^ Ident.to_string v in
+      Compiler.internal_error err
+  in
+  Hashtbl.iter update_unknown unknowns_ht;

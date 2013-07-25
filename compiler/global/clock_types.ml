@@ -23,8 +23,8 @@ type clock_exp =
 and clock_exp_var =
   {
     cev_name : Ident.t;
-    cev_bounds : Interval.t;
-    cev_specs : Ast_misc.spec list;
+    mutable cev_bounds : Interval.t;
+    mutable cev_specs : Ast_misc.spec list;
   }
 
 type stream_type =

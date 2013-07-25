@@ -346,12 +346,12 @@ and type_clock_exp env ce =
 
     | Ce_pword w ->
       let w, ty = type_static_word env w in
-      M.Ce_pword w, ty
+      M.Ce_pword w, cond_ty ty
 
     | Ce_equal (ce, se) ->
-      let ce, ty = type_clock_exp env ce in
-      let se = expect_static_exp env ty se in
-      M.Ce_equal (ce, se), bool_ty
+      let se, ty = type_static_exp env se in
+      let ce = expect_clock_exp env (cond_ty ty) ce in
+      M.Ce_equal (ce, se), cond_ty bool_ty
   in
   {
     M.ce_desc = ced;

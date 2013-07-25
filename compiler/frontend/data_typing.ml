@@ -89,6 +89,9 @@ let unify loc ty1 ty2 =
     | Pty_scal Tys_float, Pty_scal Tys_float ->
       ()
 
+    | Pty_cond ty1, Pty_cond ty2 ->
+      u ty1 ty2
+
     | Pty_prod ty_l1, Pty_prod ty_l2 ->
       (try List.iter2 u ty_l1 ty_l2
        with Invalid_argument _ -> unification_conflict loc ty1 ty2)

@@ -121,8 +121,10 @@ and simpl_clock_exp env ce =
       in
 
       let check_pos se =
-        let i = Ast_misc.get_int se.Acids_prespec.se_desc in
-        if i < Int.zero then negative_pword ce.ce_loc pw
+        let open Ast_misc in
+        match se.Acids_prespec.se_desc with
+        | Ec_int i when i < Int.zero -> negative_pword ce.ce_loc pw
+        | _ -> ()
       in
       Tree_word.iter_upword check_pos (fun _ -> ()) pw;
 

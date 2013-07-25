@@ -144,6 +144,14 @@ let rec last l =
   | [x] -> x
   | _ :: l -> last l
 
+let find_rank ?(eq = (=)) x l =
+  let rec walk acc l =
+    match l with
+    | [] -> raise Not_found
+    | y :: l -> if eq x y then acc else walk (acc + 1) l
+  in
+  walk 0 l
+
 let compare_both c k = if c <> 0 then c else k ()
 
 let string_compare x y = Pervasives.compare x y

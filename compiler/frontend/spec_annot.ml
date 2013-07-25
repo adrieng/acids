@@ -60,21 +60,36 @@ type env =
   {
     intf_env : Interface.env;
     env : Ast_misc.spec list Ident.Env.t;
+    constrs : Names.shortname list Names.ShortEnv.t;
   }
 
 let initial_env intf_env =
   {
     intf_env = intf_env;
     env = Ident.Env.empty;
+    constrs = Names.ShortEnv.empty;
   }
+
+let add_type_def env td =
+  { env with constrs = Names.ShortEnv.add td.ty_name td.ty_body env.constrs }
+
+let find_constructor_rank env tyn cstr =
+  let i =
+    let open Names in
+    match tyn.modn with
+    | LocalModule ->
+      let cstrs = Names.ShortEnv.find tyn.shortn env.constrs in
+      Utils.find_rank cstr cstrs
+    | Module modn ->
+      let intf = Names.ShortEnv.find modn env.intf_env in
+      Interface.find_constructor_rank intf cstr
+  in
+  Int.of_int i
 
 let add_spec id specs env =
   { env with env = Ident.Env.add id specs env.env; }
 
 let find_spec env v = try Ident.Env.find v env.env with Not_found -> []
-
-let find_constructor_rank env cstr =
-  assert false (* TODO *)
 
 (** {2 AST walking} *)
 
@@ -168,7 +183,11 @@ let rec annot_clock_exp env ce =
         match se.Acids_spec.se_desc with
         | Ast_misc.Ec_int i -> i
         | Ast_misc.Ec_bool b -> Int.of_bool b
-        | Ast_misc.Ec_constr cstr -> find_constructor_rank env cstr
+        | Ast_misc.Ec_constr cstr ->
+          let open Data_types in
+          match se.Acids_spec.se_info#pwi_data with
+          | Tys_user tyn -> find_constructor_rank env tyn cstr.Names.shortn
+          | Tys_bool | Tys_int | Tys_float -> assert false (* ill-typed *)
       in
 
       let rec update_specs acc specs =
@@ -207,7 +226,11 @@ and annot_static_exp env se =
     match se.se_desc with
     | Ec_bool b -> Int.of_bool b
     | Ec_int i -> i
-    | Ec_constr cstr -> find_constructor_rank env cstr
+    | Ec_constr cstr ->
+      let open Data_types in
+      match se.se_info#pwi_data with
+      | Tys_user tyn -> find_constructor_rank env tyn cstr.Names.shortn
+      | Tys_bool | Tys_int | Tys_float -> assert false (* ill-typed *)
   in
   {
     Acids_spec.se_desc = se.se_desc;

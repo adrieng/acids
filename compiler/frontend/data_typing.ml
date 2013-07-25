@@ -270,9 +270,10 @@ struct
       let ty = Data_types.ty_of_pre_ty pty in
       (
         match ty with
-        | Ty_scal tys ->
+        | Ty_cond (Ty_scal tys) ->
           object method ci_data = tys end
-        | _ -> invalid_arg "update_clock_exp_info"
+        | _ ->
+          invalid_arg "update_clock_exp_info"
       )
 
   let update_static_exp_info { new_annot = na; old_annot = (); } =

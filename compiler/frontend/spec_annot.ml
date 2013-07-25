@@ -148,21 +148,28 @@ let rec annot_clock_exp env ce =
       Acids_spec.Ce_condvar v, find_it specs, specs
 
     | Ce_pword p ->
-      (* Compute bounds *)
-      let it =
-        (* We now that there is no negative integer in p (TODO ugly, invar) *)
-        let l = ref (Int.of_int (- 1)) in
-        let u = ref (Int.of_int (- 1)) in
-        let check se =
-          assert (!l >= Int.zero || !u < Int.zero);
-          let i = Ast_misc.get_int se.se_desc in
-          if !l < Int.zero
-          then (l := i; u := i)
-          else (l := Int.min !l i; u := Int.max !u i)
-        in
-        Ast_misc.iter_upword check (fun _ -> ()) p;
-        Interval.make !l !u
+      let l, u =
+        let open Data_types in
+        match ce.ce_info#ci_data with
+        | Tys_bool -> Int.(of_int 0, of_int 1)
+        | Tys_user _ -> assert false (* TODO *)
+        | Tys_float -> Compiler.internal_error "ill-typed"
+        | Tys_int ->
+          (* Compute bounds *)
+          (* We now that there is no negative integer in p (TODO ugly, invar) *)
+          let l = ref (Int.of_int (- 1)) in
+          let u = ref (Int.of_int (- 1)) in
+          let check se =
+            assert (!l >= Int.zero || !u < Int.zero);
+            let i = Ast_misc.get_int se.se_desc in
+            if !l < Int.zero
+            then (l := i; u := i)
+            else (l := Int.min !l i; u := Int.max !u i)
+          in
+          Ast_misc.iter_upword check (fun _ -> ()) p;
+          !l, !u
       in
+      let it = Interval.make l u in
 
       let pw =
         Tree_word.map_upword (annot_static_exp env) (annot_static_exp env) p
@@ -170,7 +177,7 @@ let rec annot_clock_exp env ce =
 
       let p =
         let get se = Ast_misc.get_int se.Acids_spec.se_desc in
-        Tree_word.map_upword get get pw
+        Tree_word.map_upword get get pw (* TODO not only ints *)
       in
 
       Acids_spec.Ce_pword pw, it, [Ast_misc.Interval it; Ast_misc.Word p]

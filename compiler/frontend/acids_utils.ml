@@ -30,7 +30,11 @@ struct
   let print_var = A.I.print_var
 
   type 'a annot = { new_annot : ANN.new_annot; old_annot : 'a; }
-  let print_annot ?(print_old = false) print fmt { new_annot = na; old_annot = oa; } =
+  let print_annot
+      ?(print_old = false)
+      print
+      fmt
+      { new_annot = na; old_annot = oa; } =
     if print_old
     then
       Format.fprintf fmt "@[ new: %a,@ old: %a@]"
@@ -284,7 +288,7 @@ end
 module FREEVARS(A : Acids.A
                 with type I.var = Ident.t
                 and type
-                  I.static_exp_desc = Acids_preclock.Info.static_exp_desc) =
+                  I.static_exp_desc = Acids_prespec.Info.static_exp_desc) =
 struct
   open A
 

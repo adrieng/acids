@@ -16,10 +16,16 @@
  *)
 
 type clock_exp =
-  | Ce_var of Ident.t * Interval.t * Ast_misc.spec list
-  | Ce_pword of (Ast_misc.econstr list, Int.t) Ast_misc.t
+  | Ce_condvar of clock_exp_var
+  | Ce_pword of (Ast_misc.econstr, Int.t) Ast_misc.t
   | Ce_equal of clock_exp * Ast_misc.econstr
-  | Ce_iter of clock_exp
+
+and clock_exp_var =
+  {
+    cev_name : Ident.t;
+    cev_bounds : Interval.t;
+    cev_specs : Ast_misc.spec list;
+  }
 
 type stream_type =
   | St_var of int
@@ -43,26 +49,17 @@ type clock_sig =
 
 let rec print_clock_exp fmt ce =
   match ce with
-  | Ce_var (id, it, specs) ->
+  | Ce_condvar cev ->
     Format.fprintf fmt "@[%a%a%a@]"
-      Ident.print id
-      Ast_misc.print_interval_annot it
-      (Utils.print_list Ast_misc.print_spec_annot) specs
+      Ident.print cev.cev_name
+      Ast_misc.print_interval_annot cev.cev_bounds
+      (Utils.print_list Ast_misc.print_spec_annot) cev.cev_specs
   | Ce_pword pw ->
-    let print_fword fmt fw =
-      match fw with
-      | [x] -> Ast_misc.print_econstr fmt x
-      | _ ->
-        Format.fprintf fmt "'%a'"
-          (Utils.print_list Ast_misc.print_econstr) fw
-    in
-    Ast_misc.print_upword print_fword Int.print fmt pw
+    Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "%a = %a"
       print_clock_exp ce
       Ast_misc.print_econstr ec
-  | Ce_iter ce ->
-    Format.fprintf fmt "iter %a" print_clock_exp ce
 
 let rec print_stream_type fmt st =
   match st with

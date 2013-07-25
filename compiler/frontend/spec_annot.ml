@@ -211,8 +211,8 @@ let rec annot_clock_exp env ce =
       Acids_spec.ce_info =
         object
           method ci_data = ce.ce_info#ci_data
-          method ci_interv = it
-          method ci_spec = specs;
+          method ci_bounds = it
+          method ci_specs = specs;
         end;
       Acids_spec.ce_loc = ce.ce_loc;
     }

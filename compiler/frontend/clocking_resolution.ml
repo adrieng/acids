@@ -116,9 +116,9 @@ let occur_check_ty loc id orig_ty =
 
 let rec is_rigid_ce ce =
   match ce with
-  | Ce_var _ -> true
+  | Ce_condvar _ -> true
   | Ce_pword _ -> false
-  | Ce_equal (ce, _) | Ce_iter ce -> is_rigid_ce ce
+  | Ce_equal (ce, _) -> is_rigid_ce ce
 
 let rec decompose_st st =
   match unalias_st st with
@@ -133,10 +133,9 @@ let rec decompose_st st =
 (* TODO cleaner *)
 let rec ce_equal ce1 ce2 =
   match ce1, ce2 with
-  | Ce_var (v1, _), Ce_var (v2, _) -> Ident.equal v1 v2
+  | Ce_condvar v1, Ce_condvar v2 -> Ident.equal v1.cev_name v2.cev_name
   | Ce_pword pw1, Ce_pword pw2 -> pw1 = pw2
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
-  | Ce_iter ce1, Ce_iter ce2 -> ce_equal ce1 ce2
   | _ -> false
 
 let int_pword_of_econst_pword int_of_constr pw =
@@ -150,44 +149,16 @@ let int_pword_of_econst_pword int_of_constr pw =
     | Ec_constr ec -> int_of_constr ec
   in
 
-  let rec walk pt =
-    match pt with
-    | Leaf ec_l -> Concat (List.map (fun x -> Leaf (get_int x)) ec_l)
-    | Concat pt_l -> Concat (List.map walk pt_l)
-    | Power (pt, p) -> Power (walk pt, p)
-  in
-
-  { u = walk pw.u; v = walk pw.v; }
+  Tree_word.map_upword get_int (fun x -> x) pw
 
 let rec eval_rigid_ce ce =
   let open Ast_misc in
   match ce with
-  | Ce_var _ -> invalid_arg "eval_rigid_ce"
+  | Ce_condvar _ -> invalid_arg "eval_rigid_ce"
   | Ce_pword pw -> pw
   | Ce_equal (ce, ec) ->
     let pw = eval_rigid_ce ce in
-    let is_eq ec_l =
-      List.map (fun x -> Ec_bool (x = ec)) ec_l in
-    Ast_misc.map_upword is_eq (fun x -> x) pw
-  | Ce_iter ce ->
-    let pw = eval_rigid_ce ce in
-    let rec walk pt =
-      match pt with
-      | Leaf ec_l ->
-        let mk_iter ec acc =
-          let i =
-            match ec with
-            | Ec_int i -> i
-            | Ec_bool _ | Ec_constr _ -> invalid_arg "walk" (* ill-typed *)
-          in
-          let i_l = Utils.range 0 (Int.to_int i - 1) in (* TODO *)
-          List.map (fun i -> Ec_int (Int.of_int i)) i_l @ acc
-        in
-        Leaf (List.fold_right mk_iter ec_l [])
-      | Concat pt_l -> Concat (List.map walk pt_l)
-      | Power (pt, p) -> Power (walk pt, p)
-    in
-    { u = walk pw.u; v = walk pw.v; }
+    Ast_misc.map_upword (fun ec' -> Ec_bool (ec = ec')) (fun x -> x) pw
 
 let unit_ipword =
   let open Ast_misc in
@@ -304,9 +275,16 @@ let fresh_word_var () =
   (* UGLY AS HELL: we use Ident.t as a type of word variables!
      No risk of confusion with program variables howver since we
      adopt names forbidden by the compiler's lexer. *)
-  let s = "W" in
+  let s = "c" in
   let id = Ident.make_internal s in
-  id, Ce_var (id, Interval.singleton Int.zero) (* TODO *)
+  let cev =
+    {
+      cev_name = id;
+      cev_bounds = Interval.singleton Int.zero; (* TODO *)
+      cev_specs = [];
+    }
+  in
+  id, Ce_condvar cev
 
 let word_constraints_of_clock_constraints ?(check = false) sys =
   let rec unify loc wsys st1 st2 =
@@ -351,7 +329,7 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
         [unit_ipword]
       | _ :: _ ->
         let pw_l = List.map eval_rigid_ce ce_l in
-        let int_of_constr _ = assert false in (* TODO *)
+        let int_of_constr _ = assert false in (* TODO find_constructor_rank *)
         List.map (int_pword_of_econst_pword int_of_constr) pw_l
     in
     rigid_st, iw_l

@@ -16,18 +16,9 @@
  *)
 
 open Clock_types
-open Acids_preclock
+open Acids_spec
 open PreTySt
 open PreTy
-
-(** {2 Low-level utilities} *)
-
-let get_int se =
-  let open Info in
-  let open Ast_misc in
-  match se.se_desc with
-  | Se_econstr (Ec_int i) -> i
-  | Se_econstr (Ec_bool _ | Ec_constr _) | Se_fword _ -> invalid_arg "psplit_length"
 
 (** {2 Exceptions} *)
 
@@ -105,40 +96,36 @@ let unify loc t1 t2 constrs =
 
 let prod_ty t_l = Pct_prod t_l
 
-let trad_static_exp se =
-  match se.se_desc with
-  | Info.Se_econstr ec -> [ec]
-  | Info.Se_fword i_l -> List.map (fun i -> Ast_misc.Ec_int i) i_l
+let trad_static_exp_int se = Ast_misc.get_int se.se_desc
 
-let trad_static_exp_int se =
-  match trad_static_exp se with
-  | [Ast_misc.Ec_int i] -> i
-  | _ -> invalid_arg "trad_static_exp_int"
-
-let trad_static_exp_econstr se =
-  match trad_static_exp se with
-  | [ec] -> ec
-  | _ -> invalid_arg "trad_static_exp_econstr" (* TODO *)
+let trad_static_exp_econstr se = Ast_misc.get_econstr se.se_desc
 
 let rec trad_clock_exp ce =
   match ce.ce_desc with
-  | Ce_var v ->
-    Clock_types.Ce_var (v, ce.ce_info#ci_interv)
+  | Ce_condvar v ->
+    let cev =
+      {
+        cev_name = v;
+        cev_bounds = ce.ce_info#ci_bounds;
+        cev_specs = ce.ce_info#ci_specs;
+      }
+    in
+    Clock_types.Ce_condvar cev
   | Ce_pword pw ->
-    let pw = Ast_misc.map_upword trad_static_exp trad_static_exp_int pw in
+    let pw =
+      Ast_misc.map_upword (fun se -> se.se_desc) trad_static_exp_int pw
+    in
     Clock_types.Ce_pword pw
   | Ce_equal (ce, se) ->
-    Clock_types.Ce_equal (trad_clock_exp ce, trad_static_exp_econstr se)
-  | Ce_iter ce ->
-    Clock_types.Ce_iter (trad_clock_exp ce)
+    Clock_types.Ce_equal (trad_clock_exp ce, se.se_desc)
 
 let rec int_ptree_of_ptree current pt =
   let open Ast_misc in
   match pt with
-  | Leaf _ -> Int.succ current, Leaf ([Ec_int current])
+  | Leaf _ -> Int.succ current, Leaf (Ec_int current)
   | Power (pt, se) ->
     let current, pt = int_ptree_of_ptree current pt in
-    current, Power (pt, get_int se)
+    current, Power (pt, trad_static_exp_int se)
   | Concat pt_l ->
     let current, pt_l = Utils.mapfold_left int_ptree_of_ptree current pt_l in
     current, Concat pt_l
@@ -155,13 +142,7 @@ let rec psplit_length pt =
   match pt with
   | Leaf _ -> Int.of_int 1
   | Power (pt, se) ->
-    (
-      match se.se_desc with
-      | Se_econstr (Ec_int i) ->
-        Int.mul i (psplit_length pt)
-      | Se_econstr (Ec_bool _ | Ec_constr _) | Se_fword _ ->
-        invalid_arg "psplit_length"
-    )
+    Int.mul (Ast_misc.get_int se.se_desc) (psplit_length pt)
   | Concat p_l ->
     List.fold_left (fun l pt -> Int.add l (psplit_length pt)) Int.zero p_l
 
@@ -208,7 +189,7 @@ struct
         (Utils.print_list_r print_binding ",") inst
 end
 
-module ANN_INFO = Acids_utils.MakeAnnot(Acids_preclock)(A)
+module ANN_INFO = Acids_utils.MakeAnnot(Acids_spec)(A)
 module M = Acids.Make(ANN_INFO)
 
 let annotate_exp info ty =
@@ -242,8 +223,6 @@ struct
       (
         object
           method ci_data = info#ci_data
-          method ci_interv = info#ci_interv
-          method ci_static = info#ci_static
           method ci_clock = Clock_types.st_of_pre_st pst
         end
       )
@@ -255,8 +234,6 @@ struct
       (
         object
           method pwi_data = info#pwi_data
-          method pwi_interv = info#pwi_interv
-          method pwi_static = info#pwi_static
           method pwi_clock = Clock_types.st_of_pre_st pst
           end
       )
@@ -267,8 +244,6 @@ struct
     | Exp pty ->
       object
         method ei_data = info#ei_data
-        method ei_interv = info#ei_interv
-        method ei_static = info#ei_static
         method ei_clock = Clock_types.ty_of_pre_ty pty
       end
 
@@ -290,8 +265,6 @@ struct
       let ty = ty_of_pre_ty pty in
       object
         method pi_data = info#pi_data
-        method pi_interv = info#pi_interv
-        method pi_static = info#pi_static
         method pi_clock = ty
       end
 
@@ -309,8 +282,6 @@ struct
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
-        method ni_interv = info#ni_interv
-        method ni_static = info#ni_static
         method ni_clock = csig
       end
 end
@@ -328,10 +299,10 @@ and clock_clock_exp env ce acc =
   let loc = ce.ce_loc in
   let ced, st, acc =
     match ce.ce_desc with
-    | Ce_var v ->
+    | Ce_condvar v ->
       let ty, acc = clock_var v acc in
       let st, acc = st_of_ty loc ty acc in
-      M.Ce_var v, st, acc
+      M.Ce_condvar v, st, acc
 
     | Ce_pword pw ->
       let st = fresh_st () in
@@ -345,10 +316,6 @@ and clock_clock_exp env ce acc =
       let (ce, st), acc = clock_clock_exp env ce acc in
       let se, acc = expect_static_exp (ty_of_st st) se acc in
       M.Ce_equal (ce, se), st, acc
-
-    | Ce_iter ce ->
-      let (mce, st), acc = clock_clock_exp env ce acc in
-      M.Ce_iter mce, Pst_on (st, trad_clock_exp ce), acc
   in
   (
     {
@@ -501,6 +468,11 @@ and clock_exp env e acc =
     let (e, ty), acc = clock_exp env e acc in
     M.E_type_annot (e, tya), ty, acc
 
+  | E_spec_annot (e, spec) ->
+    let (e, ty), acc = clock_exp env e acc in
+    let spec, acc = expect_spec env ty spec acc in
+    M.E_spec_annot (e, spec), ty, acc
+
   | E_dom (e, dom) ->
     let (dom, e, ty), acc = clock_dom env loc dom e acc in
     M.E_dom (e, dom), ty, acc
@@ -543,9 +515,14 @@ and clock_pattern env p acc =
   let loc = p.p_loc in
   let pd, ty, acc =
     match p.p_desc with
-    | P_var (v, ita) ->
+    | P_var v ->
       let ty, acc = clock_var v acc in
-      M.P_var (v, ita), ty, acc
+      M.P_var v, ty, acc
+
+    | P_condvar (v, specs) ->
+      let ty, acc = clock_var v acc in
+      let specs, acc = Utils.mapfold (expect_spec env ty) specs acc in
+      M.P_condvar (v, specs), ty, acc
 
     | P_tuple p_l ->
       let pty_l, acc = Utils.mapfold (clock_pattern env) p_l acc in
@@ -562,6 +539,11 @@ and clock_pattern env p acc =
       let (p, ty), acc = clock_pattern env p acc in
       M.P_type_annot (p, tya), ty, acc
 
+    | P_spec_annot (p, spec) ->
+      let (p, ty), acc = clock_pattern env p acc in
+      let spec, acc = expect_spec env ty spec acc in
+      M.P_spec_annot (p, spec), ty, acc
+
     | P_split pw ->
       let pw, ty, acc = clock_psplit env loc pw acc in
       M.P_split pw, ty, acc
@@ -576,9 +558,39 @@ and clock_pattern env p acc =
   ),
   acc
 
-and expect_pattern env expected_ty p (ctx, constrs) =
-  let (p, actual_ty), (ctx, constrs) = clock_pattern env p (ctx, constrs) in
+and expect_pattern env expected_ty p acc =
+  let (p, actual_ty), (ctx, constrs) = clock_pattern env p acc in
   p, (ctx, unify p.M.p_loc expected_ty actual_ty constrs)
+
+and clock_spec env spec acc =
+  let ty = fresh_ty () in
+  let sd, acc =
+    match spec.s_desc with
+    | Unspec -> M.Unspec, acc
+    | Word w ->
+      let w, acc =
+        Tree_word.mapfold_upword
+          (expect_static_exp ty)
+          (expect_static_exp ty)
+          w
+          acc
+      in
+      M.Word w, acc
+    | Interval (l, u) ->
+      let l, acc = expect_static_exp ty l acc in
+      let u, acc = expect_static_exp ty u acc in
+      M.Interval (l, u), acc
+  in
+  {
+    M.s_desc = sd;
+    M.s_loc = spec.s_loc;
+  },
+  ty,
+  acc
+
+and expect_spec env expected_ty spec acc =
+  let spec, actual_ty, (ctx, constrs) = clock_spec env spec acc in
+  spec, (ctx, unify spec.M.s_loc expected_ty actual_ty constrs)
 
 and clock_psplit env loc pw acc =
   let open Ast_misc in
@@ -662,7 +674,8 @@ and clock_dom env loc dom e acc =
       Some cka, (ctx, c :: cstrs)
   in
 
-  (* 5. For each free variable of e, we add a constraint relating it to the output env *)
+  (* 5. For each free variable of e, we add a constraint relating it to the
+     output env *)
   let fv_e =
     let module F = Acids_utils.FREEVARS(M) in
     F.fv_exp Ident.Set.empty e
@@ -712,7 +725,6 @@ let clock_node_decl env ndecl =
     M.decl_name = ndecl.decl_name;
     M.decl_data = ndecl.decl_data;
     M.decl_static = ndecl.decl_static;
-    M.decl_interv = ndecl.decl_interv;
     M.decl_clock = ndecl.decl_clock;
     M.decl_loc = ndecl.decl_loc;
   }
@@ -754,7 +766,7 @@ let clock_file ctx file =
 
 let clock :
     (< interfaces : Interface.env; static_nodes : Acids_static.node_def list >
-      Acids_preclock.file ->
+      Acids_spec.file ->
      < interfaces : Interface.env; static_nodes : Acids_static.node_def list >
        Acids_clocked.file)
     Pass_manager.pass

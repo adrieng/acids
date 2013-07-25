@@ -29,9 +29,8 @@ let error_is_internal exn =
   | Static_typing.Typing_error _
   | Static_simpl.Simplification_error _
   | Spec_annot.Annotation_error _
-  (* | Interval_typing.Typing_error _ *)
-  (* | Clocking.Clocking_error _ *)
-  (* | Clocking_resolution.Resolution_error _ *)
+  | Clocking.Clocking_error _
+  | Clocking_resolution.Resolution_error _
     ->
     false
   | _
@@ -60,12 +59,10 @@ let print_error _ fmt exn =
     Static_simpl.print_error fmt err
   | Spec_annot.Annotation_error err ->
     Spec_annot.print_error fmt err
-  (* | Interval_typing.Typing_error err -> *)
-  (*   Interval_typing.print_error fmt err *)
-  (* | Clocking.Clocking_error err -> *)
-  (*   Clocking.print_error fmt err *)
-  (* | Clocking_resolution.Resolution_error err -> *)
-  (*   Clocking_resolution.print_error fmt err *)
+  | Clocking.Clocking_error err ->
+    Clocking.print_error fmt err
+  | Clocking_resolution.Resolution_error err ->
+    Clocking_resolution.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -80,8 +77,7 @@ let flow =
   +>+ Static_typing.type_
   +>+ Static_simpl.simpl
   +>+ Spec_annot.annot
-  (* +>+ Interval_typing.type_ *)
-  (* +>+ Clocking.clock *)
+  +>+ Clocking.clock
 
 (*****************************************************************************)
 (* File handling *)

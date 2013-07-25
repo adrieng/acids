@@ -209,7 +209,14 @@
       id
 
   let make_ce_var id specs =
-    Clock_types.Ce_var (sig_scope_ident id, Interval.singleton Int.zero, specs)
+    let cev =
+      {
+        Clock_types.cev_name = sig_scope_ident id;
+        Clock_types.cev_bounds = Interval.singleton Int.zero;
+        Clock_types.cev_specs = specs;
+      }
+    in
+    Clock_types.Ce_condvar cev
 %}
 
 /* Punctuation */
@@ -238,7 +245,7 @@
 %token COND
 %token UNSPEC
 
-%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY TOP_TY (* BOT_TY *)
+%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY (* TOP_TY BOT_TY *)
 
 %token<bool> DOM                        (* true for parallelism *)
 
@@ -253,7 +260,6 @@
 %token<bool> BOOL
 %token<Int.t> INT
 %token<float> FLOAT
-%token<Int.t list> WORD
 
 /* Misc */
 
@@ -562,9 +568,6 @@ data_ty:
 data_ty_signature:
 | inp = data_ty ARROW out = data_ty { make_ty_sig inp out }
 
-econstr_singleton:
-| econstr { [$1] }
-
 concrete_spec:
 | UNSPEC { Ast_misc.Unspec }
 | it = interval { Ast_misc.Interval it }
@@ -575,7 +578,7 @@ concrete_spec_ann:
 
 clock_exp_ty:
 | id = IDENT specs = list(concrete_spec_ann) { make_ce_var id specs }
-| w = upword(econstr_singleton, INT, parens) { Clock_types.Ce_pword w }
+| w = upword(econstr, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL ec = econstr { Clock_types.Ce_equal (ce, ec) }
 
 clock_ty:
@@ -585,10 +588,6 @@ clock_ty:
 static_ty:
 | STATIC_TY { Static_types.S_static }
 | DYNAMIC_TY { Static_types.S_dynamic }
-
-interval_ty:
-| TOP_TY { Interval_types.Is_top }
-| i = interval { Interval_types.Is_inter i }
 
 placeholder_sig_init:
 | { sig_scope_reinitialize () }

@@ -23,39 +23,33 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
-        ci_static : Static_types.ty_scal;
         ci_clock : Clock_types.stream_type;
       >
   let print_clock_exp_info fmt (cei : clock_exp_info) =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann cei#ci_data
-      Static_types.print_ty_scal_ann cei#ci_static
       Clock_types.print_stream_type_ann cei#ci_clock
 
   type static_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
-        pwi_static : Static_types.ty_scal;
         pwi_clock : Clock_types.stream_type;
       >
   let print_static_exp_info fmt (pwi : static_exp_info) =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann pwi#pwi_data
-      Static_types.print_ty_scal_ann pwi#pwi_static
       Clock_types.print_stream_type_ann pwi#pwi_clock
 
-  type static_exp_desc = Acids_preclock.Info.static_exp_desc
-  let print_static_exp_desc = Acids_preclock.Info.print_static_exp_desc
+  type static_exp_desc = Acids_spec.Info.static_exp_desc
+  let print_static_exp_desc = Acids_spec.Info.print_static_exp_desc
 
   type exp_info =
       <
         ei_data : Data_types.data_ty;
-        ei_static : Static_types.ty;
         ei_clock : Clock_types.clock_type;
       >
   let print_exp_info fmt ei =
     Data_types.print_ty_ann fmt ei#ei_data;
-    Static_types.print_ty_ann fmt ei#ei_static;
     Clock_types.print_clock_type_ann fmt ei#ei_clock
 
   type app_info =
@@ -70,12 +64,10 @@ struct
   type pat_info =
       <
         pi_data : Data_types.data_ty;
-        pi_static : Static_types.ty;
         pi_clock : Clock_types.clock_type;
       >
   let print_pat_info fmt pi =
     Data_types.print_ty_ann fmt pi#pi_data;
-    Static_types.print_ty_ann fmt pi#pi_static;
     Clock_types.print_clock_type_ann fmt pi#pi_clock
 
   type eq_info = unit
@@ -89,13 +81,11 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
         ni_clock : Clock_types.clock_sig;
       >
   let print_node_info fmt ni =
-    Format.fprintf fmt "%a%a%a"
+    Format.fprintf fmt "%a%a"
       Data_types.print_sig_ann ni#ni_data
-      Static_types.print_sig_ann ni#ni_static
       Clock_types.print_sig_ann ni#ni_clock
 end
 

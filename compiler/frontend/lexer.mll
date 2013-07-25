@@ -133,7 +133,7 @@ rule token = parse
 
 | "D" { DYNAMIC_TY }
 | "S" { STATIC_TY }
-| "T" { TOP_TY }
+(* | "T" { TOP_TY } *)
 (* | "B" { BOT_TY } *)
 
 | '\'' { word lexbuf }

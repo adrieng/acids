@@ -701,6 +701,7 @@ and clock_dom env loc dom e acc =
 
 let clock_node_def env nd =
   let env = reset_env env in
+  Ident.set_current_ctx nd.n_info#ni_ctx;
   let (input, ty_in), acc =
     clock_pattern env nd.n_input (Ident.Env.empty, [])
   in

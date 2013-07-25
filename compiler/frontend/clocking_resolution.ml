@@ -272,9 +272,6 @@ let simplify_equality_constraints sys =
 *)
 
 let fresh_word_var () =
-  (* UGLY AS HELL: we use Ident.t as a type of word variables!
-     No risk of confusion with program variables howver since we
-     adopt names forbidden by the compiler's lexer. *)
   let s = "c" in
   let id = Ident.make_internal s in
   let cev =
@@ -381,11 +378,6 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
 (** {2 Top-level function} *)
 
 let solve_constraints ctx loc sys =
-  let ictx = Ident.get_current_ctx () in
-  Ident.reset_ctx ();
-
-  try
-
   p_sys "Initial system" sys;
 
   let sys = simplify_equality_constraints sys in
@@ -406,10 +398,4 @@ let solve_constraints ctx loc sys =
     try Resolution.solve wsys
     with Could_not_solve err -> word_solver_error loc wsys err
   in
-
-  Ident.set_current_ctx ictx;
-  ()
-
-  with exn ->
-    Ident.set_current_ctx ictx;
-    raise exn
+  () (* TODO *)

@@ -41,40 +41,27 @@ let ill_typed loc k ty = raise (Pragma_error (Ill_typed (loc, k, ty)))
 
 (* {2 Type definitions} *)
 
-type solving_level =
-  | Solve_node
-  | Solve_main
+type tuple =
+  | Econstr of Ast_misc.econstr
+  | Tuple of tuple list
+
+let rec print_tuple fmt tp =
+  match tp with
+  | Econstr ec -> Ast_misc.print_econstr fmt ec
+  | Tuple tp_l ->
+    Format.fprintf fmt "(@[%a@])"
+      (Utils.print_list_r print_tuple ",") tp_l
 
 type pragma =
   {
     loc : Loc.t;
-    kind :
-      [
-        `Solve of solving_level
-      ];
+    key : string;
+    value : tuple;
   }
+
+let print_pragma fmt pragma =
+  Format.fprintf fmt "@%s%a"
+    pragma.key
+    print_tuple pragma.value
 
 type t = pragma list
-
-(* {2 Utilities} *)
-
-let value_for_solve loc k v =
-  match v with
-  | "node" -> `Solve Solve_node
-  | "main" -> `Solve Solve_main
-  | _ -> ill_typed loc k "[node | main]"
-
-let pragma_table =
-  [
-    "solve", value_for_solve;
-  ]
-
-let make_command (k, v) loc =
-  {
-    loc = loc;
-    kind =
-      try
-        let f = List.assoc k pragma_table in
-        f loc k v
-      with Not_found -> unknown_pragma loc k
-  }

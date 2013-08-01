@@ -253,6 +253,7 @@
 
 %token<string> IDENT
 %token<string> UIDENT
+%token<string> PRAGMAKEY
 %token<string> OP
 %token<int> STVAR
 (* %token<int> TYVAR *)

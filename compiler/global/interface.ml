@@ -97,7 +97,7 @@ let data_signature_of_node_item ni =
 let static_signature_of_node_item ni =
   match ni with
   | I_static snd -> snd.sn_info#ni_static
-  | I_dynamic dnd -> invalid_arg "static_signature_of_node_item: dynamic node"
+  | I_dynamic _ -> invalid_arg "static_signature_of_node_item: dynamic node"
 
 let clock_signature_of_node_item ni =
   match ni with

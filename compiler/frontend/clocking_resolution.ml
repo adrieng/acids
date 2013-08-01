@@ -146,20 +146,11 @@ let rec ce_equal ce1 ce2 =
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
   | _ -> false
 
-let get_int int_of_constr ec =
-  let open Ast_misc in
-  match ec with
-  | Ec_bool false -> Int.zero
-  | Ec_bool true -> Int.one
-  | Ec_int i -> i
-  | Ec_constr ec -> int_of_constr ec
+let int_pword_of_econstr_pword env pw =
+  Tree_word.map_upword (Interface.int_of_econstr env) (fun x -> x) pw
 
-let int_pword_of_econstr_pword int_of_constr pw =
-  Tree_word.map_upword (get_int int_of_constr) (fun x -> x) pw
-
-let rec eval_non_rigid_ce ce =
+let rec eval_non_rigid_ce env ce =
   let open Ast_misc in
-  let int_of_constr _ = assert false in (* TODO find_constructor_rank *)
   match ce with
   | Ce_condvar cev ->
     let rec find_stream_spec specs =
@@ -171,9 +162,9 @@ let rec eval_non_rigid_ce ce =
     in
     find_stream_spec cev.cev_specs
   | Ce_pword pw ->
-    int_pword_of_econstr_pword int_of_constr pw
+    int_pword_of_econstr_pword env pw
   | Ce_equal (ce, ec) ->
-    let p = eval_non_rigid_ce ce in
+    let p = eval_non_rigid_ce env ce in
     let i = get_int ec in
     Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
@@ -301,7 +292,7 @@ let fresh_word_var unknowns_ht =
   Hashtbl.add unknowns_ht id cev;
   id, Ce_condvar cev
 
-let word_constraints_of_clock_constraints ?(check = false) sys =
+let word_constraints_of_clock_constraints ?(check = false) env sys =
   let unknowns_ht = Hashtbl.create 100 in
 
   let rec unify loc wsys st1 st2 =
@@ -343,7 +334,7 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
     let iw_l =
       match non_rigid_ce_l with
       | [] -> [unit_ipword]
-      | _ :: _ -> List.map eval_non_rigid_ce non_rigid_ce_l
+      | _ :: _ -> List.map (eval_non_rigid_ce env) non_rigid_ce_l
     in
     rigid_st, iw_l
 
@@ -394,7 +385,7 @@ let word_constraints_of_clock_constraints ?(check = false) sys =
 
 (** {2 Top-level function} *)
 
-let solve_constraints ctx loc sys =
+let solve_constraints env ctx loc sys =
   p_sys "Initial system" sys;
 
   let sys = simplify_equality_constraints sys in
@@ -402,7 +393,7 @@ let solve_constraints ctx loc sys =
 
   let wsys, unknowns_ht =
     let debug = Pass_manager.ctx_get_attr ctx "debug" in
-    word_constraints_of_clock_constraints ~check:debug sys
+    word_constraints_of_clock_constraints ~check:debug env sys
   in
   p_sys "System with word variables" sys;
   p

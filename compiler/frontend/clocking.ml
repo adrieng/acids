@@ -40,7 +40,7 @@ let print_error fmt err =
 type env =
   {
     ctx : Pass_manager.ctx;
-    intf_env : Interface.env;
+    intf_env : Interface.t Names.ModEnv.t;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
@@ -48,10 +48,12 @@ type env =
 let initial_env ctx intf_env =
   {
     ctx = ctx;
-    intf_env = intf_env;
+    intf_env = Names.mod_env_of_short_env intf_env;
     local_nodes = Names.ShortEnv.empty;
     ck_vars = Utils.Int_map.empty;
   }
+
+let get_interfaces env = env.intf_env
 
 let get_ctx env = env.ctx
 
@@ -72,7 +74,7 @@ let find_node_signature env ln =
   match ln.modn with
   | LocalModule -> ShortEnv.find ln.shortn env.local_nodes
   | Module modn ->
-    let intf = ShortEnv.find modn env.intf_env in
+    let intf = ModEnv.find (Module modn) env.intf_env in
     Interface.clock_signature_of_node_item (Interface.find_node intf ln.shortn)
 
 (** {2 Utility functions} *)
@@ -657,7 +659,11 @@ and clock_dom env loc dom e acc =
   in
 
   (* 2. Solve constraints *)
-  Clocking_resolution.solve_constraints (get_ctx env) loc local_constrs;
+  Clocking_resolution.solve_constraints
+    (get_interfaces env)
+    (get_ctx env)
+    loc
+    local_constrs;
 
   (* 3. Fresh base clock *)
 
@@ -706,7 +712,10 @@ let clock_node_def env nd =
     clock_pattern env nd.n_input (Ident.Env.empty, [])
   in
   let (body, ty_out), (_, cstrs) = clock_exp env nd.n_body acc in
-  Clocking_resolution.solve_constraints (get_ctx env) nd.n_loc cstrs;
+  Clocking_resolution.solve_constraints
+    (get_interfaces env)
+    (get_ctx env)
+    nd.n_loc cstrs;
   let csig = Clock_types.generalize_clock_sig ty_in ty_out [] in
   add_local_node env nd.n_name csig,
   {

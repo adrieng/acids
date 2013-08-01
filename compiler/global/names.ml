@@ -54,29 +54,17 @@ struct
   let compare = longname_compare
 end
 
-module Env =
-  struct
-    module M = Map.Make(LongnameOrdered)
-    include M
-
-    let union env1 env2 = M.fold (fun k v env2 -> M.add k v env2) env1 env2
-
-    let disjoint_union env1 env2 =
-      let add k v env =
-        if M.mem k env then invalid_arg "disjoint_union" else M.add k v env
-      in
-      M.fold add env1 env2
-
-    let mapfold_elems f env acc =
-      let add k v (env, acc) =
-        let v, acc = f v acc in
-        M.add k v env, acc
-      in
-      M.fold add env (M.empty, acc)
-
-    let of_assoc_list l =
-      List.fold_left (fun env (id, x) -> M.add id x env) M.empty l
-  end
-
+module Env = Utils.MakeMap(LongnameOrdered)
+module ModEnv =
+  Utils.MakeMap(
+    struct
+      type t = modul
+      let compare = Pervasives.compare
+    end
+  )
 module ShortEnv = Utils.Env
 module ShortSet = Utils.String_set
+
+let mod_env_of_short_env senv =
+  let add k v menv = ModEnv.add (Module k) v menv in
+  ShortEnv.fold add senv ModEnv.empty

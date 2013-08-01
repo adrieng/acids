@@ -168,6 +168,17 @@ let rebuild_constrs_env intf =
       Names.ShortEnv.fold add intf.i_types Names.ShortEnv.empty;
   }
 
+(** {2 Translation from econstr to integers} *)
+
+let int_of_econstr env ec =
+  let open Ast_misc in
+  match ec with
+  | Ec_int i -> i
+  | Ec_bool b -> Int.of_bool b
+  | Ec_constr cstr ->
+    let intf = Names.ModEnv.find cstr.Names.modn env in
+    Int.of_int (find_constructor_rank intf cstr.Names.shortn)
+
 (** {2 Low-level I/O functions} *)
 
 let load_interface filen =

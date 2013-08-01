@@ -58,7 +58,7 @@ let negative_bounds ce it =
 
 type env =
   {
-    intf_env : Interface.env;
+    intf_env : Interface.t Names.ModEnv.t;
     env : Ast_misc.spec list Ident.Env.t;
     constrs : Names.shortname list Names.ShortEnv.t;
   }
@@ -73,18 +73,7 @@ let initial_env intf_env =
 let add_type_def env td =
   { env with constrs = Names.ShortEnv.add td.ty_name td.ty_body env.constrs }
 
-let find_constructor_rank env tyn cstr =
-  let i =
-    let open Names in
-    match tyn.modn with
-    | LocalModule ->
-      let cstrs = Names.ShortEnv.find tyn.shortn env.constrs in
-      Utils.find_rank cstr cstrs
-    | Module modn ->
-      let intf = Names.ShortEnv.find modn env.intf_env in
-      Interface.find_constructor_rank intf cstr
-  in
-  Int.of_int i
+let int_of_econstr env ec = Interface.int_of_econstr env.intf_env ec
 
 let add_spec id specs env =
   { env with env = Ident.Env.add id specs env.env; }
@@ -176,8 +165,8 @@ let rec annot_clock_exp env ce =
       in
 
       let p =
-        let get se = Ast_misc.get_int se.Acids_spec.se_desc in
-        Tree_word.map_upword get get pw (* TODO not only ints *)
+        let get se = int_of_econstr env se.Acids_spec.se_desc in
+        Tree_word.map_upword get get pw
       in
 
       Acids_spec.Ce_pword pw, it, [Ast_misc.Interval it; Ast_misc.Word p]
@@ -186,16 +175,7 @@ let rec annot_clock_exp env ce =
       let ce, it, specs = annot_clock_exp env ce in
       let se = annot_static_exp env se in
 
-      let i_se =
-        match se.Acids_spec.se_desc with
-        | Ast_misc.Ec_int i -> i
-        | Ast_misc.Ec_bool b -> Int.of_bool b
-        | Ast_misc.Ec_constr cstr ->
-          let open Data_types in
-          match se.Acids_spec.se_info#pwi_data with
-          | Tys_user tyn -> find_constructor_rank env tyn cstr.Names.shortn
-          | Tys_bool | Tys_int | Tys_float -> assert false (* ill-typed *)
-      in
+      let i_se = int_of_econstr env se.Acids_spec.se_desc in
 
       let rec update_specs acc specs =
         let open Ast_misc in
@@ -228,17 +208,7 @@ let rec annot_clock_exp env ce =
   if it.Interval.l < Int.zero then negative_bounds ce it else (ce, it, specs)
 
 and annot_static_exp env se =
-  let i =
-    let open Ast_misc in
-    match se.se_desc with
-    | Ec_bool b -> Int.of_bool b
-    | Ec_int i -> i
-    | Ec_constr cstr ->
-      let open Data_types in
-      match se.se_info#pwi_data with
-      | Tys_user tyn -> find_constructor_rank env tyn cstr.Names.shortn
-      | Tys_bool | Tys_int | Tys_float -> assert false (* ill-typed *)
-  in
+  let i = int_of_econstr env se.se_desc in
   {
     Acids_spec.se_desc = se.se_desc;
     Acids_spec.se_loc = se.se_loc;
@@ -465,7 +435,8 @@ let annot_ty_phrase env phr =
     Acids_spec.Phr_type_def (annot_type_def env td)
 
 let annot_file file =
-  let env = initial_env file.f_info#interfaces in
+  let interfaces = Names.mod_env_of_short_env file.f_info#interfaces in
+  let env = initial_env interfaces in
   {
     Acids_spec.f_name = file.f_name;
     Acids_spec.f_imports = file.f_imports;

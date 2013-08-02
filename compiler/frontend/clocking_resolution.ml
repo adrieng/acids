@@ -150,7 +150,6 @@ let int_pword_of_econstr_pword env pw =
   Tree_word.map_upword (Interface.int_of_econstr env) (fun x -> x) pw
 
 let rec eval_non_rigid_ce env ce =
-  let open Ast_misc in
   match ce with
   | Ce_condvar cev ->
     let rec find_stream_spec specs =

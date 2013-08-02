@@ -36,6 +36,8 @@ let instantaneous_dep v l =
 
 let is_strict _ _ = true (* TODO *)
 
+let is_binary_clock _ = false (* TODO *)
+
 (** {2 Environments} *)
 
 type env =
@@ -111,9 +113,11 @@ let rec exp env e =
     List.iter (expect_exp env ec) e_l;
     ec
   | E_fby (e1, e2) ->
-    let ec = exp env e1 in
-    expect_exp env ec e2;
-    ec
+    let ec1 = exp env e1 in
+    let ec2 = exp env e2 in
+    if not (is_binary_clock e1.e_info#ei_clock)
+    then Union_find.union ec1 ec2;
+    ec1
   | E_ifthenelse (e1, e2, e3) ->
     let ec = exp env e1 in
     expect_exp env ec e2;
@@ -140,8 +144,9 @@ let rec exp env e =
   | E_dom _ -> (* TODO *)
     assert false
   | E_buffer (e', _) ->
+    let ec = exp env e' in
     if is_strict e'.e_info#ei_clock e.e_info#ei_clock
-    then exp env e'
+    then ec
     else fresh_class ()
 
 and expect_exp env ec e =

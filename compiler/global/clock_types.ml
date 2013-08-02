@@ -305,10 +305,16 @@ let rec reroot_ty bst ty =
 
 let rec unalias_st st =
   match st with
-  | PreTySt.Pst_var { VarTySt.v_link = Some st; } -> unalias_st st
+  | PreTySt.Pst_var ({ VarTySt.v_link = Some st; } as r) ->
+    let st = unalias_st st in
+    r.VarTySt.v_link <- Some st;
+    st
   | _ -> st
 
 let rec unalias_ty ty =
   match ty with
-  | PreTy.Pct_var { VarTy.v_link = Some ty; } -> unalias_ty ty
+  | PreTy.Pct_var ({ VarTy.v_link = Some ty; } as r) ->
+    let ty = unalias_ty ty in
+    r.VarTy.v_link <- Some ty;
+    ty
   | _ -> ty

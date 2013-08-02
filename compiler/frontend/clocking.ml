@@ -102,8 +102,35 @@ let merge_ctx loc ctx1 ctx2 constrs =
   in
   Ident.Env.fold unify_occ ctx2 (ctx1, constrs)
 
+(* This function implement very simple heuristics to minimize the number of
+   useless equations *)
 let unify loc t1 t2 constrs =
-  { loc = loc; desc = Tc_equal (t1, t2); } :: constrs
+  let unify_st loc st1 st2 constrs =
+    let open VarTySt in
+    let st1 = unalias_st st1 in
+    let st2 = unalias_st st2 in
+    match st1, st2 with
+    | Pst_var { v_id = v1; }, Pst_var ({ v_id = v2; } as r) ->
+      if v1 = v2 then () else r.v_link <- Some st1;
+      constrs
+    | _ ->
+      let desc = Tc_equal (PreTy.Pct_stream st1, PreTy.Pct_stream st2) in
+      { loc = loc; desc = desc; } :: constrs
+  in
+
+  let open VarTy in
+  let t1 = unalias_ty t1 in
+  let t2 = unalias_ty t2 in
+  match t1, t2 with
+  | Pct_var { v_id = v1; }, Pct_var ({ v_id = v2; } as r) ->
+    if v1 = v2 then () else r.v_link <- Some t1;
+    constrs
+
+  | Pct_stream st1, Pct_stream st2 ->
+    unify_st loc st1 st2 constrs
+
+  | _ ->
+    { loc = loc; desc = Tc_equal (t1, t2); } :: constrs
 
 let prod_ty t_l = Pct_prod t_l
 

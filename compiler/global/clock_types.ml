@@ -318,3 +318,36 @@ let rec unalias_ty ty =
     r.VarTy.v_link <- Some ty;
     ty
   | _ -> ty
+
+let rec max_burst_stream_type st =
+  let open Int in
+  match st with
+  | St_var _ -> one
+  | St_on (st, ce) ->
+    let upper_bound_ce =
+      match ce with
+      | Ce_condvar cev -> cev.cev_bounds.Interval.u
+      | Ce_pword pw ->
+        (* TODO *)
+        let get_int ec =
+          let open Ast_misc in
+          match ec with
+          | Ec_bool b -> Int.of_bool b
+          | Ec_int i -> i
+          | Ec_constr _ -> assert false (* TODO *)
+        in
+        let p = Tree_word.map_upword get_int (fun x -> x) pw in
+        snd (Ast_misc.bounds_of_int_pword p)
+      | Ce_equal _ -> Int.one
+    in
+    upper_bound_ce * max_burst_stream_type st
+
+let non_strict_adaptable _ _ = false
+
+let binary_stream_type st = Int.(max_burst_stream_type st <= one)
+
+let rec binary_clock_type ty =
+  match ty with
+  | Ct_var _ -> true
+  | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
+  | Ct_stream st -> binary_stream_type st

@@ -500,7 +500,7 @@ and type_domain env dom =
     M.d_info = annotate_dummy dom.d_info;
   }
 
-and type_buffer env bu =
+and type_buffer _ bu =
   {
     M.bu_info = annotate_dummy bu.bu_info;
   }

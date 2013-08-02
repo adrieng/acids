@@ -32,12 +32,6 @@ let print_error fmt err =
 let instantaneous_dep v l =
   raise (Causality_error (Instantaneous_dep (v, l)))
 
-(** {2 Utility} *)
-
-let is_strict _ _ = true (* TODO *)
-
-let is_binary_clock _ = false (* TODO *)
-
 (** {2 Environments} *)
 
 type env =
@@ -115,7 +109,7 @@ let rec exp env e =
   | E_fby (e1, e2) ->
     let ec1 = exp env e1 in
     let ec2 = exp env e2 in
-    if not (is_binary_clock e1.e_info#ei_clock)
+    if not (Clock_types.binary_clock_type e1.e_info#ei_clock)
     then Union_find.union ec1 ec2;
     ec1
   | E_ifthenelse (e1, e2, e3) ->
@@ -143,11 +137,9 @@ let rec exp env e =
     clock_exp env ce
   | E_dom _ -> (* TODO *)
     assert false
-  | E_buffer (e', _) ->
+  | E_buffer (e', bu) ->
     let ec = exp env e' in
-    if is_strict e'.e_info#ei_clock e.e_info#ei_clock
-    then ec
-    else fresh_class ()
+    if bu.bu_info#bui_is_delay then fresh_class () else ec
 
 and expect_exp env ec e =
   let ec' = exp env e in

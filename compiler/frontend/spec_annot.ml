@@ -238,7 +238,10 @@ and annot_exp env e =
       let app = annot_app env app in
       let e = annot_exp env e in
       Acids_spec.E_app (app, e)
-    | E_where _ -> assert false (* TODO *)
+    | E_where (e, block) ->
+      let block, env = annot_block env block in
+      let e = annot_exp env e in
+      Acids_spec.E_where (e, block)
     | E_when (e, ce) ->
       let e = annot_exp env e in
       let ce, _, _ = annot_clock_exp env ce in

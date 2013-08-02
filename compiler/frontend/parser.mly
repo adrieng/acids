@@ -121,6 +121,13 @@
       Acids_parsetree.b_info = ();
     }
 
+  let make_pragma (k, v) loc =
+    {
+      Pragma.loc = loc;
+      Pragma.key = k;
+      Pragma.value = v;
+    }
+
   let make_node_def (s, n, p, e, pr) loc =
     {
       Acids_parsetree.n_name = n;
@@ -263,10 +270,6 @@
 %token<float> FLOAT
 
 /* Misc */
-
-%token BEGIN_PRAGMA END_PRAGMA
-%token<string> PRAGMA_KEY
-%token<string> PRAGMA_VAL
 
 %token EOF
 
@@ -512,7 +515,8 @@ spec_ann:
 
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var id }
-| COND id = IDENT specs = list(spec_ann) { Acids_parsetree.P_condvar (id, specs) }
+| COND id = IDENT specs = list(spec_ann)
+   { Acids_parsetree.P_condvar (id, specs) }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
 | pt = chevrons(upword(pat, static_exp, parens))
    { Acids_parsetree.P_split pt }
@@ -532,20 +536,24 @@ pat:
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
 | p = upword(static_exp, static_exp, parens) { Acids_parsetree.Word p }
-| LBRACKET l = static_exp COMMA u = static_exp RBRACKET { Acids_parsetree.Interval (l, u) }
+| LBRACKET l = static_exp COMMA u = static_exp RBRACKET
+   { Acids_parsetree.Interval (l, u) }
 
 spec:
 | sdl = with_loc(spec_desc) { make_spec sdl }
 
+pragma_val:
+| ec = econstr { Pragma.Econstr ec }
+| v_l = parens(separated_list(COMMA, pragma_val)) { Pragma.Tuple v_l }
+
 pragma_desc:
-| key = PRAGMA_KEY COLON value = PRAGMA_VAL { (key, value) }
+| key = PRAGMAKEY value = pragma_val { (key, value) }
 
 pragma:
-| pd = with_loc(pragma_desc) { make_located Pragma.make_command pd }
+| pd = with_loc(pragma_desc) { make_located make_pragma pd }
 
 pragma_node:
-| { [] }
-| BEGIN_PRAGMA p_l = separated_list(COMMA, pragma) END_PRAGMA { p_l }
+| p_l = list(pragma) { p_l }
 
 node_desc:
 | pr = pragma_node LET s = static NODE n = nodename p = pat EQUAL e = exp

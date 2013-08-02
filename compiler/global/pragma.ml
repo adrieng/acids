@@ -60,8 +60,12 @@ type pragma =
   }
 
 let print_pragma fmt pragma =
-  Format.fprintf fmt "@%s%a"
+  Format.fprintf fmt "@@%s%a"
     pragma.key
     print_tuple pragma.value
 
 type t = pragma list
+
+let env_of_pragma_list pragma_l =
+  let add env p = Utils.Env.add p.key p env in
+  List.fold_left add Utils.Env.empty pragma_l

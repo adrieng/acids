@@ -195,7 +195,15 @@ struct
         print_static_exp u
 
   let print_node_def fmt nd =
-    Format.fprintf fmt "@[<hov 2>let %snode@ %a%a@ %a =@ %a@]"
+    let print_pragmas fmt pragmas =
+      match pragmas with
+      | [] -> ()
+      | pragma :: _ ->
+        Format.fprintf fmt "%a@\n"
+          (Utils.print_list Pragma.print_pragma) pragmas
+    in
+    Format.fprintf fmt "@[%a@[<hov 2>let %snode@ %a%a@ %a =@ %a@]@]"
+      print_pragmas nd.n_pragma
       (if nd.n_static then "static " else "")
       Names.print_shortname nd.n_name
       (print_info I.print_node_info) nd.n_info

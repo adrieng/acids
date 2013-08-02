@@ -52,6 +52,7 @@ let exponent = ('e' | 'E') ('+' | '-')? digit+
 let float = digit+ '.' digit* exponent?
           | digit* '.'digit+ exponent?
           | digit+ exponent
+let ident = alpha (alpha | '_' | ''' | digit)*
 let lident = ['a'-'z'] (alpha | '_' | ''' | digit)*
 let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 
@@ -143,6 +144,7 @@ rule token = parse
 (* | "'x"(posint as i) { TYVAR (int_of_string i) } *)
 (* | "'x"              { TYVAR 0 } *)
 
+| '@' (ident as s) { PRAGMAKEY s }
 | lident as s { IDENT s }
 | uident as s { UIDENT s }
 

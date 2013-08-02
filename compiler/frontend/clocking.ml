@@ -41,6 +41,7 @@ type env =
   {
     ctx : Pass_manager.ctx;
     intf_env : Interface.t Names.ModEnv.t;
+    pragmas : Pragma.pragma Utils.Env.t;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
@@ -49,6 +50,7 @@ let initial_env ctx intf_env =
   {
     ctx = ctx;
     intf_env = Names.mod_env_of_short_env intf_env;
+    pragmas = Utils.Env.empty;
     local_nodes = Names.ShortEnv.empty;
     ck_vars = Utils.Int_map.empty;
   }
@@ -57,7 +59,14 @@ let get_interfaces env = env.intf_env
 
 let get_ctx env = env.ctx
 
-let reset_env env = { env with ck_vars = Utils.Int_map.empty; }
+let get_pragma_env env = env.pragmas
+
+let reset_env env pragmas =
+  {
+    env with
+      pragmas = Pragma.env_of_pragma_list pragmas;
+      ck_vars = Utils.Int_map.empty;
+  }
 
 let find_ck_var env v =
   try Utils.Int_map.find v env.ck_vars
@@ -662,6 +671,7 @@ and clock_dom env loc dom e acc =
   Clocking_resolution.solve_constraints
     (get_interfaces env)
     (get_ctx env)
+    (get_pragma_env env)
     loc
     local_constrs;
 
@@ -706,7 +716,7 @@ and clock_dom env loc dom e acc =
   (ctx, cstrs)
 
 let clock_node_def env nd =
-  let env = reset_env env in
+  let env = reset_env env nd.n_pragma in
   Ident.set_current_ctx nd.n_info#ni_ctx;
   let (input, ty_in), acc =
     clock_pattern env nd.n_input (Ident.Env.empty, [])
@@ -715,7 +725,9 @@ let clock_node_def env nd =
   Clocking_resolution.solve_constraints
     (get_interfaces env)
     (get_ctx env)
-    nd.n_loc cstrs;
+    (get_pragma_env env)
+    nd.n_loc
+    cstrs;
   let csig = Clock_types.generalize_clock_sig ty_in ty_out [] in
   add_local_node env nd.n_name csig,
   {

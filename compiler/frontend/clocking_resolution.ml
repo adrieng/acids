@@ -292,7 +292,7 @@ let fresh_word_var unknowns_ht =
   Hashtbl.add unknowns_ht id cev;
   id, Ce_condvar cev
 
-let word_constraints_of_clock_constraints ?(check = false) env sys =
+let word_constraints_of_clock_constraints env sys =
   let unknowns_ht = Hashtbl.create 100 in
 
   let rec unify loc wsys st1 st2 =
@@ -371,30 +371,46 @@ let word_constraints_of_clock_constraints ?(check = false) env sys =
       unify_decompose Problem.Adapt c.loc wsys st1 st2
   in
 
-  let options =
-    let open Resolution_options in
-    let options = add empty (make "check" (Bool check)) in
-    options (* TODO *)
-  in
-
   {
     Resolution.body = List.fold_left solve_constraint [] sys;
-    Resolution.options = options;
+    Resolution.options = Resolution_options.empty;
   },
   unknowns_ht
 
+let add_options_to_word_constraints ?(check = false) pragma_env sys =
+  let open Resolution_options in
+
+  let initial_options = add empty (make "check" (Bool check)) in
+
+  let add_pragma_if_possible _ p options =
+    let open Pragma in
+    match p.value with
+    | Econstr (Ast_misc.Ec_bool b) -> add options (make p.key (Bool b))
+    | Econstr (Ast_misc.Ec_int i) -> add options (make p.key (Int i))
+    | _ -> options
+  in
+
+  let options =
+    Utils.Env.fold add_pragma_if_possible pragma_env initial_options
+  in
+
+  { sys with Resolution.options = options; }
+
 (** {2 Top-level function} *)
 
-let solve_constraints env ctx loc sys =
+let solve_constraints env ctx pragma_env loc sys =
   p_sys "Initial system" sys;
 
   let sys = simplify_equality_constraints sys in
   p_sys "System with simplified equality constraints" sys;
 
-  let wsys, unknowns_ht =
+  let wsys, unknowns_ht = word_constraints_of_clock_constraints env sys in
+
+  let wsys =
     let debug = Pass_manager.ctx_get_attr ctx "debug" in
-    word_constraints_of_clock_constraints ~check:debug env sys
+    add_options_to_word_constraints ~check:debug pragma_env wsys
   in
+
   p_sys "System with word variables" sys;
   p
     (fun fmt wsys ->

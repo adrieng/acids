@@ -24,6 +24,7 @@ val print_error : Format.formatter -> error -> unit
 val solve_constraints :
   Interface.t Names.ModEnv.t ->
   Pass_manager.ctx ->
+  Pragma.pragma Utils.Env.t ->
   Loc.t ->
   Clock_types.ty_constr list ->
   unit

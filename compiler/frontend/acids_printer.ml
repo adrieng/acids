@@ -198,7 +198,7 @@ struct
     let print_pragmas fmt pragmas =
       match pragmas with
       | [] -> ()
-      | pragma :: _ ->
+      | _ :: _ ->
         Format.fprintf fmt "%a@\n"
           (Utils.print_list Pragma.print_pragma) pragmas
     in

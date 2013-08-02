@@ -6,6 +6,7 @@ Compiler:
 - interval typing: be more modular, see example in interval.split
 - clock_types: ct -> ty
 - unify handling of interface environments (LocalModule / Modname)
+- add their ranks to all constructors
 - currently, (x, y) = (1, x) is not considered "causal" (schedulable),
   is this reasonable?
 

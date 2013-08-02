@@ -429,7 +429,9 @@ let solve_constraints env ctx pragma_env loc sys =
     match Resolution.Solution.get sol (Ident.to_string v) with
     | Some p ->
       cev.cev_specs <- Ast_misc.([Word p]);
-      ()
+      cev.cev_bounds <-
+        let l, u = Ast_misc.bounds_of_int_pword p in
+        Interval.make l u
     | None ->
       let err = "no solution to " ^ Ident.to_string v in
       Compiler.internal_error err

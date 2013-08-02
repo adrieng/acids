@@ -128,3 +128,18 @@ let print_spec_annot =
     Compiler_options.print_spec_info
     printing_prefix
     print_spec
+
+(** Bounds of an integer word *)
+
+let bounds_of_int_pword p =
+  let l = ref (Int.of_int (- 1)) in
+  let u = ref (Int.of_int (- 1)) in
+  let check i =
+    assert (!l >= Int.zero || !u < Int.zero);
+    assert (i >= Int.zero);
+    if !l < Int.zero
+    then (l := i; u := i)
+    else (l := Int.min !l i; u := Int.max !u i)
+  in
+  iter_upword check (fun _ -> ()) p;
+  !l, !u

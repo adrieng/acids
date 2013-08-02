@@ -165,7 +165,7 @@ let rec eval_non_rigid_ce env ce =
     int_pword_of_econstr_pword env pw
   | Ce_equal (ce, ec) ->
     let p = eval_non_rigid_ce env ce in
-    let i = get_int ec in
+    let i = Interface.int_of_econstr env ec in
     Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
 let unit_ipword =

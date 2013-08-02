@@ -283,9 +283,10 @@ and annot_exp env e =
       let e = annot_exp env e in
       let dom = annot_dom env dom in
       Acids_spec.E_dom (e, dom)
-    | E_buffer e ->
+    | E_buffer (e, bu) ->
       let e = annot_exp env e in
-      Acids_spec.E_buffer e
+      let bu = annot_buffer env bu in
+      Acids_spec.E_buffer (e, bu)
   in
   {
     Acids_spec.e_desc = ed;
@@ -386,6 +387,11 @@ and annot_dom env dom =
       Utils.map_opt (annot_clock_annot env) dom.d_base_clock;
     Acids_spec.d_par = dom.d_par;
     Acids_spec.d_info = dom.d_info;
+  }
+
+and annot_buffer _ bu =
+  {
+    Acids_spec.bu_info = bu.bu_info;
   }
 
 let annot_node_def env nd =

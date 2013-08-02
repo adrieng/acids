@@ -139,7 +139,7 @@ let rec exp env e =
     clock_exp env ce
   | E_dom _ -> (* TODO *)
     assert false
-  | E_buffer e' ->
+  | E_buffer (e', _) ->
     if is_strict e'.e_info#ei_clock e.e_info#ei_clock
     then exp env e'
     else fresh_class ()

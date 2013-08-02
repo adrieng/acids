@@ -310,6 +310,8 @@ struct
 
   let update_domain_info _ = ()
 
+  let update_buffer_info _ = ()
+
   let update_node_info { new_annot = na; old_annot = ctx; } =
     match na with
     | Exp _ -> invalid_arg "update_node_info"
@@ -495,9 +497,10 @@ and type_exp env e =
       let dom = type_domain env dom in
       M.E_dom (e, dom), ty
 
-    | E_buffer e ->
+    | E_buffer (e, bu) ->
       let e, ty = type_exp env e in
-      M.E_buffer e, ty
+      let bu = type_buffer env bu in
+      M.E_buffer (e, bu), ty
 
   in
   {
@@ -615,6 +618,11 @@ and type_domain env dom =
     M.d_base_clock = Utils.map_opt (type_clock_annot env) dom.d_base_clock;
     M.d_par = dom.d_par;
     M.d_info = annotate_dummy dom.d_info;
+  }
+
+and type_buffer _ bu =
+  {
+    M.bu_info = annotate_dummy bu.bu_info;
   }
 
 and type_spec env spec =

@@ -68,6 +68,9 @@ struct
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
 
+  type buffer_info = unit
+  let print_buffer_info (_ : Format.formatter) _ = ()
+
   type node_info =
       <
         ni_ctx : Ident.ctx;

@@ -52,6 +52,11 @@
     in
     Acids_parsetree.E_dom (e, d)
 
+  let make_buffer () =
+    {
+      Acids_parsetree.bu_info = ();
+    }
+
   let make_spec (sd, loc) =
     {
       Acids_parsetree.s_desc = sd;
@@ -476,7 +481,7 @@ exp_desc:
 | e = exp WHERE REC b = block { Acids_parsetree.E_where (e, b) }
 | par = DOM e = simple_exp ba = option(base_annot)
                               { make_domain par ba e }
-| BUFFER e = exp { Acids_parsetree.E_buffer e }
+| BUFFER e = exp { Acids_parsetree.E_buffer (e, make_buffer ()) }
 
 %inline exp:
 | ed = with_loc(exp_desc) { make_located make_exp ed }

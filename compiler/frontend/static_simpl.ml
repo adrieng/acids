@@ -293,8 +293,8 @@ and simpl_exp env e =
     | E_dom (e, dom) ->
       Acids_prespec.E_dom (simpl_exp env e, simpl_domain env dom)
 
-    | E_buffer e ->
-      Acids_prespec.E_buffer (simpl_exp env e)
+    | E_buffer (e, bu) ->
+      Acids_prespec.E_buffer (simpl_exp env e, simpl_buffer env bu)
   in
   {
     Acids_prespec.e_desc = ed;
@@ -328,6 +328,11 @@ and simpl_domain env dom =
     Acids_prespec.d_base_clock = bck;
     Acids_prespec.d_par = dom.d_par;
     Acids_prespec.d_info = dom.d_info;
+  }
+
+and simpl_buffer _ bu =
+  {
+    Acids_prespec.bu_info = bu.bu_info;
   }
 
 and simpl_inline env ln e_app e_arg =

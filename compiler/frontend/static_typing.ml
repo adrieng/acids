@@ -36,7 +36,8 @@ let print_error fmt err =
   | Unification_error err ->
     Static_types.print_error fmt err
   | Static_inputs nn ->
-    Format.fprintf fmt "Node %a has static inputs but has not been declared static"
+    Format.fprintf fmt
+      "Node %a has static inputs but has not been declared static"
       Names.print_shortname nn
 
 let unification_error err =
@@ -223,6 +224,8 @@ struct
   let update_eq_info _ = ()
 
   let update_domain_info _ = ()
+
+  let update_buffer_info _ = ()
 
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
@@ -450,9 +453,10 @@ and type_exp env e =
       let dom = type_domain env dom in
       M.E_dom (e, dom), ty
 
-    | E_buffer e ->
+    | E_buffer (e, bu) ->
       let e, ty = type_exp env e in
-      M.E_buffer e, ty
+      let bu = type_buffer env bu in
+      M.E_buffer (e,  bu), ty
 
   in
   {
@@ -494,6 +498,11 @@ and type_domain env dom =
     M.d_base_clock = Utils.map_opt (type_clock_annot env) dom.d_base_clock;
     M.d_par = dom.d_par;
     M.d_info = annotate_dummy dom.d_info;
+  }
+
+and type_buffer env bu =
+  {
+    M.bu_info = annotate_dummy bu.bu_info;
   }
 
 and type_pat env p =

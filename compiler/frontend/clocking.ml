@@ -312,6 +312,8 @@ struct
     | Node _ | App _ | Exp _ -> invalid_arg "update_domain_info"
     | ClockExp pst -> st_of_pre_st pst
 
+  let update_buffer_info _ = ()
+
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
     | Exp _ | App _ | ClockExp _ -> invalid_arg "update_node_info"
@@ -514,10 +516,11 @@ and clock_exp env e acc =
     let (dom, e, ty), acc = clock_dom env loc dom e acc in
     M.E_dom (e, dom), ty, acc
 
-  | E_buffer e ->
+  | E_buffer (e, bu) ->
     let ty, ty', acc = adaptable_tys loc acc in
     let e, acc = expect_exp env ty e acc in
-    M.E_buffer e, ty', acc
+    let bu = clock_buffer env bu in
+    M.E_buffer (e, bu), ty', acc
 
   in
   (
@@ -741,6 +744,11 @@ and clock_dom env loc dom e acc =
     e,
     ty),
   (ctx, cstrs)
+
+and clock_buffer _ bu =
+  {
+    M.bu_info = annotate_dummy bu.bu_info;
+  }
 
 let clock_node_def env nd =
   let env = reset_env env nd.n_pragma in

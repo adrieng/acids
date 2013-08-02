@@ -73,6 +73,9 @@ struct
   type domain_info = A.I.domain_info annot
   let print_domain_info = print_annot A.I.print_domain_info
 
+  type buffer_info = A.I.buffer_info annot
+  let print_buffer_info = print_annot A.I.print_buffer_info
+
   let annotate olda newa = { new_annot = newa; old_annot = olda; }
 end
 
@@ -90,6 +93,7 @@ sig
   val update_pat_info : IN_INFO.pat_info -> OUT_INFO.pat_info
   val update_eq_info : IN_INFO.eq_info -> OUT_INFO.eq_info
   val update_domain_info : IN_INFO.domain_info -> OUT_INFO.domain_info
+  val update_buffer_info : IN_INFO.buffer_info -> OUT_INFO.buffer_info
   val update_node_info : IN_INFO.node_info -> OUT_INFO.node_info
 end
 
@@ -157,8 +161,8 @@ struct
         OUT.E_spec_annot (extract_exp e, extract_spec spec)
       | E_dom (e, dom) ->
         OUT.E_dom (extract_exp e, extract_domain dom)
-      | E_buffer e ->
-        OUT.E_buffer (extract_exp e)
+      | E_buffer (e, bu) ->
+        OUT.E_buffer (extract_exp e, extract_buffer bu)
     in
     {
       OUT.e_desc = ed;
@@ -226,6 +230,11 @@ struct
       OUT.d_base_clock = Utils.map_opt extract_clock_annot dom.d_base_clock;
       OUT.d_par = dom.d_par;
       OUT.d_info = M.update_domain_info dom.d_info;
+    }
+
+  and extract_buffer bu =
+    {
+      OUT.bu_info = M.update_buffer_info bu.bu_info;
     }
 
   and extract_spec spec =
@@ -307,7 +316,7 @@ struct
     | E_const _ -> fv
 
     | E_fst e | E_snd e | E_app (_, e)
-    | E_type_annot (e, _) | E_buffer e -> fv_exp fv e
+    | E_type_annot (e, _) | E_buffer (e, _) -> fv_exp fv e
 
     | E_tuple e_l -> List.fold_left fv_exp fv e_l
 
@@ -520,9 +529,9 @@ struct
         let dom, env = refresh_domain dom env in
         E_dom (e, dom), env
 
-      | E_buffer e ->
+      | E_buffer (e, bu) ->
         let e, env = refresh_exp e env in
-        E_buffer e, env
+        E_buffer (e, bu), env
     in
     { e with e_desc = ed; }, env
 

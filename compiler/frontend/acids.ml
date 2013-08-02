@@ -35,6 +35,9 @@ sig
   type app_info
   val print_app_info : Format.formatter -> app_info -> unit
 
+  type buffer_info
+  val print_buffer_info : Format.formatter -> buffer_info -> unit
+
   type block_info
   val print_block_info : Format.formatter -> block_info -> unit
 
@@ -96,7 +99,7 @@ sig
   | E_type_annot of exp * Data_types.data_ty
   | E_spec_annot of exp * spec
   | E_dom of exp * domain
-  | E_buffer of exp
+  | E_buffer of exp * buffer
 
   and app = {
     a_op : Names.longname;
@@ -146,6 +149,11 @@ sig
   | Unspec
   | Word of (static_exp, static_exp) Tree_word.t
   | Interval of static_exp * static_exp
+
+  and buffer =
+    {
+      bu_info : I.buffer_info;
+    }
 
   type node_def = {
     n_name : Names.shortname;
@@ -247,7 +255,7 @@ module Make = functor (S : S) ->
     (** annotations for type inference *)
 
     | E_dom of exp * domain (** clock domain *)
-    | E_buffer of exp
+    | E_buffer of exp * buffer
 
     and app =
       {
@@ -311,6 +319,11 @@ module Make = functor (S : S) ->
     | Unspec
     | Word of (static_exp, static_exp) Tree_word.t
     | Interval of static_exp * static_exp
+
+    and buffer =
+      {
+        bu_info : I.buffer_info;
+      }
 
     type node_def =
       {

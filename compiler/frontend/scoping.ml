@@ -448,9 +448,9 @@ and scope_exp
       let dom, intf_env = scope_domain ctx id_env dom intf_env in
       Acids_scoped.E_dom (e, dom), intf_env
 
-    | E_buffer e ->
+    | E_buffer (e, bu) ->
       let e, intf_env = scope_exp' e intf_env in
-      Acids_scoped.E_buffer e, intf_env
+      Acids_scoped.E_buffer (e, scope_buffer bu), intf_env
   in
   {
     Acids_scoped.e_desc = ed;
@@ -605,6 +605,11 @@ and scope_domain ctx id_env dom intf_env =
     Acids_scoped.d_info = dom.d_info;
   },
   intf_env
+
+and scope_buffer bu =
+  {
+    Acids_scoped.bu_info = bu.bu_info;
+  }
 
 and scope_spec id_env spec intf_env =
   let scope_static_exp = scope_static_exp id_env in

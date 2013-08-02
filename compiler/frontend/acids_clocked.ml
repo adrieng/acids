@@ -77,6 +77,9 @@ struct
   let print_domain_info fmt st =
     Clock_types.print_stream_type_ann fmt st
 
+  type buffer_info = unit
+  let print_buffer_info (_ : Format.formatter) _ = ()
+
   type node_info =
       <
         ni_ctx : Ident.ctx;

@@ -109,9 +109,10 @@ struct
         print_spec spec
     | E_dom (e, dom) ->
       print_dom fmt dom e
-    | E_buffer e ->
-      Format.fprintf fmt "@[(buffer@ %a)@]"
+    | E_buffer (e, bu) ->
+      Format.fprintf fmt "@[(buffer@ %a%a)@]"
         print_exp e
+        (print_info I.print_buffer_info) bu.bu_info
 
   and print_app fmt app =
     Format.fprintf fmt "@[%a%a@]"

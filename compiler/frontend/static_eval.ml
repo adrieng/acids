@@ -235,7 +235,7 @@ and eval_exp env e =
 
   | E_when (e, _) | E_split (_, e, _)
   | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _)
-  | E_dom (e, _) | E_buffer e ->
+  | E_dom (e, _) | E_buffer (e, _) ->
     eval_exp env e
 
 and eval_static_exp se env =

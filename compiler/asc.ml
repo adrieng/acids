@@ -31,6 +31,7 @@ let error_is_internal exn =
   | Spec_annot.Annotation_error _
   | Clocking.Clocking_error _
   | Clocking_resolution.Resolution_error _
+  | Causality.Causality_error _
     ->
     false
   | _
@@ -63,6 +64,8 @@ let print_error _ fmt exn =
     Clocking.print_error fmt err
   | Clocking_resolution.Resolution_error err ->
     Clocking_resolution.print_error fmt err
+  | Causality.Causality_error err ->
+    Causality.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -78,6 +81,7 @@ let flow =
   +>+ Static_simpl.simpl
   +>+ Spec_annot.annot
   +>+ Clocking.clock
+  +>+ Causality.check
 
 (*****************************************************************************)
 (* File handling *)

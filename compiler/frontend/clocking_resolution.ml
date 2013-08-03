@@ -146,8 +146,8 @@ let rec ce_equal ce1 ce2 =
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
   | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _  -> false
 
-let int_pword_of_econstr_pword env pw =
-  Tree_word.map_upword (Interface.int_of_econstr env) (fun x -> x) pw
+let int_pword_of_econstr_pword _ pw =
+  Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw
 
 let rec eval_non_rigid_ce env ce =
   match ce with
@@ -164,7 +164,7 @@ let rec eval_non_rigid_ce env ce =
     int_pword_of_econstr_pword env pw
   | Ce_equal (ce, ec) ->
     let p = eval_non_rigid_ce env ce in
-    let i = Interface.int_of_econstr env ec in
+    let i = Ast_misc.int_of_econstr ec in
     Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
 let unit_ipword =
@@ -284,7 +284,7 @@ let fresh_word_var unknowns_ht =
   let cev =
     {
       cev_name = id;
-      cev_bounds = Interval.singleton Int.zero; (* TODO *)
+      cev_bounds = Interval.singleton Int.zero;
       cev_specs = [];
     }
   in

@@ -73,8 +73,6 @@ let initial_env intf_env =
 let add_type_def env td =
   { env with constrs = Names.ShortEnv.add td.ty_name td.ty_body env.constrs }
 
-let int_of_econstr env ec = Interface.int_of_econstr env.intf_env ec
-
 let add_spec id specs env =
   { env with env = Ident.Env.add id specs env.env; }
 
@@ -137,26 +135,18 @@ let rec annot_clock_exp env ce =
       Acids_spec.Ce_condvar v, find_it specs, specs
 
     | Ce_pword pw ->
-      let l, u =
-        let open Data_types in
-        match ce.ce_info#ci_data with
-        | Tys_bool -> Int.(of_int 0, of_int 1)
-        | Tys_user _ -> assert false (* TODO *)
-        | Tys_float -> Compiler.internal_error "ill-typed"
-        | Tys_int ->
-          let get_int se = Ast_misc.get_int se.se_desc in
-          let p = Tree_word.map_upword get_int (fun x -> x) pw in
-          Ast_misc.bounds_of_int_pword p
+      let p =
+        let get se = Ast_misc.int_of_econstr se.se_desc in
+        Tree_word.map_upword get get pw
       in
-      let it = Interval.make l u in
+
+      let it =
+        let l, u = Ast_misc.bounds_of_int_pword p in
+        Interval.make l u
+      in
 
       let pw =
         Tree_word.map_upword (annot_static_exp env) (annot_static_exp env) pw
-      in
-
-      let p =
-        let get se = int_of_econstr env se.Acids_spec.se_desc in
-        Tree_word.map_upword get get pw
       in
 
       Acids_spec.Ce_pword pw, it, [Ast_misc.Interval it; Ast_misc.Word p]
@@ -165,7 +155,7 @@ let rec annot_clock_exp env ce =
       let ce, it, specs = annot_clock_exp env ce in
       let se = annot_static_exp env se in
 
-      let i_se = int_of_econstr env se.Acids_spec.se_desc in
+      let i_se = Ast_misc.int_of_econstr se.Acids_spec.se_desc in
 
       let rec update_specs acc specs =
         let open Ast_misc in
@@ -197,8 +187,8 @@ let rec annot_clock_exp env ce =
 
   if it.Interval.l < Int.zero then negative_bounds ce it else (ce, it, specs)
 
-and annot_static_exp env se =
-  let i = int_of_econstr env se.se_desc in
+and annot_static_exp _ se =
+  let i = Ast_misc.int_of_econstr se.se_desc in
   {
     Acids_spec.se_desc = se.se_desc;
     Acids_spec.se_loc = se.se_loc;

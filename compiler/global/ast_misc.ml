@@ -52,6 +52,12 @@ let get_econstr ec =
   | Ec_constr (ec, _) -> ec
   | Ec_bool _ | Ec_int _ -> invalid_arg "get_econstr: not a constructor"
 
+let int_of_econstr ec =
+  match ec with
+  | Ec_bool b -> Int.of_bool b
+  | Ec_int i -> i
+  | Ec_constr (_, rank) -> rank
+
 type const =
   | Cconstr of econstr
   | Cfloat of float

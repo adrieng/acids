@@ -144,6 +144,7 @@ type env =
   {
     local_nodes : Names.ShortSet.t;
     local_constrs : Names.ShortSet.t;
+    local_constrs_ranks : Int.t Names.ShortEnv.t;
     local_types : Names.ShortSet.t;
     imported_mods : string list;
     id_env : Ident.t Utils.Env.t;
@@ -154,6 +155,7 @@ let initial_env intf_env =
   {
     local_nodes = Names.ShortSet.empty;
     local_constrs = Names.ShortSet.empty;
+    local_constrs_ranks = Names.ShortEnv.empty;
     local_types = Names.ShortSet.empty;
     imported_mods = [];
     id_env = Utils.Env.empty;
@@ -262,6 +264,15 @@ let find_var env loc v =
   try Utils.Env.find v env.id_env
   with Not_found -> unbound_var v loc
 
+let add_local_constrs_ranks env cn_l =
+  let add (rank, local_constrs_ranks) cn =
+    Int.succ rank, Names.ShortEnv.add cn rank local_constrs_ranks
+  in
+  let _, local_constrs_ranks =
+    List.fold_left add (Int.zero, env.local_constrs_ranks) cn_l
+  in
+  { env with local_constrs_ranks = local_constrs_ranks; }
+
 (** {2 AST traversal} *)
 
 open Acids_parsetree
@@ -313,14 +324,23 @@ let check_type_constr loc env cn =
 let check_type_name env tn loc =
   if Names.ShortSet.mem tn env.local_types then duplicate_type tn loc
 
+let find_scoped_constr_rank env cstr =
+  let open Names in
+  match cstr.modn with
+  | LocalModule -> Names.ShortEnv.find cstr.shortn env.local_constrs_ranks
+  | Module modn ->
+    let intf = Names.ShortEnv.find modn env.intf_env in
+    Int.of_int (Interface.find_constructor_rank intf cstr.shortn)
+
 (** {3 Scoping} *)
 
 let rec scope_econstr env loc ec =
   match ec with
   | Ast_misc.Ec_int _ | Ast_misc.Ec_bool _ -> ec
   | Ast_misc.Ec_constr (ln, rank) ->
-    assert Int.(rank < zero);
+    assert Int.(rank = of_int (- 1));
     let ln = scope_constr env loc ln in
+    let rank = find_scoped_constr_rank env ln in
     Ast_misc.Ec_constr (ln, rank)
 
 and scope_const env loc c =
@@ -652,6 +672,7 @@ let scope_node_decl env decl =
 let scope_type_def env tdef =
   check_type_name env tdef.ty_name tdef.ty_loc;
   let env = List.fold_left (check_type_constr tdef.ty_loc) env tdef.ty_body in
+  let env = add_local_constrs_ranks env tdef.ty_body in
   let tdef =
     {
       Acids_scoped.ty_name = tdef.ty_name;

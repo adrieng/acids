@@ -175,7 +175,7 @@ let int_of_econstr env ec =
   match ec with
   | Ec_int i -> i
   | Ec_bool b -> Int.of_bool b
-  | Ec_constr cstr ->
+  | Ec_constr (cstr, _) ->
     let intf = Names.ModEnv.find cstr.Names.modn env in
     Int.of_int (find_constructor_rank intf cstr.Names.shortn)
 

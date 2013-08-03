@@ -331,7 +331,7 @@ let rec type_econstr env ec =
   match ec with
   | Ec_bool _ -> bool_ty
   | Ec_int _ -> int_ty
-  | Ec_constr cn -> user_ty (find_constr env cn)
+  | Ec_constr (cn, _) -> user_ty (find_constr env cn)
 
 and type_const env c =
   let open Ast_misc in

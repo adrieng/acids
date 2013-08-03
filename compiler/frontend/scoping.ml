@@ -286,11 +286,11 @@ let check_type_name local_types tn loc =
 let rec scope_econstr local_constrs imported_mods loc ec intf_env =
   match ec with
   | Ast_misc.Ec_int _ | Ast_misc.Ec_bool _ -> ec, intf_env
-  | Ast_misc.Ec_constr ln ->
+  | Ast_misc.Ec_constr (ln, rank) ->
     let ln, intf_env =
       scope_constr local_constrs imported_mods intf_env ln loc
     in
-    Ast_misc.Ec_constr ln, intf_env
+    Ast_misc.Ec_constr (ln, rank), intf_env
 
 and scope_const local_constrs imported_mods loc c intf_env =
   match c with

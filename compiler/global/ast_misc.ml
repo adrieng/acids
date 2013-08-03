@@ -24,6 +24,8 @@ type 'a var_dec =
       v_loc : Loc.t;
     }
 
+type rank = Int.t
+
 type constr = Names.longname
 
 let print_constr fmt c = Names.print_longname fmt c
@@ -32,13 +34,13 @@ let print_constr fmt c = Names.print_longname fmt c
 type econstr =
   | Ec_bool of bool
   | Ec_int of Int.t
-  | Ec_constr of constr
+  | Ec_constr of constr * rank
 
 let print_econstr fmt ec =
   match ec with
   | Ec_bool b -> Format.fprintf fmt "%b" b
   | Ec_int i -> Int.print fmt i
-  | Ec_constr cstr -> print_constr fmt cstr
+  | Ec_constr (cstr, _) -> print_constr fmt cstr
 
 let get_int ec =
   match ec with
@@ -47,7 +49,7 @@ let get_int ec =
 
 let get_econstr ec =
   match ec with
-  | Ec_constr ec -> ec
+  | Ec_constr (ec, _) -> ec
   | Ec_bool _ | Ec_int _ -> invalid_arg "get_econstr: not a constructor"
 
 type const =

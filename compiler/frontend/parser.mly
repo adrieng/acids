@@ -28,6 +28,9 @@
 
   let make_located make (x, loc) = make x loc
 
+  let make_econstr n =
+    Ast_misc.Ec_constr (Initial.make_longname n, Int.of_int (- 1))
+
   let make_clock_exp ced loc =
     {
       Acids_parsetree.ce_desc = ced;
@@ -386,7 +389,7 @@ interval:
 econstr:
 | BOOL { Ast_misc.Ec_bool $1 }
 | INT { Ast_misc.Ec_int $1 }
-| UIDENT { Ast_misc.Ec_constr (Initial.make_longname $1) }
+| UIDENT { make_econstr $1 }
 
 const:
 | econstr { Ast_misc.Cconstr $1 }

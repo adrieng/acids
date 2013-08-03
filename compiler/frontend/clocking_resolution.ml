@@ -144,7 +144,7 @@ let rec ce_equal ce1 ce2 =
   | Ce_condvar v1, Ce_condvar v2 -> Ident.equal v1.cev_name v2.cev_name
   | Ce_pword pw1, Ce_pword pw2 -> pw1 = pw2
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
-  | _ -> false
+  | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _  -> false
 
 let int_pword_of_econstr_pword env pw =
   Tree_word.map_upword (Interface.int_of_econstr env) (fun x -> x) pw

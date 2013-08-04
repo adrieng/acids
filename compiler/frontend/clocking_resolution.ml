@@ -128,15 +128,19 @@ let rec is_rigid_ce ce =
   | Ce_pword _ -> false
   | Ce_equal (ce, _) -> is_rigid_ce ce
 
-let rec decompose_st st =
-  match unalias_st st with
-  | Pst_var _ -> st, []
-  | Pst_on (bst, ce) ->
-    if is_rigid_ce ce
-    then st, []
-    else
-      let bst, ce_l = decompose_st bst in
-      bst, ce :: ce_l
+let decompose_st st =
+  let rec walk st =
+    match unalias_st st with
+    | Pst_var _ -> st, []
+    | Pst_on (bst, ce) ->
+      if is_rigid_ce ce
+      then st, []
+      else
+        let bst, ce_l = walk bst in
+        bst, ce :: ce_l
+  in
+  let bst, ce_l = walk st in
+  bst, List.rev ce_l
 
 (* TODO cleaner *)
 let rec ce_equal ce1 ce2 =

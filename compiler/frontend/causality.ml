@@ -64,6 +64,9 @@ let add_var env v =
 
 open Acids_clocked
 
+let union eqc1 eqc2 =
+  if not (Union_find.equivalent eqc1 eqc2) then Union_find.union eqc1 eqc2
+
 let rec enrich_env_with_pattern env p =
   match p.p_desc with
   | P_var v | P_condvar (v, _) ->
@@ -90,7 +93,7 @@ let rec clock_exp env ce =
 
 let expect_clock_exp env eqc ce =
   let eqc' = clock_exp env ce in
-  Union_find.union eqc eqc'
+  union eqc eqc'
 
 let rec exp env e =
   match e.e_desc with
@@ -110,7 +113,7 @@ let rec exp env e =
     let ec1 = exp env e1 in
     let ec2 = exp env e2 in
     if not (Clock_types.binary_clock_type e1.e_info#ei_clock)
-    then Union_find.union ec1 ec2;
+    then union ec1 ec2;
     ec1
   | E_ifthenelse (e1, e2, e3) ->
     let ec = exp env e1 in
@@ -143,7 +146,7 @@ let rec exp env e =
 
 and expect_exp env ec e =
   let ec' = exp env e in
-  Union_find.union ec ec'
+  union ec ec'
 
 and eq env eq =
   let ec = exp env eq.eq_rhs in
@@ -162,7 +165,7 @@ and clock_type env ty =
 
 and expect_clock_type env ec ty =
   let ec' = clock_type env ty in
-  Union_find.union ec ec'
+  union ec ec'
 
 and stream_type env st =
   let open Clock_types in
@@ -182,7 +185,7 @@ and internal_clock_exp env ec =
 
 and expect_internal_clock_exp env ec ce =
   let ec' = internal_clock_exp env ce in
-  Union_find.union ec ec'
+  union ec ec'
 
 and block env eqs =
   let env =

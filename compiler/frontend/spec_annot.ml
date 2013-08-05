@@ -23,6 +23,8 @@ type error =
   | Non_cond_declared_var of Loc.t * Ident.t
   | Non_interval_annotated_var of Loc.t * Ident.t
   | Negative_bounds of Acids_spec.clock_exp * Interval.t
+  | Non_exhaustive_pattern_match of Loc.t * Ast_misc.econstr
+  | Duplicate_pattern_match of Loc.t * Ast_misc.econstr
 
 exception Annotation_error of error
 
@@ -44,6 +46,16 @@ let print_error fmt err =
       Loc.print ce.Acids_spec.ce_loc
       Acids_spec.print_clock_exp ce
       Interval.print it
+  | Non_exhaustive_pattern_match (l, ec) ->
+    Format.fprintf fmt
+      "%aThis pattern-matching is not exhaustive (for example, %a is unmatched)"
+      Loc.print l
+      Ast_misc.print_econstr ec
+  | Duplicate_pattern_match (l, ec) ->
+    Format.fprintf fmt
+      "%aThe pattern %a appears several times in this matching"
+      Loc.print l
+      Ast_misc.print_econstr ec
 
 let non_cond_declared_var l id =
   raise (Annotation_error (Non_cond_declared_var (l, id)))
@@ -53,6 +65,12 @@ let non_interval_annotated_var l id =
 
 let negative_bounds ce it =
   raise (Annotation_error (Negative_bounds (ce, it)))
+
+let non_exhaustive_pattern_match l ec =
+  raise (Annotation_error (Non_exhaustive_pattern_match (l, ec)))
+
+let duplicate_pattern_match l ec =
+  raise (Annotation_error (Duplicate_pattern_match (l, ec)))
 
 (** {2 Environment} *)
 
@@ -77,6 +95,65 @@ let add_spec id specs env =
   { env with env = Ident.Env.add id specs env.env; }
 
 let find_spec env v = try Ident.Env.find v env.env with Not_found -> []
+
+(** {2 Exhaustiveness checking for patterns} *)
+
+let check_exhaustiveness env loc ty it present_cases =
+  let open Ast_misc in
+  let open Data_types in
+  let open Names in
+
+  (* TODO use a set-like datastructure *)
+
+  let econstr_list_of_shortname_list modul n_l =
+    let make rank n =
+      rank + 1, Ec_constr ({ modn = modul; shortn = n; }, Int.of_int rank)
+    in
+    let _, ec_l = Utils.mapfold_left make 0 n_l in
+    ec_l
+  in
+
+  let module S =
+        Set.Make(
+          struct
+            type t = Ast_misc.econstr
+            let compare = Ast_misc.econstr_compare
+          end) in
+
+  let all_cases =
+    match ty with
+    | Tys_bool -> [Ec_bool false; Ec_bool true]
+    | Tys_float -> invalid_arg "ill-typed"
+    | Tys_user { modn = LocalModule; shortn = shortn; } ->
+      let n_l = Names.ShortEnv.find shortn env.constrs in
+      econstr_list_of_shortname_list LocalModule n_l
+    | Tys_user { modn = Module modn; shortn = shortn; } ->
+      let intf = Names.ModEnv.find (Module modn) env.intf_env in
+      let n_l = Interface.find_constructors_of_type intf shortn in
+      econstr_list_of_shortname_list (Module modn) n_l
+    | Tys_int ->
+      let open Int in
+      let l = to_int it.Interval.l in
+      let u = to_int it.Interval.u in
+      List.map (fun i -> Ec_int (of_int i)) (Utils.range l u)
+  in
+
+  let all_cases =
+    List.fold_left (fun set case -> S.add case set) S.empty all_cases
+  in
+
+  let rec check remaining_cases present_cases =
+    match present_cases with
+    | [] ->
+      if not (S.is_empty remaining_cases)
+      then non_exhaustive_pattern_match loc (S.min_elt remaining_cases)
+      else ()
+    | case :: present_cases ->
+      if not (S.mem case remaining_cases)
+      then duplicate_pattern_match loc case
+      else check (S.remove case remaining_cases) present_cases
+  in
+  check all_cases present_cases
 
 (** {2 AST walking} *)
 
@@ -236,16 +313,22 @@ and annot_exp env e =
       let e = annot_exp env e in
       let ce, _, _ = annot_clock_exp env ce in
       Acids_spec.E_when (e, ce)
-    | E_split (ce, e, ec_l) ->
+    | E_split (ce, e', ec_l) ->
       let ce, _, _ = annot_clock_exp env ce in
-      let e = annot_exp env e in
-      Acids_spec.E_split (ce, e, ec_l)
+      let e' = annot_exp env e' in
+      check_exhaustiveness
+        env
+        e.e_loc
+        ce.Acids_spec.ce_info#ci_data
+        ce.Acids_spec.ce_info#ci_bounds
+        ec_l;
+      Acids_spec.E_split (ce, e', ec_l)
     | E_bmerge (ce, e1, e2) ->
       let ce, _, _ = annot_clock_exp env ce in
       let e1 = annot_exp env e1 in
       let e2 = annot_exp env e2 in
       Acids_spec.E_bmerge (ce, e1, e2)
-    | E_merge (ce, ec_l) ->
+    | E_merge (ce, c_l) ->
       let annot_clause ec =
         {
           Acids_spec.c_sel = ec.c_sel;
@@ -254,7 +337,14 @@ and annot_exp env e =
         }
       in
       let ce, _, _ = annot_clock_exp env ce in
-      Acids_spec.E_merge (ce, List.map annot_clause ec_l)
+      let c_l = List.map annot_clause c_l in
+      check_exhaustiveness
+        env
+        e.e_loc
+        ce.Acids_spec.ce_info#ci_data
+        ce.Acids_spec.ce_info#ci_bounds
+        (List.map (fun c -> c.Acids_spec.c_sel) c_l);
+      Acids_spec.E_merge (ce, c_l)
     | E_valof ce ->
       let ce, _, _ = annot_clock_exp env ce in
       Acids_spec.E_valof ce

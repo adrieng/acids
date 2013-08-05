@@ -158,6 +158,16 @@ let string_compare x y = Pervasives.compare x y
 
 let int_compare x y = Pervasives.compare x y
 
+let bool_compare x y =
+  let tag_to_int x =
+    match x with
+    | true -> 0
+    | false -> 1
+  in
+  match x, y with
+  | true, true | false, false -> 0
+  | (true | false), _ -> int_compare (tag_to_int x) (tag_to_int y)
+
 let nativeint_compare x y = Pervasives.compare x y
 
 let opt_compare compare x y =

@@ -115,6 +115,10 @@ let find_type intf shortn = Names.ShortEnv.find shortn intf.i_types
 
 let find_constructor intf shortn = Names.ShortEnv.find shortn intf.i_constrs
 
+let find_constructors_of_type intf shortn =
+  let td = Names.ShortEnv.find shortn intf.i_types in
+  td.td_constr
+
 let find_constructor_rank intf cstr =
   let ty_n = find_constructor intf cstr in
   let ty_i = find_type intf ty_n in

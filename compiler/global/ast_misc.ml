@@ -42,6 +42,23 @@ let print_econstr fmt ec =
   | Ec_int i -> Int.print fmt i
   | Ec_constr (cstr, _) -> print_constr fmt cstr
 
+let econstr_compare ec1 ec2 =
+  let tag_to_int ec =
+    match ec with
+    | Ec_bool _ -> 0
+    | Ec_int _ -> 1
+    | Ec_constr _ -> 2
+  in
+  match ec1, ec2 with
+  | Ec_bool b1, Ec_bool b2 ->
+    Utils.bool_compare b1 b2
+  | Ec_int i1, Ec_int i2 ->
+    Utils.int_compare i1 i2
+  | Ec_constr (ln1, _), Ec_constr (ln2, _) ->
+    Names.longname_compare ln1 ln2
+  | (Ec_bool _ | Ec_int _ | Ec_constr _), _ ->
+    Utils.int_compare (tag_to_int ec1) (tag_to_int ec2)
+
 let get_int ec =
   match ec with
   | Ec_int i -> i

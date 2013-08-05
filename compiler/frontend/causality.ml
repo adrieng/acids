@@ -179,7 +179,7 @@ and stream_type env st =
 and internal_clock_exp env ec =
   let open Clock_types in
   match ec with
-  | Ce_condvar cev -> find_var env cev.cev_name
+  | Ce_condvar cev -> find_var env cev.cecv_name
   | Ce_pword _ -> fresh_class ()
   | Ce_equal (ce, _) -> internal_clock_exp env ce
 

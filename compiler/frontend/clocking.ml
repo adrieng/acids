@@ -143,9 +143,9 @@ let rec trad_clock_exp ce =
   | Ce_condvar v ->
     let cev =
       {
-        cev_name = v;
-        cev_bounds = ce.ce_info#ci_bounds;
-        cev_specs = ce.ce_info#ci_specs;
+        cecv_name = v;
+        cecv_bounds = ce.ce_info#ci_bounds;
+        cecv_specs = ce.ce_info#ci_specs;
       }
     in
     Clock_types.Ce_condvar cev

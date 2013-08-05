@@ -16,15 +16,15 @@
  *)
 
 type clock_exp =
-  | Ce_condvar of clock_exp_var
+  | Ce_condvar of clock_exp_cond_var
   | Ce_pword of (Ast_misc.econstr, Int.t) Ast_misc.t
   | Ce_equal of clock_exp * Ast_misc.econstr
 
-and clock_exp_var =
+and clock_exp_cond_var =
   {
-    cev_name : Ident.t;
-    mutable cev_bounds : Interval.t;
-    mutable cev_specs : Ast_misc.spec list;
+    cecv_name : Ident.t;
+    mutable cecv_bounds : Interval.t;
+    mutable cecv_specs : Ast_misc.spec list;
   }
 
 type stream_type =
@@ -51,9 +51,9 @@ let rec print_clock_exp fmt ce =
   match ce with
   | Ce_condvar cev ->
     Format.fprintf fmt "@[%a%a%a@]"
-      Ident.print cev.cev_name
-      Ast_misc.print_interval_annot cev.cev_bounds
-      (Utils.print_list Ast_misc.print_spec_annot) cev.cev_specs
+      Ident.print cev.cecv_name
+      Ast_misc.print_interval_annot cev.cecv_bounds
+      (Utils.print_list Ast_misc.print_spec_annot) cev.cecv_specs
   | Ce_pword pw ->
     Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
   | Ce_equal (ce, ec) ->
@@ -326,7 +326,7 @@ let rec max_burst_stream_type st =
   | St_on (st, ce) ->
     let upper_bound_ce =
       match ce with
-      | Ce_condvar cev -> cev.cev_bounds.Interval.u
+      | Ce_condvar cev -> cev.cecv_bounds.Interval.u
       | Ce_pword pw ->
         (* TODO *)
         let get_int ec =

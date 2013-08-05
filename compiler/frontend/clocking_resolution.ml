@@ -124,7 +124,7 @@ let rec is_noninterp_ce ce =
       | (Unspec | Interval _) :: specs -> has_stream_spec specs
       | Word _ :: _ -> true
     in
-    not (has_stream_spec cev.cev_specs)
+    not (has_stream_spec cev.cecv_specs)
   | Ce_pword _ -> false
   | Ce_equal (ce, _) -> is_noninterp_ce ce
 
@@ -141,7 +141,7 @@ let decompose_st st =
 (* TODO cleaner *)
 let rec ce_equal ce1 ce2 =
   match ce1, ce2 with
-  | Ce_condvar v1, Ce_condvar v2 -> Ident.equal v1.cev_name v2.cev_name
+  | Ce_condvar v1, Ce_condvar v2 -> Ident.equal v1.cecv_name v2.cecv_name
   | Ce_pword pw1, Ce_pword pw2 -> pw1 = pw2
   | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
   | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _  -> false
@@ -157,11 +157,11 @@ let rec interp_ce env ce =
       match specs with
       | [] ->
         invalid_arg
-          ("interp_ce: no spec on var " ^ Ident.to_string cev.cev_name)
+          ("interp_ce: no spec on var " ^ Ident.to_string cev.cecv_name)
       | (Unspec | Interval _) :: specs -> find_stream_spec specs
       | Word p :: _ -> p
     in
-    find_stream_spec cev.cev_specs
+    find_stream_spec cev.cecv_specs
   | Ce_pword pw ->
     int_pword_of_econstr_pword env pw
   | Ce_equal (ce, ec) ->
@@ -285,9 +285,9 @@ let fresh_word_var unknowns_ht =
   let id = Ident.make_internal s in
   let cev =
     {
-      cev_name = id;
-      cev_bounds = Interval.singleton Int.zero;
-      cev_specs = [];
+      cecv_name = id;
+      cecv_bounds = Interval.singleton Int.zero;
+      cecv_specs = [];
     }
   in
   Hashtbl.add unknowns_ht id cev;
@@ -429,8 +429,8 @@ let solve_constraints env ctx pragma_env loc sys =
   let update_unknown v cev =
     match Resolution.Solution.get sol (Ident.to_string v) with
     | Some p ->
-      cev.cev_specs <- Ast_misc.([Word p]);
-      cev.cev_bounds <-
+      cev.cecv_specs <- Ast_misc.([Word p]);
+      cev.cecv_bounds <-
         let l, u = Ast_misc.bounds_of_int_pword p in
         Interval.make l u
     | None ->

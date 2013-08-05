@@ -226,9 +226,9 @@
   let make_ce_var id specs =
     let cev =
       {
-        Clock_types.cev_name = sig_scope_ident id;
-        Clock_types.cev_bounds = Interval.singleton Int.zero;
-        Clock_types.cev_specs = specs;
+        Clock_types.cecv_name = sig_scope_ident id;
+        Clock_types.cecv_bounds = Interval.singleton Int.zero;
+        Clock_types.cecv_specs = specs;
       }
     in
     Clock_types.Ce_condvar cev

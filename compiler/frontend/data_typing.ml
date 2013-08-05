@@ -461,13 +461,13 @@ and type_exp env e =
       let ce_ty = fresh_ty () in
       let ce = expect_clock_exp env (cond_ty ce_ty) ce in
       let body_ty = fresh_ty () in
-      let type_merge_clause cl =
-        let sel_ty = type_econstr env cl.c_sel in
-        unify cl.c_loc ce_ty sel_ty;
+      let type_merge_clause c =
+        let sel_ty = type_econstr env c.c_sel in
+        unify c.c_loc ce_ty sel_ty;
         {
-          M.c_sel = cl.c_sel;
-          M.c_body = expect_exp env body_ty cl.c_body;
-          M.c_loc = cl.c_loc;
+          M.c_sel = c.c_sel;
+          M.c_body = expect_exp env body_ty c.c_body;
+          M.c_loc = c.c_loc;
         }
       in
       M.E_merge (ce, List.map type_merge_clause c_l), body_ty

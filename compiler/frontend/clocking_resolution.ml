@@ -124,7 +124,7 @@ let rec is_noninterp_ce ce =
       | (Unspec | Interval _) :: specs -> has_stream_spec specs
       | Word _ :: _ -> true
     in
-    has_stream_spec cev.cev_specs
+    not (has_stream_spec cev.cev_specs)
   | Ce_pword _ -> false
   | Ce_equal (ce, _) -> is_noninterp_ce ce
 

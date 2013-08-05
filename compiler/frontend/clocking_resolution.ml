@@ -129,18 +129,14 @@ let rec is_noninterp_ce ce =
   | Ce_equal (ce, _) -> is_noninterp_ce ce
 
 let decompose_st st =
-  let rec walk st =
+  let rec walk acc st =
     match unalias_st st with
-    | Pst_var _ -> st, []
+    | Pst_var _ ->
+      st, acc
     | Pst_on (bst, ce) ->
-      if is_noninterp_ce ce
-      then st, []
-      else
-        let bst, ce_l = walk bst in
-        bst, ce :: ce_l
+      if is_noninterp_ce ce then st, acc else walk (ce :: acc) bst
   in
-  let bst, ce_l = walk st in
-  bst, List.rev ce_l
+  walk [] st
 
 (* TODO cleaner *)
 let rec ce_equal ce1 ce2 =

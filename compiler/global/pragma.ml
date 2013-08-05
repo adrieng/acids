@@ -60,7 +60,7 @@ type pragma =
   }
 
 let print_pragma fmt pragma =
-  Format.fprintf fmt "@@%s%a"
+  Format.fprintf fmt "@@%s %a"
     pragma.key
     print_tuple pragma.value
 

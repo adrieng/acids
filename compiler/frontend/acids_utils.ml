@@ -611,3 +611,80 @@ struct
     let body, _ = refresh_exp nd.n_body env in
     { nd with n_input = input; n_body = body; }
 end
+
+module type DEPS_INFO =
+sig
+  type exp
+  val relevant_sub_exps : exp -> exp list
+end
+
+module DEP_GRAPH
+  (
+    A : Acids.A
+   with type I.var = Ident.t
+   and type I.static_exp_desc = Acids_prespec.Info.static_exp_desc
+  )
+  (
+    D : DEPS_INFO
+   with type exp = A.exp
+  ) =
+struct
+  module G = Graph.Imperative.Digraph.ConcreteBidirectional(Ident)
+  module FV = FREEVARS(A)
+
+  open A
+
+  type env =
+    {
+      graph : G.t;
+      id_env : G.vertex Ident.Env.t;
+      current_lhs : G.vertex list;
+    }
+
+  let add_var env v =
+    let src_vtx = Ident.Env.find v env.id_env in
+    let add_edge dst_vtx = G.add_edge env.graph src_vtx dst_vtx in
+    List.iter add_edge env.current_lhs
+
+  let rec dep_graph_clock_exp env ce =
+    match ce.ce_desc with
+    | Ce_condvar v -> add_var env v
+    | Ce_pword _ -> ()
+    | Ce_equal (ce, _) -> dep_graph_clock_exp env ce
+
+  let rec dep_graph_exp env e =
+    (
+      match e.e_desc with
+      | E_var v -> add_var env v
+      | E_valof ce -> dep_graph_clock_exp env ce
+      | _ -> ()
+    );
+    List.iter (dep_graph_exp env) (D.relevant_sub_exps e)
+
+  let dep_graph_eq env eq =
+    let lhs_v = FV.fv_pattern Ident.Set.empty eq.eq_lhs in
+    let env =
+      let add v env =
+        let vtx = G.V.create v in
+        G.add_vertex env.graph v;
+        {
+          env with
+            id_env = Ident.Env.add v vtx env.id_env;
+            current_lhs = vtx :: env.current_lhs;
+        }
+      in
+      Ident.Set.fold add lhs_v { env with current_lhs = []; }
+    in
+    dep_graph_exp env eq.eq_rhs
+
+  let dep_graph_block block =
+    let env =
+      {
+        graph = G.create ~size:10 ();
+        id_env = Ident.Env.empty;
+        current_lhs = [];
+      }
+    in
+    List.iter (dep_graph_eq env) block.b_body;
+    env.graph
+end

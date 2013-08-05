@@ -722,7 +722,6 @@ and clock_dom env loc dom e acc =
     local_constrs;
 
   (* 3. Fresh base clock *)
-
   let bst = fresh_st () in
 
   (* 4. Unification between base clock and annot *)

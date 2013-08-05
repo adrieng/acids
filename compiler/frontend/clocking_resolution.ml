@@ -114,9 +114,12 @@ let occur_check_ty loc id orig_ty =
   | Pct_var _ | Pct_stream _ -> ()
   | Pct_prod ty_l -> List.iter check ty_l
 
-let rec is_noninterp_ce ce =
-  match ce with
-  | Ce_condvar cev ->
+let rec is_noninterp_ce pce =
+  let open PreCe in
+  let pce = unalias_ce pce in
+  match pce with
+  | Pce_var _ -> true
+  | Pce_condvar cev ->
     let rec has_stream_spec specs =
       let open Ast_misc in
       match specs with
@@ -125,33 +128,45 @@ let rec is_noninterp_ce ce =
       | Word _ :: _ -> true
     in
     not (has_stream_spec cev.cecv_specs)
-  | Ce_pword _ -> false
-  | Ce_equal (ce, _) -> is_noninterp_ce ce
+  | Pce_pword _ -> false
+  | Pce_equal (ce, _) -> is_noninterp_ce ce
 
 let decompose_st st =
   let rec walk acc st =
-    match unalias_st st with
+    let st = unalias_st st in
+    match st with
     | Pst_var _ ->
       st, acc
+
     | Pst_on (bst, ce) ->
       if is_noninterp_ce ce then st, acc else walk (ce :: acc) bst
   in
   walk [] st
 
 (* TODO cleaner *)
-let rec ce_equal ce1 ce2 =
-  match ce1, ce2 with
-  | Ce_condvar v1, Ce_condvar v2 -> Ident.equal v1.cecv_name v2.cecv_name
-  | Ce_pword pw1, Ce_pword pw2 -> pw1 = pw2
-  | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) -> ec1 = ec2 && ce_equal ce1 ce2
-  | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _  -> false
+let rec ce_equal pce1 pce2 =
+  let open PreCe in
+  let pce1 = unalias_ce pce1 in
+  let pce2 = unalias_ce pce2 in
+  match pce1, pce2 with
+  | Pce_var { VarCe.v_id = id1; }, Pce_var { VarCe.v_id = id2; } -> id1 = id2
+  | Pce_condvar v1, Pce_condvar v2 ->
+    Ident.equal v1.cecv_name v2.cecv_name
+  | Pce_pword pw1, Pce_pword pw2 ->
+    pw1 = pw2
+  | Pce_equal (pce1, ec1), Pce_equal (pce2, ec2) ->
+    ec1 = ec2 && ce_equal pce1 pce2
+  | (Pce_var _ | Pce_condvar _ | Pce_pword _ | Pce_equal _), _  -> false
 
 let int_pword_of_econstr_pword _ pw =
   Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw
 
-let rec interp_ce env ce =
-  match ce with
-  | Ce_condvar cev ->
+let rec interp_ce env pce =
+  let open PreCe in
+  let pce = unalias_ce pce in
+  match pce with
+  | Pce_var _ -> invalid_arg "interp_ce: variable"
+  | Pce_condvar cev ->
     let rec find_stream_spec specs =
       let open Ast_misc in
       match specs with
@@ -162,9 +177,9 @@ let rec interp_ce env ce =
       | Word p :: _ -> p
     in
     find_stream_spec cev.cecv_specs
-  | Ce_pword pw ->
+  | Pce_pword pw ->
     int_pword_of_econstr_pword env pw
-  | Ce_equal (ce, ec) ->
+  | Pce_equal (ce, ec) ->
     let p = interp_ce env ce in
     let i = Ast_misc.int_of_econstr ec in
     Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
@@ -280,18 +295,24 @@ let simplify_equality_constraints sys =
 
 *)
 
-let fresh_word_var unknowns_ht =
-  let s = "c" in
-  let id = Ident.make_internal s in
-  let cev =
-    {
-      cecv_name = id;
-      cecv_bounds = Interval.singleton Int.zero;
-      cecv_specs = [];
-    }
-  in
-  Hashtbl.add unknowns_ht id cev;
-  id, Ce_condvar cev
+let word_var_ident =
+  let ht = Hashtbl.create 100 in
+  fun i ->
+    try Hashtbl.find ht i
+    with Not_found ->
+      let id = Ident.make_internal ("c" ^ string_of_int i) in
+      Hashtbl.add ht i id;
+      id
+
+let fresh_word_var =
+  let r = ref 0 in
+  fun unknowns_ht ->
+    let open PreCe in
+    let open VarCe in
+    let v = { v_id = !r; v_link = None; } in
+    let id = word_var_ident !r in
+    Hashtbl.add unknowns_ht id v;
+    id, Pce_var v
 
 let word_constraints_of_clock_constraints env sys =
   let unknowns_ht = Hashtbl.create 100 in
@@ -357,8 +378,15 @@ let word_constraints_of_clock_constraints env sys =
       let id, ce = fresh_word_var unknowns_ht in
       v.VarTySt.v_link <- Some (Pst_on (bst, ce));
       bst, Some (Ident.to_string id)
-    | _ ->
-      st, None
+    | Pst_on (bst, pce) ->
+      (
+        let pce = unalias_ce pce in
+        match pce with
+        | PreCe.Pce_var { VarCe.v_id = id; } ->
+          bst, Some (Ident.to_string (word_var_ident id))
+        | _ ->
+          st, None
+      )
   in
 
   let solve_constraint wsys c =
@@ -426,15 +454,17 @@ let solve_constraints env ctx pragma_env loc sys =
   in
 
   (* Propagate the solutions back into the clocks *)
-  let update_unknown v cev =
-    match Resolution.Solution.get sol (Ident.to_string v) with
+  let update_unknown id v =
+    match Resolution.Solution.get sol (Ident.to_string id) with
     | Some p ->
-      cev.cecv_specs <- Ast_misc.([Word p]);
-      cev.cecv_bounds <-
-        let l, u = Ast_misc.bounds_of_int_pword p in
-        Interval.make l u
+      let open VarCe in
+      assert (v.v_link = None);
+      let pw =
+        Ast_misc.map_upword (fun i -> Ast_misc.Ec_int i) (fun x -> x) p
+      in
+      v.v_link <- Some (PreCe.Pce_pword pw)
     | None ->
-      let err = "no solution to " ^ Ident.to_string v in
+      let err = "no solution to " ^ Ident.to_string id in
       Compiler.internal_error err
   in
   Hashtbl.iter update_unknown unknowns_ht;

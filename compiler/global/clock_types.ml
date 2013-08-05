@@ -121,19 +121,74 @@ let print_sig_ann =
     printing_prefix
     print_sig
 
+module PreCe =
+struct
+  type 'a pre_ty =
+  | Pce_var of 'a
+  | Pce_condvar of clock_exp_cond_var
+  | Pce_pword of (Ast_misc.econstr, Int.t) Ast_misc.t
+  | Pce_equal of 'a pre_ty * Ast_misc.econstr
+
+  let rec print print_var fmt pce =
+    match pce with
+    | Pce_var v -> print_var fmt v
+    | Pce_condvar pcv ->
+      Format.fprintf fmt "@[%a%a%a@]"
+        Ident.print pcv.cecv_name
+        Ast_misc.print_interval_annot pcv.cecv_bounds
+        (Utils.print_list Ast_misc.print_spec_annot) pcv.cecv_specs
+    | Pce_pword pw ->
+      Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
+    | Pce_equal (pce, ec) ->
+      Format.fprintf fmt "%a = %a"
+        (print print_var) pce
+        Ast_misc.print_econstr ec
+end
+module VarCe = Ast_misc.MakeVar(PreCe)
+
+let rec ce_of_pre_ce pce =
+  let open PreCe in
+  match pce with
+  | Pce_var v ->
+    VarCe.ty_of_ty_var
+      ce_of_pre_ce
+      (fun _ -> invalid_arg "ce_of_pre_ce: Pce_var _")
+      v
+  | Pce_condvar cev -> Ce_condvar cev
+  | Pce_pword p -> Ce_pword p
+  | Pce_equal (pce, ec) -> Ce_equal (ce_of_pre_ce pce, ec)
+
+let rec pre_ce_of_ce ce =
+  let open PreCe in
+  match ce with
+  | Ce_condvar cev -> Pce_condvar cev
+  | Ce_pword p -> Pce_pword p
+  | Ce_equal (ce, ec) -> Pce_equal (pre_ce_of_ce ce, ec)
+
+let rec unalias_ce pce =
+  let open PreCe in
+  let open VarCe in
+  match pce with
+  | Pce_var ({ v_link = Some pce; } as r) ->
+    let pce = unalias_ce pce in
+    r.v_link <- Some pce;
+    pce
+  | _ ->
+    pce
+
 module PreTySt =
 struct
   type 'a pre_ty =
     | Pst_var of 'a
-    | Pst_on of 'a pre_ty * clock_exp
+    | Pst_on of 'a pre_ty * VarCe.t
 
   let rec print print_var fmt pty =
     match pty with
     | Pst_var v -> print_var fmt v
-    | Pst_on (pty, ce) ->
+    | Pst_on (pty, pce) ->
       Format.fprintf fmt "@[%a@ on %a@]"
         (print print_var) pty
-        print_clock_exp ce
+        VarCe.print pce
 end
 module VarTySt = Ast_misc.MakeVar(PreTySt)
 
@@ -141,7 +196,18 @@ let rec st_of_pre_st pst =
   let open PreTySt in
   match pst with
   | Pst_var v -> VarTySt.ty_of_ty_var st_of_pre_st (fun i -> St_var i) v
-  | Pst_on (st, ce) -> St_on (st_of_pre_st st, ce)
+  | Pst_on (st, pce) -> St_on (st_of_pre_st st, ce_of_pre_ce pce)
+
+let rec unalias_st st =
+  let open PreTySt in
+  let open VarTySt in
+  match st with
+  | Pst_var ({ v_link = Some st; } as r) ->
+    let st = unalias_st st in
+    r.v_link <- Some st;
+    st
+  | _ ->
+    st
 
 module PreTy =
 struct
@@ -157,7 +223,6 @@ struct
     | Pct_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
-
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 
@@ -167,6 +232,17 @@ let rec ty_of_pre_ty pty =
   | Pct_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ct_var i) v
   | Pct_stream pst -> Ct_stream (st_of_pre_st pst)
   | Pct_prod pty_l -> Ct_prod (List.map ty_of_pre_ty pty_l)
+
+let rec unalias_ty ty =
+  let open PreTy in
+  let open VarTy in
+  match ty with
+  | Pct_var ({ v_link = Some ty; } as r) ->
+    let ty = unalias_ty ty in
+    r.v_link <- Some ty;
+    ty
+  | _ ->
+    ty
 
 type ty_constr_desc =
   | Tc_adapt of VarTySt.t * VarTySt.t (* st1 <: st2 *)
@@ -250,7 +326,7 @@ let instantiate_clock_sig loc csig =
           Hashtbl.add ht_st v st;
           st
       )
-    | St_on (st, ce) -> Pst_on (inst_st st, ce)
+    | St_on (st, ce) -> Pst_on (inst_st st, pre_ce_of_ce ce)
   in
 
   let rec inst_ct ct =
@@ -302,22 +378,6 @@ let rec reroot_ty bst ty =
   | Pct_var _ -> ty
   | Pct_stream st -> Pct_stream (reroot_st bst st)
   | Pct_prod ty_l -> Pct_prod (List.map (reroot_ty bst) ty_l)
-
-let rec unalias_st st =
-  match st with
-  | PreTySt.Pst_var ({ VarTySt.v_link = Some st; } as r) ->
-    let st = unalias_st st in
-    r.VarTySt.v_link <- Some st;
-    st
-  | _ -> st
-
-let rec unalias_ty ty =
-  match ty with
-  | PreTy.Pct_var ({ VarTy.v_link = Some ty; } as r) ->
-    let ty = unalias_ty ty in
-    r.VarTy.v_link <- Some ty;
-    ty
-  | _ -> ty
 
 let rec max_burst_stream_type st =
   let open Int in

@@ -148,14 +148,14 @@ let rec trad_clock_exp ce =
         cecv_specs = ce.ce_info#ci_specs;
       }
     in
-    Clock_types.Ce_condvar cev
+    Clock_types.PreCe.Pce_condvar cev
   | Ce_pword pw ->
     let pw =
       Ast_misc.map_upword (fun se -> se.se_desc) trad_static_exp_int pw
     in
-    Clock_types.Ce_pword pw
+    Clock_types.PreCe.Pce_pword pw
   | Ce_equal (ce, se) ->
-    Clock_types.Ce_equal (trad_clock_exp ce, se.se_desc)
+    Clock_types.PreCe.Pce_equal (trad_clock_exp ce, se.se_desc)
 
 let rec int_ptree_of_ptree current pt =
   let open Ast_misc in
@@ -172,7 +172,7 @@ let int_pword_of_pword pw =
   let open Ast_misc in
   let current, u = int_ptree_of_ptree Int.zero pw.u in
   let _, v = int_ptree_of_ptree current pw.v in
-  Clock_types.Ce_pword { u = u; v = v; }
+  Clock_types.PreCe.Pce_pword { u = u; v = v; }
 
 let rec psplit_length pt =
   let open Ast_misc in
@@ -200,7 +200,7 @@ let adaptable_sts loc (ctx, constrs) =
   st, st', (ctx, constr :: constrs)
 
 let sampled_ty loc ty cce ec acc =
-  on_ty loc ty (Clock_types.Ce_equal (cce, ec)) acc
+  on_ty loc ty (Clock_types.PreCe.Pce_equal (cce, ec)) acc
 
 (** {2 High-level utilities} *)
 

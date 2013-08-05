@@ -30,7 +30,7 @@ struct
     Format.fprintf fmt "@[%a%a%a@]"
       Data_types.print_ty_scal_ann cei#ci_data
       Ast_misc.print_interval_annot cei#ci_bounds
-      (Utils.print_list_r Ast_misc.print_spec_annot "") cei#ci_specs
+      (Utils.print_list Ast_misc.print_spec_annot) cei#ci_specs
 
   type static_exp_info =
       <

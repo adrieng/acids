@@ -155,7 +155,9 @@ let rec interp_ce env ce =
     let rec find_stream_spec specs =
       let open Ast_misc in
       match specs with
-      | [] -> invalid_arg "interp_ce"
+      | [] ->
+        invalid_arg
+          ("interp_ce: no spec on var " ^ Ident.to_string cev.cev_name)
       | (Unspec | Interval _) :: specs -> find_stream_spec specs
       | Word p :: _ -> p
     in

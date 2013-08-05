@@ -114,7 +114,7 @@ let occur_check_ty loc id orig_ty =
   | Pct_var _ | Pct_stream _ -> ()
   | Pct_prod ty_l -> List.iter check ty_l
 
-let rec is_rigid_ce ce =
+let rec is_noninterp_ce ce =
   match ce with
   | Ce_condvar cev ->
     let rec has_stream_spec specs =
@@ -126,14 +126,14 @@ let rec is_rigid_ce ce =
     in
     has_stream_spec cev.cev_specs
   | Ce_pword _ -> false
-  | Ce_equal (ce, _) -> is_rigid_ce ce
+  | Ce_equal (ce, _) -> is_noninterp_ce ce
 
 let decompose_st st =
   let rec walk st =
     match unalias_st st with
     | Pst_var _ -> st, []
     | Pst_on (bst, ce) ->
-      if is_rigid_ce ce
+      if is_noninterp_ce ce
       then st, []
       else
         let bst, ce_l = walk bst in
@@ -153,13 +153,13 @@ let rec ce_equal ce1 ce2 =
 let int_pword_of_econstr_pword _ pw =
   Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw
 
-let rec eval_non_rigid_ce env ce =
+let rec interp_ce env ce =
   match ce with
   | Ce_condvar cev ->
     let rec find_stream_spec specs =
       let open Ast_misc in
       match specs with
-      | [] -> invalid_arg "eval_non_rigid_ce"
+      | [] -> invalid_arg "interp_ce"
       | (Unspec | Interval _) :: specs -> find_stream_spec specs
       | Word p :: _ -> p
     in
@@ -167,7 +167,7 @@ let rec eval_non_rigid_ce env ce =
   | Ce_pword pw ->
     int_pword_of_econstr_pword env pw
   | Ce_equal (ce, ec) ->
-    let p = eval_non_rigid_ce env ce in
+    let p = interp_ce env ce in
     let i = Ast_misc.int_of_econstr ec in
     Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
@@ -313,7 +313,7 @@ let word_constraints_of_clock_constraints env sys =
       wsys
 
     | Pst_on (st1', ce1), Pst_on (st2', ce2)
-      when is_rigid_ce ce1 && is_rigid_ce ce2 ->
+      when is_noninterp_ce ce1 && is_noninterp_ce ce2 ->
       if not (ce_equal ce1 ce2) then could_not_unify_st loc st1' st2';
         unify loc wsys st1' st2'
 
@@ -321,9 +321,9 @@ let word_constraints_of_clock_constraints env sys =
       unify_decompose Problem.Equal loc wsys st1 st2
 
   and unify_decompose kind loc wsys st1 st2 =
-    let rigid_st1, left_consts = decompose st1 in
-    let rigid_st2, right_consts = decompose st2 in
-    let (bst1, v1), (bst2, v2) = gen_vars rigid_st1 rigid_st2 in
+    let noninterp_st1, left_consts = decompose st1 in
+    let noninterp_st2, right_consts = decompose st2 in
+    let (bst1, v1), (bst2, v2) = gen_vars noninterp_st1 noninterp_st2 in
     let l_side = { Resolution.var = v1; Resolution.const = left_consts; } in
     let r_side = { Resolution.var = v2; Resolution.const = right_consts; } in
     let c =
@@ -333,13 +333,13 @@ let word_constraints_of_clock_constraints env sys =
     unify loc (c :: wsys) bst1 bst2
 
   and decompose st =
-    let rigid_st, non_rigid_ce_l = decompose_st st in
+    let noninterp_st, interp_ce_l = decompose_st st in
     let iw_l =
-      match non_rigid_ce_l with
+      match interp_ce_l with
       | [] -> [unit_ipword]
-      | _ :: _ -> List.map (eval_non_rigid_ce env) non_rigid_ce_l
+      | _ :: _ -> List.map (interp_ce env) interp_ce_l
     in
-    rigid_st, iw_l
+    noninterp_st, iw_l
 
   and gen_vars st1 st2 =
     let open VarTySt in

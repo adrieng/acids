@@ -1,14 +1,12 @@
 Compiler:
-- Ct variables
 - properly print "forall"s for type variables
 - record type instantiations for future monomorphization
 - fix static type variables, see example in static.split
-- interval typing: be more modular, see example in interval.split
 - clock_types: ct -> ty
 - unify handling of interface environments (LocalModule / Modname)
-- add their ranks to all constructors
 - currently, (x, y) = (1, x) is not considered "causal" (schedulable),
   is this reasonable?
+- re-add exhaustiveness checker for patterns (was in interval_typing)
 
 Resolution:
 - Only compute causal solutions

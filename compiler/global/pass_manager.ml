@@ -234,7 +234,7 @@ let rec eval : type i o. (i -> o) pass -> ctx -> i -> ctx * o =
           Format.printf "(* [%s] finished, %.2f seconds *)@\n"
             t.t_name
             (stop_time -. start_time);
-          Format.printf "%a@\n" (print_value t.t_print_output) y;
+          Format.printf "%a" (print_value t.t_print_output) y;
         );
 
       Format.printf "@?";

@@ -225,16 +225,18 @@ struct
       (Utils.print_list_r Names.print_shortname "|") tydef.ty_body
 
   let print_phrase fmt phr =
-    match phr with
-    | Phr_node_def def -> print_node_def fmt def
-    | Phr_node_decl decl -> print_node_decl fmt decl
-    | Phr_type_def tydef -> print_type_def fmt tydef
+    (
+      match phr with
+      | Phr_node_def def -> print_node_def fmt def
+      | Phr_node_decl decl -> print_node_decl fmt decl
+      | Phr_type_def tydef -> print_type_def fmt tydef
+    );
+    Format.fprintf fmt "@\n"
 
   let print_file fmt file =
     let print_import fmt modn =
       Format.fprintf fmt "open %a@\n" Names.print_modname modn
     in
     Utils.print_list_eol print_import fmt file.f_imports;
-    Utils.print_list_eol print_phrase fmt file.f_body;
-    Format.fprintf fmt "@\n"
+    Utils.print_list_eol print_phrase fmt file.f_body
 end

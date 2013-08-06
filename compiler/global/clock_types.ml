@@ -57,7 +57,7 @@ let rec print_clock_exp fmt ce =
   | Ce_pword pw ->
     Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
   | Ce_equal (ce, ec) ->
-    Format.fprintf fmt "%a = %a"
+    Format.fprintf fmt "(%a = %a)"
       print_clock_exp ce
       Ast_misc.print_econstr ec
 
@@ -140,7 +140,7 @@ struct
     | Pce_pword pw ->
       Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
     | Pce_equal (pce, ec) ->
-      Format.fprintf fmt "%a = %a"
+      Format.fprintf fmt "(%a = %a)"
         (print print_var) pce
         Ast_misc.print_econstr ec
 end

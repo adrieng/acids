@@ -39,7 +39,7 @@ struct
     | Ce_condvar v -> I.print_var fmt v
     | Ce_pword p -> print_static_word fmt p
     | Ce_equal (ce, se) ->
-      Format.fprintf fmt "%a = %a" print_clock_exp ce print_static_exp se
+      Format.fprintf fmt "(%a = %a)" print_clock_exp ce print_static_exp se
 
   and print_static_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"

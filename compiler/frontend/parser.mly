@@ -322,6 +322,9 @@
 %inline brackets(X):
 | LBRACKET x = X RBRACKET { x }
 
+%inline braces(X):
+| LBRACE x = X RBRACE { x }
+
 simple_ptree(X, Y):
 | x = X { Ast_misc.Leaf x }
 | t = simple_ptree(X, Y) CARET y = Y { Ast_misc.Power (t, y) }
@@ -555,7 +558,7 @@ pragma_val:
 | v_l = parens(separated_list(COMMA, pragma_val)) { Pragma.Tuple v_l }
 
 pragma_desc:
-| key = PRAGMAKEY value = pragma_val { (key, value) }
+| key = PRAGMAKEY value = braces(pragma_val) { (key, value) }
 
 pragma:
 | pd = with_loc(pragma_desc) { make_located make_pragma pd }

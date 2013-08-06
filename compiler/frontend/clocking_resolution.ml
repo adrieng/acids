@@ -86,7 +86,7 @@ let p f x =
 
 let p_sys s sys =
   p
-    (fun fmt sys -> Format.fprintf fmt "%s: %a" s print_system sys)
+    (fun fmt sys -> Format.fprintf fmt "%s:@ %a" s print_system sys)
     sys
 
 let occur_check_st loc id orig_st =

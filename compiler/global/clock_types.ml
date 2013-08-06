@@ -394,15 +394,7 @@ let rec max_burst_stream_type st =
       match ce with
       | Ce_condvar cev -> cev.cecv_bounds.Interval.u
       | Ce_pword pw ->
-        (* TODO *)
-        let get_int ec =
-          let open Ast_misc in
-          match ec with
-          | Ec_bool b -> Int.of_bool b
-          | Ec_int i -> i
-          | Ec_constr _ -> assert false (* TODO *)
-        in
-        let p = Tree_word.map_upword get_int (fun x -> x) pw in
+        let p = Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw in
         snd (Ast_misc.bounds_of_int_pword p)
       | Ce_equal _ -> Int.one
     in

@@ -106,6 +106,7 @@ module MakeVar =
            Format.formatter ->
            'a pre_ty ->
            unit
+         val var_pref : string
        end) ->
 struct
   type ty_var =
@@ -117,11 +118,8 @@ struct
 
   let rec print_var fmt v =
     match v.v_link with
-    | None -> Format.fprintf fmt "v%d" v.v_id
-    | Some ty ->
-      Format.fprintf fmt "%a{v%d}"
-        (S.print print_var) ty
-        v.v_id
+    | None -> Format.fprintf fmt "%s%d" S.var_pref v.v_id
+    | Some ty -> S.print print_var fmt ty
 
   let print fmt t = S.print print_var fmt t
 

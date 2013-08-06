@@ -143,6 +143,8 @@ struct
       Format.fprintf fmt "(%a = %a)"
         (print print_var) pce
         Ast_misc.print_econstr ec
+
+  let var_pref = "ce"
 end
 module VarCe = Ast_misc.MakeVar(PreCe)
 
@@ -189,6 +191,8 @@ struct
       Format.fprintf fmt "@[%a@ on %a@]"
         (print print_var) pty
         VarCe.print pce
+
+  let var_pref = "st"
 end
 module VarTySt = Ast_misc.MakeVar(PreTySt)
 
@@ -223,6 +227,8 @@ struct
     | Pct_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
+
+  let var_pref = "ck"
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 

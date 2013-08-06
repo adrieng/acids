@@ -79,6 +79,8 @@ struct
     | Psy_prod pty_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
+
+  let var_pref = "s"
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 

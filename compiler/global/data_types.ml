@@ -91,6 +91,8 @@ module PreTy =
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l
+
+    let var_pref = "a"
   end
 module VarTy = Ast_misc.MakeVar(PreTy)
 

@@ -47,10 +47,17 @@ struct
       <
         ei_data : Data_types.data_ty;
         ei_clock : Clock_types.clock_type;
+        ei_relevant_deps : bool;
       >
   let print_exp_info fmt ei =
     Data_types.print_ty_ann fmt ei#ei_data;
-    Clock_types.print_clock_type_ann fmt ei#ei_clock
+    Clock_types.print_clock_type_ann fmt ei#ei_clock;
+    Ast_misc.print_annot
+      Compiler_options.print_causality_info
+      "deps"
+      Utils.print_bool
+      fmt
+      ei#ei_relevant_deps
 
   type app_info =
     <

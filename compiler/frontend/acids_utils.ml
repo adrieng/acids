@@ -612,21 +612,11 @@ struct
     { nd with n_input = input; n_body = body; }
 end
 
-module type DEPS_INFO =
-sig
-  type exp
-  val relevant_sub_exps : exp -> exp list
-end
-
 module DEP_GRAPH
   (
     A : Acids.A
    with type I.var = Ident.t
    and type I.static_exp_desc = Acids_prespec.Info.static_exp_desc
-  )
-  (
-    D : DEPS_INFO
-   with type exp = A.exp
   ) =
 struct
   module G = Graph.Imperative.Digraph.ConcreteBidirectional(Ident)
@@ -637,12 +627,21 @@ struct
   type env =
     {
       graph : G.t;
-      id_env : G.vertex Ident.Env.t;
+      mutable id_env : G.vertex Ident.Env.t;
       current_lhs : G.vertex list;
+      relevant_exp : exp -> bool;
     }
 
+  let find_vtx env v =
+    try Ident.Env.find v env.id_env
+    with Not_found ->
+      let vtx = G.V.create v in
+      G.add_vertex env.graph vtx;
+      env.id_env <- Ident.Env.add v vtx env.id_env;
+      vtx
+
   let add_var env v =
-    let src_vtx = Ident.Env.find v env.id_env in
+    let src_vtx = find_vtx env v in
     let add_edge dst_vtx = G.add_edge env.graph src_vtx dst_vtx in
     List.iter add_edge env.current_lhs
 
@@ -653,38 +652,80 @@ struct
     | Ce_equal (ce, _) -> dep_graph_clock_exp env ce
 
   let rec dep_graph_exp env e =
-    (
+    if env.relevant_exp e
+    then
       match e.e_desc with
-      | E_var v -> add_var env v
-      | E_valof ce -> dep_graph_clock_exp env ce
-      | _ -> ()
-    );
-    List.iter (dep_graph_exp env) (D.relevant_sub_exps e)
+      | E_var v ->
+        add_var env v
 
-  let dep_graph_eq env eq =
+      | E_const _ ->
+        ()
+
+      | E_fst e | E_snd e | E_app (_, e)
+      | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _)
+      | E_dom (e, _) | E_buffer (e, _)
+        ->
+        dep_graph_exp env e
+
+      | E_tuple e_l ->
+        List.iter (dep_graph_exp env) e_l
+
+      | E_fby (e1, e2) ->
+        dep_graph_exp env e1;
+        dep_graph_exp env e2
+
+      | E_ifthenelse (e1, e2, e3) ->
+        dep_graph_exp env e1;
+        dep_graph_exp env e2;
+        dep_graph_exp env e3
+
+      | E_where (e, block) ->
+        dep_graph_exp env e;
+        dep_graph_block env block
+
+      | E_when (e, ce) ->
+        dep_graph_exp env e;
+        dep_graph_clock_exp env ce
+
+      | E_split (ce, e, _) ->
+        dep_graph_clock_exp env ce;
+        dep_graph_exp env e
+
+      | E_bmerge (ce, e1, e2) ->
+        dep_graph_clock_exp env ce;
+        dep_graph_exp env e1;
+        dep_graph_exp env e2
+
+      | E_merge (ce, c_l) ->
+        dep_graph_clock_exp env ce;
+        List.iter (fun c -> dep_graph_exp env c.c_body) c_l
+
+      | E_valof ce ->
+        dep_graph_clock_exp env ce
+
+  and dep_graph_eq env eq =
     let lhs_v = FV.fv_pattern Ident.Set.empty eq.eq_lhs in
     let env =
       let add v env =
-        let vtx = G.V.create v in
-        G.add_vertex env.graph v;
-        {
-          env with
-            id_env = Ident.Env.add v vtx env.id_env;
-            current_lhs = vtx :: env.current_lhs;
-        }
+        let vtx = find_vtx env v in
+        { env with current_lhs = vtx :: env.current_lhs; }
       in
       Ident.Set.fold add lhs_v { env with current_lhs = []; }
     in
     dep_graph_exp env eq.eq_rhs
 
-  let dep_graph_block block =
+  and dep_graph_block env block =
+    List.iter (dep_graph_eq env) block.b_body
+
+  let dep_graph relevant_exp e =
     let env =
       {
         graph = G.create ~size:10 ();
         id_env = Ident.Env.empty;
         current_lhs = [];
+        relevant_exp = relevant_exp;
       }
     in
-    List.iter (dep_graph_eq env) block.b_body;
+    dep_graph_exp env e;
     env.graph
 end

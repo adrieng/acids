@@ -297,9 +297,9 @@ struct
     | Exp _ | Node _ | ClockExp _ | Buffer _ -> invalid_arg "update_app_info"
     | App inst ->
       let trad (i, pst) = i, Clock_types.st_of_pre_st pst in
-      {
-        Acids_clocked.Info.ai_clock_inst = List.map trad inst;
-      }
+      object
+        method ai_clock_inst = List.map trad inst
+      end
 
   let update_block_info _ = ()
 

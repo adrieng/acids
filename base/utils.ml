@@ -256,6 +256,8 @@ let print_string fmt s = fprintf fmt "%s" s
 
 let print_int fmt i = fprintf fmt "%d" i
 
+let print_bool fmt b = fprintf fmt "%b" b
+
 let print_opt ?(s = "") p fmt o =
   match o with
   | None -> Format.fprintf fmt "%s" s

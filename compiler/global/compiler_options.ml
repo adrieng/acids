@@ -29,6 +29,8 @@ let print_spec_info = ref false
 
 let print_clock_info = ref false
 
+let print_causality_info = ref false
+
 let info_list =
   [
     "full", print_full_info;
@@ -36,6 +38,7 @@ let info_list =
     "static", print_static_info;
     "spec", print_spec_info;
     "clock", print_clock_info;
+    "caus", print_causality_info;
   ]
 
 let set_info s = List.assoc s info_list := true

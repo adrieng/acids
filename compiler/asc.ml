@@ -81,7 +81,7 @@ let flow =
   +>+ Static_simpl.simpl
   +>+ Spec_annot.annot
   +>+ Clocking.clock
-  +>+ Causality.check
+  +>+ Causality.annot
 
 (*****************************************************************************)
 (* File handling *)

@@ -83,7 +83,7 @@ let check_solution sys sol =
     let check_fun =
       match constr.kind with
       | Problem.Equal -> Pword.equal
-      | Problem.Adapt -> Pword.adapt
+      | Problem.Adapt -> Pword.adapt ~delay:Int.zero
     in
     if not (check_fun lhs rhs)
     then Resolution_errors.internal_error sol

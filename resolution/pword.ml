@@ -145,6 +145,7 @@ let nbones w = w.nbones
 
 let rec ones_word acc w i =
   let open Int in
+  assert (i >= zero);
   assert (i <= w.size);
   if i = zero then acc
   else
@@ -318,7 +319,7 @@ let unit_pword = make empty (singleton Int.one)
 
 let ones w i =
   let open Int in
-  assert (i >= one);
+  assert (i >= zero);
   if i <= w.u.size
   then ones_word zero w.u i
   else
@@ -415,10 +416,14 @@ let common_behavior_nbones p1 p2 =
   let open Int in
   max p1.u.nbones p2.u.nbones + lcm p1.v.nbones p2.v.nbones
 
-let precedes ?(strict = false) p1 p2 =
+(* Check that forall i, O_p1(i) >= O_p2(i + delay) (with delay >= 0) *)
+let precedes ?(delay = Int.zero) p1 p2 =
   let open Int in
 
   let max = common_behavior_nbones p1 p2 in
+
+  assert (delay >= zero);
+  assert (delay <= max);
 
   let rec walk w1 w2 o1 o2 j =
     if j > max then true
@@ -429,14 +434,25 @@ let precedes ?(strict = false) p1 p2 =
         let b1, b2, k, w1, w2 = unfold_max w1 w2 in
         let o1' = o1 + b1 * k in
         let o2' = o2 + b2 * k in
-        let prec = o1' >= o2' && (not strict || o1 >= o2') in
-        prec && walk w1 w2 o1' o2' (j + k)
+        (o1' >= o2') && walk w1 w2 o1' o2' (j + k)
   in
-  walk p1.u p2.u zero zero zero
+
+  let o2 = ones p2 delay in
+  let w2 =
+    if delay < p2.u.size
+    then
+      let _, u = take delay p2.u in
+      u
+    else
+      let shift = (delay - p2.u.size) mod p2.v.size in
+      let _, v = take shift p2.v in
+      v
+  in
+  walk p1.u w2 zero o2 zero
 
 let synchro p1 p2 = Rat.(rate p1 = rate p2)
 
-let adapt p1 p2 = synchro p1 p2 && precedes p1 p2
+let adapt ?(delay = Int.zero) p1 p2 = synchro p1 p2 && precedes ~delay p1 p2
 
 let to_tree_pword p =
   { Tree_word.u = to_tree_word p.u; Tree_word.v = to_tree_word p.v; }

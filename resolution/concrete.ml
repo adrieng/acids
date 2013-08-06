@@ -272,7 +272,7 @@ let make_concrete_system
         let check_fun =
           match c.kind with
           | Equal -> Pword.equal
-          | Adapt -> Pword.adapt
+          | Adapt -> Pword.adapt ~delay:Int.zero
         in
         if not (check_fun lhs rhs)
         then Resolution_errors.constant_inconsistency ();

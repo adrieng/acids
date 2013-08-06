@@ -400,7 +400,54 @@ let rec max_burst_stream_type st =
     in
     upper_bound_ce * max_burst_stream_type st
 
-let non_strict_adaptable _ _ = false
+let rec interp_ce ce =
+  match ce with
+  | Ce_condvar cev ->
+    let rec has_full_spec specs =
+      let open Ast_misc in
+      match specs with
+      | [] -> None
+      | Word p :: _ -> Some p
+      | (Unspec | Interval _) :: specs -> has_full_spec specs
+    in
+    has_full_spec cev.cecv_specs
+  | Ce_pword p ->
+    Some (Ast_misc.map_upword Ast_misc.int_of_econstr (fun x -> x) p)
+  | Ce_equal (ce, ec) ->
+    let i = Ast_misc.int_of_econstr ec in
+    match interp_ce ce with
+    | None -> None
+    | Some p ->
+      Some
+        (Ast_misc.map_upword
+           (fun i' -> Int.of_bool (0 = Utils.int_compare i i'))
+           (fun x -> x)
+           p)
+
+let decompose_st st =
+  let rec walk acc st =
+    match st with
+    | St_var _ -> st, acc
+    | St_on (bst, ce) ->
+      match interp_ce ce with
+      | None -> st, acc
+      | Some p -> walk (p :: acc) bst
+  in
+  walk [] st
+
+let non_strict_adaptable st1 st2 =
+  let bst1, p_l1 = decompose_st st1 in
+  let _, p_l2 = decompose_st st2 in
+  (* TODO check bst1 = bst2 *)
+  let delay = max_burst_stream_type bst1 in
+
+  let p_l1 = List.map Resolution_utils.pword_of_tree p_l1 in
+  let p_l2 = List.map Resolution_utils.pword_of_tree p_l2 in
+
+  let p1 = List.fold_left Pword.on Pword.unit_pword p_l1 in
+  let p2 = List.fold_left Pword.on Pword.unit_pword p_l2 in
+
+  Pword.adapt ~delay p1 p2
 
 let binary_stream_type st = Int.(max_burst_stream_type st <= one)
 

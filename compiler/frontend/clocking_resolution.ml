@@ -311,6 +311,7 @@ let fresh_word_var =
     let open VarCe in
     let v = { v_id = !r; v_link = None; } in
     let id = word_var_ident !r in
+    incr r;
     Hashtbl.add unknowns_ht id v;
     id, Pce_var v
 

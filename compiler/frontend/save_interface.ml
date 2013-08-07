@@ -19,7 +19,7 @@ open Acids_causal
 
 let print_dynamic_signatures fmt (nn, info) =
   Format.fprintf fmt
-    "@[<v 2>val %a@ @[%s %a@]@ @[%s %a@]@ @[%s %a@]@]@\n@\n"
+    "@[<v 2>val %a@ @[%s %a@]@ @[%s %a@]@ @[%s %a@]@]@\n"
     Names.print_shortname nn
     Data_types.printing_prefix
     Data_types.print_sig info#ni_data
@@ -47,8 +47,9 @@ let print_signatures_of_node_defs file =
     in
     List.fold_right add_sig file.f_body []
   in
-  Format.printf "%a%a@?"
-    (Utils.print_list print_dynamic_signatures) info_l
+  Format.printf "%a" (Utils.print_list_eol print_dynamic_signatures) info_l;
+  if List.length file.f_info#static_nodes > 0 then Format.printf "@\n";
+  Format.printf "%a@?"
     (Utils.print_list_eol print_static_signatures) file.f_info#static_nodes
   ;
   flush stdout

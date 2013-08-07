@@ -40,7 +40,7 @@ let rec print_ty fmt sty =
       (Utils.print_list_r print_ty " *") sty_l
 
 let print_sig fmt csig =
-  Format.fprintf fmt "@[%a -{%a}> %a@]"
+  Format.fprintf fmt "@[%a -{%a}-> %a@]"
     print_ty csig.input
     print_ty_scal csig.static
     print_ty csig.output

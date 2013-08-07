@@ -178,7 +178,7 @@ let initial_env intf_env imported_mods =
 let find_module_with_shortname access error imported_mods intf_env shortn loc =
   let mod_has_node modn =
     let intf = Names.ShortEnv.find modn intf_env in
-    Names.ShortEnv.mem modn (access intf)
+    Names.ShortEnv.mem shortn (access intf)
   in
   try List.find mod_has_node imported_mods
   with Not_found -> error shortn loc

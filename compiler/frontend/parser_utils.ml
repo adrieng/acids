@@ -32,3 +32,5 @@ let lt = "<"
 let gt = ">"
 let le = "<="
 let ge = ">="
+
+let eq = "="

@@ -27,6 +27,26 @@ val ( / )
   is ('s * 's) -> 's
   :: ('a * 'a) -> 'a
 
+val ( <= )
+  : (int * int) -> bool
+  is ('s * 's) -> 's
+  :: ('a * 'a) -> 'a
+
+val ( < )
+  : (int * int) -> bool
+  is ('s * 's) -> 's
+  :: ('a * 'a) -> 'a
+
+val ( >= )
+  : (int * int) -> bool
+  is ('s * 's) -> 's
+  :: ('a * 'a) -> 'a
+
+val ( > )
+  : (int * int) -> bool
+  is ('s * 's) -> 's
+  :: ('a * 'a) -> 'a
+
 (* Floating-point operators *)
 
 val ( +. )

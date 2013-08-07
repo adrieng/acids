@@ -86,17 +86,36 @@ let builtins =
     | _ -> invalid_arg "int_bin_to_int"
   in
 
+  let int_bin_to_bool f v =
+    match get_tuple (Lazy.force v) with
+    | [l; r] -> bool (f (get_int l) (get_int r))
+    | _ -> invalid_arg "int_bin_to_int"
+  in
+
   let float_bin_to_float f v =
     match get_tuple (Lazy.force v) with
     | [l; r] -> float (f (get_float l) (get_float r))
     | _ -> invalid_arg "float_bin_to_float"
   in
 
+  let bin_to_bool f v =
+    match get_tuple (Lazy.force v) with
+    | [l; r] -> bool (f l r)
+    | _ -> invalid_arg "float_bin_to_float"
+  in
+
   [
+    "(=)", bin_to_bool ( = );
+
     "(+)", int_bin_to_int Int.( + );
     "(-)", int_bin_to_int Int.( - );
     "(*)", int_bin_to_int Int.( * );
     "(/)", int_bin_to_int Int.( / );
+
+    "(<=)", int_bin_to_bool Int.( <= );
+    "(<)", int_bin_to_bool Int.( < );
+    "(>=)", int_bin_to_bool Int.( >= );
+    "(>)", int_bin_to_bool Int.( > );
 
     "(+.)", float_bin_to_float ( +. );
     "(-.)", float_bin_to_float ( -. );

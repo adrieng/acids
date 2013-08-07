@@ -457,6 +457,8 @@ exp_desc:
             { make_bin_op $startpos $endpos Parser_utils.lt e1 e2 }
 | e1 = exp GT e2 = exp
             { make_bin_op $startpos $endpos Parser_utils.gt e1 e2 }
+| e1 = exp EQUAL e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.eq e1 e2 }
 | e1 = exp s = OP e2 = exp
             { make_bin_op $startpos $endpos s e1 e2 }
 

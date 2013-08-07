@@ -155,15 +155,17 @@ let rec ones_word acc w i =
     ones_word acc w (i - m)
 
 let iof_word w j =
+  let open Int in
+
   let rec iof_word acc w j =
-    let open Int in
     assert (j >= one && j <= w.nbones);
     let b, k, w = pop w in
     if j > b * k
     then iof_word (acc + k) w (j - b * k)
     else acc + div_b1 j b
   in
-  iof_word Int.one w j
+
+  if j = zero then zero else iof_word Int.one w j
 
 let print_iof_list fmt iof_l =
   let print_couple fmt (j, i) =
@@ -332,6 +334,7 @@ let ones w i =
 
 let iof w j =
   let open Int in
+  assert (j >= zero);
   assert (j <= w.u.nbones || w.v.nbones >= one);
   let r =
     if j <= w.u.nbones
@@ -358,7 +361,7 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
   let open Int in
 
   let u_size =
-    if v1.nbones = zero then u1.size else max u1.size (iof p1 v1.size)
+    if v1.nbones = zero then u1.size else max u1.size (iof p1 u2.size)
   in
   let v_size =
     if v1.nbones = zero then one
@@ -386,6 +389,7 @@ let on ({ u = u1; v = v1; } as p1) { u = u2; v = v2; } =
 
   let r1, r2, u = walk u1 u2 empty u_size in
   let _, _, v = walk r1 r2 empty v_size in
+
   make u v
 
 let rate p = Rat.make p.v.nbones p.v.size

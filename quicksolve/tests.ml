@@ -104,6 +104,7 @@ let on =
     [
       p2, p1, p2;
       p "(3 1)", p "(0 1 0 1)", p "(1 1)";
+      p "1 (1)", p "0 0 (1)", p "0 0 (1)";
     ]
   in
   List.map (fun (p, p', p_on) () -> eq_pword (Pword.on p p') p_on) l

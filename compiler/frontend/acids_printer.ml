@@ -236,5 +236,6 @@ struct
       Format.fprintf fmt "open %a@\n" Names.print_modname modn
     in
     Utils.print_list_eol print_import fmt file.f_imports;
+    if List.length file.f_imports > 0 then Format.fprintf fmt "@\n";
     Utils.print_list_eol print_phrase fmt file.f_body
 end

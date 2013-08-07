@@ -596,7 +596,8 @@ let type_node_def env nd =
   let env = enrich_pat env nd.n_input in
 
   let input, inp_ty = type_pat env nd.n_input in
-  let body, out_ty = type_exp env nd.n_body in
+  let out_ty = if nd.n_static then static_ty else fresh_ty () in
+  let body = expect_exp nd.n_loc env out_ty nd.n_body in
 
   (* TODO solve incrementally at where level *)
   solve_subtyping_constraints env;

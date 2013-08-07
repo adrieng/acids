@@ -47,13 +47,18 @@ let serialize_transforms = (ref [] : string list ref)
 
 let stop_after = (ref None : string option ref)
 
-let no_pervasives = ref true (* TODO: false *)
+let no_pervasives = ref false
 
 let optimize = ref true
 
 let print_interface = ref false
 
-let search_path = ref [Filename.current_dir_name]
+let search_path =
+  ref
+    [
+      Filename.current_dir_name;
+      Filename.concat (Filename.dirname Sys.argv.(0)) Compiler.lib;
+    ]
 
 let set r x () = r := x
 
@@ -111,6 +116,10 @@ let options =
           "-stop",
           Arg.String (set_once stop_after),
           " Stop after the given transform";
+
+          "-I",
+          Arg.String (fun s -> search_path := s :: !search_path),
+          " Add the given directory to search path";
         ]
     )
 

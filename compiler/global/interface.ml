@@ -32,7 +32,7 @@ let print_error fmt err =
   | Bad_magic_number filen ->
     Format.fprintf fmt "Bad magic number in file %s" filen
   | Could_not_find_file filen ->
-    Format.fprintf fmt "Could not find file %s in @[%a@]"
+    Format.fprintf fmt "Could not find a valid %s file in [@[%a@]]"
       filen
       (Utils.print_list_r Utils.print_string ";") !Compiler_options.search_path
   | Ill_formed_interface intfn ->
@@ -182,7 +182,7 @@ let load_interface filen =
     let (intf : t) = Marshal.from_channel ic in
     close_in ic;
     Some intf
-  with Sys_error _ -> None
+  with Sys_error _ | Failure _ -> None
 
 let store_interface filen intf =
   try

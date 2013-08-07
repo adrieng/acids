@@ -141,8 +141,12 @@ rule token = parse
 
 | "'a"(posint as i) { STVAR (int_of_string i) }
 | "'a"              { STVAR 0 }
-(* | "'x"(posint as i) { TYVAR (int_of_string i) } *)
-(* | "'x"              { TYVAR 0 } *)
+| "'b"(posint as i) { CTVAR (int_of_string i) }
+| "'b"              { CTVAR 0 }
+| "'x"(posint as i) { TYVAR (int_of_string i) }
+| "'x"              { TYVAR 0 }
+| "'s"(posint as i) { STATICVAR (int_of_string i) }
+| "'s"              { STATICVAR 0 }
 
 | '@' (ident as s) { PRAGMAKEY s }
 | lident as s { IDENT s }

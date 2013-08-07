@@ -162,32 +162,22 @@
       Data_types.data_sig_output = out;
     }
 
-  let make_static_sig mk_s =
-    let mk_prod ty_l = Static_types.Sy_prod ty_l in
-    let mk_scal ty = Static_types.Sy_scal ty in
-    let mk_sig inp out =
-      {
-        Static_types.input = inp;
-        Static_types.output = out;
-        Static_types.static =
-          if Static_types.is_static inp
-          then Static_types.S_static
-          else Static_types.S_dynamic;
-      }
-    in
-    mk_s mk_sig (mk_prod, mk_scal)
+  let make_static_sig inp out =
+    {
+      Static_types.input = inp;
+      Static_types.output = out;
+      Static_types.static =
+        if Static_types.is_static inp
+        then Static_types.S_static
+        else Static_types.S_dynamic;
+    }
 
-  let make_clock_sig mk_s =
-    let mk_prod ty_l = Clock_types.Ct_prod ty_l in
-    let mk_scal ty = Clock_types.Ct_stream ty in
-    let mk_sig inp out =
-      {
-        Clock_types.ct_sig_input = inp;
-        Clock_types.ct_sig_output = out;
-        Clock_types.ct_constraints = [];
-      }
-    in
-    mk_s mk_sig (mk_prod, mk_scal)
+  let make_clock_sig inp out =
+    {
+      Clock_types.ct_sig_input = inp;
+      Clock_types.ct_sig_output = out;
+      Clock_types.ct_constraints = [];
+    }
 
   let make_type_def ((n, c_l), loc) =
     {
@@ -271,7 +261,9 @@
 %token<string> PRAGMAKEY
 %token<string> OP
 %token<int> STVAR
-(* %token<int> TYVAR *)
+%token<int> CTVAR
+%token<int> STATICVAR
+%token<int> TYVAR
 
 %token<bool> BOOL
 %token<Int.t> INT
@@ -583,10 +575,23 @@ data_ty_scal:
 
 data_ty:
 | tys = data_ty_scal { Data_types.Ty_scal tys }
-| ty_l = parens(separated_list(COMMA, data_ty)) { Data_types.Ty_prod ty_l }
+| tyv = TYVAR { Data_types.Ty_var tyv }
+| ty_l = parens(separated_list(TIMES, data_ty)) { Data_types.Ty_prod ty_l }
 
 data_ty_signature:
 | inp = data_ty ARROW out = data_ty { make_ty_sig inp out }
+
+static_ty_scal:
+| STATIC_TY { Static_types.S_static }
+| DYNAMIC_TY { Static_types.S_dynamic }
+
+static_ty:
+| tys = static_ty_scal { Static_types.Sy_scal tys }
+| tyv = STATICVAR { Static_types.Sy_var tyv }
+| ty_l = parens(separated_list(TIMES, static_ty)) { Static_types.Sy_prod ty_l }
+
+static_ty_signature:
+| inp = static_ty ARROW out = static_ty { make_static_sig inp out }
 
 concrete_spec:
 | UNSPEC { Ast_misc.Unspec }
@@ -601,13 +606,17 @@ clock_exp_ty:
 | w = upword(econstr, INT, parens) { Clock_types.Ce_pword w }
 | ce = clock_exp_ty EQUAL ec = econstr { Clock_types.Ce_equal (ce, ec) }
 
-clock_ty:
-| STVAR { Clock_types.St_var $1 }
-| ck = clock_ty ON ce = clock_exp_ty { Clock_types.St_on (ck, ce) }
+stream_ty:
+| stv = STVAR { Clock_types.St_var stv }
+| st = stream_ty ON ce = clock_exp_ty { Clock_types.St_on (st, ce) }
 
-static_ty:
-| STATIC_TY { Static_types.S_static }
-| DYNAMIC_TY { Static_types.S_dynamic }
+clock_ty:
+| st = stream_ty { Clock_types.Ct_stream st }
+| ctv = CTVAR { Clock_types.Ct_var ctv }
+| ct_l = parens(separated_list(TIMES, clock_ty)) { Clock_types.Ct_prod ct_l }
+
+clock_ty_signature:
+| inp = clock_ty ARROW out = clock_ty { make_clock_sig inp out }
 
 placeholder_sig_init:
 | { sig_scope_reinitialize () }
@@ -616,14 +625,8 @@ node_decl_desc:
 | placeholder_sig_init
   VAL nn = nodename
   COLON ty_sig = data_ty_signature
-  DCOLON ck_sig = signature(clock_ty)
-  IS static_sig = signature(static_ty)
-        {
-           (nn,
-            ty_sig,
-            make_static_sig static_sig,
-            make_clock_sig ck_sig)
-        }
+  DCOLON ck_sig = clock_ty_signature
+  IS static_sig = static_ty_signature { (nn, ty_sig, static_sig, ck_sig) }
 
 node_decl:
 | nd = with_loc(node_decl_desc) { make_located make_node_decl nd }

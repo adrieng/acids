@@ -192,7 +192,7 @@ struct
         (print print_var) pty
         VarCe.print pce
 
-  let var_pref = "st"
+  let var_pref = "a"
 end
 module VarTySt = Ast_misc.MakeVar(PreTySt)
 
@@ -228,7 +228,7 @@ struct
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r (print print_var) " *") pty_l
 
-  let var_pref = "ck"
+  let var_pref = "b"
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 

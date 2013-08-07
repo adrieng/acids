@@ -51,6 +51,8 @@ let no_pervasives = ref true (* TODO: false *)
 
 let optimize = ref true
 
+let print_interface = ref false
+
 let search_path = ref [Filename.current_dir_name]
 
 let set r x () = r := x
@@ -76,6 +78,7 @@ let ctx_options =
     "debug", Disabled debug, "Enable debugging features";
     "check", Disabled check_transforms, "Check transformation invariants";
     "O", Enabled optimize, "Enable optimizations";
+    "i", Disabled print_interface, "Print signatures";
   ]
 
 let options =

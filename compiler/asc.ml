@@ -82,6 +82,7 @@ let flow =
   +>+ Spec_annot.annot
   +>+ Clocking.clock
   +>+ Causality.annot
+  +>+ Save_interface.save
 
 (*****************************************************************************)
 (* File handling *)

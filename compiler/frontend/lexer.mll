@@ -56,7 +56,7 @@ let ident = alpha (alpha | '_' | ''' | digit)*
 let lident = ['a'-'z'] (alpha | '_' | ''' | digit)*
 let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 
-let op = ['+' '-' '*' '-' '/' '^' '%' '#']+
+let op = ['+' '-' '*' '-' '/' '^' '%' '#' '.']+
 
 rule token = parse
 | "(*" { comment lexbuf }

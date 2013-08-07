@@ -188,7 +188,7 @@ let store_interface filen intf =
   try
     let oc = open_out_bin filen in
     output_binary_int oc Compiler.magic_number;
-    Marshal.to_channel oc intf [];
+    Marshal.(to_channel oc intf [Closures]);
     close_out oc
   with _ -> could_not_open_file filen
 

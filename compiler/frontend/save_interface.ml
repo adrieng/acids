@@ -23,7 +23,7 @@ let print_sig name pref print_ty_sig fmt ty_sig =
     pref
     print_ty_sig ty_sig
 
-let print_signatures fmt (nn, info) =
+let print_dynamic_signatures fmt (nn, info) =
   let print_sig pref print_ty_sig ty_sig =
     print_sig nn pref print_ty_sig ty_sig
   in
@@ -41,7 +41,24 @@ let print_signatures fmt (nn, info) =
     Clock_types.printing_prefix
     Clock_types.print_sig
     fmt
-    info#ni_clock
+    info#ni_clock;
+  Format.fprintf fmt "@\n"
+
+let print_static_signatures fmt nd =
+  let open Acids_static in
+  let print_sig pref print_ty_sig ty_sig =
+    print_sig nd.n_name pref print_ty_sig ty_sig
+  in
+  print_sig
+    Data_types.printing_prefix
+    Data_types.print_sig
+    fmt
+    nd.n_info#ni_data;
+  print_sig
+    Static_types.printing_prefix
+    Static_types.print_sig
+    fmt
+    nd.n_info#ni_static
 
 let print_signatures_of_node_defs file =
   let info_l =
@@ -52,7 +69,10 @@ let print_signatures_of_node_defs file =
     in
     List.fold_right add_sig file.f_body []
   in
-  Format.printf "%a@?" (Utils.print_list_eol print_signatures) info_l;
+  Format.printf "%a%a@?"
+    (Utils.print_list print_dynamic_signatures) info_l
+    (Utils.print_list_eol print_static_signatures) file.f_info#static_nodes
+  ;
   flush stdout
 
 let file

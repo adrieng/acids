@@ -198,8 +198,8 @@ struct
       match pragmas with
       | [] -> ()
       | _ :: _ ->
-        Format.fprintf fmt "%a@\n"
-          (Utils.print_list Pragma.print_pragma) pragmas
+        Format.fprintf fmt "@[%a@]@\n"
+          (Utils.print_list_r Pragma.print_pragma "") pragmas
     in
     Format.fprintf fmt "@[%a@[<hov 2>let %snode@ %a%a@ %a =@ %a@]@]"
       print_pragmas nd.n_pragma

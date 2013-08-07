@@ -151,13 +151,13 @@ type env =
     mutable intf_env : Interface.env;
   }
 
-let initial_env intf_env =
+let initial_env intf_env imported_mods =
   {
     local_nodes = Names.ShortSet.empty;
     local_constrs = Names.ShortSet.empty;
     local_constrs_ranks = Names.ShortEnv.empty;
     local_types = Names.ShortSet.empty;
-    imported_mods = [];
+    imported_mods = imported_mods;
     id_env = Utils.Env.empty;
     intf_env = intf_env;
   }
@@ -702,7 +702,7 @@ let scope_file ctx (file : unit Acids_parsetree.file) =
     in
     List.fold_left load Names.ShortEnv.empty file.f_imports
   in
-  let env = initial_env intf_env in
+  let env = initial_env intf_env file.f_imports in
   let _, body = Utils.mapfold_left scope_phrase env file.f_body in
   ctx,
   {

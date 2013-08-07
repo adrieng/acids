@@ -31,7 +31,7 @@ let print_dynamic_signatures fmt (nn, info) =
 let print_static_signatures fmt nd =
   let open Acids_static in
   Format.fprintf fmt
-    "@[<v 2>static val %a@ @[%s %a@]@ @[%s %a@]@@\n"
+    "@[<v 2>static val %a@ @[%s %a@]@ @[%s %a@]@\n"
     Names.print_shortname nd.n_name
     Data_types.printing_prefix
     Data_types.print_sig nd.n_info#ni_data

@@ -84,13 +84,8 @@ struct
   let print_domain_info fmt st =
     Clock_types.print_stream_type_ann fmt st
 
-  type buffer_info =
-    <
-      bui_is_delay : bool;
-    >
-  let print_buffer_info fmt bu =
-    Format.fprintf fmt "%sdelay"
-      (if bu#bui_is_delay then "" else "not-")
+  type buffer_info = Acids_clocked.Info.buffer_info
+  let print_buffer_info = Acids_clocked.Info.print_buffer_info
 
   type node_info =
       <

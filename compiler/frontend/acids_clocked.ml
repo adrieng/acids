@@ -82,7 +82,7 @@ struct
       bui_is_delay : bool;
     >
   let print_buffer_info fmt bu =
-    Format.fprintf fmt "%sdelay"
+    Format.fprintf fmt " %sdelay"
       (if bu#bui_is_delay then "" else "not-")
 
   type node_info =

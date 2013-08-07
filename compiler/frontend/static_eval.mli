@@ -15,7 +15,11 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-exception Non_causal of Ident.t
+type error =
+  | Non_causal of Ident.t
+  | Unimplemented_builtin of Loc.t * Names.longname
+
+exception Error of error
 
 type value =
   | Const of Ast_misc.const

@@ -24,6 +24,7 @@ type error =
   | Negative_pword of
       Loc.t *
       (Acids_prespec.static_exp, Acids_prespec.static_exp) Tree_word.t
+  | Unimplemented_builtin of Loc.t * Names.longname
 
 exception Simplification_error of error
 
@@ -40,12 +41,20 @@ let print_error fmt err =
       "%aThe expression %a should be positive"
       Loc.print l
       Acids_prespec.print_static_word p
+  | Unimplemented_builtin (loc, ln) ->
+    Format.fprintf fmt
+      "%aThe built-in function %a is not currently implemented"
+      Loc.print loc
+      Names.print_longname ln
 
 let non_causal loc nn v =
   raise (Simplification_error (Non_causal (loc, nn, v)))
 
 let negative_pword loc ce =
   raise (Simplification_error (Negative_pword (loc, ce)))
+
+let unimplemented_builtin loc ln =
+  raise (Simplification_error (Unimplemented_builtin (loc, ln)))
 
 (** {2 Utility functions} *)
 
@@ -408,8 +417,11 @@ let simpl_node_def env nd =
           method ni_static = nd.n_info#ni_static
         end;
     }
-  with Static_eval.Non_causal v ->
+  with
+  | Static_eval.Error (Static_eval.Non_causal v) ->
     non_causal nd.n_loc nd.n_name v
+  | Static_eval.Error (Static_eval.Unimplemented_builtin (loc, ln)) ->
+    unimplemented_builtin loc ln
 
 let simpl_node_decl nd =
   {

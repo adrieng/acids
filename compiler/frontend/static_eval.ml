@@ -19,9 +19,17 @@ open Acids_static
 
 (** {2 Errors} *)
 
-exception Non_causal of Ident.t
+type error =
+  | Non_causal of Ident.t
+  | Unimplemented_builtin of Loc.t * Names.longname
 
-let non_causal id = raise (Non_causal id)
+exception Error of error
+
+let non_causal id =
+  raise (Error (Non_causal id))
+
+let unimplemented_builtin loc ln =
+  raise (Error (Unimplemented_builtin (loc, ln)))
 
 (** {2 Values and related functions} *)
 
@@ -66,6 +74,10 @@ let val_snd v =
   match v with
   | Tuple [_; v] -> v
   | _ -> ill_typed "value_fst"
+
+let builtins =
+  [
+  ]
 
 exception Found of value
 
@@ -149,10 +161,13 @@ let add_external_node env modn shortn f =
 let add_node env name node =
   { env with current_nodes = Names.ShortEnv.add name node env.current_nodes; }
 
-let find_node env ln =
+let find_node loc env ln =
   let open Names in
   match ln.modn with
   | LocalModule -> ShortEnv.find ln.shortn env.current_nodes
+  | Module "Pervasives" ->
+    (try List.assoc ln.shortn builtins
+     with Not_found -> unimplemented_builtin loc ln)
   | Module modn ->
     let mod_env = ShortEnv.find modn env.external_nodes in
     ShortEnv.find ln.shortn mod_env
@@ -214,7 +229,7 @@ and eval_exp env e =
     eval_exp env (if get_bool v then e2 else e3)
 
   | E_app (app, e) ->
-    apply_node env app.a_op e
+    apply_node env app e
 
   | E_where (e, block) ->
     let env = add_local_defs env block in
@@ -288,8 +303,8 @@ and node_fun_of_node_def env nd =
     in
     eval_exp env nd.n_body
 
-and apply_node env op e =
-  let f = find_node env op in
+and apply_node env app e =
+  let f = find_node app.a_loc env app.a_op in
   f (lazy (eval_exp env e))
 
 let add_node_def env nd =

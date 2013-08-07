@@ -136,8 +136,6 @@ let prod_ty t_l = Pct_prod t_l
 
 let trad_static_exp_int se = Ast_misc.get_int se.se_desc
 
-let trad_static_exp_econstr se = Ast_misc.get_econstr se.se_desc
-
 let rec trad_clock_exp ce =
   match ce.ce_desc with
   | Ce_condvar v ->

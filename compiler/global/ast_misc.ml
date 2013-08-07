@@ -133,8 +133,10 @@ struct
 
   let rec print_var fmt v =
     match v.v_link with
-    | None -> Format.fprintf fmt "%s%d" S.var_pref v.v_id
-    | Some ty -> S.print print_var fmt ty
+    | None ->
+      Format.fprintf fmt "%s%a" S.var_pref Utils.print_int_non_zero v.v_id
+    | Some ty ->
+      S.print print_var fmt ty
 
   let print fmt t = S.print print_var fmt t
 
@@ -143,6 +145,20 @@ struct
     | Some pty -> ty_of_pre_ty pty
     | None -> ty_of_var_id tyv.v_id
 end
+
+let memoize_make_var make_var =
+  let r = ref 0 in
+  let ht = Hashtbl.create 10 in
+  fun i ->
+    let v_id =
+      try Hashtbl.find ht i
+      with Not_found ->
+        let v_id = !r in
+        incr r;
+        Hashtbl.add ht i v_id;
+        v_id
+    in
+    make_var v_id
 
 (** Printing annotations *)
 

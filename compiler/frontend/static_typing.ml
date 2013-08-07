@@ -234,7 +234,7 @@ struct
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
-        method ni_static = make_ty_sig static inp out
+        method ni_static = generalize_sig static inp out
       end
 end
 module EXTRACT = Acids_utils.MakeMap(M)(Acids_static)(MORPH)
@@ -602,7 +602,7 @@ let type_node_def env nd =
   (* TODO solve incrementally at where level *)
   solve_subtyping_constraints env;
 
-  let ssig = make_ty_sig nd.n_static inp_ty out_ty in
+  let ssig = generalize_sig nd.n_static inp_ty out_ty in
 
   (* non-static nodes may not have static inputs, and only have dynamic outputs,
      see the relevant section of the manual *)

@@ -33,7 +33,7 @@ let print_ty_scal fmt ss =
 
 let rec print_ty fmt sty =
   match sty with
-  | Sy_var v -> Format.fprintf fmt "'s%d" v
+  | Sy_var v -> Format.fprintf fmt "'s%a" Utils.print_int_non_zero v
   | Sy_scal ss -> print_ty_scal fmt ss
   | Sy_prod sty_l ->
     Format.fprintf fmt "(@[%a@])"
@@ -103,13 +103,13 @@ let instantiate_ty_sig fresh_ty tysig =
   in
   instantiate tysig.input, instantiate tysig.output
 
-let rec ty_of_pre_ty pty =
+let rec ty_of_pre_ty ?(make_var = fun v -> Sy_var v) pty =
   let open PreTy in
   match pty with
   | Psy_var v ->
-    VarTy.ty_of_ty_var ty_of_pre_ty (fun v -> Sy_var v) v
+    VarTy.ty_of_ty_var (ty_of_pre_ty ~make_var) make_var v
   | Psy_scal ss -> Sy_scal ss
-  | Psy_prod pty_l -> Sy_prod (List.map ty_of_pre_ty pty_l)
+  | Psy_prod pty_l -> Sy_prod (List.map (ty_of_pre_ty ~make_var) pty_l)
 
 let rec is_static st =
   match st with
@@ -118,9 +118,10 @@ let rec is_static st =
   | Sy_scal S_dynamic -> false
   | Sy_prod st_l -> List.exists is_static st_l
 
-let make_ty_sig static inp out =
-  let inp = ty_of_pre_ty inp in
-  let out = ty_of_pre_ty out in
+let generalize_sig static inp out =
+  let make_var = Ast_misc.memoize_make_var (fun i -> Sy_var i) in
+  let inp = ty_of_pre_ty ~make_var inp in
+  let out = ty_of_pre_ty ~make_var out in
   {
     input = inp;
     output = out;
@@ -251,7 +252,8 @@ let print_solver_state fmt (worklist, waitlist) =
   Format.fprintf fmt "waitlist: @[%a@]"
     (Waitlist.print print_constr) waitlist
 
-let solve ?(unify_remaining = true) constraints = (* TODO: solve incrementally *)
+(* TODO: solve incrementally *)
+let solve ?(unify_remaining = true) constraints =
   let waitlist = Waitlist.create () in
   let rec solve worklist =
     match worklist with

@@ -42,7 +42,7 @@ let print_ty_scal fmt tys =
 
 let rec print_ty fmt ty =
   match ty with
-  | Ty_var id -> Format.fprintf fmt "'x%d" id
+  | Ty_var id -> Format.fprintf fmt "'x%a" Utils.print_int_non_zero id
   | Ty_scal tys -> print_ty_scal fmt tys
   | Ty_cond ty -> Format.fprintf fmt "cond %a" print_ty ty
   | Ty_prod ty_l ->
@@ -96,13 +96,13 @@ module PreTy =
   end
 module VarTy = Ast_misc.MakeVar(PreTy)
 
-let rec ty_of_pre_ty pty =
+let rec ty_of_pre_ty ?(make_var = fun i -> Ty_var i) pty =
   let open PreTy in
   match pty with
-  | Pty_var v -> VarTy.ty_of_ty_var ty_of_pre_ty (fun i -> Ty_var i) v
+  | Pty_var v -> VarTy.ty_of_ty_var (ty_of_pre_ty ~make_var) make_var v
   | Pty_scal tys -> Ty_scal tys
-  | Pty_cond pty -> Ty_cond (ty_of_pre_ty pty)
-  | Pty_prod ty_l -> Ty_prod (List.map ty_of_pre_ty ty_l)
+  | Pty_cond pty -> Ty_cond (ty_of_pre_ty ~make_var pty)
+  | Pty_prod ty_l -> Ty_prod (List.map (ty_of_pre_ty ~make_var) ty_l)
 
 let instantiate_sig fresh tysig =
   let find env id =
@@ -131,7 +131,8 @@ let instantiate_sig fresh tysig =
   inp_ty, out_ty
 
 let generalize_sig inp_ty out_ty =
+  let make_var = Ast_misc.memoize_make_var (fun i -> Ty_var i) in
   {
-    data_sig_input = ty_of_pre_ty inp_ty;
-    data_sig_output = ty_of_pre_ty out_ty;
+    data_sig_input = ty_of_pre_ty ~make_var inp_ty;
+    data_sig_output = ty_of_pre_ty ~make_var out_ty;
   }

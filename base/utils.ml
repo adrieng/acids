@@ -256,6 +256,8 @@ let print_string fmt s = fprintf fmt "%s" s
 
 let print_int fmt i = fprintf fmt "%d" i
 
+let print_int_non_zero fmt i = if i <> 0 then print_int fmt i
+
 let print_bool fmt b = fprintf fmt "%b" b
 
 let print_opt ?(s = "") p fmt o =

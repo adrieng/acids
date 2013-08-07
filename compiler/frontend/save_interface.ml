@@ -64,6 +64,7 @@ let file
   if Pass_manager.ctx_get_attr ctx "i" then print_signatures_of_node_defs file;
   let intf = Interface.interface_of_file file in
   let fn = Interface.interface_file_name_of_module_name file.f_name in
+  let fn = Filename.concat (Pass_manager.ctx_current_dir ctx) fn in
   Interface.store_interface fn intf;
   ctx, file
 

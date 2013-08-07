@@ -17,48 +17,26 @@
 
 open Acids_causal
 
-let print_sig name pref print_ty_sig fmt ty_sig =
-  Format.fprintf fmt "val %s %s %a@."
-    name
-    pref
-    print_ty_sig ty_sig
-
 let print_dynamic_signatures fmt (nn, info) =
-  let print_sig pref print_ty_sig ty_sig =
-    print_sig nn pref print_ty_sig ty_sig
-  in
-  print_sig
+  Format.fprintf fmt
+    "@[<v 2>val %a@ @[%s %a@]@ @[%s %a@]@ @[%s %a@]@]@\n@\n"
+    Names.print_shortname nn
     Data_types.printing_prefix
-    Data_types.print_sig
-    fmt
-    info#ni_data;
-  print_sig
+    Data_types.print_sig info#ni_data
     Static_types.printing_prefix
-    Static_types.print_sig
-    fmt
-    info#ni_static;
-  print_sig
+    Static_types.print_sig info#ni_static
     Clock_types.printing_prefix
-    Clock_types.print_sig
-    fmt
-    info#ni_clock;
-  Format.fprintf fmt "@\n"
+    Clock_types.print_sig info#ni_clock
 
 let print_static_signatures fmt nd =
   let open Acids_static in
-  let print_sig pref print_ty_sig ty_sig =
-    print_sig nd.n_name pref print_ty_sig ty_sig
-  in
-  print_sig
+  Format.fprintf fmt
+    "@[<v 2>static val %a@ @[%s %a@]@ @[%s %a@]@@\n"
+    Names.print_shortname nd.n_name
     Data_types.printing_prefix
-    Data_types.print_sig
-    fmt
-    nd.n_info#ni_data;
-  print_sig
+    Data_types.print_sig nd.n_info#ni_data
     Static_types.printing_prefix
-    Static_types.print_sig
-    fmt
-    nd.n_info#ni_static
+    Static_types.print_sig nd.n_info#ni_static
 
 let print_signatures_of_node_defs file =
   let info_l =

@@ -626,8 +626,9 @@ node_decl_desc:
 | placeholder_sig_init
   VAL nn = nodename
   COLON ty_sig = data_ty_signature
+  IS static_sig = static_ty_signature
   DCOLON ck_sig = clock_ty_signature
-  IS static_sig = static_ty_signature { (nn, ty_sig, static_sig, ck_sig) }
+   { (nn, ty_sig, static_sig, ck_sig) }
 
 node_decl:
 | nd = with_loc(node_decl_desc) { make_located make_node_decl nd }

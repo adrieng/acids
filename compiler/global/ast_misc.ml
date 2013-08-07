@@ -64,7 +64,12 @@ let get_int ec =
   | Ec_int i -> i
   | Ec_bool _ | Ec_constr _ -> invalid_arg "get_int: not an int"
 
-let get_econstr ec =
+let get_bool ec =
+  match ec with
+  | Ec_bool b -> b
+  | Ec_int _ | Ec_constr _ -> invalid_arg "get_bool: not a bool"
+
+let get_constr ec =
   match ec with
   | Ec_constr (ec, _) -> ec
   | Ec_bool _ | Ec_int _ -> invalid_arg "get_econstr: not a constructor"
@@ -83,6 +88,16 @@ let print_const fmt c =
   match c with
   | Cconstr c -> print_econstr fmt c
   | Cfloat f -> Format.fprintf fmt "%f" f
+
+let get_econstr c =
+  match c with
+  | Cconstr ec -> ec
+  | Cfloat _ -> invalid_arg "get_econstr: not a const"
+
+let get_float c =
+  match c with
+  | Cfloat f -> f
+  | Cconstr _ -> invalid_arg "get_float: not a float"
 
 type spec =
   | Unspec

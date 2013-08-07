@@ -47,18 +47,22 @@ let econstr ec = const (Ast_misc.Cconstr ec)
 
 let bool b = econstr (Ast_misc.Ec_bool b)
 
+let int i = econstr (Ast_misc.Ec_int i)
+
+let float f = const (Ast_misc.Cfloat f)
+
 let tuple v_l = Tuple v_l
 
-let get_econstr v =
+let get_const v =
   match v with
-  | Const (Ast_misc.Cconstr ec) -> ec
-  | _ -> ill_typed "get_econstr"
+  | Const v -> v
+  | _ -> ill_typed "get_const"
 
-let get_bool v =
-  let open Ast_misc in
-  match v with
-  | Const (Cconstr (Ec_bool b)) -> b
-  | _ -> ill_typed "get_bool"
+let get_econstr v = Ast_misc.get_econstr (get_const v)
+
+let get_bool v = Ast_misc.get_bool (get_econstr v)
+let get_int v = Ast_misc.get_int (get_econstr v)
+let get_float v = Ast_misc.get_float (get_const v)
 
 let get_tuple v =
   match v with
@@ -76,7 +80,28 @@ let val_snd v =
   | _ -> ill_typed "value_fst"
 
 let builtins =
+  let int_bin_to_int f v =
+    match get_tuple (Lazy.force v) with
+    | [l; r] -> int (f (get_int l) (get_int r))
+    | _ -> invalid_arg "int_bin_to_int"
+  in
+
+  let float_bin_to_float f v =
+    match get_tuple (Lazy.force v) with
+    | [l; r] -> float (f (get_float l) (get_float r))
+    | _ -> invalid_arg "float_bin_to_float"
+  in
+
   [
+    "(+)", int_bin_to_int Int.( + );
+    "(-)", int_bin_to_int Int.( - );
+    "(*)", int_bin_to_int Int.( * );
+    "(/)", int_bin_to_int Int.( / );
+
+    "(+.)", float_bin_to_float ( +. );
+    "(-.)", float_bin_to_float ( -. );
+    "(*.)", float_bin_to_float ( *. );
+    "(/.)", float_bin_to_float ( /. );
   ]
 
 exception Found of value

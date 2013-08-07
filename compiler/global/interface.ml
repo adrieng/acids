@@ -213,3 +213,83 @@ let load_interface_from_module_name modn =
       )
   in
   try_dirs !Compiler_options.search_path
+
+(** {2 High-level functions} *)
+
+let interface_of_file file =
+  let open Acids_causal in
+
+  let add_dynamic node_env phr =
+    match phr with
+    | Phr_node_def nd ->
+      Names.ShortEnv.add
+        nd.n_name
+        (
+          I_dynamic
+            {
+              dn_info = nd.n_info;
+              dn_body = ();
+            }
+        )
+        node_env
+    | Phr_node_decl nd ->
+      let n_info =
+        object
+          method ni_ctx = Ident.make_ctx ()
+          method ni_data = nd.decl_data
+          method ni_static = nd.decl_static
+          method ni_clock = nd.decl_clock
+        end
+      in
+      Names.ShortEnv.add
+        nd.decl_name
+        (
+          I_dynamic
+            {
+              dn_info = n_info;
+              dn_body = ();
+            }
+        )
+        node_env
+    | Phr_type_def _ ->
+      node_env
+  in
+
+  let add_static node_env nd =
+    let open Acids_static in
+    Names.ShortEnv.add
+      nd.n_name
+      (I_static { sn_info = nd.n_info; sn_body = nd; })
+      node_env
+  in
+
+  let node_env = Names.ShortEnv.empty in
+  let node_env = List.fold_left add_dynamic node_env file.f_body in
+  let node_env = List.fold_left add_static node_env file.f_info#static_nodes in
+
+  let add_type (type_env, constr_env) phr =
+    match phr with
+    | Phr_node_def _ | Phr_node_decl _ -> type_env, constr_env
+    | Phr_type_def td ->
+      let constr_env =
+        let add_constr constr_env c =
+          Names.ShortEnv.add c td.ty_name constr_env
+        in
+        List.fold_left add_constr constr_env td.ty_body
+      in
+      let type_env =
+        Names.ShortEnv.add td.ty_name { td_constr = td.ty_body; } type_env
+      in
+      type_env, constr_env
+  in
+
+  let type_env, constr_env = Names.ShortEnv.empty, Names.ShortEnv.empty in
+  let type_env, constr_env =
+    List.fold_left add_type (type_env, constr_env) file.f_body
+  in
+  {
+    i_name = file.f_name;
+    i_nodes = node_env;
+    i_types = type_env;
+    i_constrs = constr_env;
+  }

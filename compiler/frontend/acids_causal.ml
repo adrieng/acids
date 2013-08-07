@@ -96,12 +96,13 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
+        ni_static : Static_types.ty_sig;
         ni_clock : Clock_types.clock_sig;
       >
   let print_node_info fmt ni =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_sig_ann ni#ni_data
-      Clock_types.print_sig_ann ni#ni_clock
+    Data_types.print_sig_ann fmt ni#ni_data;
+    Static_types.print_sig_ann fmt ni#ni_static;
+    Clock_types.print_sig_ann fmt ni#ni_clock
 end
 
 module M = Acids.Make(Info)

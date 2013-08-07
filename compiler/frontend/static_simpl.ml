@@ -405,6 +405,7 @@ let simpl_node_def env nd =
         object
           method ni_ctx = nd.n_info#ni_ctx
           method ni_data = nd.n_info#ni_data
+          method ni_static = nd.n_info#ni_static
         end;
     }
   with Static_eval.Non_causal v ->

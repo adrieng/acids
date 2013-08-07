@@ -61,7 +61,7 @@ type static_node_decl =
 
 type dynamic_node_decl =
   {
-    dn_info : Acids_clocked.Info.node_info;
+    dn_info : Acids_causal.Info.node_info;
     dn_body : unit; (* Nir.t option *)
   }
 
@@ -97,7 +97,7 @@ let data_signature_of_node_item ni =
 let static_signature_of_node_item ni =
   match ni with
   | I_static snd -> snd.sn_info#ni_static
-  | I_dynamic _ -> invalid_arg "static_signature_of_node_item: dynamic node"
+  | I_dynamic dnd -> dnd.dn_info#ni_static
 
 let clock_signature_of_node_item ni =
   match ni with

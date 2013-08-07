@@ -337,6 +337,7 @@ struct
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
+        method ni_static = info#ni_static
         method ni_clock = csig
       end
 end

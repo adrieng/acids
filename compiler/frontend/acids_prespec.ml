@@ -64,9 +64,11 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
+        ni_static : Static_types.ty_sig;
       >
   let print_node_info fmt ni =
-    Data_types.print_sig_ann fmt ni#ni_data
+    Data_types.print_sig_ann fmt ni#ni_data;
+    Static_types.print_sig_ann fmt ni#ni_static
 
   type domain_info = unit
   let print_domain_info (_ : Format.formatter) _ = ()

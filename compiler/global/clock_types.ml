@@ -55,7 +55,7 @@ let rec print_clock_exp fmt ce =
       Ast_misc.print_interval_annot cev.cecv_bounds
       (Utils.print_list Ast_misc.print_spec_annot) cev.cecv_specs
   | Ce_pword pw ->
-    Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
+    Ast_misc.print_upword_int Ast_misc.print_econstr fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "(%a = %a)"
       print_clock_exp ce
@@ -138,7 +138,7 @@ struct
         Ast_misc.print_interval_annot pcv.cecv_bounds
         (Utils.print_list Ast_misc.print_spec_annot) pcv.cecv_specs
     | Pce_pword pw ->
-      Ast_misc.print_upword Ast_misc.print_econstr Int.print fmt pw
+      Ast_misc.print_upword_int Ast_misc.print_econstr fmt pw
     | Pce_equal (pce, ec) ->
       Format.fprintf fmt "(%a = %a)"
         (print print_var) pce

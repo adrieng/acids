@@ -29,10 +29,8 @@ struct
       print_clock_exp_desc ce.ce_desc
       (print_info I.print_clock_exp_info) ce.ce_info
 
-  and print_static_word fmt { Ast_misc.u = u; Ast_misc.v = v; } =
-      Format.fprintf fmt "%a(%a)"
-        (Ast_misc.print_power_tree print_static_exp print_static_exp) u
-        (Ast_misc.print_power_tree print_static_exp print_static_exp) v
+  and print_static_word fmt pw =
+    Ast_misc.print_upword print_static_exp print_static_exp fmt pw
 
   and print_clock_exp_desc fmt ced =
     match ced with

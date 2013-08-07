@@ -22,10 +22,10 @@ SOLVER=quicksolve/solve.$(PREF)
 
 TARGETS=$(SOLVER) $(COMPILER)
 
-.PHONY: clean all toprun test unit_test doc
+.PHONY: clean all toprun test unit_test doc lib
 .SUFFIX:
 
-all: $(TARGETS)
+all: $(TARGETS) lib
 
 $(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
                                -I compiler/frontend \
@@ -53,5 +53,8 @@ clean:
 
 %.inferred.mli:
 	ocamlbuild ${OCAMLBUILDOPTS} $@
+
+lib: $(COMPILER)
+	./asc -nopervasives lib/pervasives.as
 
 .FORCE:

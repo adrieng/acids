@@ -359,7 +359,8 @@ op:
 | EQUAL { "=" }
 
 %inline nodename:
-| s = IDENT | s = parens(op) { s }
+| s = IDENT { s }
+| s = parens(op) { "(" ^ s ^ ")" }
 
 %inline longname:
 | n = name { Initial.make_longname n }

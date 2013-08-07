@@ -319,6 +319,17 @@ let make u v =
 
 let unit_pword = make empty (singleton Int.one)
 
+let is_unit_word w =
+  let rec walk desc =
+    match desc with
+    | [] -> true
+    | (i, _) :: desc -> (i = Int.one) && walk desc
+  in
+  walk w.desc
+
+let is_unit_pword { u = u; v = v; } =
+  (u.size = Int.zero || is_unit_word u) && is_unit_word v
+
 let ones w i =
   let open Int in
   assert (i >= zero);

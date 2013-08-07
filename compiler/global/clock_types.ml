@@ -307,16 +307,6 @@ let clock_constr_of_ty_constr
     let st2 = st_of_pre_st ~make_st_var st2 in
     Cc_equal (Ct_stream st1, Ct_stream st2)
 
-let generalize_clock_sig inp out cstrs =
-  let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
-  let make_ty_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
-  {
-    ct_sig_input = ty_of_pre_ty ~make_st_var ~make_ty_var inp;
-    ct_sig_output = ty_of_pre_ty ~make_st_var ~make_ty_var out;
-    ct_constraints =
-      List.map (clock_constr_of_ty_constr ~make_st_var ~make_ty_var) cstrs;
-  }
-
 let reset_st, fresh_st =
   let r = ref 0 in
   (fun () -> r := 0),
@@ -472,3 +462,43 @@ let rec binary_clock_type ty =
   | Ct_var _ -> true
   | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
   | Ct_stream st -> binary_stream_type st
+
+let rec simplify_st st =
+  match st with
+  | St_var _ -> st
+  | St_on (st, ce) ->
+    (
+      match interp_ce ce with
+      | None -> St_on (simplify_st st, ce)
+      | Some p ->
+        let p = Resolution_utils.pword_of_tree p in
+        if Pword.is_unit_pword p
+        then simplify_st st
+        else St_on (simplify_st st, ce)
+    )
+
+let rec simplify_ty ty =
+  match ty with
+  | Ct_var _ -> ty
+  | Ct_stream st -> Ct_stream (simplify_st st)
+  | Ct_prod ty_l -> Ct_prod (List.map simplify_ty ty_l)
+
+let simplify_sig ty_sig =
+  {
+    ty_sig with
+      ct_sig_input = simplify_ty ty_sig.ct_sig_input;
+      ct_sig_output = simplify_ty ty_sig.ct_sig_output;
+  }
+
+let generalize_clock_sig inp out cstrs =
+  let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
+  let make_ty_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
+  let ty_sig =
+    {
+      ct_sig_input = ty_of_pre_ty ~make_st_var ~make_ty_var inp;
+      ct_sig_output = ty_of_pre_ty ~make_st_var ~make_ty_var out;
+      ct_constraints =
+        List.map (clock_constr_of_ty_constr ~make_st_var ~make_ty_var) cstrs;
+    }
+  in
+  simplify_sig ty_sig

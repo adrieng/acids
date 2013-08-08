@@ -70,6 +70,7 @@ type concrete_system =
     sufficient_size : lconstr list;
     split_prefix_period : lconstr list;
     increasing_indexes : lconstr list;
+    sufficient_indexes : lconstr list;
   }
 
 let print_var_option fmt co =
@@ -124,23 +125,24 @@ let print_linear_systems fmt csys =
       header
       print_linear_system lsys
   in
-  Format.fprintf fmt "%a%a%a%a%a%a"
+  Format.fprintf fmt "%a%a%a%a%a%a%a"
     (p_header "Synchronizability") csys.synchronizability
     (p_header "Precedence") csys.precedence
     (p_header "Periodicity") csys.periodicity
     (p_header "Sufficient size") csys.sufficient_size
     (p_header "Split prefix period") csys.split_prefix_period
     (p_header "Increasing indexes") csys.increasing_indexes
+    (p_header "Sufficient indexes") csys.sufficient_indexes
 
 let print_concrete_system fmt cs =
   let print_size fmt (u_size, v_size) =
-    Format.fprintf fmt "|p.u| = %a, |p.v| = %a"
+    Format.fprintf fmt "(|p.u| = %a, |p.v| = %a)"
       Int.print u_size
       Int.print v_size
   in
 
   let print_nbones fmt (u_nbones, v_nbones) =
-    Format.fprintf fmt "|c.u|_1 = %a, |c.v|_1 = %a"
+    Format.fprintf fmt "(|c.u|_1 = %a, |c.v|_1 = %a)"
       Int.print u_nbones
       Int.print v_nbones
   in
@@ -232,6 +234,7 @@ let fold_left_over_linear_constraints f acc csys =
   let acc = List.fold_left f acc csys.sufficient_size in
   let acc = List.fold_left f acc csys.split_prefix_period in
   let acc = List.fold_left f acc csys.increasing_indexes in
+  let acc = List.fold_left f acc csys.sufficient_indexes in
   acc
 
 (* [make_concrete_system sys] takes a system [sys] and returns an equivalent
@@ -307,6 +310,7 @@ let make_concrete_system
     sufficient_size = [];
     split_prefix_period = [];
     increasing_indexes = [];
+    sufficient_indexes = [];
   }
 
 (** [compute_sampler_sizes csys] returns an equivalent concrete systems [csys']
@@ -693,26 +697,27 @@ let build_split_prefix_period_constraints csys =
 
   { csys with split_prefix_period = split_prefix_period; }
 
+let all_iof_constraints csys =
+  let gather_iof indexes lc =
+    let add indexes (_, c) =
+      match c with
+      | Size _ | Const _ -> indexes
+      | Iof (c, j) ->
+        let indexes_for_c =
+          try Utils.Env.find c indexes
+          with Not_found -> Int.Set.empty
+        in
+        let indexes_for_c = Int.Set.add j indexes_for_c in
+        Utils.Env.add c indexes_for_c indexes
+    in
+    List.fold_left add indexes (get_linear_term lc)
+  in
+  fold_left_over_linear_constraints gather_iof Utils.Env.empty csys
+
 let build_increasing_indexes_constraints csys =
   let open Int in
 
-  let indexes =
-    let gather_iof indexes lc =
-      let add indexes (_, c) =
-        match c with
-        | Size _ | Const _ -> indexes
-        | Iof (c, j) ->
-          let indexes_for_c =
-            try Utils.Env.find c indexes
-            with Not_found -> Int.Set.empty
-          in
-          let indexes_for_c = Int.Set.add j indexes_for_c in
-          Utils.Env.add c indexes_for_c indexes
-      in
-      List.fold_left add indexes (get_linear_term lc)
-    in
-    fold_left_over_linear_constraints gather_iof Utils.Env.empty csys
-  in
+  let indexes = all_iof_constraints csys in
 
   let add_increasing_indexes_constraints c indexes_for_c lsys =
     (* N^2 *)
@@ -738,6 +743,29 @@ let build_increasing_indexes_constraints csys =
   in
 
   { csys with increasing_indexes = increasing_indexes; }
+
+(* For all I_c(j) with j minimal,
+
+   I_c(j) >= j / max_burst
+ *)
+let build_sufficient_indexes_constraints csys =
+  let open Int in
+
+  let indexes = all_iof_constraints csys in
+
+  let add_sufficient_index_constraint c indexes_for_c lsys =
+    let j_min = Int.Set.min_elt indexes_for_c in
+    Ge ([one, Iof (c, j_min)], succ (div_b1 j_min csys.max_burst)) :: lsys
+  in
+
+  let sufficient_indexes =
+    Utils.Env.fold
+      add_sufficient_index_constraint
+      indexes
+      csys.sufficient_indexes
+  in
+
+  { csys with sufficient_indexes = sufficient_indexes; }
 
 let is_in_debug_mode sys =
   Resolution_options.find_bool ~default:false sys.options "debug"
@@ -913,6 +941,7 @@ let solve sys =
   let csys = build_sufficient_size_constraints csys in
   let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
+  let csys = build_sufficient_indexes_constraints csys in
   if debug
   then
     Format.printf "(* Linear system: @[%a@] *)@."

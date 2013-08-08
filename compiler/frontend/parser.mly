@@ -286,10 +286,10 @@
 // %left SPLIT
 %left WHEN
 %right APP
-%nonassoc BUFFER
 %left LE GE LT GT
 %left PLUS MINUS
 %left TIMES DIV
+%nonassoc BUFFER
 %nonassoc FST SND
 %right FBY
 %nonassoc IDENT

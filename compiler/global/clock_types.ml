@@ -391,21 +391,6 @@ let rec reroot_ty bst ty =
   | Pct_stream st -> Pct_stream (reroot_st bst st)
   | Pct_prod ty_l -> Pct_prod (List.map (reroot_ty bst) ty_l)
 
-let rec max_burst_stream_type st =
-  let open Int in
-  match st with
-  | St_var _ -> one
-  | St_on (st, ce) ->
-    let upper_bound_ce =
-      match ce with
-      | Ce_condvar cev -> cev.cecv_bounds.Interval.u
-      | Ce_pword pw ->
-        let p = Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw in
-        snd (Ast_misc.bounds_of_int_pword p)
-      | Ce_equal _ -> Int.one
-    in
-    upper_bound_ce * max_burst_stream_type st
-
 let rec interp_ce ce =
   match ce with
   | Ce_condvar cev ->
@@ -429,39 +414,6 @@ let rec interp_ce ce =
            (fun i' -> Int.of_bool (0 = Utils.int_compare i i'))
            (fun x -> x)
            p)
-
-let decompose_st st =
-  let rec walk acc st =
-    match st with
-    | St_var _ -> st, acc
-    | St_on (bst, ce) ->
-      match interp_ce ce with
-      | None -> st, acc
-      | Some p -> walk (p :: acc) bst
-  in
-  walk [] st
-
-let non_strict_adaptable st1 st2 =
-  let bst1, p_l1 = decompose_st st1 in
-  let _, p_l2 = decompose_st st2 in
-  (* TODO check bst1 = bst2 *)
-  let delay = max_burst_stream_type bst1 in
-
-  let p_l1 = List.map Resolution_utils.pword_of_tree p_l1 in
-  let p_l2 = List.map Resolution_utils.pword_of_tree p_l2 in
-
-  let p1 = List.fold_left Pword.on Pword.unit_pword p_l1 in
-  let p2 = List.fold_left Pword.on Pword.unit_pword p_l2 in
-
-  Pword.adapt ~delay p1 p2
-
-let binary_stream_type st = Int.(max_burst_stream_type st <= one)
-
-let rec binary_clock_type ty =
-  match ty with
-  | Ct_var _ -> true
-  | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
-  | Ct_stream st -> binary_stream_type st
 
 let rec simplify_st st =
   match st with
@@ -502,3 +454,51 @@ let generalize_clock_sig inp out cstrs =
     }
   in
   simplify_sig ty_sig
+
+let rec max_burst_stream_type st =
+  let open Int in
+  match st with
+  | St_var _ -> one
+  | St_on (st, ce) ->
+    let upper_bound_ce =
+      match ce with
+      | Ce_condvar cev -> cev.cecv_bounds.Interval.u
+      | Ce_pword pw ->
+        let p = Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw in
+        snd (Ast_misc.bounds_of_int_pword p)
+      | Ce_equal _ -> Int.one
+    in
+    upper_bound_ce * max_burst_stream_type st
+
+let decompose_st st =
+  let rec walk acc st =
+    match st with
+    | St_var _ -> st, acc
+    | St_on (bst, ce) ->
+      match interp_ce ce with
+      | None -> st, acc
+      | Some p -> walk (p :: acc) bst
+  in
+  walk [] st
+
+let non_strict_adaptable st1 st2 =
+  let bst1, p_l1 = decompose_st st1 in
+  let _, p_l2 = decompose_st st2 in
+  (* TODO check bst1 = bst2 *)
+  let delay = max_burst_stream_type bst1 in
+
+  let p_l1 = List.map Resolution_utils.pword_of_tree p_l1 in
+  let p_l2 = List.map Resolution_utils.pword_of_tree p_l2 in
+
+  let p1 = List.fold_left Pword.on Pword.unit_pword p_l1 in
+  let p2 = List.fold_left Pword.on Pword.unit_pword p_l2 in
+
+  Pword.adapt ~delay p1 p2
+
+let binary_stream_type st = Int.(max_burst_stream_type st <= one)
+
+let rec binary_clock_type ty =
+  match ty with
+  | Ct_var _ -> true
+  | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
+  | Ct_stream st -> binary_stream_type st

@@ -415,32 +415,98 @@ let rec interp_ce ce =
            (fun x -> x)
            p)
 
-let rec simplify_st st =
+let decompose_st_with_ce st =
+  let rec walk acc st =
+    match st with
+    | St_var _ -> st, List.split acc
+    | St_on (bst, ce) ->
+      match interp_ce ce with
+      | None -> st, List.split acc
+      | Some p -> walk ((p, ce) :: acc) bst
+  in
+  walk [] st
+
+(** [decompose_st st] decomposes a stream type into a pair of rigid base stream
+    type * interpreted samplers *)
+let decompose_st st =
+  let st, (p_l, _) = decompose_st_with_ce st in
+  st, p_l
+
+let map_stream_type_of_sig f ty_sig =
+  let rec map_ty ty =
+    match ty with
+    | Ct_var _ -> ty
+    | Ct_stream st -> Ct_stream (f st)
+    | Ct_prod ty_l -> Ct_prod (List.map map_ty ty_l)
+  in
+
+  {
+    ty_sig with
+      ct_sig_input = map_ty ty_sig.ct_sig_input;
+      ct_sig_output = map_ty ty_sig.ct_sig_output;
+  }
+
+(* Remove ... on (1) ... from stream types *)
+let rec simplify_on_one_st st =
   match st with
   | St_var _ -> st
   | St_on (st, ce) ->
     (
       match interp_ce ce with
-      | None -> St_on (simplify_st st, ce)
+      | None -> St_on (simplify_on_one_st st, ce)
       | Some p ->
         let p = Resolution_utils.pword_of_tree p in
         if Pword.is_unit_pword p
-        then simplify_st st
-        else St_on (simplify_st st, ce)
+        then simplify_on_one_st st
+        else St_on (simplify_on_one_st st, ce)
     )
 
-let rec simplify_ty ty =
-  match ty with
-  | Ct_var _ -> ty
-  | Ct_stream st -> Ct_stream (simplify_st st)
-  | Ct_prod ty_l -> Ct_prod (List.map simplify_ty ty_l)
+(* Compute ONs when it leads to shorter words *)
+let simplify_on_st ?(u_factor = 1) ?(v_factor = 1) st =
+  let rec simplify st =
+    let st, (p_l, ce_l) = decompose_st_with_ce st in
+
+    match p_l with
+    | [] -> skip_noninterp st
+    | _ :: _ ->
+      let total_ce_u_size, total_ce_v_size =
+        let total_ce_u_size, total_ce_v_size =
+          List.fold_left
+            (fun (x, y) (a, b) -> x + a, y + b)
+            (0, 0)
+            (List.map Tree_word.width_upword p_l)
+        in
+        Int.of_int (u_factor * total_ce_u_size),
+        Int.of_int (v_factor * total_ce_v_size)
+      in
+
+      let p_l = List.map Resolution_utils.pword_of_tree p_l in
+      let p = Utils.fold_left_1 Pword.on p_l in
+
+      let on_u_size, on_v_size = Pword.(size p.u, size p.v) in
+
+      if Int.(total_ce_u_size <= on_u_size || total_ce_v_size <= on_v_size)
+      then List.fold_left (fun st ce -> St_on (st, ce)) (skip_noninterp st) ce_l
+      else
+        let p = Utils.fold_left_1 Pword.on p_l in
+        let p = Pword.to_tree_pword p in
+        let p = Ast_misc.(map_upword (fun i -> Ec_int i) (fun i -> i) p) in
+        St_on (skip_noninterp st, Ce_pword p)
+
+  and skip_noninterp st =
+    match st with
+    | St_var _ -> st
+    | St_on (st, ce) ->
+      assert (interp_ce ce = None);
+      St_on (simplify st, ce)
+  in
+
+  simplify st
 
 let simplify_sig ty_sig =
-  {
-    ty_sig with
-      ct_sig_input = simplify_ty ty_sig.ct_sig_input;
-      ct_sig_output = simplify_ty ty_sig.ct_sig_output;
-  }
+  let ty_sig = map_stream_type_of_sig simplify_on_one_st ty_sig in
+  let ty_sig = map_stream_type_of_sig simplify_on_st ty_sig in
+  ty_sig
 
 let generalize_clock_sig inp out cstrs =
   let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
@@ -469,17 +535,6 @@ let rec max_burst_stream_type st =
       | Ce_equal _ -> Int.one
     in
     upper_bound_ce * max_burst_stream_type st
-
-let decompose_st st =
-  let rec walk acc st =
-    match st with
-    | St_var _ -> st, acc
-    | St_on (bst, ce) ->
-      match interp_ce ce with
-      | None -> st, acc
-      | Some p -> walk (p :: acc) bst
-  in
-  walk [] st
 
 let non_strict_adaptable st1 st2 =
   let bst1, p_l1 = decompose_st st1 in

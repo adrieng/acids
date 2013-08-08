@@ -20,6 +20,7 @@
 
 let error_is_internal exn =
   match exn with
+  | Failure("lexing: empty token")
   | Parsing_pass.Could_not_open _
   | Lexer.Lexical_error _
   | Parser_utils.Parse_error _
@@ -40,6 +41,8 @@ let error_is_internal exn =
 
 let print_error _ fmt exn =
   match exn with
+  | Failure("lexing: empty token") ->
+    Format.fprintf fmt "Lexical error"
   | Parsing_pass.Could_not_open filen ->
     Format.fprintf fmt "Cannot find file %s" filen
   | Lexer.Lexical_error reason ->

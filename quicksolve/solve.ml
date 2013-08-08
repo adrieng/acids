@@ -92,7 +92,9 @@ let _ =
   in
   let files = ref [] in
   let add f = files := f :: !files in
-  Arg.parse opts add (Printf.sprintf "Usage: %s [opts] problem_file\n" Sys.argv.(0));
+  Arg.parse opts
+    add
+    (Printf.sprintf "Usage: %s [opts] problem_file\n" Sys.argv.(0));
   List.iter do_file !files;
   flush stdout;
   exit !exit_code

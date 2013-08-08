@@ -346,8 +346,8 @@ and simpl_buffer _ bu =
 
 and simpl_inline env ln e_app e_arg =
   (*
-    When "f p = e1" is static, we translate "f e2" to
-     "e1 where rec p = e2"
+    When "f p = e" is static, we translate "f e_arg" to
+     "e where rec p = e_arg"
   *)
   let nd = find_static_node_def env ln in
   let module R = Acids_utils.REFRESH(Acids_static) in

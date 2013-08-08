@@ -29,10 +29,12 @@ struct
   type static_exp_desc =
   | Se_var of var
   | Se_econstr of Ast_misc.econstr
+  | Se_fword of Int.t list
   let print_static_exp_desc fmt sed =
     match sed with
     | Se_var s -> Format.fprintf fmt "%s" s
     | Se_econstr ec -> Ast_misc.print_econstr fmt ec
+    | Se_fword i_l -> Format.fprintf fmt "'%a'" (Utils.print_list Int.print) i_l
 
   type exp_info = unit
   let print_exp_info = Utils.print_nothing

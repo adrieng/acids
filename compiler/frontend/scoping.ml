@@ -360,7 +360,7 @@ and scope_clock_annot env cka =
     Acids_scoped.Ca_on (cka, ce)
 
 and scope_clock_exp env ce =
-  let scope_static_exp = scope_static_exp env in
+  let scope_static_exp_one = scope_static_exp_one env in
   let scope_clock_exp = scope_clock_exp env in
   let ced =
     match ce.ce_desc with
@@ -368,13 +368,11 @@ and scope_clock_exp env ce =
       let v = find_var env ce.ce_loc v in
       Acids_scoped.Ce_condvar v
     | Ce_pword upw ->
-      let upw =
-        Ast_misc.map_upword scope_static_exp scope_static_exp upw
-      in
+      let upw = scope_static_word env upw in
       Acids_scoped.Ce_pword upw
     | Ce_equal (ce, se) ->
       let ce = scope_clock_exp ce in
-      let se = scope_static_exp se in
+      let se = scope_static_exp_one se in
       Acids_scoped.Ce_equal (ce, se)
   in
   {
@@ -383,20 +381,54 @@ and scope_clock_exp env ce =
     Acids_scoped.ce_info = ce.ce_info;
   }
 
-and scope_static_exp env se =
-  let sed =
+(* Because of Se_fword, one static exp may get scoped into several ones *)
+and scope_static_exps env se =
+  let mk sed =
+    {
+      Acids_scoped.se_desc = sed;
+      Acids_scoped.se_loc = se.se_loc;
+      Acids_scoped.se_info = se.se_info;
+    }
+  in
+  let ed_l =
     match se.se_desc with
     | Acids_parsetree.Info.Se_var v ->
       let id = find_var env se.se_loc v in
-      Acids_scoped.Info.Se_var id
+      [Acids_scoped.Info.Se_var id]
     | Acids_parsetree.Info.Se_econstr ec ->
-      Acids_scoped.Info.Se_econstr ec
+      [Acids_scoped.Info.Se_econstr ec]
+    | Acids_parsetree.Info.Se_fword i_l ->
+      let mk i = Acids_scoped.Info.Se_econstr (Ast_misc.Ec_int i) in
+      List.map mk i_l
   in
-  {
-    Acids_scoped.se_desc = sed;
-    Acids_scoped.se_loc = se.se_loc;
-    Acids_scoped.se_info = se.se_info;
-  }
+  List.map mk ed_l
+
+and scope_static_exp_one env se =
+  match scope_static_exps env se with
+  | [se] -> se
+  | _ -> assert false
+
+and scope_static_word env upw =
+  let open Tree_word in
+
+  let { u = u; v = v; } =
+    Ast_misc.map_upword
+      (scope_static_exps env)
+      (scope_static_exp_one env)
+      upw
+  in
+
+  (* Remove list leaves coming from Se_fword *)
+
+  let rec flatten_tree t =
+    match t with
+    | Leaf [se] -> Leaf se
+    | Leaf se_l -> Concat (List.map (fun se -> Leaf se) se_l)
+    | Concat t_l -> Concat (List.map flatten_tree t_l)
+    | Power (t, se) -> Power (flatten_tree t, se)
+  in
+
+  { u = flatten_tree u; v = flatten_tree v; }
 
 and scope_exp env e =
   let scope_exp' = scope_exp env in
@@ -583,7 +615,7 @@ and scope_pattern p env =
       let spec = scope_spec env spec in
       Acids_scoped.P_spec_annot (p, spec), env
     | P_split upw ->
-      let scope_static_exp se env = scope_static_exp env se, env in
+      let scope_static_exp se env = scope_static_exp_one env se, env in
       let p_l, env =
         Ast_misc.mapfold_upword scope_pattern scope_static_exp upw env
       in
@@ -611,17 +643,16 @@ and scope_buffer bu =
   }
 
 and scope_spec env spec =
-  let scope_static_exp = scope_static_exp env in
+  let scope_static_exp_one = scope_static_exp_one env in
   let sd =
     match spec.s_desc with
     | Unspec ->
       Acids_scoped.Unspec
     | Word upw ->
-      let upw = Ast_misc.map_upword scope_static_exp scope_static_exp upw in
-      Acids_scoped.Word upw
+      Acids_scoped.Word (scope_static_word env upw)
     | Interval (l, u) ->
-      let l = scope_static_exp l in
-      let u = scope_static_exp u in
+      let l = scope_static_exp_one l in
+      let u = scope_static_exp_one u in
       Acids_scoped.Interval (l, u)
   in
   {

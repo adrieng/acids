@@ -268,6 +268,7 @@
 %token<bool> BOOL
 %token<Int.t> INT
 %token<float> FLOAT
+%token<Int.t list> FWORD
 
 /* Misc */
 
@@ -396,9 +397,9 @@ clock_exp_desc:
    { Acids_parsetree.Ce_condvar v }
 | ce = clock_exp EQUAL se = static_exp
    { Acids_parsetree.Ce_equal (ce, se) }
-| pt = chevrons(upword(static_exp, static_exp, parens))
+| pt = chevrons(upword(static_exp_fword, static_exp, parens))
    { Acids_parsetree.Ce_pword pt }
-| pt = upword(static_exp_novar, static_exp_novar, parens)
+| pt = upword(static_exp_novar_fword, static_exp_novar, parens)
    { Acids_parsetree.Ce_pword pt }
 
 %inline clock_exp:
@@ -411,11 +412,27 @@ clock_exp_desc:
 %inline static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
 
+%inline static_exp_fword_desc:
+| v = IDENT { Acids_parsetree.Info.Se_var v }
+| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
+| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
+
+%inline static_exp_fword:
+| sed = with_loc(static_exp_fword_desc) { make_located make_static_exp sed }
+
 %inline static_exp_desc_novar:
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 
 %inline static_exp_novar:
 | sed = with_loc(static_exp_desc_novar) { make_located make_static_exp sed }
+
+%inline static_exp_novar_fword_desc:
+| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
+| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
+
+%inline static_exp_novar_fword:
+| sed = with_loc(static_exp_novar_fword_desc)
+   { make_located make_static_exp sed }
 
 simple_exp_desc:
 | c = const { Acids_parsetree.E_const c }
@@ -541,7 +558,7 @@ pat:
 
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
-| p = upword(static_exp, static_exp, parens) { Acids_parsetree.Word p }
+| p = upword(static_exp_fword, static_exp, parens) { Acids_parsetree.Word p }
 | LBRACKET l = static_exp COMMA u = static_exp RBRACKET
    { Acids_parsetree.Interval (l, u) }
 

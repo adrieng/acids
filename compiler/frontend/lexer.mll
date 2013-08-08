@@ -135,7 +135,7 @@ rule token = parse
 | "D" { DYNAMIC_TY }
 | "S" { STATIC_TY }
 
-| '\'' { word lexbuf }
+| '\''(digit+ as s)'\'' { FWORD (int_list_of_string s) }
 
 | "'a"(posint as i) { STVAR (int_of_string i) }
 | "'a"              { STVAR 0 }
@@ -170,7 +170,3 @@ and comment = parse
 | '\n' { newline lexbuf; comment lexbuf }
 | _ { comment lexbuf }
 | eof { lexical_error lexbuf "unterminated comment" }
-
-and word = parse
-| digit as c { INT (Int.of_char c) }
-| '\'' { token lexbuf }

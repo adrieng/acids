@@ -29,6 +29,11 @@ all: $(TARGETS) lib
 
 $(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
                                -I compiler/frontend \
+                               -I compiler/frontend/asts \
+                               -I compiler/frontend/parsing \
+                               -I compiler/frontend/misc_passes \
+                               -I compiler/frontend/typing \
+                               -I compiler/frontend/utils \
                                -I compiler/backend
 
 $(SOLVER): OCAMLBUILDOPTS += -I resolution

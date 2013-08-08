@@ -66,3 +66,5 @@ val equal : pword -> pword -> bool
 val adapt : ?delay : Int.t -> pword -> pword -> bool
 
 val to_tree_pword : pword -> (Int.t, Int.t) Tree_word.t
+
+val pull_prefix_in : pword -> pword

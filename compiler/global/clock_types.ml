@@ -446,6 +446,11 @@ let map_stream_type_of_sig f ty_sig =
       ct_sig_output = map_ty ty_sig.ct_sig_output;
   }
 
+let ce_pword_of_pword p =
+  let p = Pword.to_tree_pword p in
+  let p = Ast_misc.(map_upword (fun i -> Ec_int i) (fun i -> i) p) in
+  Ce_pword p
+
 (* Remove ... on (1) ... from stream types *)
 let rec simplify_on_one_st st =
   match st with
@@ -488,10 +493,7 @@ let simplify_on_st ?(u_factor = 1) ?(v_factor = 1) st =
       if Int.(total_ce_u_size <= on_u_size || total_ce_v_size <= on_v_size)
       then List.fold_left (fun st ce -> St_on (st, ce)) (skip_noninterp st) ce_l
       else
-        let p = Utils.fold_left_1 Pword.on p_l in
-        let p = Pword.to_tree_pword p in
-        let p = Ast_misc.(map_upword (fun i -> Ec_int i) (fun i -> i) p) in
-        St_on (skip_noninterp st, Ce_pword p)
+        St_on (skip_noninterp st, ce_pword_of_pword p)
 
   and skip_noninterp st =
     match st with
@@ -503,9 +505,31 @@ let simplify_on_st ?(u_factor = 1) ?(v_factor = 1) st =
 
   simplify st
 
+let rec simplify_prefix_st st =
+  let rec simplify_prefix_ce ce =
+    match ce with
+    | Ce_condvar _ -> ce
+    | Ce_pword pw ->
+      let p =
+        Ast_misc.map_upword
+          (fun ec -> Ast_misc.int_of_econstr ec)
+          (fun x -> x)
+          pw
+      in
+      let p = Resolution_utils.pword_of_tree p in
+      let p = Pword.pull_prefix_in p in
+      ce_pword_of_pword p
+    | Ce_equal (ce, se) -> Ce_equal (simplify_prefix_ce ce, se)
+  in
+
+  match st with
+  | St_var _ -> st
+  | St_on (st, ce) -> St_on (simplify_prefix_st st, simplify_prefix_ce ce)
+
 let simplify_sig ty_sig =
   let ty_sig = map_stream_type_of_sig simplify_on_one_st ty_sig in
   let ty_sig = map_stream_type_of_sig simplify_on_st ty_sig in
+  let ty_sig = map_stream_type_of_sig simplify_prefix_st ty_sig in
   ty_sig
 
 let generalize_clock_sig inp out cstrs =

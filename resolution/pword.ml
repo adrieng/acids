@@ -471,3 +471,19 @@ let adapt ?(delay = Int.zero) p1 p2 = synchro p1 p2 && precedes ~delay p1 p2
 
 let to_tree_pword p =
   { Tree_word.u = to_tree_word p.u; Tree_word.v = to_tree_word p.v; }
+
+let pull_prefix_in p =
+  let open Int in
+
+  let rec shift_inside u_rev (v, v_rev) = (* v, v_rev is a zipper *)
+    if size u_rev = zero then empty, concat v (rev v_rev)
+    else if size v_rev = zero then shift_inside u_rev (empty, rev v)
+    else
+      let x, y, k, v_rev', u_rev' = unfold_max u_rev v_rev in
+      if x = y
+      then shift_inside u_rev' (push x k v, v_rev')
+      else rev u_rev, concat v (rev v_rev)
+  in
+
+  let u, v = shift_inside (rev p.u) (empty, rev p.v) in
+  make u v

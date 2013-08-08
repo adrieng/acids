@@ -21,7 +21,9 @@ type error =
 
 exception Error of error
 
-type value =
+type value = desc Lazy.t
+
+and desc =
   | Const of Ast_misc.const
   | Tuple of value list
 
@@ -33,6 +35,6 @@ val add_node_def : env -> Acids_static.node_def -> env
 
 val add_local_defs : env -> Acids_static.block -> env
 
-val eval_exp : env -> Acids_static.exp -> value
+val eval_exp : env -> Acids_static.exp -> desc
 
-val eval_var : env -> Ident.t -> value
+val eval_var : env -> Ident.t -> desc

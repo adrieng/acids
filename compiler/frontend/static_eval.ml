@@ -33,9 +33,16 @@ let unimplemented_builtin loc ln =
 
 (** {2 Values and related functions} *)
 
-type value =
+type value = desc Lazy.t
+
+and desc =
   | Const of Ast_misc.const
   | Tuple of value list
+
+let not_static s =
+  invalid_arg (s ^ ": expression cannot be evaluated")
+
+let force thunk = Lazy.force thunk
 
 let equal_val v1 v2 = v1 = v2
 
@@ -51,56 +58,59 @@ let int i = econstr (Ast_misc.Ec_int i)
 
 let float f = const (Ast_misc.Cfloat f)
 
-let tuple v_l = Tuple v_l
-
-let get_const v =
-  match v with
+let val_const d =
+  match d with
   | Const v -> v
   | _ -> ill_typed "get_const"
 
+let get_const v = val_const (force v)
+
 let get_econstr v = Ast_misc.get_econstr (get_const v)
 
-let get_bool v = Ast_misc.get_bool (get_econstr v)
 let get_int v = Ast_misc.get_int (get_econstr v)
 let get_float v = Ast_misc.get_float (get_const v)
 
 let get_tuple v =
-  match v with
+  match force v with
   | Tuple v_l -> v_l
   | _ -> ill_typed "get_tuple"
 
-let val_fst v =
-  match v with
+let val_fst d =
+  match d with
   | Tuple [v; _] -> v
   | _ -> ill_typed "value_fst"
 
-let val_snd v =
-  match v with
+let val_snd d =
+  match d with
   | Tuple [_; v] -> v
   | _ -> ill_typed "value_fst"
 
+let get_fst v = val_fst (force v)
+
+let get_snd v = val_snd (force v)
+
 let builtins =
   let int_bin_to_int f v =
-    match get_tuple (Lazy.force v) with
-    | [l; r] -> int (f (get_int l) (get_int r))
-    | _ -> invalid_arg "int_bin_to_int"
+    let l = get_int (get_fst v) in
+    let r = get_int (get_snd v) in
+    int (f l r)
   in
 
   let int_bin_to_bool f v =
-    match get_tuple (Lazy.force v) with
-    | [l; r] -> bool (f (get_int l) (get_int r))
-    | _ -> invalid_arg "int_bin_to_int"
+    let l = get_int (get_fst v) in
+    let r = get_int (get_snd v) in
+    bool (f l r)
   in
 
   let float_bin_to_float f v =
-    match get_tuple (Lazy.force v) with
-    | [l; r] -> float (f (get_float l) (get_float r))
-    | _ -> invalid_arg "float_bin_to_float"
+    let l = get_float (get_fst v) in
+    let r = get_float (get_snd v) in
+    float (f l r)
   in
 
   let bin_to_bool f v =
-    match get_tuple (Lazy.force v) with
-    | [l; r] -> bool (f l r)
+    match get_tuple v with
+    | [l; r] -> bool (f (force l) (force r))
     | _ -> invalid_arg "float_bin_to_float"
   in
 
@@ -113,9 +123,9 @@ let builtins =
     "(/)", int_bin_to_int Int.( / );
 
     "(<=)", int_bin_to_bool Int.( <= );
-    "(<)", int_bin_to_bool Int.( < );
+    "(<)" , int_bin_to_bool Int.( <  );
     "(>=)", int_bin_to_bool Int.( >= );
-    "(>)", int_bin_to_bool Int.( > );
+    "(>)" , int_bin_to_bool Int.( >  );
 
     "(+.)", float_bin_to_float ( +. );
     "(-.)", float_bin_to_float ( -. );
@@ -123,64 +133,16 @@ let builtins =
     "(/.)", float_bin_to_float ( /. );
   ]
 
-exception Found of value
-
-let access_funs_pat p =
-  (* TODO: fuse project_pat and compute_pat_access_funs *)
-
-  let project_pat id p value =
-    let rec find value p =
-      match p.p_desc with
-      | P_var id' | P_condvar (id', _) ->
-        if Ident.equal id id' then raise (Found value)
-      | P_tuple p_l ->
-        let v_l = get_tuple value in
-        List.iter2 find v_l p_l
-      | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
-        find value p
-      | P_split pt ->
-        Ast_misc.iter_upword (find value) (fun _ -> ()) pt
-    in
-    try
-      find value p;
-      invalid_arg ("project_pat: could not find " ^ Ident.to_string id)
-    with Found value -> value
-  in
-
-  let orig_p = p in
-
-  let rec compute_pat_access_funs acc p =
-    match p.p_desc with
-    | P_var v | P_condvar (v, _) -> (v, project_pat v orig_p) :: acc
-    | P_tuple p_l -> List.fold_left compute_pat_access_funs acc p_l
-    | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
-      compute_pat_access_funs acc p
-    | P_split pt ->
-      Ast_misc.fold_upword
-        (Utils.flip compute_pat_access_funs)
-        (fun _ acc -> acc)
-        pt
-        acc
-  in
-
-  compute_pat_access_funs [] p
-
 (** {2 Suspensions, environments and related functions} *)
 
-type thunk =
-  {
-    name : Ident.t;
-    lval : value Lazy.t;
-  }
-
-and node_fun = value Lazy.t -> value
+type node_fun = value -> desc
 
 and env =
   {
     intf_env : Interface.env;
     external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
     current_nodes : node_fun Names.ShortEnv.t;
-    values : thunk Ident.Env.t;
+    values : value Ident.Env.t;
   }
 
 let reset_env_var env = { env with values = Ident.Env.empty; }
@@ -218,14 +180,9 @@ let find_node loc env ln =
 
 (** {2 Static evaluation itself} *)
 
-let not_static s =
-  invalid_arg (s ^ ": expression cannot be evaluated")
-
-let force thunk =
-  try Lazy.force thunk.lval
-  with Lazy.Undefined -> non_causal thunk.name
-
-let rec eval_var env v = force (find_var env v)
+let rec eval_var env v =
+  try force (find_var env v)
+  with Lazy.Undefined -> non_causal v
 
 and eval_clock_exp env ce =
   assert (ce.ce_info#ci_static <> Static_types.S_dynamic);
@@ -257,20 +214,21 @@ and eval_exp env e =
     const c
 
   | E_fst e ->
-    val_fst (eval_exp env e)
+    force (val_fst (eval_exp env e))
 
   | E_snd e ->
-    val_snd (eval_exp env e)
+    force (val_snd (eval_exp env e))
 
   | E_tuple e_l ->
-    tuple (List.map (eval_exp env) e_l)
+    Tuple (List.map (fun e -> lazy (eval_exp env e)) e_l)
 
   | E_fby _ ->
     not_static "eval_exp"
 
   | E_ifthenelse (e1, e2, e3) ->
-    let v = eval_exp env e1 in
-    eval_exp env (if get_bool v then e2 else e3)
+    let cst = val_const (eval_exp env e1) in
+    let b = Ast_misc.(get_bool (get_econstr cst)) in
+    eval_exp env (if b then e2 else e3)
 
   | E_app (app, e) ->
     apply_node env app e
@@ -280,12 +238,13 @@ and eval_exp env e =
     eval_exp env e
 
   | E_bmerge (ce, e1, e2) ->
-    let v = eval_clock_exp env ce in
-    eval_exp env (if get_bool v then e1 else e2)
+    let cst = val_const (eval_clock_exp env ce) in
+    let b = Ast_misc.(get_bool (get_econstr cst)) in
+    eval_exp env (if b then e1 else e2)
 
   | E_merge (ce, c_l) ->
-    let v = eval_clock_exp env ce in
-    let ec = get_econstr v in
+    let cst = val_const (eval_clock_exp env ce) in
+    let ec = Ast_misc.get_econstr cst in
     let c = List.find (fun c -> c.c_sel = ec) c_l in
     eval_exp env c.c_body
 
@@ -306,6 +265,26 @@ and eval_static_exp se env =
   | Se_econstr ec ->
     econstr ec
 
+and eval_pattern env p v =
+  match p.p_desc with
+  | P_var id | P_condvar (id, _) ->
+    add_var env id v
+  | P_tuple p_l ->
+    let mk (i, env) p =
+      let v = List.nth (get_tuple v) i in
+      i + 1, eval_pattern env p v
+    in
+    let _, env = List.fold_left mk (0, env) p_l in
+    env
+  | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
+    eval_pattern env p v
+  | P_split pw ->
+    Ast_misc.fold_upword
+      (fun p env -> eval_pattern env p v)
+      (fun _ env -> env)
+      pw
+      env
+
 and add_local_defs env block =
   (* Since equations are mutually recursive, we update the mutable [eval_env]
      after having enriched the environments with other definitions.
@@ -319,32 +298,13 @@ and add_local_defs env block =
 (* [eval_eq eval_env env eq] enriches [env] with the lazy values for variables
    present in [eq], evaluated into mutable environment [eval_env]. *)
 and eval_eq eval_env env eq =
-  let get_value =
-    let cell = ref None in
-    fun () ->
-      match !cell with
-      | Some value -> value
-      | None ->
-        let value = eval_exp !eval_env eq.eq_rhs in
-        cell := Some value;
-        value
-  in
-
-  let access = access_funs_pat eq.eq_lhs in
-  let mk_thunk (v, f) = { name = v; lval = lazy (f (get_value ())); } in
-  List.fold_left (fun env (v, f) -> add_var env v (mk_thunk (v, f))) env access
+  let v = lazy (eval_exp !eval_env eq.eq_rhs) in
+  eval_pattern env eq.eq_lhs v
 
 and node_fun_of_node_def env nd =
   let env = reset_env_var env in
-  let access = access_funs_pat nd.n_input in
   fun value ->
-    let mk_thunk (v, f) = { name = v; lval = lazy (f (Lazy.force value)); } in
-    let env =
-      List.fold_left
-        (fun env (v, f) -> add_var env v (mk_thunk (v, f)))
-        env
-        access
-    in
+    let env = eval_pattern env nd.n_input value in
     eval_exp env nd.n_body
 
 and apply_node env app e =

@@ -1,0 +1,54 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node nat () = o where rec o = 0 fby (o + 1)
+
+$$
+
+let node nat () = o where
+    rec o = merge true(false) 0 (1 + buffer o)
+
+$$
+
+let node nat2 () = (o :: 'a on (2)) where
+    rec o = merge 0 1(2) with
+              | 0 -> 0
+              | 1 -> 1
+              | 2 -> 1 + buffer o
+            end
+
+$$
+
+let node fib () = o where
+    rec o = merge 0 1(2) with
+              | 0 -> 0
+              | 1 -> 1
+              | 2 -> buffer o + buffer (o when false(true))
+            end
+
+$$
+
+(*
+  Sliding window of size 5, advancing by taking 2 elements by window.
+
+  Ex.:
+
+  x | x0 x1 x2 x3 x4   x5 x6  .  .  .  x7 x8  .  .  .  ...
+
+  o | x0 x1 x2 x3 x4   x2 x3 x4 x5 x6  x4 x5 x6 x7 x8  ...
+
+*)
+
+@max_burst{5}
+let node sliding_window x = o where
+    rec o = merge 1^5 (0^3 1^2) with
+              | 1 -> x
+              | 0 -> buffer (o when (false^2 true^3))
+            end

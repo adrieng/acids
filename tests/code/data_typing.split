@@ -22,10 +22,6 @@ let node k () = g ()
 
 $$
 
-let node f () = (x, y) where rec x = y and y = x
-
-$$
-
 let node f () = o where
     rec o = merge true(false) 0 (buffer o)
 

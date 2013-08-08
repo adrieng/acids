@@ -1,0 +1,31 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node f () = (x, y) where rec x = 1 and y = x
+
+$$
+
+let node f () = o where rec o = 0 fby (o + 1)
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "asc -check"
+        ]
+*)
+$}
+
+let node f () = (x, y) where rec x = y and y = x
+
+$$
+
+let node f () = o where rec (o :: 'a on (2)) = 0 fby (o + 1)

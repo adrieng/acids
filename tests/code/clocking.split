@@ -8,9 +8,8 @@ ${
 *)
 $}
 
-let node f (x, y) = (x, y) when <(true)>
-
-let node g x = f (x when <(true false)>, x when <(false true)>)
+@max_burst{2}
+let node g x = x when (true false) + x when (false true)
 
 $$
 
@@ -21,9 +20,9 @@ let node g (x, y) =
 
 $$
 
-let node f (x, y) = (x, y) when <(true)>
+let node f (x, y) = (x, y) when (true)
 
-let node g (x, y) = f (x when <(true false)>, y when <s>) where rec s = true
+let node g (x, y) = f (x when (true false), y when <(s)>) where rec s = true
 
 $$
 ${

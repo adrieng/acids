@@ -10,7 +10,7 @@ $}
 
 (* See {Static typing} in the manual *)
 
-let node f () = <('1001')>
+let static node f () = valof ('11')
 
 $$
 
@@ -37,7 +37,7 @@ ${
 (*
         run_test:
         [
-                Bad 1 "Cannot unify": "asc -check"
+                Bad 1 "Could not unify": "asc -check"
         ]
 *)
 $}
@@ -70,8 +70,8 @@ ${
 *)
 $}
 
-let node f () = x when <(x)=1> where
-      rec x in [0, 0] = 0 fby x
+let node f () = (42 when <(x)>) where
+      rec x = false fby x
 
 $$
 ${

@@ -134,7 +134,7 @@ struct
   let rec print_var fmt v =
     match v.v_link with
     | None ->
-      Format.fprintf fmt "%s%a" S.var_pref Utils.print_int_non_zero v.v_id
+      Format.fprintf fmt "'%s%a" S.var_pref Utils.print_int_non_zero v.v_id
     | Some ty ->
       S.print print_var fmt ty
 

@@ -33,14 +33,14 @@ exception Resolution_error of error
 let print_error fmt err =
   match err with
   | Occur_check_st (l, i, st) ->
-    Format.fprintf fmt "%aStream type variable v%d occurs in %a"
+    Format.fprintf fmt "%aStream type variable %a occurs in %a"
       Loc.print l
-      i
+      VarTySt.print_var VarTySt.({ v_id = i; v_link = None; })
       VarTySt.print st
   | Occur_check_ty (l, i, ty) ->
-    Format.fprintf fmt "%aClock type variable v%d occurs in %a"
+    Format.fprintf fmt "%aClock type variable %a occurs in %a"
       Loc.print l
-      i
+      VarTy.print_var VarTy.({ v_id = i; v_link = None; })
       VarTy.print ty
   | Could_not_unify_st (l, st1, st2) ->
     Format.fprintf fmt "%aCould not unify stream type %a with stream type %a"

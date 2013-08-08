@@ -71,16 +71,20 @@ let check_msg msg test =
     try ignore (Str.search_forward reg line 0); true
     with Not_found -> false
   in
-  let reg = Str.regexp msg in
-  let ch = open_in test.err in
-  let b =
-    try
-      while not (is_matching reg (input_line ch)) do () done;
-      true
-    with End_of_file -> false
-  in
-  close_in ch;
-  b
+
+  if msg = ""
+  then true
+  else
+    let reg = Str.regexp msg in
+    let ch = open_in test.err in
+    let b =
+      try
+        while not (is_matching reg (input_line ch)) do () done;
+        true
+      with End_of_file -> false
+    in
+    close_in ch;
+    b
 
 let ok_of_test test =
   match test.kind, test.status with

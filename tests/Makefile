@@ -30,7 +30,7 @@ $(TOOLS): FORCE
 	make -C tools all
 
 clean:
-	rm -f $(foreach DIR,$(DIRS),$(wildcard $(DIR)/*.as) $(wildcard $(DIR)/*.log*))
+	rm -f $(foreach DIR,$(DIRS),$(wildcard $(DIR)/*.as) $(wildcard $(DIR)/*.log*) $(wildcard $(DIR)/*.aso))
 	make -C tools clean
 
 realclean: clean

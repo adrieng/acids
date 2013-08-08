@@ -285,11 +285,11 @@
 %left WHERE
 %left IF
 // %left SPLIT
-%left WHEN
 %right APP
 %left LE GE LT GT
 %left PLUS MINUS
 %left TIMES DIV
+%left WHEN
 %nonassoc BUFFER
 %nonassoc FST SND
 %right FBY

@@ -479,7 +479,7 @@ let pull_prefix_in p =
     if size u_rev = zero then empty, concat v (rev v_rev)
     else if size v_rev = zero then shift_inside u_rev (empty, rev v)
     else
-      let x, y, k, v_rev', u_rev' = unfold_max u_rev v_rev in
+      let x, y, k, u_rev', v_rev' = unfold_max u_rev v_rev in
       if x = y
       then shift_inside u_rev' (push x k v, v_rev')
       else rev u_rev, concat v (rev v_rev)

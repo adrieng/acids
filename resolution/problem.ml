@@ -19,6 +19,14 @@ type constr_kind = Equal | Adapt
 
 type var = string
 
+let print_constr_kind fmt k =
+  let s =
+    match k with
+    | Equal -> "="
+    | Adapt -> "<:"
+  in
+  Format.fprintf fmt "%s" s
+
 module Make(S :
   sig
     type const
@@ -51,18 +59,10 @@ struct
     | Some v ->
       Format.fprintf fmt "%s %a" v (S.print_const ~has_var:true) s.const
 
-  let print_kind fmt k =
-    let s =
-      match k with
-      | Equal -> "="
-      | Adapt -> "<:"
-    in
-    Format.fprintf fmt "%s" s
-
   let print_wconstr fmt wc =
     Format.fprintf fmt "@[%a %a@ %a (* %a *)@]"
       print_side wc.lhs
-      print_kind wc.kind
+      print_constr_kind wc.kind
       print_side wc.rhs
       Loc.print_short wc.loc
 

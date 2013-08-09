@@ -20,10 +20,20 @@ open Problem
 module M =
   Make
     (struct
-      type const = Pword.pword list
+      type const = Pword.pword list (* TODO some caching *)
       let print_const ~has_var fmt p_l =
         if has_var && List.length p_l >= 1 then Format.fprintf fmt "on ";
         Utils.print_list_r Pword.print_pword " on" fmt p_l
+      let unit_const pw_l =
+        let p = List.fold_left Pword.on Pword.unit_pword pw_l in
+        Pword.is_unit_pword p
+      let right_simplify pw_l =
+        let p = List.fold_left Pword.on Pword.unit_pword pw_l in
+        Pword.is_constant_pword p
+      let equivalent_const pw_l1 pw_l2 =
+        let p1 = List.fold_left Pword.on Pword.unit_pword pw_l1 in
+        let p2 = List.fold_left Pword.on Pword.unit_pword pw_l2 in
+        Pword.equal p1 p2
      end)
 
 include M
@@ -309,6 +319,7 @@ let make_concrete_system
   let sys = reduce_on sys in
   let sys = check_rigid_constraints sys in
   let sys = if not complete then simplify_equalities_same_p sys else sys in
+  let sys, pre_sol = simplify_redundant_equations sys in
   let sys = lower_equality_constraints sys in
 
   let extract c =
@@ -334,7 +345,8 @@ let make_concrete_system
     split_prefix_period = [];
     increasing_indexes = [];
     sufficient_indexes = [];
-  }
+  },
+  pre_sol
 
 (** [compute_sampler_sizes csys] returns an equivalent concrete systems [csys']
     where all the samplers of a given unknown have the same prefix and period
@@ -956,7 +968,7 @@ let solve sys =
     find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
   in
 
-  let csys =
+  let csys, pre_sol =
     let k = find_int ~default:Int.zero sys.options "k" in
     let k' = find_int ~default:Int.one sys.options "k'" in
     let max_burst = find_int ~default:Int.one sys.options "max_burst" in
@@ -986,4 +998,9 @@ let solve sys =
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
   let sol = solve_linear_system verbose max_int csys in
-  Utils.Env.map Pword.to_tree_pword sol
+
+  let sol = Utils.Env.map Pword.to_tree_pword sol in
+  let add_pre_sol c_simplified c sol =
+    Utils.Env.add c_simplified (Utils.Env.find c sol) sol
+  in
+  Utils.Env.fold add_pre_sol pre_sol sol

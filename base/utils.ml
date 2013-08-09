@@ -210,12 +210,14 @@ sig
     Format.formatter ->
     'a t ->
     unit
+  val disjoint_union : 'a t -> 'a t -> 'a t
 end
 
 module MakeMap(S : Map.OrderedType) : MyMap with type key = S.t =
 struct
   module M = Map.Make(S)
   include M
+
   let print ?(sep = ",") print_key print_value fmt map =
     let r = ref (cardinal map) in
     Format.fprintf fmt "@[";
@@ -229,6 +231,14 @@ struct
         then Format.fprintf fmt "%s@ " sep)
       map;
     Format.fprintf fmt "@]"
+
+  exception Non_disjoint
+
+  let disjoint_union m1 m2 =
+    let add k v m2 =
+      if mem k m2 then raise Non_disjoint else add k v m2
+    in
+    fold add m1 m2
 end
 
 module OrderedString =

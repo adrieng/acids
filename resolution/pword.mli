@@ -45,6 +45,8 @@ val make : word -> word -> pword
 
 val unit_pword : pword
 
+val is_constant_pword : pword -> bool
+
 val is_unit_pword : pword -> bool
 
 val print_pword : Format.formatter -> pword -> unit

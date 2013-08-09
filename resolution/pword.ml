@@ -319,16 +319,22 @@ let make u v =
 
 let unit_pword = make empty (singleton Int.one)
 
-let is_unit_word w =
+let check_constant_word c w =
   let rec walk desc =
     match desc with
     | [] -> true
-    | (i, _) :: desc -> (i = Int.one) && walk desc
+    | (i, _) :: desc -> (i = c) && walk desc
   in
   walk w.desc
 
-let is_unit_pword { u = u; v = v; } =
-  (u.size = Int.zero || is_unit_word u) && is_unit_word v
+let check_constant_pword c { u = u; v = v; } =
+  (u.size = Int.zero || check_constant_word c u) && check_constant_word c v
+
+let is_unit_pword p = check_constant_pword Int.one p
+
+let is_constant_pword p =
+  let x, _ = pop_1 p.v in
+  check_constant_pword x p
 
 let ones w i =
   let open Int in

@@ -31,6 +31,12 @@ module Make(S :
   sig
     type const
     val print_const : has_var : bool -> Format.formatter -> const -> unit
+    val unit_const : const -> bool
+
+    (** [right_simpify cst] if "c_x on cst = c_y on cst" <=> "c_x = c_y" *)
+    val right_simplify : const -> bool
+
+    val equivalent_const : const -> const -> bool
   end) =
 struct
   type side =
@@ -88,4 +94,66 @@ struct
       sys with
         body = List.fold_right lower_constr sys.body [];
     }
+
+  (* Propagates equations c_x = c_y *)
+  let simplify_redundant_equations sys =
+    let ht = Hashtbl.create 17 in
+
+    let find_class s =
+      try Hashtbl.find ht s
+      with Not_found ->
+        let cl = Union_find.fresh s in
+        Hashtbl.add ht s cl;
+        cl
+    in
+
+    let check_constraint body c =
+      match c.kind, c.lhs.var, c.rhs.var with
+      | Equal, Some c_x, Some c_y ->
+        if S.equivalent_const c.lhs.const c.rhs.const
+          && S.right_simplify c.lhs.const
+        then
+          (
+            let c_x_cl = find_class c_x in
+            let c_y_cl = find_class c_y in
+            if not (Union_find.equivalent c_x_cl c_y_cl)
+            then Union_find.union c_x_cl c_y_cl;
+            body
+          )
+        else
+          c :: body
+      | _ ->
+        c :: body
+    in
+
+    let body = List.fold_left check_constraint [] sys.body in
+
+    let propagate_side side =
+      match side.var with
+      | None -> side
+      | Some c ->
+        try
+          let cl = find_class c in
+          { side with var = Some (Union_find.find cl); }
+        with Not_found ->
+          side
+    in
+
+    let propagate_constraint cstr =
+      {
+        cstr with
+          lhs = propagate_side cstr.lhs;
+          rhs = propagate_side cstr.rhs;
+      }
+    in
+
+    let pre_sol =
+      let add c cl sol =
+        let c' = Union_find.find cl in
+        if c <> c' then Utils.Env.add c c' sol else sol
+      in
+      Hashtbl.fold add ht Utils.Env.empty
+    in
+
+    { sys with body = List.map propagate_constraint body; }, pre_sol
 end

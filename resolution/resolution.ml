@@ -27,6 +27,12 @@ struct
       " on"
       fmt
       p_l
+
+  let unit_const w_l = w_l = []
+
+  let right_simplify _ = false
+
+  let equivalent_const _ _ = false
 end
 
 module P = Problem.Make(S)

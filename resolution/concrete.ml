@@ -765,19 +765,16 @@ let build_increasing_indexes_constraints csys =
   let indexes = all_iof_constraints csys in
 
   let add_increasing_indexes_constraints c indexes_for_c lsys =
-    (* N^2 *)
-    let add_constraint j lsys =
-      let add_constraint_relative j' lsys =
-        if j' <= j then lsys
-        else
-          let t1 = one, Iof (c, j') in
-          let t2 = neg one, Iof (c, j) in
-          let c = (j' - j) / csys.max_burst in
-          Ge ([t1; t2], c) :: lsys
-      in
-      Int.Set.fold add_constraint_relative indexes_for_c lsys
+    let min_j = Int.Set.min_elt indexes_for_c in
+    let indexes_for_c = Int.Set.remove min_j indexes_for_c in
+    let add_constraint j' (j, lsys) =
+      let t1 = one, Iof (c, j') in
+      let t2 = neg one, Iof (c, j) in
+      let c = (j' - j) / csys.max_burst in
+      j', Ge ([t1; t2], c) :: lsys
     in
-    Int.Set.fold add_constraint indexes_for_c lsys
+    let _, lsys = Int.Set.fold add_constraint indexes_for_c (min_j, lsys) in
+    lsys
   in
 
   let increasing_indexes =

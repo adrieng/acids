@@ -857,7 +857,7 @@ let solve_linear_system
   Format.print_flush ();
 
   let lsol =
-    try Utils.time_call (Linear_solver.solve ~verbose:(verbose >= 2)) lsys
+    try Linear_solver.solve ~verbose:(verbose >= 2) lsys
     with
       Linear_solver.Error err ->
         (
@@ -936,6 +936,7 @@ let solve sys =
     let max_burst = find_int ~default:Int.one sys.options "max_burst" in
     make_concrete_system ~k ~k' ~max_burst sys
   in
+
   let csys = compute_sampler_sizes csys in
   let csys = solve_balance_equations verbose csys in
   let csys = choose_nbones_unknowns csys in

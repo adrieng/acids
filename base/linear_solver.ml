@@ -317,7 +317,9 @@ let read_solution sys sol_fn =
       Utils.Env.add var s solutions
     in
 
-    let res = List.fold_left read_column_solution Utils.Env.empty ordered_vars in
+    let res =
+      List.fold_left read_column_solution Utils.Env.empty ordered_vars
+    in
     close_in sol_file;
     res
   with
@@ -337,8 +339,9 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
         if sys.ls_constraints <> []
         then sys
         else
-          (* Since stupid linear solvers such as GLPK do not accept empty Subject To sections,
-             we add a dummy variable and trivial constraint "dummy = 0". *)
+          (* Since stupid linear solvers such as GLPK do not accept empty
+             Subject To sections, we add a dummy variable and trivial constraint
+             "dummy = 0". *)
           let dummy_v =
             let rec find i =
               let v = "dummy" ^ string_of_int i in
@@ -385,7 +388,11 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
 
       if verbose then Format.printf "(* Running: %s *)@." cmd;
 
-      let status = Sys.command cmd in
+      let status =
+        if verbose
+        then Utils.time_call ~name:"to linear solver" Sys.command cmd
+        else Sys.command cmd
+      in
 
       if verbose then Format.printf "(* Solving process terminated. *)@\n";
 

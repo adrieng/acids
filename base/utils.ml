@@ -312,7 +312,7 @@ let time_call ?(name = "") f x =
   let start = Unix.gettimeofday () in
   let r = f x in
   let stop = Unix.gettimeofday () in
-  Format.eprintf "Call %stook %f seconds.@."
+  Format.eprintf "(* Call %stook %f seconds. *)@."
     (if name = "" then "" else name ^ " ")
     (stop -. start);
   r

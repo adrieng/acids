@@ -271,7 +271,7 @@ and eval_pattern env p v =
     add_var env id v
   | P_tuple p_l ->
     let mk (i, env) p =
-      let v = List.nth (get_tuple v) i in
+      let v = lazy (force (List.nth (get_tuple v) i)) in
       i + 1, eval_pattern env p v
     in
     let _, env = List.fold_left mk (0, env) p_l in

@@ -371,7 +371,7 @@ let compute_sampler_sizes csys =
         k'_x * |p_x.v|_1 = k'_y * |p_y.v|_1
 
 *)
-let solve_balance_equations debug csys =
+let solve_balance_equations verbose csys =
   let open Int in
 
   let r = ref 0 in
@@ -436,10 +436,12 @@ let solve_balance_equations debug csys =
     set_objective_function lsys (minimize_all_variables lsys)
   in
 
+  Format.print_flush ();
+
   (* Solve it *)
   let sol =
     let open Linear_solver in
-    try solve ~verbose:debug lsys
+    try solve ~verbose:Pervasives.(verbose >= 2) lsys
     with
     | Error Could_not_solve ->
       Resolution_errors.rate_inconsistency ()
@@ -773,10 +775,10 @@ let build_sufficient_indexes_constraints csys =
 
   { csys with sufficient_indexes = sufficient_indexes; }
 
-let is_in_debug_mode sys =
-  Resolution_options.find_bool ~default:false sys.options "debug"
-
-let solve_linear_system debug ?(max_int = Int.of_int Pervasives.max_int) csys =
+let solve_linear_system
+    verbose
+    ?(max_int = Int.of_int Pervasives.max_int)
+    csys =
   let find_size_var (size_vars, indexes_vars, lsys) c =
     try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
     with Not_found ->
@@ -852,8 +854,10 @@ let solve_linear_system debug ?(max_int = Int.of_int Pervasives.max_int) csys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in
 
+  Format.print_flush ();
+
   let lsol =
-    try Linear_solver.solve ~verbose:debug lsys
+    try Utils.time_call (Linear_solver.solve ~verbose:(verbose >= 2)) lsys
     with
       Linear_solver.Error err ->
         (
@@ -866,7 +870,7 @@ let solve_linear_system debug ?(max_int = Int.of_int Pervasives.max_int) csys =
 
   in
 
-  if debug
+  if verbose >= 4
   then
     Format.printf "(* Solution: @[%a@] *)@."
       (Linear_solver.Env.print Linear_solver.print_var Int.print) lsol;
@@ -924,7 +928,8 @@ let solve_linear_system debug ?(max_int = Int.of_int Pervasives.max_int) csys =
 
 let solve sys =
   let open Resolution_options in
-  let debug = is_in_debug_mode sys in
+  let verbose = Int.to_int (find_int ~default:Int.zero sys.options "verbose") in
+
   let csys =
     let k = find_int ~default:Int.zero sys.options "k" in
     let k' = find_int ~default:Int.one sys.options "k'" in
@@ -932,9 +937,9 @@ let solve sys =
     make_concrete_system ~k ~k' ~max_burst sys
   in
   let csys = compute_sampler_sizes csys in
-  let csys = solve_balance_equations debug csys in
+  let csys = solve_balance_equations verbose csys in
   let csys = choose_nbones_unknowns csys in
-  if debug
+  if verbose >= 1
   then
     Format.printf "(* Adjusted concrete system: @[%a@] *)@."
       print_concrete_system csys;
@@ -948,7 +953,7 @@ let solve sys =
   let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
   let csys = build_sufficient_indexes_constraints csys in
-  if debug
+  if verbose >= 4
   then
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
@@ -956,6 +961,6 @@ let solve sys =
     let max_int =
       find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
     in
-    solve_linear_system ~max_int debug csys
+    solve_linear_system ~max_int verbose csys
   in
   Utils.Env.map Pword.to_tree_pword sol

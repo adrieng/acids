@@ -18,7 +18,7 @@
 open Resolution
 open Resolution_errors
 
-let debug = ref false
+let verbose = ref 0
 
 let global_max_burst = ref 1
 
@@ -61,8 +61,8 @@ let do_sys sys =
     let open Resolution_options in
     let opts =
       [
-        "debug", Bool !debug;
-        "check", Bool !debug;
+        "verbose", Int (Int.of_int !verbose);
+        "check", Bool (!verbose >= 1);
         "max_burst", Int (Int.of_int !global_max_burst);
         "max_int", Int (Int.of_int !global_max_int);
         "k", Int (Int.of_int !k);
@@ -116,9 +116,9 @@ let _ =
         Unit Tests.self_test,
         " run self tests";
 
-        "-debug",
-        Unit (fun () -> debug := true),
-        " enable debug mode";
+        "-v",
+        Int (fun i -> assert (i >= 0); verbose := i),
+        " verbosity";
 
         "-mb",
         Int (fun i -> assert (i >= 0); global_max_burst := i),

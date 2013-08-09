@@ -22,6 +22,8 @@ let debug = ref false
 
 let global_max_burst = ref 1
 
+let global_max_int = ref Pervasives.max_int
+
 let k = ref 0
 
 let k' = ref 1
@@ -62,6 +64,7 @@ let do_sys sys =
         "debug", Bool !debug;
         "check", Bool !debug;
         "max_burst", Int (Int.of_int !global_max_burst);
+        "max_int", Int (Int.of_int !global_max_int);
         "k", Int (Int.of_int !k);
         "k'", Int (Int.of_int !k');
         "unrefined", Bool !unrefined;
@@ -120,6 +123,10 @@ let _ =
         "-mb",
         Int (fun i -> assert (i >= 0); global_max_burst := i),
         " maximum burst";
+
+        "-mi",
+        Int (fun i -> assert (i >= 0); global_max_int := i),
+        " maximum int";
 
         "-nbones_pref",
         Int (fun i -> assert (i >= 0); k := i),

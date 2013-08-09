@@ -776,7 +776,7 @@ let build_sufficient_indexes_constraints csys =
 let is_in_debug_mode sys =
   Resolution_options.find_bool ~default:false sys.options "debug"
 
-let solve_linear_system debug csys =
+let solve_linear_system debug ?(max_int = Int.of_int Pervasives.max_int) csys =
   let find_size_var (size_vars, indexes_vars, lsys) c =
     try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
     with Not_found ->
@@ -847,9 +847,7 @@ let solve_linear_system debug csys =
       csys
   in
 
-  let lsys =
-    Linear_solver.bound_all_variables lsys (Int.one, Int.of_int Pervasives.max_int)
-  in
+  let lsys = Linear_solver.bound_all_variables lsys (Int.one, max_int) in
   let lsys =
     Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
   in
@@ -954,5 +952,10 @@ let solve sys =
   then
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
-  let sol = solve_linear_system debug csys in
+  let sol =
+    let max_int =
+      find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
+    in
+    solve_linear_system ~max_int debug csys
+  in
   Utils.Env.map Pword.to_tree_pword sol

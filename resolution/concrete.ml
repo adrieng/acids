@@ -497,12 +497,15 @@ let build_synchronizability_constraints csys =
   in
 
   let synchronizability =
-    List.fold_left add_synchronizability_constraint csys.synchronizability csys.constraints
+    List.fold_left
+      add_synchronizability_constraint
+      csys.synchronizability
+      csys.constraints
   in
 
   { csys with synchronizability = synchronizability; }
 
-let build_precedence_constraints csys =
+let build_direct_precedence_constraints csys =
   let add_precedence_constraints lsys ((co_x, p_x), (co_y, p_y)) =
     let open Int in
     let open Pword in
@@ -607,7 +610,10 @@ let build_refined_precedence_constraints csys =
 
   { csys with precedence = precedence; }
 
-let build_precedence_constraints = build_precedence_constraints
+let build_precedence_constraints ?(build_unrefined = false) sys =
+  if build_unrefined
+  then build_direct_precedence_constraints sys
+  else build_refined_precedence_constraints sys
 
 let build_periodicity_constraints csys =
   let module S =
@@ -919,13 +925,12 @@ let solve_linear_system debug csys =
   Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 
 let solve sys =
+  let open Resolution_options in
   let debug = is_in_debug_mode sys in
   let csys =
-    let k = Resolution_options.find_int ~default:Int.zero sys.options "k" in
-    let k' = Resolution_options.find_int ~default:Int.one sys.options "k'" in
-    let max_burst =
-      Resolution_options.find_int ~default:Int.one sys.options "max_burst"
-    in
+    let k = find_int ~default:Int.zero sys.options "k" in
+    let k' = find_int ~default:Int.one sys.options "k'" in
+    let max_burst = find_int ~default:Int.one sys.options "max_burst" in
     make_concrete_system ~k ~k' ~max_burst sys
   in
   let csys = compute_sampler_sizes csys in
@@ -936,7 +941,10 @@ let solve sys =
     Format.printf "(* Adjusted concrete system: @[%a@] *)@."
       print_concrete_system csys;
   let csys = build_synchronizability_constraints csys in
-  let csys = build_precedence_constraints csys in
+  let csys =
+    let build_unrefined = find_bool ~default:false sys.options "unrefined" in
+    build_precedence_constraints ~build_unrefined csys
+  in
   let csys = build_periodicity_constraints csys in
   let csys = build_sufficient_size_constraints csys in
   let csys = build_split_prefix_period_constraints csys in

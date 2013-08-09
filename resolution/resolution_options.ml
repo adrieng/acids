@@ -52,7 +52,8 @@ type actual_type = string
 
 exception Option_error of option_name * expected_type * actual_type
 
-let option_error name exp_ty act_ty = raise (Option_error (name, exp_ty, act_ty))
+let option_error name exp_ty act_ty =
+  raise (Option_error (name, exp_ty, act_ty))
 
 let find_bool ~default env s =
   try

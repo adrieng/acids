@@ -26,6 +26,8 @@ let k = ref 0
 
 let k' = ref 1
 
+let unrefined = ref false
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -62,6 +64,7 @@ let do_sys sys =
         "max_burst", Int (Int.of_int !global_max_burst);
         "k", Int (Int.of_int !k);
         "k'", Int (Int.of_int !k');
+        "unrefined", Bool !unrefined;
       ]
     in
 
@@ -125,6 +128,10 @@ let _ =
         "-nbones",
         Int (fun i -> assert (i >= 1); k' := i),
         " period adjustment factor for concrete resolution";
+
+        "-unrefined",
+        Unit (fun () -> unrefined := true),
+        " build unrefined precedence constraints in resolution";
       ]
   in
   let files = ref [] in

@@ -360,7 +360,9 @@ let compute_sampler_sizes csys =
     match co with
     | None -> env
     | Some c ->
-      let size_u, size_v = try Utils.Env.find c env with Not_found -> zero, one in
+      let size_u, size_v =
+        try Utils.Env.find c env with Not_found -> zero, one
+      in
 
       let size_u = max size_u (size p.u) in
       let size_v = lcm size_v (size p.v) in

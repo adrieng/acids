@@ -20,6 +20,12 @@ open Resolution_errors
 
 let debug = ref false
 
+let global_max_burst = ref 1
+
+let k = ref 0
+
+let k' = ref 1
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -49,10 +55,24 @@ let do_sys sys =
   let sys =
     let open Resolution in
     let open Resolution_options in
-    let opts = [make "debug" (Bool !debug); make "check" (Bool !debug)] in
-    if !debug
-    then { sys with options = List.fold_left add sys.options opts; }
-    else sys
+    let opts =
+      [
+        "debug", Bool !debug;
+        "check", Bool !debug;
+        "max_burst", Int (Int.of_int !global_max_burst);
+        "k", Int (Int.of_int !k);
+        "k'", Int (Int.of_int !k');
+      ]
+    in
+
+    let add options (k, v) =
+      let already_present =
+        try ignore (find options k); true with Not_found -> false
+      in
+      if already_present then options else add options (make k v)
+    in
+
+    { sys with options = List.fold_left add sys.options opts; }
   in
 
   Format.printf "System: @[%a@]@\n" print_system sys;
@@ -86,8 +106,25 @@ let _ =
     let open Arg in
     align
       [
-        "-test", Unit Tests.self_test, " run self tests";
-        "-debug", Unit (fun () -> debug := true), " enable debug mode";
+        "-test",
+        Unit Tests.self_test,
+        " run self tests";
+
+        "-debug",
+        Unit (fun () -> debug := true),
+        " enable debug mode";
+
+        "-mb",
+        Int (fun i -> assert (i >= 0); global_max_burst := i),
+        " maximum burst";
+
+        "-nbones_pref",
+        Int (fun i -> assert (i >= 0); k := i),
+        " prefix adjustment factor for concrete resolution";
+
+        "-nbones",
+        Int (fun i -> assert (i >= 1); k' := i),
+        " period adjustment factor for concrete resolution";
       ]
   in
   let files = ref [] in

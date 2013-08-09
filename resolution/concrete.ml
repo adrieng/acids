@@ -241,6 +241,7 @@ let fold_left_over_linear_constraints f acc csys =
    concrete system. *)
 let make_concrete_system
     ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 1)
+    ?(complete = false)
     sys =
   assert (k >= Int.zero);
   assert (k' >= Int.one);
@@ -267,7 +268,7 @@ let make_concrete_system
   in
 
   let check_rigid_constraints sys =
-    let check_rigid_constr c sys =
+    let check_rigid_constr sys c =
       match c.lhs.var, c.rhs.var with
       | None, None ->
         let lhs = Utils.get_single c.lhs.const in
@@ -282,12 +283,34 @@ let make_concrete_system
         sys
       | _ -> c :: sys
     in
-    { sys with body = List.fold_right check_rigid_constr sys.body []; }
+    { sys with body = List.fold_left check_rigid_constr [] sys.body; }
   in
 
-  let sys =
-    lower_equality_constraints (check_rigid_constraints (reduce_on sys))
+  (* Simpify "c_x on p = c_y on p" into "c_x on (1) = c_y on (1)".
+     This is correct but not complete. *)
+  let simplify_equalities_same_p sys =
+    let simplify_equality_same_p sys c =
+      match c.kind with
+      | Equal ->
+        let lhs = Utils.get_single c.lhs.const in
+        let rhs = Utils.get_single c.lhs.const in
+        if Pword.equal lhs rhs
+        then
+          let lhs = { c.lhs with const = [Pword.unit_pword]; } in
+          let rhs = { c.rhs with const = [Pword.unit_pword]; } in
+          { c with lhs = lhs; rhs = rhs; } :: sys
+        else
+          c :: sys
+      | Adapt -> c :: sys
+    in
+    { sys with body = List.fold_left simplify_equality_same_p [] sys.body; }
   in
+
+  let sys = reduce_on sys in
+  let sys = check_rigid_constraints sys in
+  let sys = if not complete then simplify_equalities_same_p sys else sys in
+  let sys = lower_equality_constraints sys in
+
   let extract c =
     assert (c.kind = Adapt);
     (c.lhs.var, Utils.get_single c.lhs.const),
@@ -371,9 +394,7 @@ let compute_sampler_sizes csys =
         k'_x * |p_x.v|_1 = k'_y * |p_y.v|_1
 
 *)
-let solve_balance_equations verbose csys =
-  let open Int in
-
+let solve_balance_equations verbose max_int csys =
   let r = ref 0 in
 
   let find_c lsys env c =
@@ -382,10 +403,12 @@ let solve_balance_equations verbose csys =
       let open Linear_solver in
       let lsys, k' = add_variable lsys (c ^ "_k'") in
       let lsys =
-        bound_variable (Int.one, Int.of_int Pervasives.max_int) lsys k'
+        bound_variable (Int.one, max_int) lsys k'
       in
       k', lsys, Utils.Env.add c k' env
   in
+
+  let open Int in
 
   let add_balance_equations (lsys, env) ((co_x, p_x), (co_y, p_y)) =
     let open Linear_solver in
@@ -777,7 +800,7 @@ let build_sufficient_indexes_constraints csys =
 
 let solve_linear_system
     verbose
-    ?(max_int = Int.of_int Pervasives.max_int)
+    max_int
     csys =
   let find_size_var (size_vars, indexes_vars, lsys) c =
     try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
@@ -929,16 +952,20 @@ let solve_linear_system
 let solve sys =
   let open Resolution_options in
   let verbose = Int.to_int (find_int ~default:Int.zero sys.options "verbose") in
+  let max_int =
+    find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
+  in
 
   let csys =
     let k = find_int ~default:Int.zero sys.options "k" in
     let k' = find_int ~default:Int.one sys.options "k'" in
     let max_burst = find_int ~default:Int.one sys.options "max_burst" in
-    make_concrete_system ~k ~k' ~max_burst sys
+    let complete = find_bool ~default:false sys.options "complete" in
+    make_concrete_system ~k ~k' ~max_burst ~complete sys
   in
 
   let csys = compute_sampler_sizes csys in
-  let csys = solve_balance_equations verbose csys in
+  let csys = solve_balance_equations verbose max_int csys in
   let csys = choose_nbones_unknowns csys in
   if verbose >= 1
   then
@@ -958,10 +985,5 @@ let solve sys =
   then
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
-  let sol =
-    let max_int =
-      find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
-    in
-    solve_linear_system ~max_int verbose csys
-  in
+  let sol = solve_linear_system verbose max_int csys in
   Utils.Env.map Pword.to_tree_pword sol

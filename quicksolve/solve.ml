@@ -30,6 +30,8 @@ let k' = ref 1
 
 let unrefined = ref false
 
+let complete = ref false
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -68,6 +70,7 @@ let do_sys sys =
         "k", Int (Int.of_int !k);
         "k'", Int (Int.of_int !k');
         "unrefined", Bool !unrefined;
+        "complete", Bool !complete;
       ]
     in
 
@@ -130,15 +133,19 @@ let _ =
 
         "-nbones_pref",
         Int (fun i -> assert (i >= 0); k := i),
-        " prefix adjustment factor for concrete resolution";
+        " prefix adjustment factor (concrete resolution)";
 
         "-nbones",
         Int (fun i -> assert (i >= 1); k' := i),
-        " period adjustment factor for concrete resolution";
+        " period adjustment factor (concrete resolution)";
 
         "-unrefined",
         Unit (fun () -> unrefined := true),
-        " build unrefined precedence constraints in resolution";
+        " build unrefined precedence constraints (concrete resolution)";
+
+        "-complete",
+        Unit (fun () -> complete := true),
+        " disable incomplete heuristics (concrete resolution)";
       ]
   in
   let files = ref [] in

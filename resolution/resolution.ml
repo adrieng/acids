@@ -23,7 +23,7 @@ struct
   let print_const ~has_var fmt p_l =
     if has_var && List.length p_l >= 1 then Format.fprintf fmt "on ";
     Utils.print_list_r
-      (Tree_word.print_upword Int.print Int.print)
+      (Tree_word.print_upword_int Int.print)
       " on"
       fmt
       p_l

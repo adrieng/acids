@@ -74,7 +74,7 @@ struct
 
   let print_system fmt sys =
     Format.fprintf fmt "@[{ @[<v>%a@] }"
-      (Utils.print_list_r print_wconstr ";") sys.body;
+      (Utils.print_list_r print_wconstr "") sys.body;
     if not (Resolution_options.is_empty sys.options)
     then
       Format.fprintf fmt "@ with @[%a@]"

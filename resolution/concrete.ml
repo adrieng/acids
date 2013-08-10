@@ -304,7 +304,7 @@ let make_concrete_system
       match c.kind with
       | Equal ->
         let lhs = Utils.get_single c.lhs.const in
-        let rhs = Utils.get_single c.lhs.const in
+        let rhs = Utils.get_single c.rhs.const in
         if Pword.equal lhs rhs
         then
           let lhs = { c.lhs with const = [Pword.unit_pword]; } in

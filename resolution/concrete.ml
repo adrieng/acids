@@ -252,6 +252,7 @@ let fold_left_over_linear_constraints f acc csys =
 let make_concrete_system
     ?(k = Int.zero) ?(k' = Int.one) ?(max_burst = Int.of_int 1)
     ?(complete = false)
+    verbose
     sys =
   assert (k >= Int.zero);
   assert (k' >= Int.one);
@@ -316,10 +317,29 @@ let make_concrete_system
     { sys with body = List.fold_left simplify_equality_same_p [] sys.body; }
   in
 
+  let p_sys pref sys =
+    if verbose >= 5
+    then
+      (
+        Format.printf "(* %s: @[%a@] *)@." pref print_system sys;
+        flush stdout
+      )
+  in
+
   let sys = reduce_on sys in
+  p_sys "Reduced system" sys;
   let sys = check_rigid_constraints sys in
-  let sys = if not complete then simplify_equalities_same_p sys else sys in
+  p_sys "System without rigid constraints" sys;
+  let sys =
+    if not complete
+    then
+      let sys = simplify_equalities_same_p sys in
+      p_sys "System without same p equations" sys;
+      sys
+    else sys
+  in
   let sys, pre_sol = simplify_redundant_equations sys in
+  p_sys "System without redundant equations" sys;
   let sys = lower_equality_constraints sys in
 
   let extract c =
@@ -992,7 +1012,7 @@ let solve sys =
     let k' = find_int ~default:Int.one sys.options "k'" in
     let max_burst = find_int ~default:Int.one sys.options "max_burst" in
     let complete = find_bool ~default:false sys.options "complete" in
-    make_concrete_system ~k ~k' ~max_burst ~complete sys
+    make_concrete_system ~k ~k' ~max_burst ~complete verbose sys
   in
 
   let csys = compute_sampler_sizes csys in

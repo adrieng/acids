@@ -960,6 +960,26 @@ let solve_linear_system
   in
   Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 
+(* This function takes a system, a pre-solution (mapping eliminated
+   unknowns to unknowns) and a solution (mapping unknowns to words),
+   and returns a solution *)
+let build_solution sys pre_sol sol =
+  let add_sol c final_sol =
+    (* Three cases, examinated in order:
+       - c -> p is present in sol, we map c to p in final_sol
+       - c -> c_final is present in pre_sol, we look for c_final into sol
+       - c is absent in both pre_sol and sol, then it was
+       completely eliminated and we map it to (1) *)
+    let p =
+      try Utils.Env.find c sol
+      with Not_found ->
+        try Utils.Env.find (Utils.Env.find c pre_sol) sol
+        with Not_found -> Pword.unit_pword
+    in
+    Utils.Env.add c (Pword.to_tree_pword p) final_sol
+  in
+  Utils.String_set.fold add_sol (unknowns_of_system sys) Utils.Env.empty
+
 let solve sys =
   let open Resolution_options in
   let verbose = Int.to_int (find_int ~default:Int.zero sys.options "verbose") in
@@ -997,9 +1017,4 @@ let solve sys =
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
   let sol = solve_linear_system verbose max_int csys in
-
-  let sol = Utils.Env.map Pword.to_tree_pword sol in
-  let add_pre_sol c_simplified c sol =
-    Utils.Env.add c_simplified (Utils.Env.find c sol) sol
-  in
-  Utils.Env.fold add_pre_sol pre_sol sol
+  build_solution sys pre_sol sol

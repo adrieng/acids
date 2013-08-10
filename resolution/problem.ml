@@ -156,4 +156,17 @@ struct
     in
 
     { sys with body = List.map propagate_constraint body; }, pre_sol
+
+  let unknowns_of_system sys =
+    let unknowns_of_side unknowns side =
+      match side.var with
+      | None -> unknowns
+      | Some c -> Utils.String_set.add c unknowns
+    in
+
+    let unknowns_of_constraint unknowns cstr =
+      unknowns_of_side (unknowns_of_side unknowns cstr.lhs) cstr.rhs
+    in
+
+    List.fold_left unknowns_of_constraint Utils.String_set.empty sys.body
 end

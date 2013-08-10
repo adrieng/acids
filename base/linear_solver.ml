@@ -96,9 +96,12 @@ let make_equality x c y c' =
   }
 
 let add_vars_of_terms sys terms =
-  let vars = List.map snd terms in
-  { sys with
-    ls_variables = List.fold_right Utils.String_set.add vars sys.ls_variables; }
+  let vars = List.rev_map snd terms in
+  {
+    sys with
+      ls_variables =
+      List.fold_left (Utils.flip Utils.String_set.add) sys.ls_variables vars;
+  }
 
 let factor_variables_in_constraint lc =
   let open Int in

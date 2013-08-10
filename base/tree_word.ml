@@ -107,10 +107,10 @@ let flatten_power_tree_no_power pt =
 let flatten_upword_no_power { u = u; v = v; } =
   flatten_power_tree_no_power u @ flatten_power_tree_no_power v
 
-let rec width_tree pt =
+let rec size_tree pt =
   match pt with
   | Leaf _ -> 1
-  | Power (pt, _) -> width_tree pt
-  | Concat pt_l -> List.fold_left (+) 0 (List.map width_tree pt_l)
+  | Power (pt, _) -> 1 + size_tree pt
+  | Concat pt_l -> List.fold_left (+) 0 (List.map size_tree pt_l)
 
-let width_upword { u = u; v = v } = width_tree u, width_tree v
+let size_upword { u = u; v = v } = size_tree u, size_tree v

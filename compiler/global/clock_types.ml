@@ -473,7 +473,7 @@ let simplify_on_st ?(u_factor = 1) ?(v_factor = 1) st =
           List.fold_left
             (fun (x, y) (a, b) -> x + a, y + b)
             (0, 0)
-            (List.map Tree_word.width_upword p_l)
+            (List.map Tree_word.size_upword p_l)
         in
         Int.of_int (u_factor * total_ce_u_size),
         Int.of_int (v_factor * total_ce_v_size)
@@ -484,7 +484,7 @@ let simplify_on_st ?(u_factor = 1) ?(v_factor = 1) st =
 
       let on_u_size, on_v_size = Pword.(size p.u, size p.v) in
 
-      if Int.(total_ce_u_size <= on_u_size || total_ce_v_size <= on_v_size)
+      if Int.(total_ce_u_size + total_ce_v_size <= on_u_size + on_v_size)
       then List.fold_left (fun st ce -> St_on (st, ce)) (skip_noninterp st) ce_l
       else
         St_on (skip_noninterp st, ce_pword_of_pword p)

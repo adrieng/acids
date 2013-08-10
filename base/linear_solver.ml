@@ -389,7 +389,7 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
         replace_vars_in_command ~sys_fn ~sol_fn ~out_fn ~log_fn command
       in
 
-      if verbose then Format.printf "(* Running: %s *)@." cmd;
+      if verbose then (Format.printf "(* Running: %s *)@." cmd; flush stdout);
 
       let status =
         if verbose

@@ -198,11 +198,11 @@ module VarTySt = Ast_misc.MakeVar(PreTySt)
 
 let make_st_var i = St_var i
 
-let rec st_of_pre_st ?(make_st_var = make_st_var) pst =
+let rec st_of_pre_st make_st_var pst =
   let open PreTySt in
   match pst with
-  | Pst_var v -> VarTySt.ty_of_ty_var (st_of_pre_st ~make_st_var) make_st_var v
-  | Pst_on (st, pce) -> St_on (st_of_pre_st ~make_st_var st, ce_of_pre_ce pce)
+  | Pst_var v -> VarTySt.ty_of_ty_var (st_of_pre_st make_st_var) make_st_var v
+  | Pst_on (st, pce) -> St_on (st_of_pre_st make_st_var st, ce_of_pre_ce pce)
 
 let rec unalias_st st =
   let open PreTySt in
@@ -236,18 +236,15 @@ module VarTy = Ast_misc.MakeVar(PreTy)
 
 let make_ty_var i = Ct_var i
 
-let rec ty_of_pre_ty
-    ?(make_st_var = make_st_var)
-    ?(make_ty_var = make_ty_var)
-    pty =
+let rec ty_of_pre_ty make_st_var make_ty_var pty =
   let open PreTy in
   match pty with
   | Pct_var v ->
-    VarTy.ty_of_ty_var (ty_of_pre_ty ~make_st_var ~make_ty_var) make_ty_var v
+    VarTy.ty_of_ty_var (ty_of_pre_ty make_st_var make_ty_var) make_ty_var v
   | Pct_stream pst ->
-    Ct_stream (st_of_pre_st ~make_st_var pst)
+    Ct_stream (st_of_pre_st make_st_var pst)
   | Pct_prod pty_l ->
-    Ct_prod (List.map (ty_of_pre_ty ~make_ty_var) pty_l)
+    Ct_prod (List.map (ty_of_pre_ty make_st_var make_ty_var) pty_l)
 
 let rec unalias_ty ty =
   let open PreTy in
@@ -289,22 +286,19 @@ let print_ty_constr_desc fmt tycd =
 let print_ty_constr fmt tyc =
   print_ty_constr_desc fmt tyc.desc
 
-let clock_constr_of_ty_constr
-    ?(make_st_var = make_st_var)
-    ?(make_ty_var = make_ty_var)
-    cstr =
+let clock_constr_of_ty_constr make_st_var make_ty_var cstr =
   match cstr.desc with
   | Tc_adapt (st1, st2) ->
-    let st1 = st_of_pre_st ~make_st_var st1 in
-    let st2 = st_of_pre_st ~make_st_var st2 in
+    let st1 = st_of_pre_st make_st_var st1 in
+    let st2 = st_of_pre_st make_st_var st2 in
     Cc_adapt (st1, st2)
   | Tc_equal (t1, t2) ->
-    let t1 = ty_of_pre_ty ~make_st_var ~make_ty_var t1 in
-    let t2 = ty_of_pre_ty ~make_st_var ~make_ty_var t2 in
+    let t1 = ty_of_pre_ty make_st_var make_ty_var t1 in
+    let t2 = ty_of_pre_ty make_st_var make_ty_var t2 in
     Cc_equal (t1, t2)
   | Tc_equal_st (st1, st2) ->
-    let st1 = st_of_pre_st ~make_st_var st1 in
-    let st2 = st_of_pre_st ~make_st_var st2 in
+    let st1 = st_of_pre_st make_st_var st1 in
+    let st2 = st_of_pre_st make_st_var st2 in
     Cc_equal (Ct_stream st1, Ct_stream st2)
 
 let reset_st, fresh_st =
@@ -537,10 +531,10 @@ let generalize_clock_sig inp out cstrs =
   let make_ty_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
   let ty_sig =
     {
-      ct_sig_input = ty_of_pre_ty ~make_st_var ~make_ty_var inp;
-      ct_sig_output = ty_of_pre_ty ~make_st_var ~make_ty_var out;
+      ct_sig_input = ty_of_pre_ty make_st_var make_ty_var inp;
+      ct_sig_output = ty_of_pre_ty make_st_var make_ty_var out;
       ct_constraints =
-        List.map (clock_constr_of_ty_constr ~make_st_var ~make_ty_var) cstrs;
+        List.map (clock_constr_of_ty_constr make_st_var make_ty_var) cstrs;
     }
   in
   simplify_sig ty_sig

@@ -259,6 +259,10 @@ struct
   open ANN_INFO
   open A
 
+  let st_of_pre_st = st_of_pre_st make_st_var
+
+  let ty_of_pre_ty = ty_of_pre_ty make_st_var make_ty_var
+
   let update_clock_exp_info { new_annot = na; old_annot = info; } =
     match na with
     | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_clock_exp_info"
@@ -266,7 +270,7 @@ struct
       (
         object
           method ci_data = info#ci_data
-          method ci_clock = Clock_types.st_of_pre_st pst
+          method ci_clock = st_of_pre_st pst
         end
       )
 
@@ -277,7 +281,7 @@ struct
       (
         object
           method pwi_data = info#pwi_data
-          method pwi_clock = Clock_types.st_of_pre_st pst
+          method pwi_clock = st_of_pre_st pst
           end
       )
 
@@ -287,14 +291,14 @@ struct
     | Exp pty ->
       object
         method ei_data = info#ei_data
-        method ei_clock = Clock_types.ty_of_pre_ty pty
+        method ei_clock = ty_of_pre_ty pty
       end
 
   let update_app_info { new_annot = na; old_annot = (); } =
     match na with
     | Exp _ | Node _ | ClockExp _ | Buffer _ -> invalid_arg "update_app_info"
     | App inst ->
-      let trad (i, pst) = i, Clock_types.st_of_pre_st pst in
+      let trad (i, pst) = i, st_of_pre_st pst in
       object
         method ai_clock_inst = List.map trad inst
       end

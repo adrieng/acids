@@ -1,6 +1,6 @@
 #!/bin/sh
 
-PREF=byte
+PREF=native
 CDIR=`dirname $0`
 
 C=$CDIR/asc.$PREF

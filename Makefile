@@ -1,5 +1,5 @@
 # From Acid Synchrone, (c) Adrien Guatto 2013
-PREF=byte
+PREF=native
 
 UNAME := $(shell uname)
 

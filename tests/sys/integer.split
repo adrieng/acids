@@ -44,7 +44,7 @@ $$
 
 {
   c1 on (3) = c0 on (1 0^2 0^2 1 0^2)
-} with check = true, max_burst = 100
+} with check = true, max_burst = 100, k' = 6
 
 $$
 
@@ -52,3 +52,19 @@ $$
   c1 on (0 1 1) <: c2 on (1)
 }
 with max_burst = 2, check = true
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "solve"
+        ]
+*)
+$}
+
+(* Non 1-periodic *)
+
+{
+  c1 on (3) = c0 on (1 0^2 0^2 1 0^2)
+} with check = true, max_burst = 100, k' = 1

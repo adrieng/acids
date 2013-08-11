@@ -80,6 +80,7 @@ type concrete_system =
     sufficient_size : lconstr list;
     split_prefix_period : lconstr list;
     increasing_indexes : lconstr list;
+    max_burst_indexes : lconstr list;
     sufficient_indexes : lconstr list;
   }
 
@@ -135,13 +136,14 @@ let print_linear_systems fmt csys =
       header
       print_linear_system lsys
   in
-  Format.fprintf fmt "%a%a%a%a%a%a%a"
+  Format.fprintf fmt "%a%a%a%a%a%a%a%a"
     (p_header "Synchronizability") csys.synchronizability
     (p_header "Precedence") csys.precedence
     (p_header "Periodicity") csys.periodicity
     (p_header "Sufficient size") csys.sufficient_size
     (p_header "Split prefix period") csys.split_prefix_period
     (p_header "Increasing indexes") csys.increasing_indexes
+    (p_header "Max burst indexes") csys.max_burst_indexes
     (p_header "Sufficient indexes") csys.sufficient_indexes
 
 let print_concrete_system fmt cs =
@@ -244,6 +246,7 @@ let fold_left_over_linear_constraints f acc csys =
   let acc = List.fold_left f acc csys.sufficient_size in
   let acc = List.fold_left f acc csys.split_prefix_period in
   let acc = List.fold_left f acc csys.increasing_indexes in
+  let acc = List.fold_left f acc csys.max_burst_indexes in
   let acc = List.fold_left f acc csys.sufficient_indexes in
   acc
 
@@ -364,6 +367,7 @@ let make_concrete_system
     sufficient_size = [];
     split_prefix_period = [];
     increasing_indexes = [];
+    max_burst_indexes = [];
     sufficient_indexes = [];
   },
   pre_sol
@@ -790,7 +794,7 @@ let build_increasing_indexes_constraints csys =
     let add_constraint j' (j, lsys) =
       let t1 = one, Iof (c, j') in
       let t2 = neg one, Iof (c, j) in
-      let c = (j' - j) / csys.max_burst in
+      let c = if csys.max_burst = Int.one then j' - j else Int.zero in
       j', Ge ([t1; t2], c) :: lsys
     in
     let _, lsys = Int.Set.fold add_constraint indexes_for_c (min_j, lsys) in
@@ -805,6 +809,57 @@ let build_increasing_indexes_constraints csys =
   in
 
   { csys with increasing_indexes = increasing_indexes; }
+
+let build_indexes_max_burst_constraints csys =
+  let open Int in
+
+  if csys.max_burst = Int.one
+  then csys
+  else
+    let indexes = all_iof_constraints csys in
+
+    let add_max_burst_index_constraints c indexes_for_c lsys =
+      let add_constraint j' (constrained, lsys) =
+        let smaller, jo, constrained = Int.Env.split j' constrained in
+        let jo =
+          match jo with
+          | Some j -> Some j
+          | None ->
+            (
+              try
+                let _, j = Int.Env.max_binding smaller in
+                Some j
+              with Not_found ->
+                None
+            )
+        in
+        Int.Env.add (j' + csys.max_burst) j' constrained,
+        match jo with
+        | None -> lsys
+        | Some j ->
+          assert (j < j');
+          let t1 = one, Iof (c, j') in
+          let t2 = neg one, Iof (c, j) in
+          let c = (j' - j) / csys.max_burst in
+          Ge ([t1; t2], c) :: lsys
+      in
+      let _, lsys =
+        Int.Set.fold
+          add_constraint
+          indexes_for_c
+          (Int.Env.empty, lsys)
+      in
+      lsys
+    in
+
+    let max_burst_indexes =
+      Utils.Env.fold
+        add_max_burst_index_constraints
+        indexes
+        csys.max_burst_indexes
+    in
+
+    { csys with max_burst_indexes = max_burst_indexes; }
 
 (* For all I_c(j) with j minimal,
 
@@ -1031,6 +1086,7 @@ let solve sys =
   let csys = build_sufficient_size_constraints csys in
   let csys = build_split_prefix_period_constraints csys in
   let csys = build_increasing_indexes_constraints csys in
+  let csys = build_indexes_max_burst_constraints csys in
   let csys = build_sufficient_indexes_constraints csys in
   if verbose >= 4
   then

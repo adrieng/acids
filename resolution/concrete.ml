@@ -885,7 +885,8 @@ let build_sufficient_indexes_constraints csys =
   { csys with sufficient_indexes = sufficient_indexes; }
 
 let solve_linear_system
-    verbose
+    ~verbose
+    ~profile
     max_int
     csys =
   let find_size_var (size_vars, indexes_vars, lsys) c =
@@ -966,7 +967,7 @@ let solve_linear_system
   Format.print_flush ();
 
   let lsol =
-    try Linear_solver.solve ~verbose:(verbose >= 2) lsys
+    try Linear_solver.solve ~verbose:(verbose >= 2) ~profile lsys
     with
       Linear_solver.Error err ->
         (
@@ -1061,36 +1062,96 @@ let solve sys =
   let max_int =
     find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
   in
+  let profile = find_bool ~default:false sys.options "profile" in
+
+  let run_profiled pref f x =
+    if profile then Utils.time_call ~name:pref f x else f x
+  in
 
   let csys, pre_sol =
     let k = find_int ~default:Int.zero sys.options "k" in
     let k' = find_int ~default:Int.one sys.options "k'" in
     let max_burst = find_int ~default:Int.one sys.options "max_burst" in
     let complete = find_bool ~default:false sys.options "complete" in
-    make_concrete_system ~k ~k' ~max_burst ~complete verbose sys
+    run_profiled
+      "make_concrete_system"
+      (make_concrete_system ~k ~k' ~max_burst ~complete verbose)
+      sys
   in
 
-  let csys = compute_sampler_sizes csys in
-  let csys = solve_balance_equations verbose max_int csys in
-  let csys = choose_nbones_unknowns csys in
+  let csys =
+    run_profiled "compute_sampler_sizes" compute_sampler_sizes csys
+  in
+  let csys =
+    run_profiled
+      "solve_balance_equations"
+      (solve_balance_equations verbose max_int)
+      csys
+  in
+  let csys =
+    run_profiled "choose_nbones_unknowns" choose_nbones_unknowns csys
+  in
   if verbose >= 1
   then
     Format.printf "(* Adjusted concrete system: @[%a@] *)@."
       print_concrete_system csys;
-  let csys = build_synchronizability_constraints csys in
+  let csys =
+    run_profiled
+      "build_synchronizability_constraints"
+      build_synchronizability_constraints
+      csys
+  in
   let csys =
     let build_unrefined = find_bool ~default:false sys.options "unrefined" in
-    build_precedence_constraints ~build_unrefined csys
+    run_profiled
+      "build_precedence_constraints"
+      (build_precedence_constraints ~build_unrefined)
+      csys
   in
-  let csys = build_periodicity_constraints csys in
-  let csys = build_sufficient_size_constraints csys in
-  let csys = build_split_prefix_period_constraints csys in
-  let csys = build_increasing_indexes_constraints csys in
-  let csys = build_indexes_max_burst_constraints csys in
-  let csys = build_sufficient_indexes_constraints csys in
+  let csys =
+    run_profiled
+      "build_periodicity_constraints"
+      build_periodicity_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_sufficient_indexes_constraints"
+      build_sufficient_size_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_split_prefix_period_constraints"
+      build_split_prefix_period_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_increasing_indexes_constraints"
+      build_increasing_indexes_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_indexes_max_burst_constraints"
+      build_indexes_max_burst_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_sufficient_indexes_constraints"
+      build_sufficient_indexes_constraints
+      csys
+  in
   if verbose >= 4
   then
     Format.printf "(* Linear system: @[%a@] *)@."
       print_linear_systems csys;
-  let sol = solve_linear_system verbose max_int csys in
+  let sol =
+    run_profiled
+      "solve_linear_system"
+      (solve_linear_system ~verbose ~profile max_int)
+      csys
+  in
   build_solution sys pre_sol sol

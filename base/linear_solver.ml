@@ -332,7 +332,11 @@ let read_solution sys sol_fn =
 
 module Env = Utils.Env
 
-let solve ?(command = default_solver_command) ?(verbose = false) sys =
+let solve
+    ?(command = default_solver_command)
+    ?(verbose = false)
+    ?(profile = false)
+    sys =
   if sys.ls_variables = Utils.String_set.empty then Utils.Env.empty
   else
     (
@@ -392,7 +396,7 @@ let solve ?(command = default_solver_command) ?(verbose = false) sys =
       if verbose then (Format.printf "(* Running: %s *)@." cmd; flush stdout);
 
       let status =
-        if verbose
+        if verbose || profile
         then Utils.time_call ~name:"to linear solver" Sys.command cmd
         else Sys.command cmd
       in

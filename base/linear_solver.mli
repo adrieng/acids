@@ -83,4 +83,8 @@ module Env : Utils.MyMap with type key = var
 type solver_command = string
 
 val solve
-  : ?command : solver_command -> ?verbose:bool -> linear_system -> Int.t Env.t
+  : ?command : solver_command
+  -> ?verbose:bool
+  -> ?profile:bool
+  -> linear_system
+  -> Int.t Env.t

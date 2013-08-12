@@ -43,6 +43,8 @@ val mod_b1 : t -> t -> t
 
 val div_b1 : t -> t -> t
 
+val div_upper : t -> t -> t
+
 val ( <= ) : t -> t -> bool
 
 val ( < ) : t -> t -> bool

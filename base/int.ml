@@ -31,6 +31,8 @@ let mod_b1 x y = succ (pred x mod y)
 
 let div_b1 x y = pred x / y
 
+let div_upper x y = succ (pred x / y)
+
 let ( <= ) = ( <= )
 
 let ( < ) = ( < )

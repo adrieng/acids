@@ -54,6 +54,12 @@ $$
 with max_burst = 2, check = true
 
 $$
+
+{
+  c1 on (4) <: c2 on (0 1^4)
+} with check = true, max_burst = 2, max_int = 100000
+
+$$
 ${
 (*
         run_test:

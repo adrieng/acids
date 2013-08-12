@@ -840,7 +840,7 @@ let build_indexes_max_burst_constraints csys =
           assert (j < j');
           let t1 = one, Iof (c, j') in
           let t2 = neg one, Iof (c, j) in
-          let c = (j' - j) / csys.max_burst in
+          let c = Int.div_upper (j' - j) csys.max_burst in
           Ge ([t1; t2], c) :: lsys
       in
       let _, lsys =

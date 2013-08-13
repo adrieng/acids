@@ -1,2 +1,64 @@
+ACID SYNCHRONE
+==============
+
+This project is a compiler for Acid Synchrone, an experimental first-order
+functional programming language. It is a domain-specific language designed to
+ease the implementation of high-performance reactive systems.
+
+Acid Synchrone programs handle infinite streams of values. The compiler employs
+a sophisticated static analysis (the clock calculus) to reject ill-behaved
+programs and generate efficient code for well-behaved ones.
+
+EXAMPLES
+========
+
+See the examples/ directory.
+
+USING THE COMPILER
+==================
+
+The Acid Synchrone compiler is written in OCaml. To compile it, you need:
+* the OCaml compiler and run-time system: http://caml.inria.fr
+* the OCamlGraph library: http://ocamlgraph.lri.fr
+
+I strongly recommend the use of FindLib to handle OCamlGraph.
+
+Additionaly, to use it to its full extent, you need a linear programming
+solver. Currently, only the GNU Linear Programming Kit is supported.
+
+To compile, just run "make" in the top-level directory, and add this directory
+to your path.
+
+ARCHITECTURE
+============
+
+The directory layout of Acid Synchrone is as follows:
+
+- base/ holds a library of basic modules used in the project
+
+- resolution/ holds a library dedicated to the resolution of sampling problems on
+  ultimately periodic integer words.
+
+- quicksolve/ holds a small stand-alone utility using the abovementioned library,  see tests/sys/ its the textual input format.
+
+- compiler/ holds the... compiler (doh!)
+  - frontend/ is dedicated from syntactic analysis to clocking
+    - asts/ holds the various asts of the front-end. The main AST is a functor,
+      enabling reuse and type-safety through the front-end
+    - parsing/ holds the parser and lexer
+    - typing/ holds the various type-like analysis, from data typing to clock
+      typing.
+    - misc_passes/ holds miscellaneous passes.
+
+Code generation features are not yet implemented.
+
+ACKNOWLEDGMENTS
+===============
+
 This project uses the OCaml Union-Find implemenetation from Pottier, Rémy and
-Régis-Gianas. See global/UnionFind.ml{,i}
+Régis-Gianas. See base/UnionFind.ml{,i}.
+
+Its test infrastructure re-uses code from Plateau and Mandel's Lucy-n
+project. See test/tools.
+
+-- Adrien Guatto <adrien.guatto@laposte.net>

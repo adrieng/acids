@@ -330,10 +330,10 @@ and type_static_exp env se =
       Se_var v, ty
     | Se_econstr ec ->
       Se_econstr ec, static_ty
-    | Se_add (se1, se2) ->
+    | Se_binop (op, se1, se2) ->
       let se1 = type_static_exp env se1 in
       let se2 = type_static_exp env se2 in
-      Se_add (se1, se2), static_ty
+      Se_binop (op, se1, se2), static_ty
   in
   {
     M.se_desc = sed;

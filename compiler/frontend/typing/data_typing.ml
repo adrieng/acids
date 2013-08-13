@@ -376,10 +376,19 @@ and type_static_exp env se =
       Se_var v, find_ident env v
     | Se_econstr ec ->
       Se_econstr ec, type_econstr env ec
-    | Se_add (se1, se2) ->
-      let se1 = expect_static_exp env int_ty se1 in
-      let se2 = expect_static_exp env int_ty se2 in
-      Se_add (se1, se2), int_ty
+    | Se_binop (op, se1, se2) ->
+      let ty_in1, ty_in2, ty_out =
+        List.assoc op
+          [
+            "(+)", (int_ty, int_ty, int_ty);
+            "(-)", (int_ty, int_ty, int_ty);
+            "(*)", (int_ty, int_ty, int_ty);
+            "(/)", (int_ty, int_ty, int_ty);
+          ]
+      in
+      let se1 = expect_static_exp env ty_in1 se1 in
+      let se2 = expect_static_exp env ty_in2 se2 in
+      Se_binop (op, se1, se2), ty_out
   in
   {
     M.se_desc = sed;

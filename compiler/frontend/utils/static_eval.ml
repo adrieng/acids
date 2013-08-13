@@ -264,11 +264,11 @@ and eval_static_exp env se =
     eval_var env v
   | Se_econstr ec ->
     econstr ec
-  | Se_add (se1, se2) ->
+  | Se_binop (op, se1, se2) ->
     let ec1 = eval_static_exp env se1 in
     let ec2 = eval_static_exp env se2 in
-    let add = List.assoc "(+)" builtins in
-    add (lazy (Tuple [lazy ec1; lazy ec2]))
+    let f_op = List.assoc op builtins in
+    f_op (lazy (Tuple [lazy ec1; lazy ec2]))
 
 and eval_pattern env p v =
   match p.p_desc with

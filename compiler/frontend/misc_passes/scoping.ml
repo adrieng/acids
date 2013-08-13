@@ -400,10 +400,19 @@ and scope_static_exps env se =
     | Acids_parsetree.Info.Se_fword i_l ->
       let mk i = Acids_scoped.Info.Se_econstr (Ast_misc.Ec_int i) in
       List.map mk i_l
-    | Acids_parsetree.Info.Se_add (se1, se2) ->
+    | Acids_parsetree.Info.Se_binop (op, se1, se2) ->
+      let binops =
+        [
+          "(+)";
+          "(-)";
+          "(*)";
+          "(/)";
+        ]
+      in
+      assert (List.mem op binops);
       let se1 = scope_static_exp_one env se1 in
       let se2 = scope_static_exp_one env se2 in
-      [Acids_scoped.Info.Se_add (se1, se2)]
+      [Acids_scoped.Info.Se_binop (op, se1, se2)]
   in
   List.map mk ed_l
 

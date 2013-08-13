@@ -17,10 +17,7 @@ let node my_fby_sd_line (p1, p2) =
 let node reorder (p :: 'a1 on (720)) = ((p0, p1, p2) :: 'a) where
   rec p0 = if valof true^720(false) then p1 else my_fby_sd_line (p1, p2)
   and p1 = buffer p
-  and p2 = if valof <(false^first_lines_count true^720)>
-           then p1
-           else (p when false^720(true))
-  and first_lines_count = 720 * 1079
+  and p2 = if valof (false^{720 * 1079} true^720)
 
 @max_burst{10000}
 let node vertical_filter p = o where

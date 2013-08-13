@@ -32,6 +32,8 @@ let unrefined = ref false
 
 let complete = ref false
 
+let profile = ref false
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -71,6 +73,7 @@ let do_sys sys =
         "k'", Int (Int.of_int !k');
         "unrefined", Bool !unrefined;
         "complete", Bool !complete;
+        "profile", Bool !profile;
       ]
     in
 
@@ -146,6 +149,10 @@ let _ =
         "-complete",
         Unit (fun () -> complete := true),
         " disable incomplete heuristics (concrete resolution)";
+
+        "-profile",
+        Unit (fun () -> profile := true),
+        " enable profiling messages";
       ]
   in
   let files = ref [] in

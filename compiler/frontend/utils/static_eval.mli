@@ -37,4 +37,6 @@ val add_local_defs : env -> Acids_static.block -> env
 
 val eval_exp : env -> Acids_static.exp -> desc
 
+val eval_static_exp : env -> Acids_static.static_exp -> desc
+
 val eval_var : env -> Ident.t -> desc

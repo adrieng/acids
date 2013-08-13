@@ -402,37 +402,58 @@ clock_exp_desc:
 | pt = upword(static_exp_novar_fword, static_exp_novar, parens)
    { Acids_parsetree.Ce_pword pt }
 
-%inline clock_exp:
+clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
 
-%inline static_exp_desc:
-| v = IDENT { Acids_parsetree.Info.Se_var v }
-| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
+(******************** STATIC EXPS ********************)
 
-%inline static_exp:
+%inline static_exp_desc:
+| v = IDENT
+   { Acids_parsetree.Info.Se_var v }
+| ec = econstr
+   { Acids_parsetree.Info.Se_econstr ec }
+| se1 = static_exp PLUS se2 = static_exp
+   { Acids_parsetree.Info.Se_add (se1, se2) }
+
+static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
+| se = braces(static_exp) { se }
 
 %inline static_exp_fword_desc:
-| v = IDENT { Acids_parsetree.Info.Se_var v }
-| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
-| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
+| v = IDENT
+   { Acids_parsetree.Info.Se_var v }
+| ec = econstr
+   { Acids_parsetree.Info.Se_econstr ec }
+| i_l = FWORD
+   { Acids_parsetree.Info.Se_fword i_l }
+| se1 = static_exp_fword PLUS se2 = static_exp_fword
+   { Acids_parsetree.Info.Se_add (se1, se2) }
 
-%inline static_exp_fword:
+static_exp_fword:
 | sed = with_loc(static_exp_fword_desc) { make_located make_static_exp sed }
+| se = braces(static_exp_fword) { se }
 
 %inline static_exp_desc_novar:
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 
-%inline static_exp_novar:
+static_exp_novar:
 | sed = with_loc(static_exp_desc_novar) { make_located make_static_exp sed }
+| se = braces(static_exp_novar) { se }
 
 %inline static_exp_novar_fword_desc:
-| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
-| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
+| ec = econstr
+   { Acids_parsetree.Info.Se_econstr ec }
+| i_l = FWORD
+   { Acids_parsetree.Info.Se_fword i_l }
+| se1 = static_exp_novar_fword PLUS se2 = static_exp_novar_fword
+   { Acids_parsetree.Info.Se_add (se1, se2) }
 
-%inline static_exp_novar_fword:
+static_exp_novar_fword:
 | sed = with_loc(static_exp_novar_fword_desc)
    { make_located make_static_exp sed }
+| se = braces(static_exp_novar_fword) { se }
+
+(******************** END STATIC EXPS ********************)
 
 simple_exp_desc:
 | c = const { Acids_parsetree.E_const c }

@@ -370,16 +370,19 @@ and expect_clock_exp env expected_ty ce =
 
 and type_static_exp env se =
   let open Acids_scoped.Info in
-  let ty =
+  let sed, ty =
     match se.se_desc with
-    | Se_var v -> find_ident env v
-    | Se_econstr ec -> type_econstr env ec
+    | Se_var v ->
+      Se_var v, find_ident env v
+    | Se_econstr ec ->
+      Se_econstr ec, type_econstr env ec
+    | Se_add (se1, se2) ->
+      let se1 = expect_static_exp env int_ty se1 in
+      let se2 = expect_static_exp env int_ty se2 in
+      Se_add (se1, se2), int_ty
   in
   {
-    M.se_desc =
-      map_static_exp_desc
-        (fun se -> snd (type_static_exp env se))
-        se.se_desc;
+    M.se_desc = sed;
     M.se_loc = se.se_loc;
     M.se_info = annotate_exp se.se_info ty;
   },

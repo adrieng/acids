@@ -197,10 +197,10 @@ and eval_clock_exp env ce =
       | Ast_misc.Concat [] -> assert false
       | Ast_misc.Concat (x :: _) -> find_any x
     in
-    eval_static_exp (find_any w.Ast_misc.u) env
+    eval_static_exp env (find_any w.Ast_misc.u)
   | Ce_equal (ce, se) ->
     let val_ce = eval_clock_exp env ce in
-    let val_se = eval_static_exp se env in
+    let val_se = eval_static_exp env se in
     bool (equal_val val_ce val_se)
 
 and eval_exp env e =
@@ -256,7 +256,7 @@ and eval_exp env e =
   | E_dom (e, _) | E_buffer (e, _) ->
     eval_exp env e
 
-and eval_static_exp se env =
+and eval_static_exp env se =
   assert (se.se_info#pwi_static <> Static_types.S_dynamic);
   let open Acids_scoped.Info in
   match se.se_desc with
@@ -264,6 +264,11 @@ and eval_static_exp se env =
     eval_var env v
   | Se_econstr ec ->
     econstr ec
+  | Se_add (se1, se2) ->
+    let ec1 = eval_static_exp env se1 in
+    let ec2 = eval_static_exp env se2 in
+    let add = List.assoc "(+)" builtins in
+    add (lazy (Tuple [lazy ec1; lazy ec2]))
 
 and eval_pattern env p v =
   match p.p_desc with

@@ -430,6 +430,10 @@ struct
         let env, v = refresh_var env v in
         Se_var v, env
       | Se_econstr _ -> se.se_desc, env
+      | Se_add (se1, se2) ->
+        let se1, env = refresh_static_exp se1 env in
+        let se2, env = refresh_static_exp se2 env in
+        Se_add (se1, se2), env
     in
     { se with se_desc = sed; }, env
 

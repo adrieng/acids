@@ -154,11 +154,11 @@ and simpl_clock_exp env ce =
   }
 
 and simpl_static_exp env se =
-  let open Acids_scoped.Info in
+  let open Static_eval in
   let ec =
-    match se.se_desc with
-    | Se_var v -> get_econstr (simpl_static_var env v)
-    | Se_econstr ec -> ec
+    match eval_static_exp env.eval_env se with
+    | Const (Ast_misc.Cconstr ec) -> ec
+    | _ -> invalid_arg "ill-typed"
   in
   {
     Acids_prespec.se_desc = ec;

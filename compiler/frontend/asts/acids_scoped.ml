@@ -29,14 +29,20 @@ struct
   type 'a static_exp_desc =
   | Se_var of var
   | Se_econstr of Ast_misc.econstr
-  let print_static_exp_desc _ fmt sed =
+  | Se_add of 'a * 'a
+  let print_static_exp_desc print fmt sed =
     match sed with
     | Se_var s -> Ident.print fmt s
     | Se_econstr ec -> Ast_misc.print_econstr fmt ec
-  let map_static_exp_desc _ sed =
+    | Se_add (se1, se2) ->
+      Format.fprintf fmt "@[%a +@ %a@]"
+        print se1
+        print se2
+  let map_static_exp_desc f sed =
     match sed with
     | Se_var v -> Se_var v
     | Se_econstr ec -> Se_econstr ec
+    | Se_add (se1, se2) -> Se_add (f se1, f se2)
 
   type exp_info = unit
   let print_exp_info = Utils.print_nothing

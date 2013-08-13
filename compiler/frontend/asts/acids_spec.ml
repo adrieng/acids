@@ -42,8 +42,9 @@ struct
       Data_types.print_ty_scal_ann pwi#pwi_data
       (Utils.print_list_r Ast_misc.print_spec_annot "") pwi#pwi_spec
 
-  type static_exp_desc = Ast_misc.econstr
-  let print_static_exp_desc fmt ec = Ast_misc.print_econstr fmt ec
+  type 'a static_exp_desc = 'a Acids_prespec.Info.static_exp_desc
+  let print_static_exp_desc = Acids_prespec.Info.print_static_exp_desc
+  let map_static_exp_desc = Acids_prespec.Info.map_static_exp_desc
 
   type exp_info =
       <

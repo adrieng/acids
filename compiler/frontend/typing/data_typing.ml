@@ -376,7 +376,10 @@ and type_static_exp env se =
     | Se_econstr ec -> type_econstr env ec
   in
   {
-    M.se_desc = se.se_desc;
+    M.se_desc =
+      map_static_exp_desc
+        (fun se -> snd (type_static_exp env se))
+        se.se_desc;
     M.se_loc = se.se_loc;
     M.se_info = annotate_exp se.se_info ty;
   },

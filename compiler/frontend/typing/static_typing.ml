@@ -332,7 +332,7 @@ and type_static_exp env se =
       static_ty
   in
   {
-    M.se_desc = se.se_desc;
+    M.se_desc = map_static_exp_desc (type_static_exp env) se.se_desc;
     M.se_loc = se.se_loc;
     M.se_info = annotate_static_exp se ty;
   }

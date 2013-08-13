@@ -49,8 +49,9 @@ struct
   type static_exp_info = A.I.static_exp_info annot
   let print_static_exp_info = print_annot A.I.print_static_exp_info
 
-  type static_exp_desc = A.I.static_exp_desc
+  type 'a static_exp_desc = 'a A.I.static_exp_desc
   let print_static_exp_desc = A.I.print_static_exp_desc
+  let map_static_exp_desc = A.I.map_static_exp_desc
 
   type exp_info = A.I.exp_info annot
   let print_exp_info = print_annot A.I.print_exp_info
@@ -101,7 +102,7 @@ module MakeMap
   (IN : Acids.A)
   (OUT : Acids.A
    with type I.var = IN.I.var
-   and type I.static_exp_desc = IN.I.static_exp_desc)
+   and type 'a I.static_exp_desc = 'a IN.I.static_exp_desc)
   (M : INFO_MAP with module IN_INFO = IN.I and module OUT_INFO = OUT.I)
   =
 struct
@@ -126,7 +127,7 @@ struct
 
   and extract_static_exp se =
     {
-      OUT.se_desc = se.se_desc;
+      OUT.se_desc = IN.I.map_static_exp_desc extract_static_exp se.se_desc;
       OUT.se_loc = se.se_loc;
       OUT.se_info = M.update_static_exp_info se.se_info;
     }
@@ -297,7 +298,8 @@ end
 module FREEVARS(A : Acids.A
                 with type I.var = Ident.t
                 and type
-                  I.static_exp_desc = Acids_prespec.Info.static_exp_desc) =
+                  'a I.static_exp_desc =
+                       'a Acids_prespec.Info.static_exp_desc) =
 struct
   open A
 
@@ -392,7 +394,7 @@ end
 module REFRESH(A : Acids.A
                with type I.var = Ident.t
                and type
-                 I.static_exp_desc = Acids_scoped.Info.static_exp_desc) =
+                 'a I.static_exp_desc = 'a Acids_scoped.Info.static_exp_desc) =
 struct
   open A
 
@@ -616,7 +618,7 @@ module DEP_GRAPH
   (
     A : Acids.A
    with type I.var = Ident.t
-   and type I.static_exp_desc = Acids_prespec.Info.static_exp_desc
+   and type 'a I.static_exp_desc = 'a Acids_prespec.Info.static_exp_desc
   ) =
 struct
   module G = Graph.Imperative.Digraph.ConcreteBidirectional(Ident)

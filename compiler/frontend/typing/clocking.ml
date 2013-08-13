@@ -263,6 +263,8 @@ struct
 
   let ty_of_pre_ty = ty_of_pre_ty make_st_var make_ty_var
 
+  let map_static_exp_desc _ ec = ec
+
   let update_clock_exp_info { new_annot = na; old_annot = info; } =
     match na with
     | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_clock_exp_info"

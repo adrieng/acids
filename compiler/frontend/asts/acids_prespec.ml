@@ -34,8 +34,9 @@ struct
   let print_static_exp_info fmt (pwi : static_exp_info) =
     Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
-  type static_exp_desc = Ast_misc.econstr
-  let print_static_exp_desc fmt ec = Ast_misc.print_econstr fmt ec
+  type 'a static_exp_desc = Ast_misc.econstr
+  let print_static_exp_desc _ fmt ec = Ast_misc.print_econstr fmt ec
+  let map_static_exp_desc _ ec = ec
 
   type exp_info =
       <

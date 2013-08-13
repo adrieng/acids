@@ -34,8 +34,9 @@ struct
   let print_static_exp_info fmt (pwi : static_exp_info) =
     Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
-  type static_exp_desc = Acids_scoped.Info.static_exp_desc
+  type 'a static_exp_desc = 'a Acids_scoped.Info.static_exp_desc
   let print_static_exp_desc = Acids_scoped.Info.print_static_exp_desc
+  let map_static_exp_desc = Acids_scoped.Info.map_static_exp_desc
 
   type exp_info =
       <

@@ -40,8 +40,9 @@ struct
       Data_types.print_ty_scal_ann pwi#pwi_data
       Clock_types.print_stream_type_ann pwi#pwi_clock
 
-  type static_exp_desc = Acids_spec.Info.static_exp_desc
+  type 'a static_exp_desc = 'a Acids_spec.Info.static_exp_desc
   let print_static_exp_desc = Acids_spec.Info.print_static_exp_desc
+  let map_static_exp_desc = Acids_spec.Info.map_static_exp_desc
 
   type exp_info =
       <

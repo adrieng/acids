@@ -26,13 +26,17 @@ struct
   type static_exp_info = unit
   let print_static_exp_info = Utils.print_nothing
 
-  type static_exp_desc =
+  type 'a static_exp_desc =
   | Se_var of var
   | Se_econstr of Ast_misc.econstr
-  let print_static_exp_desc fmt sed =
+  let print_static_exp_desc _ fmt sed =
     match sed with
     | Se_var s -> Ident.print fmt s
     | Se_econstr ec -> Ast_misc.print_econstr fmt ec
+  let map_static_exp_desc _ sed =
+    match sed with
+    | Se_var v -> Se_var v
+    | Se_econstr ec -> Se_econstr ec
 
   type exp_info = unit
   let print_exp_info = Utils.print_nothing

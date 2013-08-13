@@ -26,8 +26,16 @@ sig
   type static_exp_info
   val print_static_exp_info : Format.formatter -> static_exp_info -> unit
 
-  type static_exp_desc
-  val print_static_exp_desc : Format.formatter -> static_exp_desc -> unit
+  type 'a static_exp_desc
+  val print_static_exp_desc :
+    (Format.formatter -> 'a -> unit) ->
+    Format.formatter ->
+    'a static_exp_desc ->
+    unit
+  val map_static_exp_desc :
+    ('a -> 'b) ->
+    'a static_exp_desc ->
+    'b static_exp_desc
 
   type exp_info
   val print_exp_info : Format.formatter -> exp_info -> unit
@@ -71,7 +79,7 @@ sig
 
   and static_exp =
     {
-      se_desc : I.static_exp_desc;
+      se_desc : static_exp I.static_exp_desc;
       se_loc : Loc.t;
       se_info : I.static_exp_info;
     }
@@ -211,7 +219,7 @@ module Make = functor (S : S) ->
 
     and static_exp =
       {
-        se_desc : I.static_exp_desc;
+        se_desc : static_exp I.static_exp_desc;
         se_loc : Loc.t;
         se_info : I.static_exp_info;
       }

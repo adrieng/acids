@@ -432,3 +432,30 @@ let rec fold_bin_tree_df f acc bt =
   | Leaf x -> f acc x
   | Node (left, right) ->
     fold_bin_tree_df f (fold_bin_tree_df f acc left) right
+
+module MEMOIZE(H : Hashtbl.HashedType) =
+struct
+  module Ht = Hashtbl.Make(H)
+
+  include Ht
+
+  let memoize f =
+    let ht = Ht.create 17 in
+    fun x ->
+      try Ht.find ht x
+      with Not_found ->
+        let y = f x in
+        Ht.add ht x y;
+        y
+
+  let memoize_rec f =
+    let ht = Ht.create 17 in
+    let rec memoized_f x =
+      try Ht.find ht x
+      with Not_found ->
+        let y = f memoized_f x in
+        Ht.add ht x y;
+        y
+    in
+    memoized_f
+end

@@ -14,21 +14,21 @@ let static node f () = valof ('11')
 
 $$
 
-let node f () = 0 when <(b)> where rec b = true
+let node f () = 0 when ({b}) where rec b = true
 
 $$
 
-let node f () = 0 when <(x y)> where rec (x, y) = (true, false)
+let node f () = 0 when ({x} {y}) where rec (x, y) = (true, false)
 
 $$
 
-let static node f x = 0 when <(x)>
+let static node f x = 0 when ({x})
 
 let node g () = f true
 
 $$
 
-let static node f x = 42 when <(x)>
+let static node f x = 42 when ({x})
 
 let node g () = (f y, f x) where rec x = y and y = true
 
@@ -44,7 +44,7 @@ $}
 
 let static node f x = y where rec y = x
 
-let node g () = 0 when <(b)> where rec b = f (true fby false)
+let node g () = 0 when ({b}) where rec b = f (true fby false)
 
 $$
 ${
@@ -58,7 +58,7 @@ $}
 
 (* See {Static typing} in the manual *)
 
-let node f () = 0 when <(b)> where rec b = b
+let node f () = 0 when ({b}) where rec b = b
 
 $$
 ${
@@ -70,7 +70,7 @@ ${
 *)
 $}
 
-let node f () = (42 when <(x)>) where
+let node f () = (42 when ({x})) where
       rec x = false fby x
 
 $$
@@ -85,7 +85,7 @@ $}
 
 let node f () = true
 
-let node g () = 0 when <(b)> where rec b = f ()
+let node g () = 0 when ({b}) where rec b = f ()
 
 $$
 ${
@@ -99,7 +99,7 @@ $}
 
 let static node f () = true
 
-let node g () = 0 when <(b)> where rec b = f ()
+let node g () = 0 when ({b}) where rec b = f ()
 
 $$
 ${
@@ -113,7 +113,7 @@ ${
 *)
 $}
 
-let node f b = 0 when <(b)>
+let node f b = 0 when ({b})
 
 $$
 ${
@@ -125,12 +125,12 @@ ${
 *)
 $}
 
-let static node f b = 0 when <(b)>
+let static node f b = 0 when ({b})
 
 $$
 
 let static node f (x, y) = a where
-    rec <(a^2 b^x)> = y
+    rec <(a^2 b^{x})> = y
 
 let node g y = f (1, y)
 
@@ -145,7 +145,7 @@ ${
 $}
 
 let static node f (x, y) = a where
-    rec <(a^2 b^x)> = y
+    rec <(a^2 b^{x})> = y
 
-let node g y = 1 when <(b)> where
+let node g y = 1 when ({b}) where
     rec b = f (1, true)

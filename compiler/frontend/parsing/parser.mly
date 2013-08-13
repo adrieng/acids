@@ -45,6 +45,12 @@
       Acids_parsetree.se_info = ();
     }
 
+  let make_static_exp_econstr (ec, loc) =
+    make_static_exp (Acids_parsetree.Info.Se_econstr ec) loc
+
+  let make_static_exp_fword (i_l, loc) =
+    make_static_exp (Acids_parsetree.Info.Se_fword i_l) loc
+
   let make_domain par base e =
     let d =
       {
@@ -321,7 +327,7 @@
 simple_ptree(X, Y):
 | x = X { Ast_misc.Leaf x }
 | t = simple_ptree(X, Y) CARET y = Y { Ast_misc.Power (t, y) }
-| LBRACE t = ptree(X, Y) RBRACE { t }
+| t = brackets(ptree(X, Y)) { t }
 
 %inline ptree(X, Y):
 | pt = nonempty_list(simple_ptree(X, Y)) { make_concat pt }
@@ -397,15 +403,7 @@ clock_exp_desc:
    { Acids_parsetree.Ce_condvar v }
 | ce = clock_exp EQUAL se = static_exp
    { Acids_parsetree.Ce_equal (ce, se) }
-| pt =
-   upword(static_exp_novar_fword,
-          static_exp_novar,
-          parens)
-   { Acids_parsetree.Ce_pword pt }
-| pt =
-   chevrons(upword(static_exp_fword,
-                   static_exp,
-                   parens))
+| pt = upword(static_exp_root_fword, static_exp_root, parens)
    { Acids_parsetree.Ce_pword pt }
 
 clock_exp:
@@ -413,50 +411,29 @@ clock_exp:
 
 (******************** STATIC EXPS ********************)
 
-%inline generic_static_exp_desc(X):
-| ec = econstr
-   { Acids_parsetree.Info.Se_econstr ec }
-| se1 = X PLUS se2 = X
-   { Acids_parsetree.Info.Se_binop ("(+)", se1, se2) }
-| se1 = X MINUS se2 = X
-   { Acids_parsetree.Info.Se_binop ("(-)", se1, se2) }
-| se1 = X TIMES se2 = X
-   { Acids_parsetree.Info.Se_binop ("(*)", se1, se2) }
-| se1 = X DIV se2 = X
-   { Acids_parsetree.Info.Se_binop ("(/)", se1, se2) }
-
-%inline static_exp_desc:
+static_exp_desc:
+| ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 | v = IDENT { Acids_parsetree.Info.Se_var v }
-| sed = generic_static_exp_desc(static_exp) { sed }
+| se1 = static_exp PLUS se2 = static_exp
+   { Acids_parsetree.Info.Se_binop ("(+)", se1, se2) }
+| se1 = static_exp MINUS se2 = static_exp
+   { Acids_parsetree.Info.Se_binop ("(-)", se1, se2) }
+| se1 = static_exp TIMES se2 = static_exp
+   { Acids_parsetree.Info.Se_binop ("(*)", se1, se2) }
+| se1 = static_exp DIV se2 = static_exp
+   { Acids_parsetree.Info.Se_binop ("(/)", se1, se2) }
 
 static_exp:
 | sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
+| se = parens(static_exp) { se }
+
+static_exp_root:
+| ec = with_loc(econstr) { make_static_exp_econstr ec }
 | se = braces(static_exp) { se }
 
-%inline static_exp_fword_desc:
-| v = IDENT { Acids_parsetree.Info.Se_var v }
-| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
-| sed = generic_static_exp_desc(static_exp_fword) { sed }
-
-static_exp_fword:
-| sed = with_loc(static_exp_fword_desc) { make_located make_static_exp sed }
-| se = braces(static_exp_fword) { se }
-
-%inline static_exp_desc_novar:
-| sed = generic_static_exp_desc(static_exp_novar) { sed }
-
-static_exp_novar:
-| sed = with_loc(static_exp_desc_novar) { make_located make_static_exp sed }
-| se = braces(static_exp_novar) { se }
-
-%inline static_exp_novar_fword_desc:
-| i_l = FWORD { Acids_parsetree.Info.Se_fword i_l }
-| sed = generic_static_exp_desc(static_exp_novar_fword) { sed }
-
-static_exp_novar_fword:
-| sed = with_loc(static_exp_novar_fword_desc)
-   { make_located make_static_exp sed }
-| se = braces(static_exp_novar_fword) { se }
+static_exp_root_fword:
+| wl = with_loc(FWORD) { make_static_exp_fword wl }
+| se = static_exp_root { se }
 
 (******************** END STATIC EXPS ********************)
 
@@ -567,7 +544,7 @@ pat_desc:
 | COND id = IDENT specs = list(spec_ann)
    { Acids_parsetree.P_condvar (id, specs) }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
-| pt = chevrons(upword(pat, static_exp, parens))
+| pt = chevrons(upword(pat, static_exp_root, parens))
    { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
    { Acids_parsetree.P_clock_annot (p, ck) }
@@ -584,7 +561,8 @@ pat:
 
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
-| p = upword(static_exp_fword, static_exp, parens) { Acids_parsetree.Word p }
+| p = upword(static_exp_root_fword, static_exp_root, parens)
+   { Acids_parsetree.Word p }
 | LBRACKET l = static_exp COMMA u = static_exp RBRACKET
    { Acids_parsetree.Interval (l, u) }
 

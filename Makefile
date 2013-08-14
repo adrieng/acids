@@ -44,6 +44,7 @@ $(SOLVER): OCAMLBUILDOPTS += -I resolution
 clean:
 	ocamlbuild -clean
 	rm -f $(wildcard lib/*.aso)
+	rm -f $(wildcard examples/*.aso)
 
 %.byte: .FORCE
 	ocamlbuild ${OCAMLBUILDOPTS} $@

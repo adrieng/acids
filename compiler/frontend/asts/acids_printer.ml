@@ -129,6 +129,15 @@ struct
         print_pat lhs
         (print_info I.print_eq_info) eq.eq_info
         print_exp rhs
+    | Eq_condvar (v, specs, rhs) ->
+      let print_spec fmt spec =
+        Format.fprintf fmt " in %a"
+          print_spec spec
+      in
+      Format.fprintf fmt "@[cond %a%a =@ %a@]"
+        I.print_var v
+        (Utils.print_list print_spec) specs
+        print_exp rhs
 
   and print_pat fmt p =
     Format.fprintf fmt "@[%a%a@]"
@@ -138,14 +147,6 @@ struct
   and print_pat_desc fmt pd =
     match pd with
     | P_var v -> I.print_var fmt v
-    | P_condvar (v, specs) ->
-      let print_spec fmt spec =
-        Format.fprintf fmt " in %a"
-          print_spec spec
-      in
-      Format.fprintf fmt "@[cond %a%a@]"
-        I.print_var v
-        (Utils.print_list print_spec) specs
     | P_tuple p_l ->
       Format.fprintf fmt "(@[%a@])"
         (Utils.print_list_r print_pat ",") p_l

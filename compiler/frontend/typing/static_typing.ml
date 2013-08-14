@@ -245,7 +245,7 @@ let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
 let rec enrich_pat env p =
   match p.p_desc with
-  | P_var v | P_condvar (v, _) ->
+  | P_var v ->
     add_fresh_type_for_var env v
   | P_tuple p_l ->
     List.fold_left enrich_pat env p_l
@@ -515,9 +515,9 @@ and type_pat env p =
     match p.p_desc with
     | P_var id ->
       M.P_var id, find_ident env id
-    | P_condvar (id, specs) ->
-      let specs = List.map (type_spec env) specs in
-      M.P_condvar (id, specs), find_ident env id
+    (* | P_condvar (id, specs) -> *)
+    (*   let specs = List.map (type_spec env) specs in *)
+    (*   M.P_condvar (id, specs), find_ident env id *)
     | P_tuple p_l ->
       let pty_l = List.map (type_pat env) p_l in
       let p_l, ty_l = List.split pty_l in
@@ -560,6 +560,10 @@ and type_eq env eq =
       let lhs, ty = type_pat env lhs in
       let rhs = expect_exp eq.eq_loc env ty rhs in
       M.Eq_plain (lhs, rhs)
+    | Eq_condvar (lhs, specs, rhs) ->
+      let specs = List.map (type_spec env) specs in
+      let ty = find_ident env lhs in
+      M.Eq_condvar (lhs, specs, expect_exp eq.eq_loc env ty rhs)
   in
   {
     M.eq_desc = desc;
@@ -572,6 +576,7 @@ and type_block env block =
     let enrich env eq =
       match eq.eq_desc with
       | Eq_plain (lhs, _) -> enrich_pat env lhs
+      | Eq_condvar (lhs, _, _) -> add_fresh_type_for_var env lhs
     in
     List.fold_left enrich env block.b_body
   in

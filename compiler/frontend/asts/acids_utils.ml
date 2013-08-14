@@ -189,7 +189,6 @@ struct
     let pd =
       match p.p_desc with
       | P_var id -> OUT.P_var id
-      | P_condvar (id, specs) -> OUT.P_condvar (id, List.map extract_spec specs)
       | P_tuple p_l -> OUT.P_tuple (List.map extract_pattern p_l)
       | P_clock_annot (p, ca) ->
         OUT.P_clock_annot (extract_pattern p, extract_clock_annot ca)
@@ -211,6 +210,8 @@ struct
       match eq.eq_desc with
       | Eq_plain (lhs, rhs) ->
         OUT.Eq_plain (extract_pattern lhs, extract_exp rhs)
+      | Eq_condvar (lhs, specs, rhs) ->
+        OUT.Eq_condvar (lhs, List.map extract_spec specs, extract_exp rhs)
     in
     {
       OUT.eq_desc = desc;
@@ -366,7 +367,6 @@ struct
   and fv_pattern ?(gather_clock_vars = true) fv p =
     match p.p_desc with
     | P_var v -> Ident.Set.add v fv
-    | P_condvar (v, _) -> Ident.Set.add v fv
     | P_tuple p_l -> List.fold_left fv_pattern fv p_l
     | P_clock_annot (p, cka) ->
       let fv =
@@ -390,10 +390,11 @@ struct
     let bv_eq bv eq =
       match eq.eq_desc with
       | Eq_plain (lhs, _) -> fv_pattern ~gather_clock_vars:false bv lhs
+      | Eq_condvar (lhs, _, _) -> Ident.Set.add lhs bv
     in
     let fv_eq fv eq =
       match eq.eq_desc with
-      | Eq_plain (_, rhs) -> fv_exp fv rhs
+      | Eq_plain (_, rhs) | Eq_condvar (_, _, rhs) -> fv_exp fv rhs
     in
 
     let fv = List.fold_left fv_eq fv block.b_body in
@@ -586,6 +587,11 @@ struct
         let lhs, env = refresh_pattern lhs env in
         let rhs, env = refresh_exp rhs env in
         Eq_plain (lhs, rhs), env
+      | Eq_condvar (lhs, specs, rhs) ->
+        let env, lhs = refresh_var env lhs in
+        let specs, env = Utils.mapfold refresh_spec specs env in
+        let rhs, env = refresh_exp rhs env in
+        Eq_condvar (lhs, specs, rhs), env
     in
     { eq with eq_desc = desc; }, env
 
@@ -595,11 +601,6 @@ struct
       | P_var v ->
         let env, v = refresh_var env v in
         P_var v, env
-
-      | P_condvar (v, specs) ->
-        let env, v = refresh_var env v in
-        let specs, env = Utils.mapfold refresh_spec specs env in
-        P_condvar (v, specs), env
 
       | P_tuple p_l ->
         let p_l, env = Utils.mapfold refresh_pattern p_l env in
@@ -728,6 +729,7 @@ struct
     let lhs_v, rhs =
       match eq.eq_desc with
       | Eq_plain (lhs, rhs) -> FV.fv_pattern Ident.Set.empty lhs, rhs
+      | Eq_condvar (lhs, _, rhs) -> Ident.Set.singleton lhs, rhs
     in
     let env =
       let add v env =

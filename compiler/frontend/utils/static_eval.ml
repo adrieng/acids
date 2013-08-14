@@ -272,7 +272,7 @@ and eval_static_exp env se =
 
 and eval_pattern env p v =
   match p.p_desc with
-  | P_var id | P_condvar (id, _) ->
+  | P_var id ->
     add_var env id v
   | P_tuple p_l ->
     let mk (i, env) p =
@@ -307,6 +307,9 @@ and eval_eq eval_env env eq =
   | Eq_plain (lhs, rhs) ->
     let v = lazy (eval_exp !eval_env rhs) in
     eval_pattern env lhs v
+  | Eq_condvar (lhs, _, rhs) ->
+    let v = lazy (eval_exp !eval_env rhs) in
+    add_var env lhs v
 
 and node_fun_of_node_def env nd =
   let env = reset_env_var env in

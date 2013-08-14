@@ -174,9 +174,9 @@ and simpl_pattern env p =
     match p.p_desc with
     | P_var v -> Acids_prespec.P_var v
 
-    | P_condvar (v, specs) ->
-      let specs = List.map (simpl_spec env) specs in
-      Acids_prespec.P_condvar (v, specs)
+    (* | P_condvar (v, specs) -> *)
+    (*   let specs = List.map (simpl_spec env) specs in *)
+    (*   Acids_prespec.P_condvar (v, specs) *)
 
     | P_tuple p_l ->
       Acids_prespec.P_tuple (List.map (simpl_pattern env) p_l)
@@ -328,6 +328,10 @@ and simpl_eq env eq =
     match eq.eq_desc with
     | Eq_plain (lhs, rhs) ->
       Acids_prespec.Eq_plain (simpl_pattern env lhs, simpl_exp env rhs)
+    | Eq_condvar (lhs, specs, rhs) ->
+      let specs = List.map (simpl_spec env) specs in
+      let rhs = simpl_exp env rhs in
+      Acids_prespec.Eq_condvar (lhs, specs, rhs)
   in
   {
     Acids_prespec.eq_desc = desc;

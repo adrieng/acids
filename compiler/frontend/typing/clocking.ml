@@ -580,11 +580,6 @@ and clock_pattern env p acc =
       let ty, acc = clock_var v acc in
       M.P_var v, ty, acc
 
-    | P_condvar (v, specs) ->
-      let ty, acc = clock_var v acc in
-      let specs, acc = Utils.mapfold (expect_spec ty) specs acc in
-      M.P_condvar (v, specs), ty, acc
-
     | P_tuple p_l ->
       let pty_l, acc = Utils.mapfold (clock_pattern env) p_l acc in
       let p_l, ty_l = List.split pty_l in
@@ -687,6 +682,11 @@ and clock_eq env eq acc =
       let (lhs, ty), acc = clock_pattern env lhs acc in
       let rhs, acc = expect_exp env ty rhs acc in
       M.Eq_plain (lhs, rhs), acc
+    | Eq_condvar (lhs, specs, rhs) ->
+      let ty, acc = clock_var lhs acc in
+      let specs, acc = Utils.mapfold (expect_spec ty) specs acc in
+      let rhs, acc = expect_exp env ty rhs acc in
+      M.Eq_condvar (lhs, specs, rhs), acc
   in
   {
     M.eq_desc = desc;

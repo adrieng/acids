@@ -198,6 +198,8 @@ and annot_eq eq =
     match eq.eq_desc with
     | Eq_plain (lhs, rhs) ->
       Acids_causal.Eq_plain (annot_pattern lhs, annot_exp rhs)
+    | Eq_condvar (lhs, specs, rhs) ->
+      Acids_causal.Eq_condvar (lhs, List.map annot_spec specs, annot_exp rhs)
   in
   {
     Acids_causal.eq_desc = desc;
@@ -210,8 +212,6 @@ and annot_pattern p =
     match p.p_desc with
     | P_var v ->
       Acids_causal.P_var v
-    | P_condvar (v, specs) ->
-      Acids_causal.P_condvar (v, List.map annot_spec specs)
     | P_tuple p_l ->
       Acids_causal.P_tuple (List.map annot_pattern p_l)
     | P_clock_annot (p, cka) ->

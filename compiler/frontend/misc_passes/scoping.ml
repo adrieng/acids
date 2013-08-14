@@ -279,16 +279,17 @@ open Acids_parsetree
 
 (** {3 Multiple binding checks} *)
 
+let check_var block_loc block_env s =
+  if Utils.String_set.mem s block_env then multiple_binding_block s block_loc
+
 let check_pattern block_loc block_env p =
   let pat_loc = p.p_loc in
   let rec walk pat_env p =
     match p.p_desc with
-    | P_var s | P_condvar (s, _) ->
-        if Utils.String_set.mem s pat_env
-        then multiple_binding_pattern s pat_loc;
-        if Utils.String_set.mem s block_env
-        then multiple_binding_block s block_loc;
-        Utils.String_set.add s pat_env
+    | P_var s ->
+      if Utils.String_set.mem s pat_env then multiple_binding_pattern s pat_loc;
+      check_var block_loc block_env s;
+      Utils.String_set.add s pat_env
     | P_tuple p_l -> List.fold_left walk pat_env p_l
     | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
       walk pat_env p
@@ -309,7 +310,11 @@ let check_pattern block_loc block_env p =
 let check_block block =
   let walk_eq block_env eq =
     match eq.eq_desc with
-    | Eq_plain (lhs, _) -> check_pattern block.b_loc block_env lhs
+    | Eq_plain (lhs, _) ->
+      check_pattern block.b_loc block_env lhs
+    | Eq_condvar (lhs, _, _) ->
+      check_var block.b_loc block_env lhs;
+      Utils.String_set.add lhs block_env
   in
   ignore (List.fold_left walk_eq Utils.String_set.empty block.b_body)
 
@@ -559,15 +564,21 @@ and scope_app env app =
 and scope_block env block =
   check_block block;
 
-  let p_l, env =
+  let mk_l, env =
     let scope_eq_pat eq env =
       match eq.eq_desc with
-      | Eq_plain (lhs, _) -> scope_pattern lhs env
+      | Eq_plain (lhs, _) ->
+        let lhs, env = scope_pattern lhs env in
+        (fun rhs -> Acids_scoped.Eq_plain (lhs, rhs)), env
+      | Eq_condvar (lhs, specs, _) ->
+        let lhs, env = add_var env lhs in
+        let specs = List.map (scope_spec env) specs in
+        (fun rhs -> Acids_scoped.Eq_condvar (lhs, specs, rhs)), env
     in
     Utils.mapfold scope_eq_pat block.b_body env
   in
 
-  let body = List.map (scope_eq env) (List.combine p_l block.b_body) in
+  let body = List.map (scope_eq env) (List.combine mk_l block.b_body) in
   {
     Acids_scoped.b_body = body;
     Acids_scoped.b_loc = block.b_loc;
@@ -575,11 +586,11 @@ and scope_block env block =
   },
   env
 
-and scope_eq env (lhs, eq) =
+and scope_eq env (mk, eq) =
   let desc =
     match eq.eq_desc with
-    | Eq_plain (_, rhs) ->
-      Acids_scoped.Eq_plain (lhs, scope_exp env rhs)
+    | Eq_plain (_, rhs) -> mk (scope_exp env rhs)
+    | Eq_condvar (_, _, rhs) -> mk (scope_exp env rhs)
   in
   {
     Acids_scoped.eq_desc = desc;
@@ -617,10 +628,10 @@ and scope_pattern p env =
     | P_var v ->
       let id, env = add_var env v in
       Acids_scoped.P_var id, env
-    | P_condvar (v, specs) ->
-      let id, env = add_var env v in
-      let specs = List.map (scope_spec env) specs in
-      Acids_scoped.P_condvar (id, specs), env
+    (* | P_condvar (v, specs) -> *)
+    (*   let id, env = add_var env v in *)
+    (*   let specs = List.map (scope_spec env) specs in *)
+    (*   Acids_scoped.P_condvar (id, specs), env *)
     | P_tuple p_l ->
       let p_l, env = Utils.mapfold scope_pattern p_l env in
       Acids_scoped.P_tuple p_l, env

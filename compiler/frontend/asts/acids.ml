@@ -126,12 +126,12 @@ sig
 
   and eq_desc =
   | Eq_plain of pat * exp
+  | Eq_condvar of I.var * spec list * exp
 
   and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
 
   and pat_desc =
   | P_var of I.var
-  | P_condvar of I.var * spec list
   | P_tuple of pat list
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
@@ -291,6 +291,7 @@ module Make = functor (S : S) ->
 
     and eq_desc =
     | Eq_plain of pat * exp
+    | Eq_condvar of S.var * spec list * exp
 
     and pat =
       {
@@ -301,7 +302,6 @@ module Make = functor (S : S) ->
 
     and pat_desc =
     | P_var of S.var
-    | P_condvar of S.var * spec list
     | P_tuple of pat list
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty

@@ -179,15 +179,6 @@ let rec enrich_env_with_pattern env p =
       | Ty_prod ty_l -> List.iter (check_no_cond loc id) ty_l
     in
     check_no_cond p.p_loc id p.p_info#pi_data; env
-  | P_condvar (id, specs) ->
-    let specs = List.map trad_spec specs in
-    let specs =
-      let open Data_types in
-      match p.p_info#pi_data with
-      | Ty_scal Tys_bool -> Ast_misc.Interval Interval.bool :: specs
-      | _ -> specs
-    in
-    add_spec id specs env
   | P_tuple p_l -> List.fold_left enrich_env_with_pattern env p_l
   | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     enrich_env_with_pattern env p
@@ -413,9 +404,9 @@ and annot_pattern env p =
     match p.p_desc with
     | P_var v ->
       Acids_spec.P_var v
-    | P_condvar (v, specs) ->
-      let specs = List.map (annot_spec env) specs in
-      Acids_spec.P_condvar (v, specs)
+    (* | P_condvar (v, specs) -> *)
+    (*   let specs = List.map (annot_spec env) specs in *)
+    (*   Acids_spec.P_condvar (v, specs) *)
     | P_tuple p_l ->
       Acids_spec.P_tuple (List.map (annot_pattern env) p_l)
     | P_clock_annot (p, cka) ->
@@ -445,6 +436,15 @@ and annot_block env block =
   let enrich env eq =
     match eq.eq_desc with
     | Eq_plain (lhs, _) -> enrich_env_with_pattern env lhs
+    | Eq_condvar (lhs, specs, rhs) ->
+      let specs = List.map trad_spec specs in
+      let specs =
+        let open Data_types in
+        match rhs.e_info#ei_data with
+        | Ty_scal Tys_bool -> Ast_misc.Interval Interval.bool :: specs
+        | _ -> specs
+      in
+      add_spec lhs specs env
   in
   let env = List.fold_left enrich env block.b_body in
   {
@@ -459,6 +459,9 @@ and annot_eq env eq =
     match eq.eq_desc with
     | Eq_plain (lhs, rhs) ->
       Acids_spec.Eq_plain (annot_pattern env lhs, annot_exp env rhs)
+    | Eq_condvar (lhs, specs, rhs) ->
+      let specs = List.map (annot_spec env) specs in
+      Acids_spec.Eq_condvar (lhs, specs, annot_exp env rhs)
   in
   {
     Acids_spec.eq_desc = desc;

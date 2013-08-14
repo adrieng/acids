@@ -120,9 +120,9 @@
       Acids_parsetree.c_loc = loc;
     }
 
-  let make_eq (p, e) loc =
+  let make_eq desc loc =
     {
-      Acids_parsetree.eq_desc = Acids_parsetree.Eq_plain (p, e);
+      Acids_parsetree.eq_desc = desc;
       Acids_parsetree.eq_loc = loc;
       Acids_parsetree.eq_info = ();
     }
@@ -516,7 +516,10 @@ base_annot:
 | BASE clock_annot { $2 }
 
 eq_desc:
-| p = pat EQUAL e = exp { (p, e) }
+| p = pat EQUAL e = exp
+   { Acids_parsetree.Eq_plain (p, e) }
+| COND id = IDENT specs = list(spec_ann) EQUAL e = exp
+   { Acids_parsetree.Eq_condvar (id, specs, e) }
 
 eq:
 | eqd = with_loc(eq_desc) { make_located make_eq eqd }
@@ -540,8 +543,6 @@ spec_ann:
 
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var id }
-| COND id = IDENT specs = list(spec_ann)
-   { Acids_parsetree.P_condvar (id, specs) }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
 | pt = chevrons(upword(pat, static_exp_root, parens))
    { Acids_parsetree.P_split pt }

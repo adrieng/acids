@@ -307,7 +307,10 @@ let check_pattern block_loc block_env p =
 (** The following function checks both multiple bindings spanning a pattern
     or a block. *)
 let check_block block =
-  let walk_eq block_env eq = check_pattern block.b_loc block_env eq.eq_lhs in
+  let walk_eq block_env eq =
+    match eq.eq_desc with
+    | Eq_plain (lhs, _) -> check_pattern block.b_loc block_env lhs
+  in
   ignore (List.fold_left walk_eq Utils.String_set.empty block.b_body)
 
 (** Stand-alone checker for patterns (used for inputs of nodes defs) *)
@@ -557,7 +560,10 @@ and scope_block env block =
   check_block block;
 
   let p_l, env =
-    let scope_eq_pat eq env = scope_pattern eq.eq_lhs env in
+    let scope_eq_pat eq env =
+      match eq.eq_desc with
+      | Eq_plain (lhs, _) -> scope_pattern lhs env
+    in
     Utils.mapfold scope_eq_pat block.b_body env
   in
 
@@ -569,11 +575,14 @@ and scope_block env block =
   },
   env
 
-and scope_eq env (p, eq) =
-  let e = scope_exp env eq.eq_rhs in
+and scope_eq env (lhs, eq) =
+  let desc =
+    match eq.eq_desc with
+    | Eq_plain (_, rhs) ->
+      Acids_scoped.Eq_plain (lhs, scope_exp env rhs)
+  in
   {
-    Acids_scoped.eq_lhs = p;
-    Acids_scoped.eq_rhs = e;
+    Acids_scoped.eq_desc = desc;
     Acids_scoped.eq_loc = eq.eq_loc;
     Acids_scoped.eq_info = eq.eq_info;
   }

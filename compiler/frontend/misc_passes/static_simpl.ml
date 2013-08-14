@@ -324,9 +324,13 @@ and simpl_block env block =
   env
 
 and simpl_eq env eq =
+  let desc =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      Acids_prespec.Eq_plain (simpl_pattern env lhs, simpl_exp env rhs)
+  in
   {
-    Acids_prespec.eq_lhs = simpl_pattern env eq.eq_lhs;
-    Acids_prespec.eq_rhs = simpl_exp env eq.eq_rhs;
+    Acids_prespec.eq_desc = desc;
     Acids_prespec.eq_loc = eq.eq_loc;
     Acids_prespec.eq_info = eq.eq_info;
   }
@@ -363,8 +367,7 @@ and simpl_inline env ln e_app e_arg =
               b_body =
                 [
                   {
-                    eq_lhs = nd.n_input;
-                    eq_rhs = e_arg;
+                    eq_desc = Eq_plain (nd.n_input, e_arg);
                     eq_info = ();
                     eq_loc = Loc.dummy;
                   }

@@ -554,18 +554,26 @@ and expect_pat loc env expected_ty p =
 
 and type_eq env eq =
   (* Note that the type of e should be a sub-type of p, not the converse *)
-  let p, ty = type_pat env eq.eq_lhs in
-  let e = expect_exp eq.eq_loc env ty eq.eq_rhs in
+  let desc =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      let lhs, ty = type_pat env lhs in
+      let rhs = expect_exp eq.eq_loc env ty rhs in
+      M.Eq_plain (lhs, rhs)
+  in
   {
-    M.eq_rhs = e;
-    M.eq_lhs = p;
+    M.eq_desc = desc;
     M.eq_loc = eq.eq_loc;
     M.eq_info = annotate_dummy eq.eq_info;
   }
 
 and type_block env block =
   let new_env =
-    List.fold_left (fun env eq -> enrich_pat env eq.eq_lhs) env block.b_body
+    let enrich env eq =
+      match eq.eq_desc with
+      | Eq_plain (lhs, _) -> enrich_pat env lhs
+    in
+    List.fold_left enrich env block.b_body
   in
 
   let body = List.map (type_eq new_env) block.b_body in

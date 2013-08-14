@@ -207,9 +207,13 @@ struct
     }
 
   and extract_eq eq =
+    let desc =
+      match eq.eq_desc with
+      | Eq_plain (lhs, rhs) ->
+        OUT.Eq_plain (extract_pattern lhs, extract_exp rhs)
+    in
     {
-      OUT.eq_lhs = extract_pattern eq.eq_lhs;
-      OUT.eq_rhs = extract_exp eq.eq_rhs;
+      OUT.eq_desc = desc;
       OUT.eq_loc = eq.eq_loc;
       OUT.eq_info = M.update_eq_info eq.eq_info;
     }
@@ -383,8 +387,14 @@ struct
     | Interval _ -> fv
 
   and fv_block fv block =
-    let bv_eq bv eq = fv_pattern ~gather_clock_vars:false bv eq.eq_lhs in
-    let fv_eq fv eq = fv_exp fv eq.eq_rhs in
+    let bv_eq bv eq =
+      match eq.eq_desc with
+      | Eq_plain (lhs, _) -> fv_pattern ~gather_clock_vars:false bv lhs
+    in
+    let fv_eq fv eq =
+      match eq.eq_desc with
+      | Eq_plain (_, rhs) -> fv_exp fv rhs
+    in
 
     let fv = List.fold_left fv_eq fv block.b_body in
     let bv = List.fold_left bv_eq Ident.Set.empty block.b_body in
@@ -570,9 +580,14 @@ struct
     { block with b_body = body; }, env
 
   and refresh_eq eq env =
-    let lhs, env = refresh_pattern eq.eq_lhs env in
-    let rhs, env = refresh_exp eq.eq_rhs env in
-    { eq with eq_lhs = lhs; eq_rhs = rhs; }, env
+    let desc, env =
+      match eq.eq_desc with
+      | Eq_plain (lhs, rhs) ->
+        let lhs, env = refresh_pattern lhs env in
+        let rhs, env = refresh_exp rhs env in
+        Eq_plain (lhs, rhs), env
+    in
+    { eq with eq_desc = desc; }, env
 
   and refresh_pattern p env =
     let pd, env =
@@ -710,7 +725,10 @@ struct
         dep_graph_clock_exp env ce
 
   and dep_graph_eq env eq =
-    let lhs_v = FV.fv_pattern Ident.Set.empty eq.eq_lhs in
+    let lhs_v, rhs =
+      match eq.eq_desc with
+      | Eq_plain (lhs, rhs) -> FV.fv_pattern Ident.Set.empty lhs, rhs
+    in
     let env =
       let add v env =
         let vtx = find_vtx env v in
@@ -718,7 +736,7 @@ struct
       in
       Ident.Set.fold add lhs_v { env with current_lhs = []; }
     in
-    dep_graph_exp env eq.eq_rhs
+    dep_graph_exp env rhs
 
   and dep_graph_block env block =
     List.iter (dep_graph_eq env) block.b_body

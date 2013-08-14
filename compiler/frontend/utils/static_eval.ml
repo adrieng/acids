@@ -303,8 +303,10 @@ and add_local_defs env block =
 (* [eval_eq eval_env env eq] enriches [env] with the lazy values for variables
    present in [eq], evaluated into mutable environment [eval_env]. *)
 and eval_eq eval_env env eq =
-  let v = lazy (eval_exp !eval_env eq.eq_rhs) in
-  eval_pattern env eq.eq_lhs v
+  match eq.eq_desc with
+  | Eq_plain (lhs, rhs) ->
+    let v = lazy (eval_exp !eval_env rhs) in
+    eval_pattern env lhs v
 
 and node_fun_of_node_def env nd =
   let env = reset_env_var env in

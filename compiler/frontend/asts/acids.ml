@@ -117,12 +117,15 @@ sig
 
   and block = { b_body : eq list; b_loc : Loc.t; b_info : I.block_info; }
 
-  and eq = {
-    eq_lhs : pat;
-    eq_rhs : exp;
-    eq_loc : Loc.t;
-    eq_info : I.eq_info;
-  }
+  and eq =
+    {
+      eq_desc : eq_desc;
+      eq_loc : Loc.t;
+      eq_info : I.eq_info;
+    }
+
+  and eq_desc =
+  | Eq_plain of pat * exp
 
   and pat = { p_desc : pat_desc; p_loc : Loc.t; p_info : I.pat_info; }
 
@@ -281,11 +284,13 @@ module Make = functor (S : S) ->
 
     and eq =
       {
-        eq_lhs : pat;
-        eq_rhs : exp;
+        eq_desc : eq_desc;
         eq_loc : Loc.t;
         eq_info : S.eq_info;
       }
+
+    and eq_desc =
+    | Eq_plain of pat * exp
 
     and pat =
       {

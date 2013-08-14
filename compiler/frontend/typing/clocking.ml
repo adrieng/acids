@@ -681,11 +681,15 @@ and clock_psplit env loc pw acc =
   { u = u; v = v; }, ty, acc
 
 and clock_eq env eq acc =
-  let (lhs, ty), acc = clock_pattern env eq.eq_lhs acc in
-  let rhs, acc = expect_exp env ty eq.eq_rhs acc in
+  let desc, acc =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      let (lhs, ty), acc = clock_pattern env lhs acc in
+      let rhs, acc = expect_exp env ty rhs acc in
+      M.Eq_plain (lhs, rhs), acc
+  in
   {
-    M.eq_lhs = lhs;
-    M.eq_rhs = rhs;
+    M.eq_desc = desc;
     M.eq_loc = eq.eq_loc;
     M.eq_info = annotate_dummy eq.eq_info;
   },

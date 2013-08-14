@@ -598,18 +598,25 @@ and expect_pat expected_ty p env =
   p, env
 
 and type_eq env eq =
-  let (lhs, ty), env = type_pattern eq.eq_lhs env in
-  let rhs = expect_exp env ty eq.eq_rhs in
+  let desc, env =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      let (lhs, ty), env = type_pattern lhs env in
+      let rhs = expect_exp env ty rhs in
+      M.Eq_plain (lhs, rhs), env
+  in
   env,
   {
-    M.eq_lhs = lhs;
-    M.eq_rhs = rhs;
+    M.eq_desc = desc;
     M.eq_loc = eq.eq_loc;
     M.eq_info = annotate_dummy eq.eq_info;
   }
 
 and type_block env block =
-  let enrich env eq = add_fresh_types_for_pat env eq.eq_lhs in
+  let enrich env eq =
+    match eq.eq_desc with
+    | Eq_plain (lhs, _) -> add_fresh_types_for_pat env lhs
+  in
   let env = List.fold_left enrich env block.b_body in
   let env, body = Utils.mapfold_left type_eq env block.b_body in
   {

@@ -194,9 +194,13 @@ and annot_block block =
   }
 
 and annot_eq eq =
+  let desc =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      Acids_causal.Eq_plain (annot_pattern lhs, annot_exp rhs)
+  in
   {
-    Acids_causal.eq_lhs = annot_pattern eq.eq_lhs;
-    Acids_causal.eq_rhs = annot_exp eq.eq_rhs;
+    Acids_causal.eq_desc = desc;
     Acids_causal.eq_loc = eq.eq_loc;
     Acids_causal.eq_info = eq.eq_info;
   }

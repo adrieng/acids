@@ -122,8 +122,7 @@
 
   let make_eq (p, e) loc =
     {
-      Acids_parsetree.eq_lhs = p;
-      Acids_parsetree.eq_rhs = e;
+      Acids_parsetree.eq_desc = Acids_parsetree.Eq_plain (p, e);
       Acids_parsetree.eq_loc = loc;
       Acids_parsetree.eq_info = ();
     }

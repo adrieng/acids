@@ -442,7 +442,10 @@ and annot_pattern env p =
   }
 
 and annot_block env block =
-  let enrich env eq = enrich_env_with_pattern env eq.eq_lhs in
+  let enrich env eq =
+    match eq.eq_desc with
+    | Eq_plain (lhs, _) -> enrich_env_with_pattern env lhs
+  in
   let env = List.fold_left enrich env block.b_body in
   {
     Acids_spec.b_body = List.map (annot_eq env) block.b_body;
@@ -452,11 +455,13 @@ and annot_block env block =
   env
 
 and annot_eq env eq =
-  let lhs = annot_pattern env eq.eq_lhs in
-  let rhs = annot_exp env eq.eq_rhs in
+  let desc =
+    match eq.eq_desc with
+    | Eq_plain (lhs, rhs) ->
+      Acids_spec.Eq_plain (annot_pattern env lhs, annot_exp env rhs)
+  in
   {
-    Acids_spec.eq_lhs = lhs;
-    Acids_spec.eq_rhs = rhs;
+    Acids_spec.eq_desc = desc;
     Acids_spec.eq_loc = eq.eq_loc;
     Acids_spec.eq_info = eq.eq_info;
   }

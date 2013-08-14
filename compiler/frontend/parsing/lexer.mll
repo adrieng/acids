@@ -35,6 +35,53 @@
 
   (**********************************************************************)
 
+  let keywords =
+    [
+      "fst", FST;
+      "snd", SND;
+      "let", LET;
+      "node", NODE;
+      "static", STATIC;
+      "open", OPEN;
+      "fby", FBY;
+      "if", IF;
+      "then", THEN;
+      "else", ELSE;
+      "where", WHERE;
+      "rec", REC;
+      "and", AND;
+      "when", WHEN;
+      "merge", MERGE;
+      "split", SPLIT;
+      "on", ON;
+      "base", BASE;
+      "dom", DOM false;
+      "pardom", DOM true;
+      "buffer", BUFFER;
+      "valof", VALOF;
+      "val", VAL;
+      "in", IN;
+      "is", IS;
+      "with", WITH;
+      "end", END;
+      "type", TYPE;
+      "by", BY;
+      "cond", COND;
+      "unspec", UNSPEC;
+      "bool", BOOL_TY;
+      "int", INT_TY;
+      "float", FLOAT_TY;
+      "D", DYNAMIC_TY;
+      "S", STATIC_TY;
+    ]
+
+  let token_of_keyword =
+    let ht = Hashtbl.create 17 in
+    List.iter (fun (k, v) -> Hashtbl.add ht k v) keywords;
+    fun kw -> Hashtbl.find ht kw
+
+  (**********************************************************************)
+
   let int_list_of_string w =
     let rec add i l =
       if i >= String.length w
@@ -43,6 +90,44 @@
     in
     add 0 []
 }
+
+let keyword =
+    "fst"
+  | "snd"
+  | "let"
+  | "node"
+  | "static"
+  | "open"
+  | "fby"
+  | "if"
+  | "then"
+  | "else"
+  | "where"
+  | "rec"
+  | "and"
+  | "when"
+  | "merge"
+  | "split"
+  | "on"
+  | "base"
+  | "dom"
+  | "pardom"
+  | "buffer"
+  | "valof"
+  | "val"
+  | "in"
+  | "is"
+  | "with"
+  | "end"
+  | "type"
+  | "by"
+  | "cond"
+  | "unspec"
+  | "bool"
+  | "int"
+  | "float"
+  | "D"
+  | "S"
 
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
@@ -87,53 +172,7 @@ rule token = parse
 | int as i { INT (Int.of_string i) }
 | float as f { FLOAT (float_of_string f) }
 
-| "fst" { FST }
-| "snd" { SND }
-
-| "let" { LET }
-| "node" { NODE }
-| "static" { STATIC }
-| "open" { OPEN }
-
-| "fby" { FBY }
-| "if" { IF }
-| "then" { THEN }
-| "else" { ELSE }
-
-| "where" { WHERE }
-| "rec" { REC }
-| "and" { AND }
-
-| "when" { WHEN }
-| "merge" { MERGE }
-| "split" { SPLIT }
-
-| "on" { ON }
-| "base" { BASE }
-
-| "dom" { DOM false }
-| "pardom" { DOM true }
-
-| "buffer" { BUFFER }
-
-| "valof" { VALOF }
-
-| "val" { VAL }
-| "in" { IN }
-| "is" { IS }
-| "with" { WITH }
-| "end" { END }
-| "type" { TYPE }
-| "by" { BY }
-| "cond" { COND }
-| "unspec" { UNSPEC }
-
-| "bool" { BOOL_TY }
-| "int" { INT_TY }
-| "float" { FLOAT_TY }
-
-| "D" { DYNAMIC_TY }
-| "S" { STATIC_TY }
+| keyword as kw { token_of_keyword kw }
 
 | '\''(digit+ as s)'\'' { FWORD (int_list_of_string s) }
 

@@ -375,12 +375,12 @@ op:
 | s = IDENT { s }
 | s = parens(op) { "(" ^ s ^ ")" }
 
-%inline always_long:
+%inline qualified_longname:
 | modn = UIDENT DOT n = name { Initial.make_longname ~modn n }
 
 %inline longname:
 | n = name { Initial.make_longname n }
-| ln = always_long { ln }
+| ln = qualified_longname { ln }
 
 static:
 | { false }
@@ -423,6 +423,7 @@ clock_exp:
 static_exp_desc:
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 | v = IDENT { Acids_parsetree.Info.Se_var v }
+| ln = qualified_longname { Acids_parsetree.Info.Se_global ln }
 | se1 = static_exp PLUS se2 = static_exp
    { Acids_parsetree.Info.Se_binop ("(+)", se1, se2) }
 | se1 = static_exp MINUS se2 = static_exp

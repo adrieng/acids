@@ -11,6 +11,7 @@ Compiler:
 - Clock_types is growing enormous, move stuff to Clock_types_utils
 - Remove stupid make_located in parser
 - handle global static tuples
+- make static exps proper exps
 
 Resolution:
 - Only compute causal solutions

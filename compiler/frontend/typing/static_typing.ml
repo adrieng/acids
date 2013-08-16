@@ -328,6 +328,8 @@ and type_static_exp env se =
       let ty = find_ident env v in
       unify se.se_loc static_ty ty;
       Se_var v, ty
+    | Se_global ln ->
+      Se_global ln, static_ty
     | Se_econstr ec ->
       Se_econstr ec, static_ty
     | Se_binop (op, se1, se2) ->
@@ -660,11 +662,8 @@ let type_type_def env td =
 
 let type_static_def env sd =
   let body = expect_exp sd.sd_loc env static_ty sd.sd_body in
-  let env = add_fresh_type_for_var env sd.sd_var in
-  unify sd.sd_loc static_ty (find_ident env sd.sd_var);
   {
     M.sd_name = sd.sd_name;
-    M.sd_var = sd.sd_var;
     M.sd_body = body;
     M.sd_loc = sd.sd_loc;
   },

@@ -142,6 +142,7 @@ and env =
     intf_env : Interface.env;
     external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
     current_nodes : node_fun Names.ShortEnv.t;
+    current_statics : desc Names.ShortEnv.t;
     values : value Ident.Env.t;
   }
 
@@ -177,6 +178,22 @@ let find_node loc env ln =
   | Module modn ->
     let mod_env = ShortEnv.find modn env.external_nodes in
     ShortEnv.find ln.shortn mod_env
+
+let add_static env sn value =
+  {
+    env with
+      current_statics = Names.ShortEnv.add sn value env.current_statics;
+  }
+
+let find_static env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    Names.ShortEnv.find ln.shortn env.current_statics
+  | Module modn ->
+    let intf = Names.ShortEnv.find modn env.intf_env in
+    let si = Interface.find_static intf ln.shortn in
+    Const si.Interface.si_value
 
 (** {2 Static evaluation itself} *)
 
@@ -264,6 +281,8 @@ and eval_static_exp env se =
     eval_var env v
   | Se_econstr ec ->
     econstr ec
+  | Se_global ln ->
+    find_static env ln
   | Se_binop (op, se1, se2) ->
     let ec1 = eval_static_exp env se1 in
     let ec2 = eval_static_exp env se2 in
@@ -334,6 +353,7 @@ let make_env intf_env =
       external_nodes = ShortEnv.empty;
       current_nodes = ShortEnv.empty;
       values = Ident.Env.empty;
+      current_statics = ShortEnv.empty;
     }
   in
 

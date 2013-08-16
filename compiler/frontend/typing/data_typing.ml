@@ -124,6 +124,8 @@ type typing_env =
     current_constr : Names.shortname Names.ShortEnv.t;
     (** maps nodes from the current module to type signatures *)
     current_nodes : Data_types.data_sig Names.ShortEnv.t;
+    (** maps statics from the current module to type signatures *)
+    current_statics : Data_types.data_sig Names.ShortEnv.t;
     (** maps current idents to (pre)types *)
     idents : Data_types.VarTy.t Ident.Env.t;
     (** maps existential (annotation) variables to types *)
@@ -135,6 +137,7 @@ let initial_typing_env info =
     intf_env = info#interfaces;
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
+    current_statics = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
     exists = Utils.Int_map.empty;
   }
@@ -176,6 +179,27 @@ let find_node =
 
 let add_node env nn dsig =
   { env with current_nodes = Names.ShortEnv.add nn dsig env.current_nodes; }
+
+let add_static env sn ty =
+  let ty_sig = generalize_sig (PreTy.Pty_prod []) ty in
+  {
+    env with
+      current_statics = Names.ShortEnv.add sn ty_sig env.current_statics;
+  }
+
+let find_static env ln =
+  let open Names in
+  let ty_sig =
+    match ln.modn with
+    | LocalModule ->
+      Names.ShortEnv.find ln.shortn env.current_statics
+    | Module modn ->
+      let intf = Names.ShortEnv.find modn env.intf_env in
+      let si = Interface.find_static intf ln.shortn in
+      { data_sig_input = Ty_prod []; data_sig_output = si.Interface.si_type; }
+  in
+  let _, pty = instantiate_sig fresh_ty ty_sig in
+  pty
 
 let find_ident env id = Ident.Env.find id env.idents
 
@@ -376,6 +400,8 @@ and type_static_exp env se =
       Se_var v, find_ident env v
     | Se_econstr ec ->
       Se_econstr ec, type_econstr env ec
+    | Se_global ln ->
+      Se_global ln, find_static env ln
     | Se_binop (op, se1, se2) ->
       let ty_in1, ty_in2, ty_out =
         List.assoc op
@@ -719,16 +745,13 @@ let type_type_def env td =
   add_type_constrs env td.ty_name td.ty_body
 
 let type_static_def env sd =
-  let env = add_fresh_type_for_var env sd.sd_var in
-  let ty = find_ident env sd.sd_var in
-  let body = expect_exp env ty sd.sd_body in
+  let body, ty = type_exp env sd.sd_body in
   {
     M.sd_name = sd.sd_name;
-    M.sd_var = sd.sd_var;
     M.sd_body = body;
     M.sd_loc = sd.sd_loc;
   },
-  env
+  add_static env sd.sd_name ty
 
 let type_phrase env phr =
   match phr with

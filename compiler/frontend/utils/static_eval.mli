@@ -35,7 +35,7 @@ val add_node_def : env -> Acids_static.node_def -> env
 
 val add_local_defs : env -> Acids_static.block -> env
 
-val add_var : env -> Ident.t -> value -> env
+val add_static : env -> Names.shortname -> desc -> env
 
 val eval_exp : env -> Acids_static.exp -> desc
 

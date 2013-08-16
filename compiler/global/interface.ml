@@ -74,6 +74,13 @@ type type_item =
     td_constr : Names.shortname list;
   }
 
+type static_item =
+  {
+    si_name : Names.shortname;
+    si_type : Data_types.data_ty;
+    si_value : Ast_misc.const;
+  }
+
 type t =
   {
     i_name : Names.shortname;
@@ -84,7 +91,7 @@ type t =
     (** maps constr name to type name *)
     i_constrs : Names.shortname Names.ShortEnv.t;
     (** maps constant name to econstr *)
-    i_statics : Ast_misc.const Names.ShortEnv.t;
+    i_statics : static_item Names.ShortEnv.t;
   }
 
 type env = t Names.ShortEnv.t
@@ -125,6 +132,8 @@ let find_constructor_rank intf cstr =
   let ty_n = find_constructor intf cstr in
   let ty_i = find_type intf ty_n in
   Utils.find_rank cstr ty_i.td_constr
+
+let find_static intf shortn = Names.ShortEnv.find shortn intf.i_statics
 
 (** {2 Consistency check and recovery functions} *)
 
@@ -297,12 +306,19 @@ let interface_of_file file =
       static_env
     | Phr_static_def sd ->
       let open Acids_causal in
-      let ec =
+      let c =
         match sd.sd_body.e_desc with
         | E_const c -> c
         | _ -> assert false (* should be static simplified *)
       in
-      Names.ShortEnv.add sd.sd_name ec static_env
+      let si =
+        {
+          si_name = sd.sd_name;
+          si_type = sd.sd_body.e_info#ei_data;
+          si_value = c;
+        }
+      in
+      Names.ShortEnv.add sd.sd_name si static_env
   in
   let static_env = List.fold_left add_static Names.ShortEnv.empty file.f_body in
 

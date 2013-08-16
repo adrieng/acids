@@ -288,7 +288,6 @@ struct
   let extract_static_def sd =
     {
       OUT.sd_name = sd.sd_name;
-      OUT.sd_var = sd.sd_var;
       OUT.sd_body = extract_exp sd.sd_body;
       OUT.sd_loc = sd.sd_loc;
     }
@@ -449,7 +448,8 @@ struct
       | Se_var v ->
         let env, v = refresh_var env v in
         Se_var v, env
-      | Se_econstr _ -> se.se_desc, env
+      | Se_econstr _ | Se_global _ ->
+        se.se_desc, env
       | Se_binop (op, se1, se2) ->
         let se1, env = refresh_static_exp se1 env in
         let se2, env = refresh_static_exp se2 env in

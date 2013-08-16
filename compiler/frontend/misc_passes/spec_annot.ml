@@ -515,7 +515,6 @@ let annot_type_def _ tdef =
 let annot_static_def env sd =
   {
     Acids_spec.sd_name = sd.sd_name;
-    Acids_spec.sd_var = sd.sd_var;
     Acids_spec.sd_body = annot_exp env sd.sd_body;
     Acids_spec.sd_loc = sd.sd_loc;
   }

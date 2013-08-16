@@ -28,11 +28,13 @@ struct
 
   type 'a static_exp_desc =
   | Se_var of var
+  | Se_global of Names.longname
   | Se_econstr of Ast_misc.econstr
   | Se_binop of Names.shortname * 'a * 'a
   let print_static_exp_desc print fmt sed =
     match sed with
     | Se_var s -> Ident.print fmt s
+    | Se_global ln -> Names.print_longname fmt ln
     | Se_econstr ec -> Ast_misc.print_econstr fmt ec
     | Se_binop (op, se1, se2) ->
       Format.fprintf fmt "@[%a(@[%a,@ %a@])@]"
@@ -42,6 +44,7 @@ struct
   let map_static_exp_desc f sed =
     match sed with
     | Se_var v -> Se_var v
+    | Se_global ln -> Se_global ln
     | Se_econstr ec -> Se_econstr ec
     | Se_binop (op, se1, se2) -> Se_binop (op, f se1, f se2)
 

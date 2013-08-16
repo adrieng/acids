@@ -226,7 +226,7 @@ struct
       (Utils.print_list_r Names.print_shortname "|") tydef.ty_body
 
   let print_static_def fmt sdef =
-    Format.fprintf fmt "@[@let static %a =@ %a@]"
+    Format.fprintf fmt "@[let static %a =@ %a@]"
       Names.print_shortname sdef.sd_name
       print_exp sdef.sd_body
 

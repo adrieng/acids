@@ -39,9 +39,11 @@ type error =
   | Unknown_node of Names.shortname * Loc.t
   | Unknown_constr of Names.shortname * Loc.t
   | Unknown_type of Names.shortname * Loc.t
+  | Unknown_static of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Constr_not_found of Names.modname * Names.shortname * Loc.t
   | Type_not_found of Names.modname * Names.shortname * Loc.t
+  | Static_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
@@ -66,6 +68,10 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown type %a"
       Loc.print l
       Names.print_shortname shortn
+  | Unknown_static (shortn, l) ->
+    Format.fprintf fmt "%aUnknown static %a"
+      Loc.print l
+      Names.print_shortname shortn
   | Node_not_found (modn, shortn, l) ->
     Format.fprintf fmt "%aNode %a not found in module %a"
       Loc.print l
@@ -78,6 +84,11 @@ let print_error fmt err =
       Names.print_modname modn
   | Type_not_found (modn, constrn, l) ->
     Format.fprintf fmt "%aType %a not found in module %a"
+      Loc.print l
+      Names.print_shortname constrn
+      Names.print_modname modn
+  | Static_not_found (modn, constrn, l) ->
+    Format.fprintf fmt "%aStatic %a not found in module %a"
       Loc.print l
       Names.print_shortname constrn
       Names.print_modname modn
@@ -118,6 +129,9 @@ let unknown_constr shortn loc =
 let unknown_type shortn loc =
   raise (Scoping_error (Unknown_type (shortn, loc)))
 
+let unknown_static shortn loc =
+  raise (Scoping_error (Unknown_static (shortn, loc)))
+
 let node_not_found modn shortn loc =
   raise (Scoping_error (Node_not_found (modn, shortn, loc)))
 
@@ -126,6 +140,9 @@ let constr_not_found modn shortn loc =
 
 let type_not_found modn shortn loc =
   raise (Scoping_error (Type_not_found (modn, shortn, loc)))
+
+let static_not_found modn shortn loc =
+  raise (Scoping_error (Static_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
 
@@ -203,6 +220,9 @@ let find_module_with_constr =
 let find_module_with_type_name =
   find_module_with_shortname (fun i -> i.Interface.i_types) unknown_type
 
+let find_module_with_static_name =
+  find_module_with_shortname (fun i -> i.Interface.i_statics) unknown_static
+
 (** Check if the given module name holds the item designated by shortn.
     Works for both node and constructor names. This function loads module as
     needed.
@@ -234,6 +254,9 @@ let check_module_with_constr =
 let check_module_with_type_name =
   check_module_with_name (fun i -> i.Interface.i_types) type_not_found
 
+let check_module_with_static_name =
+  check_module_with_name (fun i -> i.Interface.i_statics) static_not_found
+
 (** Scope a name in the proper name-space (nodes or constructors) *)
 let scope_longname find check access env loc ln =
   let open Names in
@@ -264,6 +287,10 @@ let scope_type_name =
   let access env = env.local_types in
   scope_longname find_module_with_type_name check_module_with_type_name access
 
+let scope_static_name =
+  let access env = env.local_statics in
+  scope_longname find_module_with_static_name check_module_with_type_name access
+
 let add_var env v =
   let id = Ident.make_source v in
   id, { env with id_env = Utils.Env.add v id env.id_env; }
@@ -272,13 +299,22 @@ let add_local_node env n =
   { env with local_nodes = Names.ShortSet.add n env.local_nodes; }
 
 let add_static env n =
-  let env = { env with local_statics = Names.ShortSet.add n env.local_statics; }
-  in
-  add_var env n
+  { env with local_statics = Names.ShortSet.add n env.local_statics; }
 
 let find_var env loc v =
   try Utils.Env.find v env.id_env
   with Not_found -> unbound_var v loc
+
+let find_var_static env loc v =
+  try Acids_scoped.Info.Se_var (Utils.Env.find v env.id_env)
+  with Not_found ->
+    (try
+       Acids_scoped.Info.Se_global
+         (scope_static_name
+            env
+            loc
+            Names.({ modn = LocalModule; shortn = v; }))
+     with _ -> unbound_var v loc)
 
 let add_local_constrs_ranks env cn_l =
   let add (rank, local_constrs_ranks) cn =
@@ -420,8 +456,10 @@ and scope_static_exps env se =
   let ed_l =
     match se.se_desc with
     | Acids_parsetree.Info.Se_var v ->
-      let id = find_var env se.se_loc v in
-      [Acids_scoped.Info.Se_var id]
+      [find_var_static env se.se_loc v]
+    | Acids_parsetree.Info.Se_global ln ->
+      let ln = scope_static_name env se.se_loc ln in
+      [Acids_scoped.Info.Se_global ln]
     | Acids_parsetree.Info.Se_econstr ec ->
       [Acids_scoped.Info.Se_econstr ec]
     | Acids_parsetree.Info.Se_fword i_l ->
@@ -764,14 +802,12 @@ let scope_type_def env tdef =
 let scope_static_def env sd =
   check_static_name env sd.sd_name sd.sd_loc;
   let body = scope_exp env sd.sd_body in
-  let id, env = add_static env sd.sd_name in
   {
     Acids_scoped.sd_name = sd.sd_name;
-    Acids_scoped.sd_var = id;
     Acids_scoped.sd_body = body;
     Acids_scoped.sd_loc = sd.sd_loc;
   },
-  env
+  add_static env sd.sd_name
 
 let scope_phrase env phr =
   match phr with

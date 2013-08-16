@@ -106,7 +106,7 @@ let add_static_node_def env nd =
 let add_static_var env var value =
   {
     env with
-      eval_env = Static_eval.add_var env.eval_env var value;
+      eval_env = Static_eval.add_static env.eval_env var value;
   }
 
 let find_static_node_def env ln =
@@ -462,7 +462,6 @@ let simpl_static_def env sd =
   in
   {
     Acids_prespec.sd_name = sd.sd_name;
-    Acids_prespec.sd_var = sd.sd_var;
     Acids_prespec.sd_body =
       {
         Acids_prespec.e_desc = Acids_prespec.E_const c;
@@ -474,7 +473,7 @@ let simpl_static_def env sd =
       };
     Acids_prespec.sd_loc = sd.sd_loc;
   },
-  add_static_var env sd.sd_var (lazy (Const c))
+  add_static_var env sd.sd_name (Const c)
 
 let simpl_phrase (body, env) phr =
   match phr with

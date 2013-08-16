@@ -817,7 +817,22 @@ let clock_type_decl td =
   }
 
 let clock_static_def env sd =
-  assert false (* TODO *)
+  let c =
+    match sd.sd_body.e_desc with
+    | E_const c -> c
+    | _ -> assert false (* static-simpl problem *)
+  in
+  {
+    M.sd_name = sd.sd_name;
+    M.sd_body =
+      {
+        M.e_desc = M.E_const c;
+        M.e_info = annotate_exp sd.sd_body.e_info (fresh_ty ());
+        M.e_loc = sd.sd_body.e_loc;
+      };
+    M.sd_loc = sd.sd_loc;
+  },
+  env
 
 let clock_phrase env phr =
   match phr with
@@ -830,7 +845,7 @@ let clock_phrase env phr =
   | Phr_type_def td ->
     env, M.Phr_type_def (clock_type_decl td)
   | Phr_static_def sd ->
-    let env, sd = clock_static_def env sd in
+    let sd, env = clock_static_def env sd in
     env, M.Phr_static_def sd
 
 let clock_file ctx file =

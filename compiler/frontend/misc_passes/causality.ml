@@ -298,7 +298,6 @@ let annot_type_def td =
 let annot_static_def sd =
   {
     Acids_causal.sd_name = sd.sd_name;
-    Acids_causal.sd_var = sd.sd_var;
     Acids_causal.sd_body = annot_exp sd.sd_body;
     Acids_causal.sd_loc = sd.sd_loc;
   }

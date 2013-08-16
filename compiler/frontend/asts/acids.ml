@@ -193,7 +193,6 @@ sig
   type static_def =
     {
       sd_name : Names.shortname;
-      sd_var : I.var;
       sd_body : exp;
       sd_loc : Loc.t;
     }
@@ -377,7 +376,6 @@ module Make = functor (S : S) ->
     type static_def =
       {
         sd_name : Names.shortname;
-        sd_var : S.var;
         sd_body : exp;
         sd_loc : Loc.t;
       }

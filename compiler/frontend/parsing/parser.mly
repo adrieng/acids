@@ -206,7 +206,6 @@
   let make_static_def ((name, body), loc) =
     {
       Acids_parsetree.sd_name = name;
-      Acids_parsetree.sd_var = "";
       Acids_parsetree.sd_body = body;
       Acids_parsetree.sd_loc = loc;
     }
@@ -376,9 +375,12 @@ op:
 | s = IDENT { s }
 | s = parens(op) { "(" ^ s ^ ")" }
 
+%inline always_long:
+| modn = UIDENT DOT n = name { Initial.make_longname ~modn n }
+
 %inline longname:
 | n = name { Initial.make_longname n }
-| modn = UIDENT DOT n = name { Initial.make_longname ~modn n }
+| ln = always_long { ln }
 
 static:
 | { false }
@@ -577,22 +579,22 @@ spec_desc:
 spec:
 | sdl = with_loc(spec_desc) { make_spec sdl }
 
-pragma_val:
+%inline pragma_val:
 | ec = econstr { Pragma.Econstr ec }
 | v_l = parens(separated_list(COMMA, pragma_val)) { Pragma.Tuple v_l }
 
-pragma_desc:
+%inline pragma_desc:
 | key = PRAGMAKEY value = braces(pragma_val) { (key, value) }
 
-pragma:
+%inline pragma:
 | pd = with_loc(pragma_desc) { make_located make_pragma pd }
 
-pragma_node:
+%inline pragma_node:
 | p_l = list(pragma) { p_l }
 
 node_def_desc:
 | pr = pragma_node LET s = static NODE n = nodename p = pat EQUAL e = exp
-          { (s, n, p, e, pr) }
+   { (s, n, p, e, pr) }
 
 node_def:
 | nd = with_loc(node_def_desc) { make_located make_node_def nd }
@@ -671,7 +673,7 @@ type_def:
 | d = with_loc(type_def_desc) { make_type_def d }
 
 static_def_desc:
-| LET STATIC s = IDENT EQUAL e = exp { (s, e) }
+| pragma_node LET STATIC s = IDENT EQUAL e = exp { (s, e) }
 
 static_def:
 | sdl = with_loc(static_def_desc) { make_static_def sdl }
@@ -683,7 +685,7 @@ phrase:
 | nd = node_def { Acids_parsetree.Phr_node_def nd }
 | decl = node_decl { Acids_parsetree.Phr_node_decl decl }
 | td = type_def { Acids_parsetree.Phr_type_def td }
-(* | sd = static_def { Acids_parsetree.Phr_static_def sd } *)
+| sd = static_def { Acids_parsetree.Phr_static_def sd }
 
 source_file:
 | imports = list(import) body = list(phrase) EOF { make_file imports body }

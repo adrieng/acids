@@ -135,17 +135,40 @@ let static node f (x, y) = a where
 let node g y = f (1, y)
 
 $$
-${
-(*
-        run_test:
-        [
-                Good: "asc -check"
-        ]
-*)
-$}
+
+let static test = true
+
+let node f x = x when ({test} false) + x when (true false)
+
+$$
 
 let static node f (x, y) = a where
     rec <(a^2 b^{x})> = y
 
 let node g y = 1 when ({b}) where
     rec b = f (1, true)
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad: "asc -check"
+        ]
+*)
+$}
+
+let static x = true fby true
+
+$$
+
+let static test = false
+
+let node f x = x when ({test} false) + x when (true false)
+
+$$
+
+let static test = true
+
+let node f x = (x when ({test} false) + x when (true false)) where
+    rec test = true fby false

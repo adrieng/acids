@@ -816,6 +816,9 @@ let clock_type_decl td =
     M.ty_loc = td.ty_loc;
   }
 
+let clock_static_def env sd =
+  assert false (* TODO *)
+
 let clock_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -826,6 +829,9 @@ let clock_phrase env phr =
     env, M.Phr_node_decl nd
   | Phr_type_def td ->
     env, M.Phr_type_def (clock_type_decl td)
+  | Phr_static_def sd ->
+    let env, sd = clock_static_def env sd in
+    env, M.Phr_static_def sd
 
 let clock_file ctx file =
   let env = initial_env ctx file.f_info#interfaces in

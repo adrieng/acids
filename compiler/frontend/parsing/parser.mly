@@ -203,6 +203,14 @@
       Acids_parsetree.f_body = body;
     }
 
+  let make_static_def ((name, body), loc) =
+    {
+      Acids_parsetree.sd_name = name;
+      Acids_parsetree.sd_var = "";
+      Acids_parsetree.sd_body = body;
+      Acids_parsetree.sd_loc = loc;
+    }
+
   (* Ugly: a bit of scoping at parsing time *)
 
   let ht = Hashtbl.create 100
@@ -582,12 +590,12 @@ pragma:
 pragma_node:
 | p_l = list(pragma) { p_l }
 
-node_desc:
+node_def_desc:
 | pr = pragma_node LET s = static NODE n = nodename p = pat EQUAL e = exp
           { (s, n, p, e, pr) }
 
-node:
-| nd = with_loc(node_desc) { make_located make_node_def nd }
+node_def:
+| nd = with_loc(node_def_desc) { make_located make_node_def nd }
 
 // Declarations
 
@@ -662,13 +670,20 @@ type_def_desc:
 type_def:
 | d = with_loc(type_def_desc) { make_type_def d }
 
+static_def_desc:
+| LET STATIC s = IDENT EQUAL e = exp { (s, e) }
+
+static_def:
+| sdl = with_loc(static_def_desc) { make_static_def sdl }
+
 import:
 | OPEN UIDENT { $2 }
 
 phrase:
-| nd = node { Acids_parsetree.Phr_node_def nd }
+| nd = node_def { Acids_parsetree.Phr_node_def nd }
 | decl = node_decl { Acids_parsetree.Phr_node_decl decl }
 | td = type_def { Acids_parsetree.Phr_type_def td }
+(* | sd = static_def { Acids_parsetree.Phr_static_def sd } *)
 
 source_file:
 | imports = list(import) body = list(phrase) EOF { make_file imports body }

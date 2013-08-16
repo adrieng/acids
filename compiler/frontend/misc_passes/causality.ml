@@ -295,6 +295,14 @@ let annot_type_def td =
     Acids_causal.ty_loc = td.ty_loc;
   }
 
+let annot_static_def sd =
+  {
+    Acids_causal.sd_name = sd.sd_name;
+    Acids_causal.sd_var = sd.sd_var;
+    Acids_causal.sd_body = annot_exp sd.sd_body;
+    Acids_causal.sd_loc = sd.sd_loc;
+  }
+
 let annot_type_phrase phr =
   match phr with
   | Phr_node_def nd ->
@@ -303,6 +311,8 @@ let annot_type_phrase phr =
     Acids_causal.Phr_node_decl (annot_node_decl nd)
   | Phr_type_def td ->
     Acids_causal.Phr_type_def (annot_type_def td)
+  | Phr_static_def sd ->
+    Acids_causal.Phr_static_def (annot_static_def sd)
 
 let annot_type_file file =
   {

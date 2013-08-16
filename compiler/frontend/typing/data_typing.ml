@@ -718,6 +718,18 @@ let type_type_def env td =
   },
   add_type_constrs env td.ty_name td.ty_body
 
+let type_static_def env sd =
+  let env = add_fresh_type_for_var env sd.sd_var in
+  let ty = find_ident env sd.sd_var in
+  let body = expect_exp env ty sd.sd_body in
+  {
+    M.sd_name = sd.sd_name;
+    M.sd_var = sd.sd_var;
+    M.sd_body = body;
+    M.sd_loc = sd.sd_loc;
+  },
+  env
+
 let type_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -729,6 +741,9 @@ let type_phrase env phr =
   | Phr_type_def td ->
     let td, env = type_type_def env td in
     env, M.Phr_type_def td
+  | Phr_static_def sd ->
+    let sd, env = type_static_def env sd in
+    env, M.Phr_static_def sd
 
 let type_file file =
   let _, body =

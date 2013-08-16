@@ -512,6 +512,14 @@ let annot_type_def _ tdef =
     Acids_spec.ty_loc = tdef.ty_loc;
   }
 
+let annot_static_def env sd =
+  {
+    Acids_spec.sd_name = sd.sd_name;
+    Acids_spec.sd_var = sd.sd_var;
+    Acids_spec.sd_body = annot_exp env sd.sd_body;
+    Acids_spec.sd_loc = sd.sd_loc;
+  }
+
 let annot_ty_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -520,6 +528,8 @@ let annot_ty_phrase env phr =
     Acids_spec.Phr_node_decl (annot_node_decl env nd)
   | Phr_type_def td ->
     Acids_spec.Phr_type_def (annot_type_def env td)
+  | Phr_static_def sd ->
+    Acids_spec.Phr_static_def (annot_static_def env sd)
 
 let annot_file file =
   let interfaces = Names.mod_env_of_short_env file.f_info#interfaces in

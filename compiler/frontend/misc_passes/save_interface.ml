@@ -43,7 +43,7 @@ let print_signatures_of_node_defs file =
     let add_sig phr info_l =
       match phr with
       | Phr_node_def nd -> (nd.n_name, nd.n_info) :: info_l
-      | Phr_node_decl _ | Phr_type_def _ -> info_l
+      | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ -> info_l
     in
     List.fold_right add_sig file.f_body []
   in

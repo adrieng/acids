@@ -83,6 +83,8 @@ type t =
     i_types : type_item Names.ShortEnv.t;
     (** maps constr name to type name *)
     i_constrs : Names.shortname Names.ShortEnv.t;
+    (** maps constant name to econstr *)
+    i_statics : Ast_misc.const Names.ShortEnv.t;
   }
 
 type env = t Names.ShortEnv.t
@@ -251,7 +253,7 @@ let interface_of_file file =
             }
         )
         node_env
-    | Phr_type_def _ ->
+    | Phr_type_def _ | Phr_static_def _ ->
       node_env
   in
 
@@ -269,7 +271,8 @@ let interface_of_file file =
 
   let add_type (type_env, constr_env) phr =
     match phr with
-    | Phr_node_def _ | Phr_node_decl _ -> type_env, constr_env
+    | Phr_node_def _ | Phr_node_decl _ | Phr_static_def _ ->
+      type_env, constr_env
     | Phr_type_def td ->
       let constr_env =
         let add_constr constr_env c =
@@ -287,9 +290,26 @@ let interface_of_file file =
   let type_env, constr_env =
     List.fold_left add_type (type_env, constr_env) file.f_body
   in
+
+  let add_static static_env phr =
+    match phr with
+    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ ->
+      static_env
+    | Phr_static_def sd ->
+      let open Acids_causal in
+      let ec =
+        match sd.sd_body.e_desc with
+        | E_const c -> c
+        | _ -> assert false (* should be static simplified *)
+      in
+      Names.ShortEnv.add sd.sd_name ec static_env
+  in
+  let static_env = List.fold_left add_static Names.ShortEnv.empty file.f_body in
+
   {
     i_name = file.f_name;
     i_nodes = node_env;
     i_types = type_env;
     i_constrs = constr_env;
+    i_statics = static_env;
   }

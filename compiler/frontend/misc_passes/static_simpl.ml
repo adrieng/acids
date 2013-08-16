@@ -103,6 +103,12 @@ let add_static_node_def env nd =
       static_node_env = Names.ShortEnv.add nd.n_name nd env.static_node_env;
   }
 
+let add_static_var env var value =
+  {
+    env with
+      eval_env = Static_eval.add_var env.eval_env var value;
+  }
+
 let find_static_node_def env ln =
   let open Names in
   match ln.modn with
@@ -446,6 +452,30 @@ let simpl_type_def td =
     Acids_prespec.ty_loc = td.ty_loc;
   }
 
+let simpl_static_def env sd =
+  let open Static_eval in
+  let c =
+    let res = eval_exp env.eval_env sd.sd_body in
+    match res with
+    | Const c -> c
+    | _ -> assert false (* static-typing error? *)
+  in
+  {
+    Acids_prespec.sd_name = sd.sd_name;
+    Acids_prespec.sd_var = sd.sd_var;
+    Acids_prespec.sd_body =
+      {
+        Acids_prespec.e_desc = Acids_prespec.E_const c;
+        Acids_prespec.e_info =
+          object
+            method ei_data = sd.sd_body.e_info#ei_data
+          end;
+        Acids_prespec.e_loc = sd.sd_body.e_loc;
+      };
+    Acids_prespec.sd_loc = sd.sd_loc;
+  },
+  add_static_var env sd.sd_var (lazy (Const c))
+
 let simpl_phrase (body, env) phr =
   match phr with
   | Phr_node_def nd ->
@@ -461,6 +491,10 @@ let simpl_phrase (body, env) phr =
 
   | Phr_type_def td ->
     Acids_prespec.Phr_type_def (simpl_type_def td) :: body, env
+
+  | Phr_static_def sd ->
+    let sd, env = simpl_static_def env sd in
+    Acids_prespec.Phr_static_def sd :: body, env
 
 let simpl_file file =
   let env = initial_env file.f_info#interfaces in

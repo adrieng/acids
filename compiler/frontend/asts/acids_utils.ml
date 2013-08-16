@@ -285,11 +285,20 @@ struct
       OUT.ty_loc = td.ty_loc;
     }
 
+  let extract_static_def sd =
+    {
+      OUT.sd_name = sd.sd_name;
+      OUT.sd_var = sd.sd_var;
+      OUT.sd_body = extract_exp sd.sd_body;
+      OUT.sd_loc = sd.sd_loc;
+    }
+
   let extract_phrase phr =
     match phr with
     | Phr_node_def nd -> OUT.Phr_node_def (extract_node_def nd)
     | Phr_node_decl nd -> OUT.Phr_node_decl (extract_node_decl nd)
     | Phr_type_def td -> OUT.Phr_type_def (extract_type_def td)
+    | Phr_static_def sd -> OUT.Phr_static_def (extract_static_def sd)
 
   let extract_file f =
     {

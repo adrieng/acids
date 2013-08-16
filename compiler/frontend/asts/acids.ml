@@ -190,10 +190,19 @@ sig
     ty_loc : Loc.t;
   }
 
+  type static_def =
+    {
+      sd_name : Names.shortname;
+      sd_var : I.var;
+      sd_body : exp;
+      sd_loc : Loc.t;
+    }
+
   type phrase =
   | Phr_node_def of node_def
   | Phr_node_decl of node_decl
   | Phr_type_def of type_def
+  | Phr_static_def of static_def
 
   type 'a file = {
     f_name : Names.modname;
@@ -365,10 +374,19 @@ module Make = functor (S : S) ->
         ty_loc : Loc.t;
       }
 
+    type static_def =
+      {
+        sd_name : Names.shortname;
+        sd_var : S.var;
+        sd_body : exp;
+        sd_loc : Loc.t;
+      }
+
     type phrase =
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
     | Phr_type_def of type_def
+    | Phr_static_def of static_def
 
     type 'a file =
       {

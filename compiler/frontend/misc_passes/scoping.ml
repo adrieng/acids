@@ -48,6 +48,7 @@ type error =
   | Duplicate_node of Names.shortname * Loc.t
   | Duplicate_constr of Names.shortname * Loc.t
   | Duplicate_type of Names.shortname * Loc.t
+  | Duplicate_static of Names.shortname * Loc.t
 
 exception Scoping_error of error
 
@@ -103,6 +104,11 @@ let print_error fmt err =
     Format.fprintf fmt "%aType %a is defined several times in this module"
       Loc.print l
       Names.print_shortname typen
+  | Duplicate_static (staticn, l) ->
+    Format.fprintf fmt
+      "%aStatic identifier %a is defined several times in this module"
+      Loc.print l
+      Names.print_shortname staticn
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
@@ -138,6 +144,9 @@ let duplicate_constr constrn loc =
 let duplicate_type typen loc =
   raise (Scoping_error (Duplicate_type (typen, loc)))
 
+let duplicate_static staticn loc =
+  raise (Scoping_error (Duplicate_static (staticn, loc)))
+
 (** {2 Environments} *)
 
 type env =
@@ -146,6 +155,7 @@ type env =
     local_constrs : Names.ShortSet.t;
     local_constrs_ranks : Int.t Names.ShortEnv.t;
     local_types : Names.ShortSet.t;
+    local_statics : Names.ShortSet.t;
     imported_mods : string list;
     id_env : Ident.t Utils.Env.t;
     mutable intf_env : Interface.env;
@@ -157,6 +167,7 @@ let initial_env intf_env imported_mods =
     local_constrs = Names.ShortSet.empty;
     local_constrs_ranks = Names.ShortEnv.empty;
     local_types = Names.ShortSet.empty;
+    local_statics = Names.ShortSet.empty;
     imported_mods = imported_mods;
     id_env = Utils.Env.empty;
     intf_env = intf_env;
@@ -260,6 +271,11 @@ let add_var env v =
 let add_local_node env n =
   { env with local_nodes = Names.ShortSet.add n env.local_nodes; }
 
+let add_static env n =
+  let env = { env with local_statics = Names.ShortSet.add n env.local_statics; }
+  in
+  add_var env n
+
 let find_var env loc v =
   try Utils.Env.find v env.id_env
   with Not_found -> unbound_var v loc
@@ -331,6 +347,9 @@ let check_type_constr loc env cn =
 
 let check_type_name env tn loc =
   if Names.ShortSet.mem tn env.local_types then duplicate_type tn loc
+
+let check_static_name env sn loc =
+  if Names.ShortSet.mem sn env.local_statics then duplicate_static sn loc
 
 let find_scoped_constr_rank env cstr =
   let open Names in
@@ -722,29 +741,37 @@ let scope_data_sig env loc dsig =
 let scope_node_decl env decl =
   check_node_name env decl.decl_name decl.decl_loc;
   let dsig = scope_data_sig env decl.decl_loc decl.decl_data in
-  let decl =
-    {
-      Acids_scoped.decl_name = decl.decl_name;
-      Acids_scoped.decl_data = dsig;
-      Acids_scoped.decl_static = decl.decl_static;
-      Acids_scoped.decl_clock = decl.decl_clock;
-      Acids_scoped.decl_loc = decl.decl_loc;
-    }
-  in
-  decl, add_local_node env decl.Acids_scoped.decl_name
+  {
+    Acids_scoped.decl_name = decl.decl_name;
+    Acids_scoped.decl_data = dsig;
+    Acids_scoped.decl_static = decl.decl_static;
+    Acids_scoped.decl_clock = decl.decl_clock;
+    Acids_scoped.decl_loc = decl.decl_loc;
+  },
+  add_local_node env decl.decl_name
 
 let scope_type_def env tdef =
   check_type_name env tdef.ty_name tdef.ty_loc;
   let env = List.fold_left (check_type_constr tdef.ty_loc) env tdef.ty_body in
   let env = add_local_constrs_ranks env tdef.ty_body in
-  let tdef =
-    {
-      Acids_scoped.ty_name = tdef.ty_name;
-      Acids_scoped.ty_body = tdef.ty_body;
-      Acids_scoped.ty_loc = tdef.ty_loc;
-    }
-  in
-  tdef, env
+  {
+    Acids_scoped.ty_name = tdef.ty_name;
+    Acids_scoped.ty_body = tdef.ty_body;
+    Acids_scoped.ty_loc = tdef.ty_loc;
+  },
+  env
+
+let scope_static_def env sd =
+  check_static_name env sd.sd_name sd.sd_loc;
+  let body = scope_exp env sd.sd_body in
+  let id, env = add_static env sd.sd_name in
+  {
+    Acids_scoped.sd_name = sd.sd_name;
+    Acids_scoped.sd_var = id;
+    Acids_scoped.sd_body = body;
+    Acids_scoped.sd_loc = sd.sd_loc;
+  },
+  env
 
 let scope_phrase env phr =
   match phr with
@@ -757,6 +784,9 @@ let scope_phrase env phr =
   | Phr_type_def td ->
     let td, env = scope_type_def env td in
     env, Acids_scoped.Phr_type_def td
+  | Phr_static_def sd ->
+    let sd, env = scope_static_def env sd in
+    env, Acids_scoped.Phr_static_def sd
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
   let intf_env =

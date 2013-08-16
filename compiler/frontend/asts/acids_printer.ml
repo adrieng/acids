@@ -225,12 +225,18 @@ struct
       Names.print_shortname tydef.ty_name
       (Utils.print_list_r Names.print_shortname "|") tydef.ty_body
 
+  let print_static_def fmt sdef =
+    Format.fprintf fmt "@[@let static %a =@ %a@]"
+      Names.print_shortname sdef.sd_name
+      print_exp sdef.sd_body
+
   let print_phrase fmt phr =
     (
       match phr with
       | Phr_node_def def -> print_node_def fmt def
       | Phr_node_decl decl -> print_node_decl fmt decl
       | Phr_type_def tydef -> print_type_def fmt tydef
+      | Phr_static_def sdef -> print_static_def fmt sdef
     );
     Format.fprintf fmt "@\n"
 

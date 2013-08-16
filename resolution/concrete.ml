@@ -1058,9 +1058,11 @@ let build_solution sys pre_sol sol =
 
 let solve sys =
   let open Resolution_options in
-  let verbose = Int.to_int (find_int ~default:Int.zero sys.options "verbose") in
+  let verbose =
+    Int.to_int (find_int ~default:Int.zero sys.options "verbose")
+  in
   let max_int =
-    find_int ~default:(Int.of_int Pervasives.max_int) sys.options "max_int"
+    find_int ~default:(Int.of_int32 Int32.max_int) sys.options "max_int"
   in
   let profile = find_bool ~default:false sys.options "profile" in
 

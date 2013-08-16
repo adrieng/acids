@@ -21,6 +21,8 @@ val of_int : int -> t
 
 val to_int : t -> int
 
+val of_int32 : Int32.t -> t
+
 val add : t -> t -> t
 
 val sub : t -> t -> t

@@ -10,6 +10,7 @@ Compiler:
 - check if bounds inference works for user-defined enumerated types
 - Clock_types is growing enormous, move stuff to Clock_types_utils
 - Remove stupid make_located in parser
+- handle global static tuples
 
 Resolution:
 - Only compute causal solutions

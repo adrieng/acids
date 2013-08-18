@@ -97,6 +97,12 @@ let find_pword env ln =
     let pi = Interface.find_pword intf ln.shortn in
     pi.Interface.pi_value
 
+let add_pword env pn pw =
+  let get se = se.se_desc in
+  let get_int se = Ast_misc.int_of_econstr (get se) in
+  let p = Tree_word.map_upword get get_int pw in
+  { env with local_pwords = Names.ShortEnv.add pn p env.local_pwords; }
+
 (** {2 Utility functions} *)
 
 let singleton_ctx v =
@@ -861,7 +867,7 @@ let clock_pword_def env pd =
     M.pd_body = pw;
     M.pd_loc = pd.pd_loc;
   },
-  env
+  add_pword env pd.pd_name pd.pd_body
 
 let clock_phrase env phr =
   match phr with

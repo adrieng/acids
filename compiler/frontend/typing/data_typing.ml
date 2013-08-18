@@ -218,7 +218,7 @@ let find_pword env ln =
   let ty_sig =
     match ln.modn with
     | LocalModule ->
-      Names.ShortEnv.find ln.shortn env.current_statics
+      Names.ShortEnv.find ln.shortn env.current_pwords
     | Module modn ->
       let intf = Names.ShortEnv.find modn env.intf_env in
       let pi = Interface.find_pword intf ln.shortn in

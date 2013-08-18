@@ -42,6 +42,7 @@
       "let", LET;
       "node", NODE;
       "static", STATIC;
+      "pword", PWORD;
       "open", OPEN;
       "fby", FBY;
       "if", IF;
@@ -97,6 +98,7 @@ let keyword =
   | "let"
   | "node"
   | "static"
+  | "pword"
   | "open"
   | "fby"
   | "if"

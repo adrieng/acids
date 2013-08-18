@@ -210,6 +210,13 @@
       Acids_parsetree.sd_loc = loc;
     }
 
+  let make_pword_def ((name, body), loc) =
+    {
+      Acids_parsetree.pd_name = name;
+      Acids_parsetree.pd_body = body;
+      Acids_parsetree.pd_loc = loc;
+    }
+
   (* Ugly: a bit of scoping at parsing time *)
 
   let ht = Hashtbl.create 100
@@ -250,7 +257,7 @@
 
 /* Keywords */
 
-%token LET NODE STATIC OPEN FST SND
+%token LET NODE STATIC PWORD OPEN FST SND
 %token FBY IF THEN ELSE
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
@@ -407,13 +414,16 @@ const:
 | econstr { Ast_misc.Cconstr $1 }
 | FLOAT { Ast_misc.Cfloat $1 }
 
+static_pword:
+| pw = upword(static_exp_root_fword, static_exp_root, parens) { pw }
+
 clock_exp_desc:
 | v = IDENT
    { Acids_parsetree.Ce_condvar v }
 | ce = clock_exp EQUAL se = static_exp
    { Acids_parsetree.Ce_equal (ce, se) }
-| pt = upword(static_exp_root_fword, static_exp_root, parens)
-   { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_lit pt) }
+| pw = static_pword
+   { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_lit pw) }
 | ln = qualified_longname
    { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_global ln) }
 
@@ -681,6 +691,12 @@ static_def_desc:
 static_def:
 | sdl = with_loc(static_def_desc) { make_static_def sdl }
 
+pword_def_desc:
+| pragma_node LET PWORD s = IDENT EQUAL pw = static_pword { (s, pw) }
+
+pword_def:
+| pdl = with_loc(pword_def_desc) { make_pword_def pdl }
+
 import:
 | OPEN UIDENT { $2 }
 
@@ -689,6 +705,7 @@ phrase:
 | decl = node_decl { Acids_parsetree.Phr_node_decl decl }
 | td = type_def { Acids_parsetree.Phr_type_def td }
 | sd = static_def { Acids_parsetree.Phr_static_def sd }
+| pd = pword_def { Acids_parsetree.Phr_pword_def pd }
 
 source_file:
 | imports = list(import) body = list(phrase) EOF { make_file imports body }

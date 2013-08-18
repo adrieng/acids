@@ -368,7 +368,7 @@ let find_var_pword env loc v =
   with Not_found ->
     (try
        let ln =
-         scope_static_name
+         scope_pword_name
            env
            loc
            Names.({ modn = LocalModule; shortn = v; })

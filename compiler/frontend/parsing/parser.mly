@@ -429,6 +429,7 @@ clock_exp_desc:
 
 clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
+| ce = parens(clock_exp) { ce }
 
 (******************** STATIC EXPS ********************)
 

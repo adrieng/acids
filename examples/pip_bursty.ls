@@ -12,10 +12,17 @@ let node horizontal_filter (p :: 'a on (9)) = o where
   and p2 = p
   and o = (convolution (p0, p1, p2)) when hf
 
+let static sd_width = 720
+let static sd_height = 480
+let static hd_width = 1920
+let static hd_height = 1080
+
 (* vertical sliding window *)
-let pword first_sd_line = true^720(false)
-let pword first_line_of_img = (true^720 false^{720 * 1079})
-let pword last_line_of_img = (false^{720 * 1079} true^720)
+let pword first_sd_line = true^{sd_width}(false)
+let pword first_line_of_img =
+    (true^{sd_width} false^{sd_width * (hd_height - 1)})
+let pword last_line_of_img =
+    (false^{sd_width * (hd_height - 1)} true^{sd_width})
 
 let node my_fby_sd_line (p1, p2) =
   merge first_sd_line (p1 when first_sd_line) (buffer p2)
@@ -29,7 +36,11 @@ let node reorder (p :: 'a on (720)) = ((p0, p1, p2) :: 'a1) where
            else (p when (first_sd_line = false))
 
 (* vertical filter *)
-let pword vf = ([true^720 false^720]^2 false^720 true^720 false^1440 true^720)
+let pword vf = ([true^{sd_width} false^{sd_width}]^2
+                false^{sd_width}
+                true^{sd_width}
+                false^{sd_width * 2}
+                true^{sd_width})
 
 @max_burst{10000}
 let node vertical_filter p = o where
@@ -42,7 +53,8 @@ let node downscaler p = vertical_filter (horizontal_filter p)
 
 (* picture in picture *)
 let pword incrust_end =
-    (false^{1920 * (1080 - 480)} [false^1200 true^720]^480)
+    (false^{hd_width * (hd_height - sd_height)}
+     [false^{hd_width - sd_width} true^{sd_width}]^{sd_height})
 
 @max_burst{100000} @max_int{1000000}
 let node picture_in_picture (p1, p2) = o where

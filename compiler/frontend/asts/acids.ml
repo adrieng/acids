@@ -74,8 +74,14 @@ sig
 
   and clock_exp_desc =
   | Ce_condvar of I.var
-  | Ce_pword of (static_exp, static_exp) Tree_word.t
+  | Ce_pword of pword_desc
   | Ce_equal of clock_exp * static_exp
+
+  and pword_desc =
+  | Pd_lit of static_word
+  | Pd_global of Names.longname
+
+  and static_word = (static_exp, static_exp) Tree_word.t
 
   and static_exp =
     {
@@ -197,11 +203,19 @@ sig
       sd_loc : Loc.t;
     }
 
+  type pword_def =
+    {
+      pd_name : Names.shortname;
+      pd_body : static_word;
+      pd_loc : Loc.t;
+    }
+
   type phrase =
   | Phr_node_def of node_def
   | Phr_node_decl of node_decl
   | Phr_type_def of type_def
   | Phr_static_def of static_def
+  | Phr_pword_def of pword_def
 
   type 'a file = {
     f_name : Names.modname;
@@ -224,9 +238,15 @@ module Make = functor (S : S) ->
       }
 
     and clock_exp_desc =
-    | Ce_condvar of S.var
-    | Ce_pword of (static_exp, static_exp) Tree_word.t
+    | Ce_condvar of I.var
+    | Ce_pword of pword_desc
     | Ce_equal of clock_exp * static_exp
+
+    and pword_desc =
+    | Pd_lit of static_word
+    | Pd_global of Names.longname
+
+    and static_word = (static_exp, static_exp) Tree_word.t
 
     and static_exp =
       {
@@ -380,11 +400,19 @@ module Make = functor (S : S) ->
         sd_loc : Loc.t;
       }
 
+    type pword_def =
+      {
+        pd_name : Names.shortname;
+        pd_body : static_word;
+        pd_loc : Loc.t;
+      }
+
     type phrase =
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
     | Phr_type_def of type_def
     | Phr_static_def of static_def
+    | Phr_pword_def of pword_def
 
     type 'a file =
       {

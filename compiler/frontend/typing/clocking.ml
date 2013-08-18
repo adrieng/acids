@@ -43,6 +43,7 @@ type env =
     intf_env : Interface.t Names.ModEnv.t;
     pragmas : Pragma.pragma Utils.Env.t;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
+    local_pwords : (Ast_misc.econstr, Int.t) Tree_word.t Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
 
@@ -52,6 +53,7 @@ let initial_env ctx intf_env =
     intf_env = Names.mod_env_of_short_env intf_env;
     pragmas = Utils.Env.empty;
     local_nodes = Names.ShortEnv.empty;
+    local_pwords = Names.ShortEnv.empty;
     ck_vars = Utils.Int_map.empty;
   }
 
@@ -85,6 +87,15 @@ let find_node_signature env ln =
   | Module modn ->
     let intf = ModEnv.find (Module modn) env.intf_env in
     Interface.clock_signature_of_node_item (Interface.find_node intf ln.shortn)
+
+let find_pword env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.local_pwords
+  | Module modn ->
+    let intf = ModEnv.find (Module modn) env.intf_env in
+    let pi = Interface.find_pword intf ln.shortn in
+    pi.Interface.pi_value
 
 (** {2 Utility functions} *)
 
@@ -136,7 +147,7 @@ let prod_ty t_l = Pct_prod t_l
 
 let trad_static_exp_int se = Ast_misc.get_int se.se_desc
 
-let rec trad_clock_exp ce =
+let rec trad_clock_exp env ce =
   match ce.ce_desc with
   | Ce_condvar v ->
     let cev =
@@ -147,13 +158,15 @@ let rec trad_clock_exp ce =
       }
     in
     Clock_types.PreCe.Pce_condvar cev
-  | Ce_pword pw ->
+  | Ce_pword (Pd_lit pw) ->
     let pw =
       Ast_misc.map_upword (fun se -> se.se_desc) trad_static_exp_int pw
     in
     Clock_types.PreCe.Pce_pword pw
+  | Ce_pword (Pd_global ln) ->
+    Clock_types.PreCe.Pce_pword (find_pword env ln)
   | Ce_equal (ce, se) ->
-    Clock_types.PreCe.Pce_equal (trad_clock_exp ce, se.se_desc)
+    Clock_types.PreCe.Pce_equal (trad_clock_exp env ce, se.se_desc)
 
 let rec int_ptree_of_ptree current pt =
   let open Ast_misc in
@@ -364,13 +377,16 @@ and clock_clock_exp env ce acc =
       let st, acc = st_of_ty loc ty acc in
       M.Ce_condvar v, st, acc
 
-    | Ce_pword pw ->
+    | Ce_pword (Pd_lit pw) ->
       let st = fresh_st () in
       let pw, acc =
         let expect = expect_static_exp (ty_of_st st) in
         Ast_misc.mapfold_upword expect expect pw acc
       in
-      M.Ce_pword pw, st, acc
+      M.Ce_pword (M.Pd_lit pw), st, acc
+
+    | Ce_pword (Pd_global ln) ->
+      M.Ce_pword (M.Pd_global ln), fresh_st (), acc
 
     | Ce_equal (ce, se) ->
       let (ce, st), acc = clock_clock_exp env ce acc in
@@ -468,14 +484,14 @@ and clock_exp env e acc =
     M.E_where (e, block), ty, acc
 
   | E_when (e, ce) ->
-    let cce = trad_clock_exp ce in
+    let cce = trad_clock_exp env ce in
     let (e, ty), acc = clock_exp env e acc in
     let st, acc = st_of_ty loc ty acc in
     let ce, acc = expect_clock_exp env st ce acc in
     M.E_when (e, ce), ty_of_st (Pst_on (st, cce)), acc
 
   | E_split (ce, e, ec_l) ->
-    let cce = trad_clock_exp ce in
+    let cce = trad_clock_exp env ce in
     let (e, ty), acc = clock_exp env e acc in
     let st, acc = st_of_ty loc ty acc in
     let ce, acc = expect_clock_exp env st ce acc in
@@ -483,7 +499,7 @@ and clock_exp env e acc =
     M.E_split (ce, e, ec_l), prod_ty ty_l, acc
 
   | E_bmerge (ce, e1, e2) ->
-    let cce = trad_clock_exp ce in
+    let cce = trad_clock_exp env ce in
     let (ce, st), acc = clock_clock_exp env ce acc in
     let ty = ty_of_st st in
     let e1, acc =
@@ -495,7 +511,7 @@ and clock_exp env e acc =
     M.E_bmerge (ce, e1, e2), ty_of_st st, acc
 
   | E_merge (ce, c_l) ->
-    let cce = trad_clock_exp ce in
+    let cce = trad_clock_exp env ce in
     let (ce, st), acc = clock_clock_exp env ce acc in
     let ty = ty_of_st st in
     let c_l, acc =
@@ -567,7 +583,7 @@ and clock_clock_annot env loc cka acc =
   | Ca_var v ->
     (M.Ca_var v, find_ck_var env v), acc
   | Ca_on (cka, ce) ->
-    let cce = trad_clock_exp ce in
+    let cce = trad_clock_exp env ce in
     let (cka, st), acc = clock_clock_annot env loc cka acc in
     let ce, acc = expect_clock_exp env st ce acc in
     (M.Ca_on (cka, ce), Pst_on (st, cce)), acc
@@ -834,6 +850,19 @@ let clock_static_def env sd =
   },
   env
 
+let clock_pword_def env pd =
+  let st = fresh_st () in
+  let pw, _ =
+    let expect = expect_static_exp (ty_of_st st) in
+    Ast_misc.mapfold_upword expect expect pd.pd_body (Ident.Env.empty, [])
+  in
+  {
+    M.pd_name = pd.pd_name;
+    M.pd_body = pw;
+    M.pd_loc = pd.pd_loc;
+  },
+  env
+
 let clock_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -847,6 +876,9 @@ let clock_phrase env phr =
   | Phr_static_def sd ->
     let sd, env = clock_static_def env sd in
     env, M.Phr_static_def sd
+  | Phr_pword_def pd ->
+    let pd, env = clock_pword_def env pd in
+    env, M.Phr_pword_def pd
 
 let clock_file ctx file =
   let env = initial_env ctx file.f_info#interfaces in

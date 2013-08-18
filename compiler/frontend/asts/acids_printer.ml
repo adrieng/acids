@@ -35,9 +35,14 @@ struct
   and print_clock_exp_desc fmt ced =
     match ced with
     | Ce_condvar v -> I.print_var fmt v
-    | Ce_pword p -> print_static_word fmt p
+    | Ce_pword pd -> print_pword_desc fmt pd
     | Ce_equal (ce, se) ->
       Format.fprintf fmt "(%a = %a)" print_clock_exp ce print_static_exp se
+
+  and print_pword_desc fmt pd =
+    match pd with
+    | Pd_lit p -> print_static_word fmt p
+    | Pd_global ln -> Names.print_longname fmt ln
 
   and print_static_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"
@@ -230,6 +235,11 @@ struct
       Names.print_shortname sdef.sd_name
       print_exp sdef.sd_body
 
+  let print_pword_def fmt pdef =
+    Format.fprintf fmt "@[let pword %a =@ %a@]"
+      Names.print_shortname pdef.pd_name
+      print_static_word pdef.pd_body
+
   let print_phrase fmt phr =
     (
       match phr with
@@ -237,6 +247,7 @@ struct
       | Phr_node_decl decl -> print_node_decl fmt decl
       | Phr_type_def tydef -> print_type_def fmt tydef
       | Phr_static_def sdef -> print_static_def fmt sdef
+      | Phr_pword_def pdef -> print_pword_def fmt pdef
     );
     Format.fprintf fmt "@\n"
 

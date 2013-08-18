@@ -126,6 +126,10 @@ type typing_env =
     current_nodes : Data_types.data_sig Names.ShortEnv.t;
     (** maps statics from the current module to type signatures *)
     current_statics : Data_types.data_sig Names.ShortEnv.t;
+    (** maps pword from the current module to pword signatures *)
+    (* In theory, there is no type instantiation to perform since pwords are
+       always monomorphic *)
+    current_pwords : Data_types.data_sig Names.ShortEnv.t;
     (** maps current idents to (pre)types *)
     idents : Data_types.VarTy.t Ident.Env.t;
     (** maps existential (annotation) variables to types *)
@@ -138,6 +142,7 @@ let initial_typing_env info =
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
     current_statics = Names.ShortEnv.empty;
+    current_pwords = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
     exists = Utils.Int_map.empty;
   }
@@ -197,6 +202,28 @@ let find_static env ln =
       let intf = Names.ShortEnv.find modn env.intf_env in
       let si = Interface.find_static intf ln.shortn in
       { data_sig_input = Ty_prod []; data_sig_output = si.Interface.si_type; }
+  in
+  let _, pty = instantiate_sig fresh_ty ty_sig in
+  pty
+
+let add_pword env pn ty =
+  let ty_sig = generalize_sig (PreTy.Pty_prod []) ty in
+  {
+    env with
+      current_pwords = Names.ShortEnv.add pn ty_sig env.current_pwords;
+  }
+
+let find_pword env ln =
+  let open Names in
+  let ty_sig =
+    match ln.modn with
+    | LocalModule ->
+      Names.ShortEnv.find ln.shortn env.current_statics
+    | Module modn ->
+      let intf = Names.ShortEnv.find modn env.intf_env in
+      let pi = Interface.find_pword intf ln.shortn in
+      { data_sig_input = Ty_prod [];
+        data_sig_output = Ty_scal (pi.Interface.pi_type); }
   in
   let _, pty = instantiate_sig fresh_ty ty_sig in
   pty
@@ -371,9 +398,13 @@ and type_clock_exp env ce =
       unify ce.ce_loc ty (find_ident env id);
       M.Ce_condvar id, ty
 
-    | Ce_pword w ->
+    | Ce_pword (Pd_lit w) ->
       let w, ty = type_static_word env w in
-      M.Ce_pword w, cond_ty ty
+      M.Ce_pword (M.Pd_lit w), cond_ty ty
+
+    | Ce_pword (Pd_global ln) ->
+      let ty = find_pword env ln in
+      M.Ce_pword (M.Pd_global ln), cond_ty ty
 
     | Ce_equal (ce, se) ->
       let se, ty = type_static_exp env se in
@@ -753,6 +784,15 @@ let type_static_def env sd =
   },
   add_static env sd.sd_name ty
 
+let type_pword_def env pd =
+  let body, ty = type_static_word env pd.pd_body in
+  {
+    M.pd_name = pd.pd_name;
+    M.pd_body = body;
+    M.pd_loc = pd.pd_loc;
+  },
+  add_pword env pd.pd_name ty
+
 let type_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -767,6 +807,9 @@ let type_phrase env phr =
   | Phr_static_def sd ->
     let sd, env = type_static_def env sd in
     env, M.Phr_static_def sd
+  | Phr_pword_def pd ->
+    let pd, env = type_pword_def env pd in
+    env, M.Phr_pword_def pd
 
 let type_file file =
   let _, body =

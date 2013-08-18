@@ -114,3 +114,13 @@ let rec size_tree pt =
   | Concat pt_l -> List.fold_left (+) 0 (List.map size_tree pt_l)
 
 let size_upword { u = u; v = v } = size_tree u, size_tree v
+
+let get_first_leaf_period { v = v; } =
+  let rec walk pt =
+    match pt with
+    | Leaf x -> x
+    | Power (pt, _) -> walk pt
+    | Concat [] -> invalid_arg "empty pword"
+    | Concat (pt :: _) -> walk pt
+  in
+  walk v

@@ -57,6 +57,24 @@ let reset_ty, fresh_ty =
   (fun () -> r := 0),
   (fun () -> incr r; Psy_var { v_link = None; v_id = !r; })
 
+exception Non_constant_pword
+
+(* A tree pword is constant if all its sub-pwordexps are syntacticaly equal *)
+let is_constant_pword get w =
+  let open Ast_misc in
+
+  let check_constant se acc =
+    match acc with
+    | Some prev_se ->
+      if get se <> get prev_se
+      then raise Non_constant_pword
+      else acc
+    | None ->
+      Some se
+  in
+  try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
+  with Non_constant_pword -> false
+
 (** {2 Typing environments} *)
 
 type typing_env =
@@ -67,6 +85,8 @@ type typing_env =
     current_constr : Names.shortname Names.ShortEnv.t;
     (** maps nodes from the current module to type signatures *)
     current_nodes : ty_sig Names.ShortEnv.t;
+    (** maps global pwords to boolean true iff they are constant *)
+    current_pwords_const : bool Names.ShortEnv.t;
     (** maps current idents to (pre)types *)
     idents : VarTy.t Ident.Env.t;
     (** subtyping constraint system *)
@@ -86,6 +106,7 @@ let initial_typing_env info =
     intf_env = info#interfaces;
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
+    current_pwords_const = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
     constr = [];
   }
@@ -110,6 +131,22 @@ let find_node_signature env ln =
 
 let add_local_node_signature env shortn ssig =
   { env with current_nodes = Names.ShortEnv.add shortn ssig env.current_nodes; }
+
+let is_constant_global_pword env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ShortEnv.find ln.shortn env.current_pwords_const
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    let w = Interface.((find_pword intf ln.shortn).pi_value) in
+    is_constant_pword (fun x -> x) w
+
+let add_pword env pn w =
+  let get se = se.se_desc in
+  let current_pwords_const =
+    Names.ShortEnv.add pn (is_constant_pword get w) env.current_pwords_const
+  in
+  { env with current_pwords_const = current_pwords_const; }
 
 let solve_subtyping_constraints env = Static_types.solve env.constr
 
@@ -258,8 +295,6 @@ let rec enrich_pat env p =
       pt
       env
 
-exception Non_constant_pword
-
 let check_and_transform_non_static_sig name ssig =
   let open Static_types in
 
@@ -277,23 +312,6 @@ let check_and_transform_non_static_sig name ssig =
     static = S_dynamic;
   }
 
-(* A tree pword is constant if it contains no Se_fword and all its
-   sub-pwordexps are syntacticaly equal *)
-let is_constant_pword w =
-  let open Ast_misc in
-
-  let check_constant se acc =
-    match acc with
-    | Some prev_se ->
-      if se.se_desc <> prev_se.se_desc
-      then raise Non_constant_pword
-      else acc
-    | None ->
-      Some se
-  in
-  try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
-  with Non_constant_pword -> false
-
 (** {2 Typing AST nodes} *)
 
 let rec type_clock_exp env ce =
@@ -302,11 +320,13 @@ let rec type_clock_exp env ce =
     | Ce_condvar id ->
       M.Ce_condvar id, find_ident env id
 
-    | Ce_pword w ->
-      let type_fun = type_static_exp env in
-      let ty = if is_constant_pword w then static_ty else dynamic_ty in
-      let w = Ast_misc.map_upword type_fun type_fun w in
-      M.Ce_pword w, ty
+    | Ce_pword (Pd_lit pw) ->
+      let pw, ty = type_static_word env pw in
+      M.Ce_pword (M.Pd_lit pw), ty
+
+    | Ce_pword (Pd_global ln) ->
+      M.Ce_pword (M.Pd_global ln),
+      if is_constant_global_pword env ln then static_ty else dynamic_ty
 
     | Ce_equal (ce, se) ->
       let ce, ty = type_clock_exp env ce in
@@ -319,6 +339,14 @@ let rec type_clock_exp env ce =
     M.ce_info = annotate_clock_exp ce ty;
   },
   ty
+
+and type_static_word env pw =
+  let type_fun = type_static_exp env in
+  let ty =
+    let get se = se.se_desc in
+    if is_constant_pword get pw then static_ty else dynamic_ty
+  in
+  Ast_misc.map_upword type_fun type_fun pw, ty
 
 and type_static_exp env se =
   let open Acids_scoped.Info in
@@ -669,6 +697,15 @@ let type_static_def env sd =
   },
   env
 
+let type_pword_def env pd =
+  let body, _ = type_static_word env pd.pd_body in
+  {
+    M.pd_name = pd.pd_name;
+    M.pd_body = body;
+    M.pd_loc = pd.pd_loc;
+  },
+  add_pword env pd.pd_name pd.pd_body
+
 let type_phrase env phr =
   match phr with
   | Phr_node_def nd ->
@@ -683,6 +720,9 @@ let type_phrase env phr =
   | Phr_static_def sd ->
     let sd, env = type_static_def env sd in
     env, M.Phr_static_def sd
+  | Phr_pword_def pd ->
+    let pd, env = type_pword_def env pd in
+    env, M.Phr_pword_def pd
 
 let type_file file =
   try

@@ -78,9 +78,10 @@ let rec annot_clock_exp ce =
     match ce.ce_desc with
     | Ce_condvar v ->
       Acids_causal.Ce_condvar v
-    | Ce_pword pw ->
-      let pw = Ast_misc.map_upword annot_static_exp annot_static_exp pw in
-      Acids_causal.Ce_pword pw
+    | Ce_pword (Pd_lit pw) ->
+      Acids_causal.Ce_pword (Acids_causal.Pd_lit (annot_static_word pw))
+    | Ce_pword (Pd_global ln) ->
+      Acids_causal.Ce_pword (Acids_causal.Pd_global ln)
     | Ce_equal (ce, se) ->
       Acids_causal.Ce_equal (annot_clock_exp ce, annot_static_exp se)
   in
@@ -89,6 +90,9 @@ let rec annot_clock_exp ce =
     Acids_causal.ce_loc = ce.ce_loc;
     Acids_causal.ce_info = ce.ce_info;
   }
+
+and annot_static_word pw =
+  Ast_misc.map_upword annot_static_exp annot_static_exp pw
 
 and annot_static_exp se =
   {
@@ -302,6 +306,13 @@ let annot_static_def sd =
     Acids_causal.sd_loc = sd.sd_loc;
   }
 
+let annot_pword_def pd =
+  {
+    Acids_causal.pd_name = pd.pd_name;
+    Acids_causal.pd_body = annot_static_word pd.pd_body;
+    Acids_causal.pd_loc = pd.pd_loc;
+  }
+
 let annot_type_phrase phr =
   match phr with
   | Phr_node_def nd ->
@@ -312,6 +323,8 @@ let annot_type_phrase phr =
     Acids_causal.Phr_type_def (annot_type_def td)
   | Phr_static_def sd ->
     Acids_causal.Phr_static_def (annot_static_def sd)
+  | Phr_pword_def pd ->
+    Acids_causal.Phr_pword_def (annot_pword_def pd)
 
 let annot_type_file file =
   {

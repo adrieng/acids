@@ -113,9 +113,11 @@ struct
       match ce.ce_desc with
       | Ce_condvar v ->
         OUT.Ce_condvar v
-      | Ce_pword w ->
+      | Ce_pword (Pd_lit w) ->
         let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
-        OUT.Ce_pword w
+        OUT.Ce_pword (OUT.Pd_lit w)
+      | Ce_pword (Pd_global ln) ->
+        OUT.Ce_pword (OUT.Pd_global ln)
       | Ce_equal (ce, se) ->
         OUT.Ce_equal (extract_clock_exp ce, extract_static_exp se)
     in
@@ -292,12 +294,24 @@ struct
       OUT.sd_loc = sd.sd_loc;
     }
 
+  let extract_pword_def pd =
+    {
+      OUT.pd_name = pd.pd_name;
+      OUT.pd_body =
+        Tree_word.map_upword
+          extract_static_exp
+          extract_static_exp
+          pd.pd_body;
+      OUT.pd_loc = pd.pd_loc;
+    }
+
   let extract_phrase phr =
     match phr with
     | Phr_node_def nd -> OUT.Phr_node_def (extract_node_def nd)
     | Phr_node_decl nd -> OUT.Phr_node_decl (extract_node_decl nd)
     | Phr_type_def td -> OUT.Phr_type_def (extract_type_def td)
     | Phr_static_def sd -> OUT.Phr_static_def (extract_static_def sd)
+    | Phr_pword_def pd -> OUT.Phr_pword_def (extract_pword_def pd)
 
   let extract_file f =
     {
@@ -429,11 +443,13 @@ struct
       | Ce_condvar v ->
         let env, v = refresh_var env v in
         Ce_condvar v, env
-      | Ce_pword pw ->
+      | Ce_pword (Pd_lit pw) ->
         let pw, env =
           Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
         in
-        Ce_pword pw, env
+        Ce_pword (Pd_lit pw), env
+      | Ce_pword (Pd_global ln) ->
+        Ce_pword (Pd_global ln), env
       | Ce_equal (ce, se) ->
         let ce, env = refresh_clock_exp ce env in
         let se, env = refresh_static_exp se env in

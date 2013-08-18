@@ -143,6 +143,7 @@ and env =
     external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
     current_nodes : node_fun Names.ShortEnv.t;
     current_statics : desc Names.ShortEnv.t;
+    current_pwords : (Ast_misc.econstr, Int.t) Tree_word.t Names.ShortEnv.t;
     values : value Ident.Env.t;
   }
 
@@ -189,11 +190,21 @@ let find_static env ln =
   let open Names in
   match ln.modn with
   | LocalModule ->
-    Names.ShortEnv.find ln.shortn env.current_statics
+    ShortEnv.find ln.shortn env.current_statics
   | Module modn ->
-    let intf = Names.ShortEnv.find modn env.intf_env in
+    let intf = ShortEnv.find modn env.intf_env in
     let si = Interface.find_static intf ln.shortn in
     Const si.Interface.si_value
+
+let find_pword env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    ShortEnv.find ln.shortn env.current_pwords
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    let pw = Interface.((find_pword intf ln.shortn).pi_value) in
+    pw
 
 (** {2 Static evaluation itself} *)
 
@@ -206,15 +217,12 @@ and eval_clock_exp env ce =
   match ce.ce_desc with
   | Ce_condvar v ->
     eval_var env v
-  | Ce_pword w ->
-    let rec find_any pt =
-      match pt with
-      | Ast_misc.Leaf x -> x
-      | Ast_misc.Power (pt, _) -> find_any pt
-      | Ast_misc.Concat [] -> assert false
-      | Ast_misc.Concat (x :: _) -> find_any x
-    in
-    eval_static_exp env (find_any w.Ast_misc.u)
+  | Ce_pword (Pd_lit pw) ->
+    let se = Tree_word.get_first_leaf_period pw in
+    eval_static_exp env se
+  | Ce_pword (Pd_global ln) ->
+    let pw = find_pword env ln in
+    econstr (Tree_word.get_first_leaf_period pw)
   | Ce_equal (ce, se) ->
     let val_ce = eval_clock_exp env ce in
     let val_se = eval_static_exp env se in
@@ -344,6 +352,12 @@ let add_node_def env nd =
   let f = node_fun_of_node_def env nd in
   add_node env nd.n_name f
 
+let add_pword env pn pw =
+  let get se = get_econstr (lazy (eval_static_exp env se)) in
+  let get_int se = get_int (lazy (eval_static_exp env se)) in
+  let p = Tree_word.map_upword get get_int pw in
+  { env with current_pwords = Names.ShortEnv.add pn p env.current_pwords; }
+
 let make_env intf_env =
   let open Names in
 
@@ -354,6 +368,7 @@ let make_env intf_env =
       current_nodes = ShortEnv.empty;
       values = Ident.Env.empty;
       current_statics = ShortEnv.empty;
+      current_pwords = ShortEnv.empty;
     }
   in
 

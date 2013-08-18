@@ -79,6 +79,7 @@ type env =
     intf_env : Interface.t Names.ModEnv.t;
     env : Ast_misc.spec list Ident.Env.t;
     constrs : Names.shortname list Names.ShortEnv.t;
+    pword_specs : ((Int.t, Int.t) Tree_word.t * Interval.t) Names.ShortEnv.t;
   }
 
 let initial_env intf_env =
@@ -86,6 +87,7 @@ let initial_env intf_env =
     intf_env = intf_env;
     env = Ident.Env.empty;
     constrs = Names.ShortEnv.empty;
+    pword_specs = Names.ShortEnv.empty;
   }
 
 let add_type_def env td =
@@ -95,6 +97,27 @@ let add_spec id specs env =
   { env with env = Ident.Env.add id specs env.env; }
 
 let find_spec env v = try Ident.Env.find v env.env with Not_found -> []
+
+let find_pword_specs env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    ShortEnv.find ln.shortn env.pword_specs
+  | Module modn ->
+    let intf = ModEnv.find (Module modn) env.intf_env in
+    let pw = Interface.((find_pword intf ln.shortn).pi_value) in
+    let p = Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw in
+    let l, u = Ast_misc.bounds_of_int_pword p in
+    p, Interval.make l u
+
+let add_pword_spec env pn pw =
+  let get se = Ast_misc.int_of_econstr se.Acids_spec.se_desc in
+  let p = Tree_word.map_upword get get pw in
+  let l, u = Ast_misc.bounds_of_int_pword p in
+  let pword_specs =
+    Names.ShortEnv.add pn (p, Interval.make l u) env.pword_specs
+  in
+  { env with pword_specs = pword_specs; }
 
 (** {2 Exhaustiveness checking for patterns} *)
 
@@ -189,6 +212,15 @@ let rec enrich_env_with_pattern env p =
       pw
       env
 
+let specs_of_upword pw =
+  let p =
+    let get se = Ast_misc.int_of_econstr se.se_desc in
+    Tree_word.map_upword get get pw
+  in
+
+  let l, u = Ast_misc.bounds_of_int_pword p in
+  p, Interval.make l u
+
 let rec annot_clock_exp env ce =
   let ced, it, specs =
     match ce.ce_desc with
@@ -202,22 +234,26 @@ let rec annot_clock_exp env ce =
       in
       Acids_spec.Ce_condvar v, find_it specs, specs
 
-    | Ce_pword pw ->
-      let p =
-        let get se = Ast_misc.int_of_econstr se.se_desc in
-        Tree_word.map_upword get get pw
-      in
+    | Ce_pword pd ->
+      let p, it, desc =
+        match pd with
+        | Pd_lit pw ->
+          let p, it = specs_of_upword pw in
 
-      let it =
-        let l, u = Ast_misc.bounds_of_int_pword p in
-        Interval.make l u
-      in
+          let pw =
+            Tree_word.map_upword
+              (annot_static_exp env)
+              (annot_static_exp env)
+              pw
+          in
 
-      let pw =
-        Tree_word.map_upword (annot_static_exp env) (annot_static_exp env) pw
-      in
+          p, it, Acids_spec.Pd_lit pw
 
-      Acids_spec.Ce_pword pw, it, [Ast_misc.Interval it; Ast_misc.Word p]
+        | Pd_global ln ->
+          let p, it = find_pword_specs env ln in
+          p, it, Acids_spec.Pd_global ln
+      in
+      Acids_spec.Ce_pword desc, it, [Ast_misc.Interval it; Ast_misc.Word p]
 
     | Ce_equal (ce, se) ->
       let ce, it, specs = annot_clock_exp env ce in
@@ -519,25 +555,43 @@ let annot_static_def env sd =
     Acids_spec.sd_loc = sd.sd_loc;
   }
 
+let annot_pword_def env pd =
+  let body =
+    Tree_word.map_upword
+      (annot_static_exp env)
+      (annot_static_exp env)
+      pd.pd_body
+  in
+  {
+    Acids_spec.pd_name = pd.pd_name;
+    Acids_spec.pd_body = body;
+    Acids_spec.pd_loc = pd.pd_loc;
+  },
+  add_pword_spec env pd.pd_name body
+
 let annot_ty_phrase env phr =
   match phr with
   | Phr_node_def nd ->
-    Acids_spec.Phr_node_def (annot_node_def env nd)
+    env, Acids_spec.Phr_node_def (annot_node_def env nd)
   | Phr_node_decl nd ->
-    Acids_spec.Phr_node_decl (annot_node_decl env nd)
+    env, Acids_spec.Phr_node_decl (annot_node_decl env nd)
   | Phr_type_def td ->
-    Acids_spec.Phr_type_def (annot_type_def env td)
+    env, Acids_spec.Phr_type_def (annot_type_def env td)
   | Phr_static_def sd ->
-    Acids_spec.Phr_static_def (annot_static_def env sd)
+    env, Acids_spec.Phr_static_def (annot_static_def env sd)
+  | Phr_pword_def pd ->
+    let pd, env = annot_pword_def env pd in
+    env, Acids_spec.Phr_pword_def pd
 
 let annot_file file =
   let interfaces = Names.mod_env_of_short_env file.f_info#interfaces in
   let env = initial_env interfaces in
+  let _, body = Utils.mapfold_left annot_ty_phrase env file.f_body in
   {
     Acids_spec.f_name = file.f_name;
     Acids_spec.f_imports = file.f_imports;
     Acids_spec.f_info = file.f_info;
-    Acids_spec.f_body = List.map (annot_ty_phrase env) file.f_body;
+    Acids_spec.f_body = body;
   }
 
 (** {2 Putting it all together} *)

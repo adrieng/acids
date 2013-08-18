@@ -109,6 +109,12 @@ let add_static_var env var value =
       eval_env = Static_eval.add_static env.eval_env var value;
   }
 
+let add_pword env var body =
+  {
+    env with
+      eval_env = Static_eval.add_pword env.eval_env var body;
+  }
+
 let find_static_node_def env ln =
   let open Names in
   match ln.modn with
@@ -124,26 +130,32 @@ let static_nodes env = env.static_nodes
 let rec simpl_static_var env v =
   Static_eval.eval_var env.eval_env v
 
+and simpl_static_word env loc pw =
+  let pw =
+    Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
+  in
+
+  let check_pos se =
+    let open Ast_misc in
+    match se.Acids_prespec.se_desc with
+    | Ec_int i when i < Int.zero -> negative_pword loc pw
+    | _ -> ()
+  in
+  Tree_word.iter_upword check_pos (fun _ -> ()) pw;
+  pw
+
 and simpl_clock_exp env ce =
   let ced =
     match ce.ce_desc with
     | Ce_condvar v ->
       Acids_prespec.Ce_condvar v
 
-    | Ce_pword pw ->
-      let pw =
-        Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
-      in
+    | Ce_pword (Pd_lit pw) ->
+      let pw = simpl_static_word env ce.ce_loc pw in
+      Acids_prespec.Ce_pword (Acids_prespec.Pd_lit pw)
 
-      let check_pos se =
-        let open Ast_misc in
-        match se.Acids_prespec.se_desc with
-        | Ec_int i when i < Int.zero -> negative_pword ce.ce_loc pw
-        | _ -> ()
-      in
-      Tree_word.iter_upword check_pos (fun _ -> ()) pw;
-
-      Acids_prespec.Ce_pword pw
+    | Ce_pword (Pd_global ln) ->
+      Acids_prespec.Ce_pword (Acids_prespec.Pd_global ln)
 
     | Ce_equal (ce, se) ->
       let ce = simpl_clock_exp env ce in
@@ -475,6 +487,15 @@ let simpl_static_def env sd =
   },
   add_static_var env sd.sd_name (Const c)
 
+let simpl_pword_def env pd =
+  let body = simpl_static_word env pd.pd_loc pd.pd_body in
+  {
+    Acids_prespec.pd_name = pd.pd_name;
+    Acids_prespec.pd_body = body;
+    Acids_prespec.pd_loc = pd.pd_loc;
+  },
+  add_pword env pd.pd_name pd.pd_body
+
 let simpl_phrase (body, env) phr =
   match phr with
   | Phr_node_def nd ->
@@ -494,6 +515,10 @@ let simpl_phrase (body, env) phr =
   | Phr_static_def sd ->
     let sd, env = simpl_static_def env sd in
     Acids_prespec.Phr_static_def sd :: body, env
+
+  | Phr_pword_def pd ->
+    let pd, env = simpl_pword_def env pd in
+    Acids_prespec.Phr_pword_def pd :: body, env
 
 let simpl_file file =
   let env = initial_env file.f_info#interfaces in

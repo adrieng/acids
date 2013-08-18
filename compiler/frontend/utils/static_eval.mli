@@ -37,6 +37,8 @@ val add_local_defs : env -> Acids_static.block -> env
 
 val add_static : env -> Names.shortname -> desc -> env
 
+val add_pword : env -> Names.shortname -> Acids_static.static_word -> env
+
 val eval_exp : env -> Acids_static.exp -> desc
 
 val eval_static_exp : env -> Acids_static.static_exp -> desc

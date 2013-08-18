@@ -172,3 +172,8 @@ let static test = true
 
 let node f x = (x when ({test} false) + x when (true false)) where
     rec test = true fby false
+
+$$
+
+let node f x = x when ({test} false) where
+    rec test = true fby false

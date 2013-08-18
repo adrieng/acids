@@ -413,7 +413,9 @@ clock_exp_desc:
 | ce = clock_exp EQUAL se = static_exp
    { Acids_parsetree.Ce_equal (ce, se) }
 | pt = upword(static_exp_root_fword, static_exp_root, parens)
-   { Acids_parsetree.Ce_pword pt }
+   { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_lit pt) }
+| ln = qualified_longname
+   { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_global ln) }
 
 clock_exp:
 | ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }

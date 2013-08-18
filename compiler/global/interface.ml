@@ -81,6 +81,13 @@ type static_item =
     si_value : Ast_misc.const;
   }
 
+type pword_item =
+  {
+    pi_name : Names.shortname;
+    pi_type : Data_types.data_ty_scal;
+    pi_value : (Ast_misc.econstr, Int.t) Tree_word.t;
+  }
+
 type t =
   {
     i_name : Names.shortname;
@@ -92,6 +99,8 @@ type t =
     i_constrs : Names.shortname Names.ShortEnv.t;
     (** maps constant name to econstr *)
     i_statics : static_item Names.ShortEnv.t;
+    (** maps pword names to pwords *)
+    i_pwords : pword_item Names.ShortEnv.t;
   }
 
 type env = t Names.ShortEnv.t
@@ -134,6 +143,8 @@ let find_constructor_rank intf cstr =
   Utils.find_rank cstr ty_i.td_constr
 
 let find_static intf shortn = Names.ShortEnv.find shortn intf.i_statics
+
+let find_pword intf shortn = Names.ShortEnv.find shortn intf.i_pwords
 
 (** {2 Consistency check and recovery functions} *)
 
@@ -262,7 +273,7 @@ let interface_of_file file =
             }
         )
         node_env
-    | Phr_type_def _ | Phr_static_def _ ->
+    | Phr_type_def _ | Phr_static_def _ | Phr_pword_def _ ->
       node_env
   in
 
@@ -280,7 +291,7 @@ let interface_of_file file =
 
   let add_type (type_env, constr_env) phr =
     match phr with
-    | Phr_node_def _ | Phr_node_decl _ | Phr_static_def _ ->
+    | Phr_node_def _ | Phr_node_decl _ | Phr_static_def _ | Phr_pword_def _ ->
       type_env, constr_env
     | Phr_type_def td ->
       let constr_env =
@@ -302,7 +313,7 @@ let interface_of_file file =
 
   let add_static static_env phr =
     match phr with
-    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ ->
+    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ | Phr_pword_def _ ->
       static_env
     | Phr_static_def sd ->
       let open Acids_causal in
@@ -322,10 +333,37 @@ let interface_of_file file =
   in
   let static_env = List.fold_left add_static Names.ShortEnv.empty file.f_body in
 
+  let add_pword pword_env phr =
+    match phr with
+    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ ->
+      pword_env
+    | Phr_pword_def pd ->
+      let open Acids_causal in
+      let p =
+        Tree_word.map_upword
+          (fun se -> se.se_desc)
+          (fun se -> Ast_misc.get_int se.se_desc)
+          pd.pd_body
+      in
+      let ty =
+        let se = Tree_word.get_first_leaf_period pd.pd_body in
+        se.se_info#pwi_data
+      in
+      let pi =
+        {
+          pi_name = pd.pd_name;
+          pi_type = ty;
+          pi_value = p;
+        }
+      in
+      Names.ShortEnv.add pd.pd_name pi pword_env
+  in
+  let pword_env = List.fold_left add_pword Names.ShortEnv.empty file.f_body in
   {
     i_name = file.f_name;
     i_nodes = node_env;
     i_types = type_env;
     i_constrs = constr_env;
     i_statics = static_env;
+    i_pwords = pword_env;
   }

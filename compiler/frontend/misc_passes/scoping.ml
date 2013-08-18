@@ -40,10 +40,12 @@ type error =
   | Unknown_constr of Names.shortname * Loc.t
   | Unknown_type of Names.shortname * Loc.t
   | Unknown_static of Names.shortname * Loc.t
+  | Unknown_pword of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Constr_not_found of Names.modname * Names.shortname * Loc.t
   | Type_not_found of Names.modname * Names.shortname * Loc.t
   | Static_not_found of Names.modname * Names.shortname * Loc.t
+  | Pword_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
   | Multiple_binding_block of string * Loc.t
@@ -51,6 +53,7 @@ type error =
   | Duplicate_constr of Names.shortname * Loc.t
   | Duplicate_type of Names.shortname * Loc.t
   | Duplicate_static of Names.shortname * Loc.t
+  | Duplicate_pword of Names.shortname * Loc.t
 
 exception Scoping_error of error
 
@@ -72,6 +75,10 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown static %a"
       Loc.print l
       Names.print_shortname shortn
+  | Unknown_pword (shortn, l) ->
+    Format.fprintf fmt "%aUnknown pword %a"
+      Loc.print l
+      Names.print_shortname shortn
   | Node_not_found (modn, shortn, l) ->
     Format.fprintf fmt "%aNode %a not found in module %a"
       Loc.print l
@@ -89,6 +96,11 @@ let print_error fmt err =
       Names.print_modname modn
   | Static_not_found (modn, constrn, l) ->
     Format.fprintf fmt "%aStatic %a not found in module %a"
+      Loc.print l
+      Names.print_shortname constrn
+      Names.print_modname modn
+  | Pword_not_found (modn, constrn, l) ->
+    Format.fprintf fmt "%aPword %a not found in module %a"
       Loc.print l
       Names.print_shortname constrn
       Names.print_modname modn
@@ -120,6 +132,11 @@ let print_error fmt err =
       "%aStatic identifier %a is defined several times in this module"
       Loc.print l
       Names.print_shortname staticn
+  | Duplicate_pword (pwordn, l) ->
+    Format.fprintf fmt
+      "%aPword identifier %a is defined several times in this module"
+      Loc.print l
+      Names.print_shortname pwordn
 
 let unknown_node shortn loc = raise (Scoping_error (Unknown_node (shortn, loc)))
 
@@ -132,6 +149,9 @@ let unknown_type shortn loc =
 let unknown_static shortn loc =
   raise (Scoping_error (Unknown_static (shortn, loc)))
 
+let unknown_pword shortn loc =
+  raise (Scoping_error (Unknown_pword (shortn, loc)))
+
 let node_not_found modn shortn loc =
   raise (Scoping_error (Node_not_found (modn, shortn, loc)))
 
@@ -143,6 +163,9 @@ let type_not_found modn shortn loc =
 
 let static_not_found modn shortn loc =
   raise (Scoping_error (Static_not_found (modn, shortn, loc)))
+
+let pword_not_found modn shortn loc =
+  raise (Scoping_error (Pword_not_found (modn, shortn, loc)))
 
 let unbound_var v loc = raise (Scoping_error (Unbound_var (v, loc)))
 
@@ -164,6 +187,9 @@ let duplicate_type typen loc =
 let duplicate_static staticn loc =
   raise (Scoping_error (Duplicate_static (staticn, loc)))
 
+let duplicate_pword pwordn loc =
+  raise (Scoping_error (Duplicate_pword (pwordn, loc)))
+
 (** {2 Environments} *)
 
 type env =
@@ -173,6 +199,7 @@ type env =
     local_constrs_ranks : Int.t Names.ShortEnv.t;
     local_types : Names.ShortSet.t;
     local_statics : Names.ShortSet.t;
+    local_pwords : Names.ShortSet.t;
     imported_mods : string list;
     id_env : Ident.t Utils.Env.t;
     mutable intf_env : Interface.env;
@@ -185,6 +212,7 @@ let initial_env intf_env imported_mods =
     local_constrs_ranks = Names.ShortEnv.empty;
     local_types = Names.ShortSet.empty;
     local_statics = Names.ShortSet.empty;
+    local_pwords = Names.ShortSet.empty;
     imported_mods = imported_mods;
     id_env = Utils.Env.empty;
     intf_env = intf_env;
@@ -223,6 +251,9 @@ let find_module_with_type_name =
 let find_module_with_static_name =
   find_module_with_shortname (fun i -> i.Interface.i_statics) unknown_static
 
+let find_module_with_pword_name =
+  find_module_with_shortname (fun i -> i.Interface.i_pwords) unknown_pword
+
 (** Check if the given module name holds the item designated by shortn.
     Works for both node and constructor names. This function loads module as
     needed.
@@ -257,6 +288,9 @@ let check_module_with_type_name =
 let check_module_with_static_name =
   check_module_with_name (fun i -> i.Interface.i_statics) static_not_found
 
+let check_module_with_pword_name =
+  check_module_with_name (fun i -> i.Interface.i_pwords) pword_not_found
+
 (** Scope a name in the proper name-space (nodes or constructors) *)
 let scope_longname find check access env loc ln =
   let open Names in
@@ -289,7 +323,17 @@ let scope_type_name =
 
 let scope_static_name =
   let access env = env.local_statics in
-  scope_longname find_module_with_static_name check_module_with_type_name access
+  scope_longname
+    find_module_with_static_name
+    check_module_with_static_name
+    access
+
+let scope_pword_name =
+  let access env = env.local_pwords in
+  scope_longname
+    find_module_with_pword_name
+    check_module_with_pword_name
+    access
 
 let add_var env v =
   let id = Ident.make_source v in
@@ -300,6 +344,9 @@ let add_local_node env n =
 
 let add_static env n =
   { env with local_statics = Names.ShortSet.add n env.local_statics; }
+
+let add_pword env n =
+  { env with local_pwords = Names.ShortSet.add n env.local_pwords; }
 
 let find_var env loc v =
   try Utils.Env.find v env.id_env
@@ -314,6 +361,19 @@ let find_var_static env loc v =
             env
             loc
             Names.({ modn = LocalModule; shortn = v; }))
+     with _ -> unbound_var v loc)
+
+let find_var_pword env loc v =
+  try Acids_scoped.Ce_condvar (Utils.Env.find v env.id_env)
+  with Not_found ->
+    (try
+       let ln =
+         scope_static_name
+           env
+           loc
+           Names.({ modn = LocalModule; shortn = v; })
+       in
+       Acids_scoped.Ce_pword (Acids_scoped.Pd_global ln)
      with _ -> unbound_var v loc)
 
 let add_local_constrs_ranks env cn_l =
@@ -428,11 +488,13 @@ and scope_clock_exp env ce =
   let ced =
     match ce.ce_desc with
     | Ce_condvar v ->
-      let v = find_var env ce.ce_loc v in
-      Acids_scoped.Ce_condvar v
-    | Ce_pword upw ->
+      find_var_pword env ce.ce_loc v
+    | Ce_pword (Pd_lit upw) ->
       let upw = scope_static_word env upw in
-      Acids_scoped.Ce_pword upw
+      Acids_scoped.Ce_pword (Acids_scoped.Pd_lit upw)
+    | Ce_pword (Pd_global ln) ->
+      let ln = scope_pword_name env ce.ce_loc ln in
+      Acids_scoped.Ce_pword (Acids_scoped.Pd_global ln)
     | Ce_equal (ce, se) ->
       let ce = scope_clock_exp ce in
       let se = scope_static_exp_one se in
@@ -809,6 +871,16 @@ let scope_static_def env sd =
   },
   add_static env sd.sd_name
 
+let scope_pword_def env pd =
+  check_static_name env pd.pd_name pd.pd_loc;
+  let body = scope_static_word env pd.pd_body in
+  {
+    Acids_scoped.pd_name = pd.pd_name;
+    Acids_scoped.pd_body = body;
+    Acids_scoped.pd_loc = pd.pd_loc;
+  },
+  add_pword env pd.pd_name
+
 let scope_phrase env phr =
   match phr with
   | Phr_node_def def ->
@@ -823,6 +895,9 @@ let scope_phrase env phr =
   | Phr_static_def sd ->
     let sd, env = scope_static_def env sd in
     env, Acids_scoped.Phr_static_def sd
+  | Phr_pword_def pd ->
+    let pd, env = scope_pword_def env pd in
+    env, Acids_scoped.Phr_pword_def pd
 
 let scope_file ctx (file : unit Acids_parsetree.file) =
   let intf_env =

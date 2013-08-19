@@ -87,6 +87,7 @@ let flow =
   +>+ Causality.annot
   +>+ Save_interface.save
   +>+ Lower_constructs.lower
+  +>+ Lower_subexps.lower
 
 (*****************************************************************************)
 (* File handling *)

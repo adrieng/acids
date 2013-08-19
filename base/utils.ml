@@ -362,6 +362,10 @@ let add_overflow x y =
 
 let flip f x y = f y x
 
+let double_flip f x y =
+  let y, x = (flip f x y) in
+  x, y
+
 let make_imperative_var init =
   let r = ref init in
   (fun () -> !r), (fun s -> r := s)

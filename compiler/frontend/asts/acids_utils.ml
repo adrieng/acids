@@ -789,7 +789,6 @@ module TRANSLATE_CLOCK_EXP
   ) =
 struct
   open A
-  open A.I
 
   let rec trans_clock_exp find_pword find_bounds find_specs ce =
     match ce.ce_desc with

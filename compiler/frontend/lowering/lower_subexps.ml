@@ -170,15 +170,6 @@ and close_exp e =
     in
     { e with e_desc = E_where (e', block); }
 
-let lower_node nd =
-  Ident.set_current_ctx nd.n_info#ni_ctx;
-  { nd with n_body = close_exp nd.n_body; }
-
-let lower_phrase phr =
-  match phr with
-  | Phr_node_def nd -> Phr_node_def (lower_node nd)
-  | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ | Phr_pword_def _ -> phr
-
 (** {2 Putting it all together} *)
 
 let lower_file
@@ -190,7 +181,7 @@ let lower_file
      >
        Acids_causal.file)
     =
-  ctx, { file with f_body = List.map lower_phrase file.f_body; }
+  ctx, Acids_causal_utils.apply_to_node_bodies close_exp file
 
 let lower =
   let open Pass_manager in

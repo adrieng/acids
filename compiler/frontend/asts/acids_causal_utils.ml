@@ -115,3 +115,19 @@ let make_block eqs =
     b_loc = Loc.dummy;
     b_info = ();
   }
+
+let apply_to_node_bodies f_node file =
+  let lower_node nd =
+    Ident.set_current_ctx nd.n_info#ni_ctx;
+    { nd with n_body = f_node nd.n_body; }
+  in
+
+  let lower_phrase phr =
+    match phr with
+    | Phr_node_def nd ->
+      Phr_node_def (lower_node nd)
+    | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ | Phr_pword_def _ ->
+      phr
+  in
+
+  { file with f_body = List.map lower_phrase file.f_body; }

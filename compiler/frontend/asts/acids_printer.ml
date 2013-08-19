@@ -75,7 +75,7 @@ struct
         print_app app
         print_exp e
     | E_where (e, bl) ->
-      Format.fprintf fmt "(@[%a where@ %a@])"
+      Format.fprintf fmt "(@[<v 2>%a where@ %a@])"
         print_exp e
         print_block bl
     | E_when (e, ce) ->
@@ -123,7 +123,7 @@ struct
       (print_info I.print_app_info) app.a_info
 
   and print_block fmt block =
-    Format.fprintf fmt "@[<hv 2>rec %a%a@]"
+    Format.fprintf fmt "@[<hv>rec %a%a@]"
       (Utils.print_list_l print_eq "and ") block.b_body
       (print_info I.print_block_info) block.b_info
 

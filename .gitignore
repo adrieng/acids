@@ -7,3 +7,4 @@ _obuild
 *.conflicts
 *.old
 .emacs.desktop
+*.log

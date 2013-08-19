@@ -919,7 +919,7 @@ let scope_file ctx (file : unit Acids_parsetree.file) =
 
 (** {2 Putting it all together} *)
 
-let scope =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

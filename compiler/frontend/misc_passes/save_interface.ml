@@ -68,7 +68,7 @@ let file
   Interface.store_interface fn intf;
   ctx, file
 
-let save =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

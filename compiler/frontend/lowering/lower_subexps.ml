@@ -183,7 +183,7 @@ let lower_file
     =
   ctx, Acids_causal_utils.apply_to_node_bodies close_exp file
 
-let lower =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

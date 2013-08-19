@@ -19,7 +19,7 @@ exception Could_not_open of string
 
 let could_not_open filen = raise (Could_not_open filen)
 
-let parse =
+let pass =
   let parse_file ctx filen =
     Initial.set_current_file_name filen;
     let ic =

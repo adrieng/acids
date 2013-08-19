@@ -77,17 +77,17 @@ let print_error _ fmt exn =
 
 let flow =
   let open Pass_manager in
-  Parsing_pass.parse
-  +>+ Scoping.scope
-  +>+ Data_typing.type_
-  +>+ Static_typing.type_
-  +>+ Static_simpl.simpl
-  +>+ Spec_annot.annot
-  +>+ Clocking.clock
-  +>+ Causality.annot
-  +>+ Save_interface.save
-  +>+ Lower_constructs.lower
-  +>+ Lower_subexps.lower
+  Parsing_pass.pass
+  +>+ Scoping.pass
+  +>+ Data_typing.pass
+  +>+ Static_typing.pass
+  +>+ Static_simpl.pass
+  +>+ Spec_annot.pass
+  +>+ Clocking.pass
+  +>+ Causality.pass
+  +>+ Save_interface.pass
+  +>+ Lower_constructs.pass
+  +>+ Lower_subexps.pass
 
 (*****************************************************************************)
 (* File handling *)

@@ -541,7 +541,7 @@ let simpl_file
     (file : < interfaces : Interface.env > Acids_static.file) =
   ctx, simpl_file file
 
-let simpl =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

@@ -749,7 +749,7 @@ let type_file
 
 (** {2 Putting it all together} *)
 
-let type_ =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

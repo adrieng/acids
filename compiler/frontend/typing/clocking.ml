@@ -899,7 +899,7 @@ let clock_file ctx file =
   let file = EXTRACT.extract_file file in
   ctx, file
 
-let clock :
+let pass :
     (< interfaces : Interface.env; static_nodes : Acids_static.node_def list >
       Acids_spec.file ->
      < interfaces : Interface.env; static_nodes : Acids_static.node_def list >

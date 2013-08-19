@@ -345,7 +345,7 @@ let file
     =
   ctx, annot_type_file file
 
-let annot =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

@@ -12,7 +12,6 @@ Compiler:
 - Remove stupid make_located in parser
 - handle global static tuples
 - make static exps proper exps
-- rename each OCaml pass variable to "pass" in frontend
 
 Resolution:
 - Only compute causal solutions

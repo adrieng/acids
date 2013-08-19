@@ -277,7 +277,7 @@ let lower_file
   let _, body = Utils.mapfold_left lower_phrase env file.f_body in
   ctx, { file with f_body = body; }
 
-let lower =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

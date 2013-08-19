@@ -605,7 +605,7 @@ let annot_file
      > Acids_prespec.file) =
   ctx, annot_file file
 
-let annot =
+let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform

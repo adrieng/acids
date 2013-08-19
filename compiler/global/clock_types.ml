@@ -121,6 +121,11 @@ let print_sig_ann =
     printing_prefix
     print_sig
 
+let get_st ty =
+  match ty with
+  | Ct_prod _ | Ct_var _ -> invalid_arg "get_st: not a stream type"
+  | Ct_stream st -> st
+
 module PreCe =
 struct
   type 'a pre_ty =

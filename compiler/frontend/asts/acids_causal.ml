@@ -20,25 +20,11 @@ struct
   type var = Ident.t
   let print_var = Ident.print
 
-  type clock_exp_info =
-      <
-        ci_data : Data_types.data_ty_scal;
-        ci_clock : Clock_types.stream_type;
-      >
-  let print_clock_exp_info fmt (cei : clock_exp_info) =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_ty_scal_ann cei#ci_data
-      Clock_types.print_stream_type_ann cei#ci_clock
+  type clock_exp_info = Acids_clocked.Info.clock_exp_info
+  let print_clock_exp_info = Acids_clocked.Info.print_clock_exp_info
 
-  type static_exp_info =
-      <
-        pwi_data : Data_types.data_ty_scal;
-        pwi_clock : Clock_types.stream_type;
-      >
-  let print_static_exp_info fmt (pwi : static_exp_info) =
-    Format.fprintf fmt "%a%a"
-      Data_types.print_ty_scal_ann pwi#pwi_data
-      Clock_types.print_stream_type_ann pwi#pwi_clock
+  type static_exp_info = Acids_clocked.Info.static_exp_info
+  let print_static_exp_info = Acids_clocked.Info.print_static_exp_info
 
   type 'a static_exp_desc = 'a Acids_spec.Info.static_exp_desc
   let print_static_exp_desc = Acids_spec.Info.print_static_exp_desc

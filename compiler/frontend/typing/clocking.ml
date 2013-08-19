@@ -151,28 +151,16 @@ let unify loc t1 t2 constrs =
 
 let prod_ty t_l = Pct_prod t_l
 
-let trad_static_exp_int se = Ast_misc.get_int se.se_desc
+let trans_static_exp_int se = Ast_misc.get_int se.se_desc
 
-let rec trad_clock_exp env ce =
-  match ce.ce_desc with
-  | Ce_condvar v ->
-    let cev =
-      {
-        cecv_name = v;
-        cecv_bounds = ce.ce_info#ci_bounds;
-        cecv_specs = ce.ce_info#ci_specs;
-      }
-    in
-    Clock_types.PreCe.Pce_condvar cev
-  | Ce_pword (Pd_lit pw) ->
-    let pw =
-      Ast_misc.map_upword (fun se -> se.se_desc) trad_static_exp_int pw
-    in
-    Clock_types.PreCe.Pce_pword pw
-  | Ce_pword (Pd_global ln) ->
-    Clock_types.PreCe.Pce_pword (find_pword env ln)
-  | Ce_equal (ce, se) ->
-    Clock_types.PreCe.Pce_equal (trad_clock_exp env ce, se.se_desc)
+module T = Acids_utils.TRANSLATE_CLOCK_EXP(Acids_spec)
+
+let trans_clock_exp env ce =
+  let find_pword ln = find_pword env ln in
+  let find_bounds info = info#ci_bounds in
+  let find_specs info = info#ci_specs in
+  let cce = T.trans_clock_exp find_pword find_bounds find_specs ce in
+  Clock_types.pre_ce_of_ce cce
 
 let rec int_ptree_of_ptree current pt =
   let open Ast_misc in
@@ -180,7 +168,7 @@ let rec int_ptree_of_ptree current pt =
   | Leaf _ -> Int.succ current, Leaf (Ec_int current)
   | Power (pt, se) ->
     let current, pt = int_ptree_of_ptree current pt in
-    current, Power (pt, trad_static_exp_int se)
+    current, Power (pt, trans_static_exp_int se)
   | Concat pt_l ->
     let current, pt_l = Utils.mapfold_left int_ptree_of_ptree current pt_l in
     current, Concat pt_l
@@ -291,6 +279,8 @@ struct
       (
         object
           method ci_data = info#ci_data
+          method ci_bounds = info#ci_bounds
+          method ci_specs = info#ci_specs
           method ci_clock = st_of_pre_st pst
         end
       )
@@ -319,9 +309,9 @@ struct
     match na with
     | Exp _ | Node _ | ClockExp _ | Buffer _ -> invalid_arg "update_app_info"
     | App inst ->
-      let trad (i, pst) = i, st_of_pre_st pst in
+      let trans (i, pst) = i, st_of_pre_st pst in
       object
-        method ai_clock_inst = List.map trad inst
+        method ai_clock_inst = List.map trans inst
       end
 
   let update_block_info _ = ()
@@ -458,12 +448,18 @@ and clock_exp env e acc =
     M.E_tuple e_l, prod_ty ty_l, acc
 
   | E_fby (e1, e2) ->
-    let (e1, ty), acc = clock_exp env e1 acc in
+    (* WARN: e1 and e2 should have a stream clock type, for the
+       fby will be lowered to merge/buffer later *)
+    let ty = ty_of_st (fresh_st ()) in
+    let e1, acc = expect_exp env ty e1 acc in
     let e2, acc = expect_exp env ty e2 acc in
     M.E_fby (e1, e2), ty, acc
 
   | E_ifthenelse (e1, e2, e3) ->
-    let (e1, ty), acc = clock_exp env e1 acc in
+    (* WARN: e1, e2 and e3 should have a stream clock type, for the
+       if will be lowered to merge later *)
+    let ty = ty_of_st (fresh_st ()) in
+    let e1, acc = expect_exp env ty e1 acc in
     let e2, acc = expect_exp env ty e2 acc in
     let e3, acc = expect_exp env ty e3 acc in
     M.E_ifthenelse (e1, e2, e3), ty, acc
@@ -490,14 +486,14 @@ and clock_exp env e acc =
     M.E_where (e, block), ty, acc
 
   | E_when (e, ce) ->
-    let cce = trad_clock_exp env ce in
+    let cce = trans_clock_exp env ce in
     let (e, ty), acc = clock_exp env e acc in
     let st, acc = st_of_ty loc ty acc in
     let ce, acc = expect_clock_exp env st ce acc in
     M.E_when (e, ce), ty_of_st (Pst_on (st, cce)), acc
 
   | E_split (ce, e, ec_l) ->
-    let cce = trad_clock_exp env ce in
+    let cce = trans_clock_exp env ce in
     let (e, ty), acc = clock_exp env e acc in
     let st, acc = st_of_ty loc ty acc in
     let ce, acc = expect_clock_exp env st ce acc in
@@ -505,7 +501,7 @@ and clock_exp env e acc =
     M.E_split (ce, e, ec_l), prod_ty ty_l, acc
 
   | E_bmerge (ce, e1, e2) ->
-    let cce = trad_clock_exp env ce in
+    let cce = trans_clock_exp env ce in
     let (ce, st), acc = clock_clock_exp env ce acc in
     let ty = ty_of_st st in
     let e1, acc =
@@ -517,7 +513,7 @@ and clock_exp env e acc =
     M.E_bmerge (ce, e1, e2), ty_of_st st, acc
 
   | E_merge (ce, c_l) ->
-    let cce = trad_clock_exp env ce in
+    let cce = trans_clock_exp env ce in
     let (ce, st), acc = clock_clock_exp env ce acc in
     let ty = ty_of_st st in
     let c_l, acc =
@@ -589,7 +585,7 @@ and clock_clock_annot env loc cka acc =
   | Ca_var v ->
     (M.Ca_var v, find_ck_var env v), acc
   | Ca_on (cka, ce) ->
-    let cce = trad_clock_exp env ce in
+    let cce = trans_clock_exp env ce in
     let (cka, st), acc = clock_clock_annot env loc cka acc in
     let ce, acc = expect_clock_exp env st ce acc in
     (M.Ca_on (cka, ce), Pst_on (st, cce)), acc

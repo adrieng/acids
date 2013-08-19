@@ -780,3 +780,37 @@ struct
     dep_graph_exp env e;
     env.graph
 end
+
+module TRANSLATE_CLOCK_EXP
+  (
+    A : Acids.A
+      with type I.var = Ident.t
+      and type 'a I.static_exp_desc = Ast_misc.econstr
+  ) =
+struct
+  open A
+  open A.I
+
+  let rec trans_clock_exp find_pword find_bounds find_specs ce =
+    match ce.ce_desc with
+    | Ce_condvar v ->
+      let cev =
+        {
+          Clock_types.cecv_name = v;
+          Clock_types.cecv_bounds = find_bounds ce.ce_info;
+          Clock_types.cecv_specs = find_specs ce.ce_info;
+        }
+      in
+      Clock_types.Ce_condvar cev
+    | Ce_pword (Pd_lit pw) ->
+      let get se = se.se_desc in
+      let get_int se = Ast_misc.get_int (get se) in
+      let pw = Tree_word.map_upword get get_int pw in
+      Clock_types.Ce_pword pw
+    | Ce_pword (Pd_global ln) ->
+      Clock_types.Ce_pword (find_pword ln)
+    | Ce_equal (ce, se) ->
+      Clock_types.Ce_equal
+        (trans_clock_exp find_pword find_bounds find_specs ce,
+         se.se_desc)
+end

@@ -86,6 +86,7 @@ let flow =
   +>+ Clocking.clock
   +>+ Causality.annot
   +>+ Save_interface.save
+  +>+ Lower_constructs.lower
 
 (*****************************************************************************)
 (* File handling *)

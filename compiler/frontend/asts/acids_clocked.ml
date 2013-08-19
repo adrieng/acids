@@ -23,11 +23,15 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
+        ci_bounds : Interval.t;
+        ci_specs : Ast_misc.spec list;
         ci_clock : Clock_types.stream_type;
       >
   let print_clock_exp_info fmt (cei : clock_exp_info) =
-    Format.fprintf fmt "%a%a"
+    Format.fprintf fmt "@[%a%a%a%a@]"
       Data_types.print_ty_scal_ann cei#ci_data
+      Ast_misc.print_interval_annot cei#ci_bounds
+      (Utils.print_list Ast_misc.print_spec_annot) cei#ci_specs
       Clock_types.print_stream_type_ann cei#ci_clock
 
   type static_exp_info =

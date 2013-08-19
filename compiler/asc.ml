@@ -88,6 +88,7 @@ let flow =
   +>+ Save_interface.pass
   +>+ Lower_constructs.pass
   +>+ Lower_subexps.pass
+  +>+ Lower_tuples.pass
 
 (*****************************************************************************)
 (* File handling *)

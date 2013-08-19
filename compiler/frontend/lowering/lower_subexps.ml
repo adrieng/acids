@@ -188,5 +188,5 @@ let pass =
   P_transform
     (Frontend_utils.make_transform
        ~print_out:Acids_causal.print_file
-       "lower_constructs"
+       "lower_subexps"
        lower_file)

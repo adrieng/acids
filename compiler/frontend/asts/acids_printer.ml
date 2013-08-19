@@ -66,7 +66,7 @@ struct
     | E_fby (e1, e2) ->
       Format.fprintf fmt "%a@ fby %a" print_exp e1 print_exp e2
     | E_ifthenelse (e1, e2, e3) ->
-      Format.fprintf fmt "@[if %a@ then %a@ else %a@]"
+      Format.fprintf fmt "(@[<hv>if %a@ then %a@ else %a@])"
         print_exp e1
         print_exp e2
         print_exp e3
@@ -75,11 +75,11 @@ struct
         print_app app
         print_exp e
     | E_where (e, bl) ->
-      Format.fprintf fmt "@[%a where@ %a@]"
+      Format.fprintf fmt "(@[%a where@ %a@])"
         print_exp e
         print_block bl
     | E_when (e, ce) ->
-      Format.fprintf fmt "@[%a@ when %a@]"
+      Format.fprintf fmt "(@[%a@ when %a@])"
         print_exp e
         print_clock_exp ce
     | E_split (ce, e, ec_l) ->
@@ -88,7 +88,7 @@ struct
         print_clock_exp ce
         (Utils.print_list_r Ast_misc.print_econstr ",") ec_l
     | E_bmerge (ce, e1, e2) ->
-      Format.fprintf fmt "@[merge %a@ %a@ %a@]"
+      Format.fprintf fmt "(@[<hv 2>merge %a@ %a@ %a@])"
         print_clock_exp ce
         print_exp e1
         print_exp e2
@@ -97,23 +97,23 @@ struct
         print_clock_exp ce
         (Utils.print_list print_clause) c_l
     | E_valof ce ->
-      Format.fprintf fmt "<@[%a@]>" print_clock_exp ce
+      Format.fprintf fmt "(@[valof@ %a@])" print_clock_exp ce
     | E_clock_annot (e, ck) ->
-      Format.fprintf fmt "(%a :: %a)"
+      Format.fprintf fmt "(@[%a ::@ %a@])"
         print_exp e
         print_clock_annot ck
     | E_type_annot (e, ty) ->
-      Format.fprintf fmt "(%a : %a)"
+      Format.fprintf fmt "(@[%a :@ %a@])"
         print_exp e
         Data_types.print_ty ty
     | E_spec_annot (e, spec) ->
-      Format.fprintf fmt "%a in %a"
+      Format.fprintf fmt "(@[%a in@ %a@])"
         print_exp e
         print_spec spec
     | E_dom (e, dom) ->
       print_dom fmt dom e
     | E_buffer (e, bu) ->
-      Format.fprintf fmt "@[(buffer@ %a%a)@]"
+      Format.fprintf fmt "(@[buffer@ %a%a@])"
         print_exp e
         (print_info I.print_buffer_info) bu.bu_info
 

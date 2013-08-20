@@ -218,6 +218,8 @@ let initial_env intf_env imported_mods =
     intf_env = intf_env;
   }
 
+let reset_ids_env env = { env with id_env = Names.ShortEnv.empty; }
+
 (** {2 Scoping function} *)
 
 (** Find which of the imported modules (if any) provides the corresponding
@@ -809,6 +811,7 @@ and scope_spec env spec =
   }
 
 let scope_node_def env node =
+  let env = reset_ids_env env in
   check_node_name env node.n_name node.n_loc;
   check_pattern node.n_input;
   Ident.reset_ctx ();

@@ -124,7 +124,7 @@ let merge_translation find_pword e1 e2 e3 =
   let block =
     let eq =
       make_plain_eq
-        (make_pattern e1.e_info#ei_clock e1.e_info#ei_data (P_var cnd))
+        (make_pat e1.e_info#ei_data e1.e_info#ei_clock (P_var cnd))
         e1
     in
     make_block [eq]

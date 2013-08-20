@@ -813,3 +813,101 @@ struct
         (trans_clock_exp find_pword find_bounds find_specs ce,
          se.se_desc)
 end
+
+module MAP_SUB(A : Acids.A) =
+struct
+  open A
+
+  let map_sub_exp_eq f_exp eq =
+    let eqd =
+      match eq.eq_desc with
+      | Eq_plain (p, e) -> Eq_plain (p, f_exp e)
+      | Eq_condvar (v, specs, e) -> Eq_condvar (v, specs, f_exp e)
+    in
+    { eq with eq_desc = eqd; }
+
+  let map_sub_exp f_exp e =
+    let ed =
+      match e.e_desc with
+      | E_var _ | E_const _ | E_valof _ ->
+        e.e_desc
+
+      | E_fst e ->
+        E_fst (f_exp e)
+      | E_snd e ->
+        E_snd (f_exp e)
+      | E_tuple e_l ->
+        E_tuple (List.map f_exp e_l)
+
+      | E_fby (e1, e2) ->
+        E_fby (f_exp e1, f_exp e2)
+      | E_ifthenelse (e1, e2, e3) ->
+        E_ifthenelse (f_exp e1, f_exp e2, f_exp e3)
+
+      | E_app (app, e) ->
+        E_app (app, f_exp e)
+      | E_where (e, block) ->
+        let block =
+          { block with b_body = List.map (map_sub_exp_eq f_exp) block.b_body; }
+        in
+        E_where (f_exp e, block)
+
+      | E_when (e, ce) ->
+        E_when (f_exp e, ce)
+      | E_split (ce, e, ec_l) ->
+        E_split (ce, f_exp e, ec_l)
+
+      | E_bmerge (ce, e1, e2) ->
+        E_bmerge (ce, f_exp e1, f_exp e2)
+      | E_merge (ce, c_l) ->
+        let c_l = List.map (fun c -> { c with c_body = f_exp c.c_body; }) c_l in
+        E_merge (ce, c_l)
+
+      | E_clock_annot (e, a) ->
+        E_clock_annot (f_exp e, a)
+      | E_type_annot (e, a) ->
+        E_type_annot (f_exp e, a)
+      | E_spec_annot (e, a) ->
+        E_spec_annot (f_exp e, a)
+
+      | E_dom (e, dom) ->
+        E_dom (f_exp e, dom)
+
+      | E_buffer (e, bu) ->
+        E_buffer (f_exp e, bu)
+    in
+    { e with e_desc = ed; }
+end
+
+module SUBST
+  (
+    A : Acids.A
+      with type I.var = Ident.t
+      and type 'a I.static_exp_desc = Ast_misc.econstr
+  ) =
+struct
+  module M = MAP_SUB(A)
+
+  open A
+  open M
+
+  let rec subst_exp env e =
+    match e.e_desc with
+    | E_var v ->
+      (
+        try Ident.Env.find v env
+        with Not_found -> e
+      )
+    | _ ->
+      map_sub_exp (subst_exp env) e
+
+  let subst_eq env eq =
+    let eqd =
+      match eq.eq_desc with
+      | Eq_plain (p, e) ->
+        Eq_plain (p, subst_exp env e)
+      | Eq_condvar (v, specs, e) ->
+        Eq_condvar (v, specs, subst_exp env e)
+    in
+    { eq with eq_desc = eqd; }
+end

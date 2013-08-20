@@ -71,17 +71,20 @@ let make_clock_exp_not ?(loc = Loc.dummy) ce =
     base_st
     (Ce_equal (ce, make_static_exp_bool base_st false))
 
-let make_exp_st ?(loc = Loc.dummy) ?(relevant_deps = true) ty st desc =
+let make_exp ?(loc = Loc.dummy) ?(relevant_deps = true) ty ct desc =
   {
     e_desc = desc;
     e_info =
       object
         method ei_data = ty
-        method ei_clock = Clock_types.Ct_stream st
+        method ei_clock = ct
         method ei_relevant_deps = relevant_deps
       end;
     e_loc = loc;
   }
+
+let make_exp_st ?(loc = Loc.dummy) ?(relevant_deps = true) ty st desc =
+  make_exp ~loc ~relevant_deps ty (Clock_types.Ct_stream st) desc
 
 let make_sampled_exp find_pword e ce =
   let clock_ce = trans_clock_exp find_pword ce in
@@ -91,7 +94,7 @@ let make_sampled_exp find_pword e ce =
     (Clock_types.St_on (base_st, clock_ce))
     (E_when (e, ce))
 
-let make_pattern ct ty pd =
+let make_pat ty ct pd =
   {
     p_desc = pd;
     p_loc = Loc.dummy;

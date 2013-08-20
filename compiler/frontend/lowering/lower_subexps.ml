@@ -133,7 +133,7 @@ and lower_exp current_eqs e =
     let cnd = Ident.make_internal var_prefix in
     let eq =
       make_plain_eq
-        (make_pattern e.e_info#ei_clock e.e_info#ei_data (P_var cnd))
+        (make_pat e.e_info#ei_data e.e_info#ei_clock (P_var cnd))
         e
     in
     eq :: current_eqs, { e with e_desc = E_var cnd; }

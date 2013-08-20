@@ -367,72 +367,8 @@ let rec simplify p e =
       in
       simplify_list p_l e_l
 
-
-
-
 and simplify_list p_l e_l =
   List.fold_left2 (fun acc p e -> simplify p e @ acc) [] p_l e_l
-
-(* let rec map_sub_tuple mk acc e = *)
-(*   match e.e_desc with *)
-(*   | E_var _ -> mk e :: acc *)
-(*   | E_tuple e_l -> List.fold_left (map_sub_tuple mk) acc e_l *)
-(*   | _ -> invalid_arg "map_sub_tuple" *)
-
-(* let tag_with_type l ty = *)
-(*   let open Data_types in *)
-(*   match ty with *)
-(*   | Ty_prod ty_l -> ty_l *)
-(*   | Ty_var _ | Ty_scal _ | Ty_cond _ -> List.map (fun x -> ty) l *)
-
-(* let tag_with_clock l ct = *)
-(*   let open Clock_types in *)
-(*   match ct with *)
-(*   | Ct_prod ct_l -> List.combine l ct_l *)
-(*   | Ct_var _ | Ct_stream _ -> List.map (fun x -> x, ct) l *)
-
-  (* let orig_p = p in *)
-  (* let orig_e = e in *)
-  (* match p.p_desc, e.e_desc with *)
-  (* | P_split _, _ *)
-  (* | _, (E_fst _ | E_snd _ | E_fby _ | E_ifthenelse _) *)
-  (* | P_var _, E_tuple _ *)
-  (* | P_tuple _, E_var _ *)
-  (*   -> *)
-  (*   assert false (\* lowered before *\) *)
-
-  (* | P_tuple _, E_const _ -> *)
-  (*   assert false (\* ill-typed *\) *)
-
-  (* | P_var _, _ *)
-  (* | P_tuple _, (E_app _ | E_where _) *)
-  (*   -> *)
-  (*   [p, e] *)
-
-  (* | P_clock_annot (p, a), _ -> *)
-  (*   let update (p, e) = *)
-  (*     make_pat p.p_info#pi_data orig_p.p_info#pi_clock (P_clock_annot (p, a)), *)
-  (*     e *)
-  (*   in *)
-  (*   List.map update (simplify p e) *)
-
-  (* | P_type_annot (p, ty), _ -> *)
-  (*   let update ((p, e), a) = *)
-  (*     make_pat p.p_info#pi_data orig_p.p_info#pi_clock (P_type_annot (p, a)), *)
-  (*     e *)
-  (*   in *)
-  (*   List.map update (tag_with_type (simplify p e) ty) *)
-
-  (* | P_spec_annot (p, spec), _ -> *)
-  (*   (\* We know that p is of scalar type *\) *)
-  (*   let update (p, e) = { p with p_desc = P_spec_annot (p, spec); }, e in *)
-  (*   List.map update (simplify p e) *)
-
-  (* | P_tuple p_l, E_tuple e_l -> *)
-  (*   simplify_list p_l e_l *)
-
-  (* | P_tuple p_l, E_when (e, ce) -> *)
-  (*   let mk (p, e) = { orig *)
 
 and simplify_eq eqs eq =
   match eq.eq_desc with
@@ -457,25 +393,28 @@ let rec simplify_exp e =
 
 (** {2 Putting it all together} *)
 
-let lower_file
-    ctx
-    (file :
-     <
-       interfaces : Interface.env;
-       static_nodes : Acids_static.node_def list;
-     >
-       Acids_causal.file)
-    =
-  let env = initial_env file.f_info#interfaces in
-  let file = apply_to_node_bodies (decompose_tuple_exp env) file in
-  let file = apply_to_node_bodies remove_proj_exp file in
-  let file = apply_to_node_bodies simplify_exp file in
-  ctx, file
+open Pass_manager
+open Lowering_utils
 
-let pass =
-  let open Pass_manager in
-  P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_causal.print_file
-       "lower_tuples"
-       lower_file)
+let lower_prod_var =
+  let tr =
+    fun ctx file ->
+      let env = initial_env file.f_info#interfaces in
+      let file = apply_to_node_bodies (decompose_tuple_exp env) file in
+      ctx, file
+  in
+  make_transform tr "lower_product_variables"
+
+let lower_proj =
+  let tr =
+    fun ctx file -> ctx, apply_to_node_bodies remove_proj_exp file
+  in
+  make_transform tr "power_projections"
+
+let lower_tuples =
+  let tr =
+    fun ctx file -> ctx, apply_to_node_bodies simplify_exp file
+  in
+  make_transform tr "lower_tuples"
+
+let pass = lower_prod_var +>+ lower_proj +>+ lower_tuples

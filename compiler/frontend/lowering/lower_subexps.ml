@@ -175,21 +175,8 @@ and close_exp e =
 
 (** {2 Putting it all together} *)
 
-let lower_file
-    ctx
-    (file :
-     <
-       interfaces : Interface.env;
-       static_nodes : Acids_static.node_def list;
-     >
-       Acids_causal.file)
-    =
-  ctx, Acids_causal_utils.apply_to_node_bodies close_exp file
-
 let pass =
-  let open Pass_manager in
-  P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_causal.print_file
-       "lower_subexps"
-       lower_file)
+  let tr ctx file =
+    ctx, Acids_causal_utils.apply_to_node_bodies close_exp file
+  in
+  Lowering_utils.make_transform tr "lower_subexps"

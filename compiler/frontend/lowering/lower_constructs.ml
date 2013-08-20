@@ -266,23 +266,10 @@ let lower_phrase env phr =
 
 (** {2 Putting it all together} *)
 
-let lower_file
-    ctx
-    (file :
-     <
-       interfaces : Interface.env;
-       static_nodes : Acids_static.node_def list;
-     >
-       Acids_causal.file)
-    =
-  let env = initial_env file.f_info#interfaces in
-  let _, body = Utils.mapfold_left lower_phrase env file.f_body in
-  ctx, { file with f_body = body; }
-
 let pass =
-  let open Pass_manager in
-  P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_causal.print_file
-       "lower_constructs"
-       lower_file)
+  let tr ctx file =
+    let env = initial_env file.f_info#interfaces in
+    let _, body = Utils.mapfold_left lower_phrase env file.f_body in
+    ctx, { file with f_body = body; }
+  in
+  Lowering_utils.make_transform tr "lower_constructs"

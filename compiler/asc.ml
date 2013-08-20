@@ -77,8 +77,10 @@ let print_error _ fmt exn =
 
 let flow =
   let open Pass_manager in
+  (* Parsing and scoping *)
   Parsing_pass.pass
   +>+ Scoping.pass
+  (* Static analyses for safety *)
   +>+ Data_typing.pass
   +>+ Static_typing.pass
   +>+ Static_simpl.pass
@@ -86,6 +88,7 @@ let flow =
   +>+ Clocking.pass
   +>+ Causality.pass
   +>+ Save_interface.pass
+  (* Translation to middle-end IR *)
   +>+ Lower_constructs.pass
   +>+ Lower_subexps.pass
   +>+ Lower_tuples.pass

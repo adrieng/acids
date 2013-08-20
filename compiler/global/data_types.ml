@@ -24,7 +24,7 @@ type data_ty_scal =
 type data_ty =
   | Ty_var of int
   | Ty_scal of data_ty_scal
-  | Ty_cond of data_ty
+  | Ty_cond of data_ty_scal
   | Ty_prod of data_ty list
 
 type data_sig =
@@ -44,7 +44,7 @@ let rec print_ty fmt ty =
   match ty with
   | Ty_var id -> Format.fprintf fmt "'x%a" Utils.print_int_non_zero id
   | Ty_scal tys -> print_ty_scal fmt tys
-  | Ty_cond ty -> Format.fprintf fmt "cond %a" print_ty ty
+  | Ty_cond tys -> Format.fprintf fmt "cond %a" print_ty_scal tys
   | Ty_prod ty_l ->
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
@@ -101,7 +101,12 @@ let rec ty_of_pre_ty ?(make_var = fun i -> Ty_var i) pty =
   match pty with
   | Pty_var v -> VarTy.ty_of_ty_var (ty_of_pre_ty ~make_var) make_var v
   | Pty_scal tys -> Ty_scal tys
-  | Pty_cond pty -> Ty_cond (ty_of_pre_ty ~make_var pty)
+  | Pty_cond pty ->
+    (
+      match ty_of_pre_ty ~make_var pty with
+      | Ty_scal tys -> Ty_cond tys
+      | _ -> invalid_arg "ty_of_pre_ty"
+    )
   | Pty_prod ty_l -> Ty_prod (List.map (ty_of_pre_ty ~make_var) ty_l)
 
 let instantiate_sig fresh tysig =
@@ -117,9 +122,7 @@ let instantiate_sig fresh tysig =
     match ty with
     | Ty_var i -> find env i
     | Ty_scal tys -> env, Pty_scal tys
-    | Ty_cond ty ->
-      let env, ty = instantiate_ty env ty in
-      env, Pty_cond ty
+    | Ty_cond tys -> env, Pty_cond (Pty_scal tys)
     | Ty_prod ty_l ->
       let env, pty_l = Utils.mapfold_left instantiate_ty env ty_l in
       env, Pty_prod pty_l

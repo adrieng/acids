@@ -738,7 +738,7 @@ and scope_type env loc ty =
   match ty with
   | Ty_var i -> Ty_var i
   | Ty_scal tys -> Ty_scal (scope_type_scal env loc tys)
-  | Ty_cond ty -> Ty_cond (scope_type ty)
+  | Ty_cond tys -> Ty_cond (scope_type_scal env loc tys)
   | Ty_prod ty_l -> Ty_prod (List.map scope_type ty_l)
 
 and scope_pattern p env =
@@ -747,10 +747,6 @@ and scope_pattern p env =
     | P_var v ->
       let id, env = add_var env v in
       Acids_scoped.P_var id, env
-    (* | P_condvar (v, specs) -> *)
-    (*   let id, env = add_var env v in *)
-    (*   let specs = List.map (scope_spec env) specs in *)
-    (*   Acids_scoped.P_condvar (id, specs), env *)
     | P_tuple p_l ->
       let p_l, env = Utils.mapfold scope_pattern p_l env in
       Acids_scoped.P_tuple p_l, env

@@ -262,10 +262,10 @@ let rec pre_ty_of_ty_annotation env ty =
         let ty = fresh_ty () in
         { env with exists = Utils.Int_map.add i ty env.exists; }, ty
     )
-  | Ty_scal tys -> env, PreTy.Pty_scal tys
-  | Ty_cond ty ->
-    let env, pty = pre_ty_of_ty_annotation env ty in
-    env, PreTy.Pty_cond pty
+  | Ty_scal tys ->
+    env, PreTy.Pty_scal tys
+  | Ty_cond tys ->
+    env, PreTy.Pty_cond (PreTy.Pty_scal tys)
   | Ty_prod ty_l ->
     let env, pty_l = Utils.mapfold_left pre_ty_of_ty_annotation env ty_l in
     env, PreTy.Pty_prod pty_l
@@ -321,7 +321,7 @@ struct
       let ty = Data_types.ty_of_pre_ty pty in
       (
         match ty with
-        | Ty_cond (Ty_scal tys) ->
+        | Ty_cond tys ->
           object method ci_data = tys end
         | _ ->
           invalid_arg "update_clock_exp_info"

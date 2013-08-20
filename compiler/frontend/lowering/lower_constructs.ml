@@ -36,6 +36,8 @@
 open Acids_causal
 open Acids_causal_utils
 
+let if_var_prefix = "if_cnd"
+
 (** {2 Translations} *)
 
 (*
@@ -117,7 +119,7 @@ let merge_valof_translation find_pword ce e1 e2 =
 *)
 
 let merge_translation find_pword e1 e2 e3 =
-  let cnd = Ident.make_internal "if_cnd" in
+  let cnd = Ident.make_internal if_var_prefix in
 
   let base_st = Clock_types.get_st e1.e_info#ei_clock in
 

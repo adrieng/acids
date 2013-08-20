@@ -59,6 +59,8 @@ module SUBST = Acids_utils.SUBST(Acids_causal)
 open Acids_causal
 open Acids_causal_utils
 
+let prod_var_prefix = "t"
+
 (** {2 Environments} *)
 
 type env =
@@ -89,7 +91,7 @@ let rec make_scalar_pat_exp ty ct =
   let open Clock_types in
   match ty, ct with
   | (Ty_var _ | Ty_scal _ | Ty_cond _), _ ->
-    let v = Ident.make_internal "t" in
+    let v = Ident.make_internal prod_var_prefix in
     make_exp ty ct (E_var v), make_pat ty ct (P_var v)
   | Ty_prod ty_l, Ct_prod ct_l ->
     let ep_l = List.map2 make_scalar_pat_exp ty_l ct_l in

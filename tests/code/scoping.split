@@ -13,3 +13,17 @@ let node f x = x where rec y = x and y = z
 $$
 
 let node f () = 0 where rec <(x x)> = 0
+
+$$
+${
+(*
+        run_test:
+        [
+                Bad 1: "asc -check"
+        ]
+*)
+$}
+
+let node f x = x
+
+let node g e = x

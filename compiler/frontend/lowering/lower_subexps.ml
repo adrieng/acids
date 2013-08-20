@@ -34,6 +34,9 @@
     Note that we do not move sub-expressions from inside a block (E_where) above
     it, since we do not want to create scope extrusion problems. Same for
     domains.
+
+    We also ensure that after translation, in an expression "e where rec block",
+    e is a variable.
 *)
 
 open Acids_causal
@@ -157,7 +160,7 @@ and lower_eq current_eqs eq =
   current_eqs, { eq with eq_desc = eqd; }
 
 and close_exp e =
-  let current_eqs, e = lower_sub_exp [] e in
+  let current_eqs, e = lower_exp [] e in
   match current_eqs with
   | [] -> e
   | _ :: _ ->

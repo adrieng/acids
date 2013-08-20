@@ -577,11 +577,8 @@ pat_desc:
 | LPAREN p = pat IN s = spec RPAREN
    { Acids_parsetree.P_spec_annot (p, s) }
 
-%inline general_pat(PD):
-| pd = with_loc(PD) { make_located make_pat pd }
-
 pat:
-| p = general_pat(pat_desc) { p }
+| pd = with_loc(pat_desc) { make_located make_pat pd }
 
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }

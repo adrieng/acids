@@ -71,6 +71,18 @@ let make_clock_exp_not ?(loc = Loc.dummy) ce =
     base_st
     (Ce_equal (ce, make_static_exp_bool base_st false))
 
+let make_clock_exp_pword ?(loc = Loc.dummy) st pw =
+  let get se = Ast_misc.int_of_econstr se.se_desc in
+  let p = Tree_word.map_upword get get pw in
+  let l, u = Ast_misc.bounds_of_int_pword p in
+  let it = Interval.make l u in
+  make_clock_exp
+    Data_types.Tys_int
+    st
+    it
+    Ast_misc.([Interval it; Word p])
+    (Ce_pword (Pd_lit pw))
+
 let make_exp ?(loc = Loc.dummy) ?(relevant_deps = true) ty ct desc =
   {
     e_desc = desc;

@@ -89,10 +89,7 @@ let flow =
   +>+ Causality.pass
   +>+ Save_interface.pass
   (* Translation to middle-end IR *)
-  +>+ Lower_constructs.pass
-  +>+ Lower_psplit.pass
-  +>+ Lower_subexps.pass
-  +>+ Lower_tuples.pass
+  +>+ Lower.pass
 
 (*****************************************************************************)
 (* File handling *)

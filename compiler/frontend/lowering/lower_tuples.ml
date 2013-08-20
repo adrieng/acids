@@ -18,12 +18,13 @@
 (** {1 Remove tuple from the language}
 
     This pass assumes that the input is in three-addess form and have no
-    if/then/else or fbys, and thus must come after Lower_constructs and
-    Lower_subexps.
+    if/then/else, fbys or split patterns, and thus must come after
+    Lower_constructs, Lower_psplit and Lower_subexps.
 
     It works in two phases:
 
-    1/ Eliminate variables of product type.
+    1/ Eliminate variables of product type, and product type annotations.
+    TODO and move clock type annotations to variables
 
     x = (1, 2)
     y = 4
@@ -120,7 +121,20 @@ let rec decompose_tuple_pat p env =
   | P_clock_annot (p, cka) ->
     let p, env = decompose_tuple_pat p env in
     { p with p_desc = P_clock_annot (p, cka) ; }, env
-  | P_type_annot (p, tya) ->
+  | P_type_annot (p, Ty_prod ty_l) ->
+    (
+      let p, env = decompose_tuple_pat p env in
+      match p.p_desc with
+      | P_tuple p_l ->
+        let p_l =
+          let retag p ty = { p with p_desc = P_type_annot (p, ty); } in
+          List.map2 retag p_l ty_l
+        in
+        { p with p_desc = P_tuple p_l; }, env
+      | _ ->
+        assert false
+    )
+  | P_type_annot (p, ((Ty_var _ | Ty_scal _ | Ty_cond _) as tya)) ->
     let p, env = decompose_tuple_pat p env in
     { p with p_desc = P_type_annot (p, tya) ; }, env
   | P_spec_annot (p, spec) ->
@@ -185,9 +199,7 @@ let rec remove_proj_exp e =
 (*
   Simplification rules:
 
-  - projections have been eliminated
-  x = fst (y, z) -> x = y
-  x = snd (y, z) -> x = z
+  - projections have been eliminated above
 
   - tuples generate sub-equations:
   (x1, x2) = (1, 2) -> x1 = 1 and x2 = 2
@@ -234,11 +246,214 @@ let rec remove_proj_exp e =
   (x1, x2) = buffer (y1, y2) -> x1 = buffer x2 and y1 = buffer y2
 *)
 
-let rec map_sub_tuple mk acc e =
+let not_prod ty =
+  let open Data_types in
+  match ty with
+  | Ty_prod _ -> false
+  | _ -> true
+
+let sub_types ty =
+  let open Data_types in
+  match ty with
+  | Ty_prod ty_l -> ty_l
+  | Ty_var _ | Ty_cond _ | Ty_scal _ -> [ty]
+
+let sub_clocks arity ct =
+  let open Clock_types in
+  match ct with
+  | Ct_prod ct_l ->
+    assert (List.length ct_l = arity);
+    ct_l
+  | Ct_var _ | Ct_stream _ ->
+    Utils.repeat arity ct
+
+let get_sub_exps e =
   match e.e_desc with
-  | E_var _ -> mk e :: acc
-  | E_tuple e_l -> List.fold_left (map_sub_tuple mk) acc e_l
-  | _ -> invalid_arg "map_sub_tuple"
+  | E_var _ -> [e]
+  | E_tuple e_l -> e_l
+  | _ -> invalid_arg "get_sub_exps"
+
+let rec simplify p e =
+  let open Data_types in
+
+  Format.eprintf "simplify %a %a@."
+    print_pat p
+    print_exp e
+  ;
+
+  let make_exp desc ty ct = make_exp ~loc:e.e_loc ty ct desc in
+
+  let ty_l = sub_types e.e_info#ei_data in
+  let arity = List.length ty_l in
+
+  match p.p_desc with
+  | P_split _ ->
+    assert false (* lowered in preceding passes *)
+  | P_var _ | P_spec_annot _ | P_type_annot _ | P_clock_annot _ ->
+    assert (arity = 1);
+    [p, e]
+  | P_tuple p_l ->
+    assert (arity = List.length p_l);
+    let ct_l = sub_clocks arity e.e_info#ei_clock in
+    match e.e_desc with
+    | E_const _ ->
+      assert false (* ill-typed *)
+    | E_var _ ->
+      assert false (* lowered above *)
+    | E_fst _ | E_snd _ | E_fby _ | E_ifthenelse _ ->
+      assert false (* lowered in preceding passes *)
+
+    | E_tuple e_l ->
+      simplify_list p_l e_l
+
+    | E_app _ | E_where _ | E_dom _ | E_valof _
+    | E_spec_annot _ | E_type_annot (_, (Ty_var _ | Ty_scal _ | Ty_cond _)) ->
+      [p, e]
+
+    | E_when (e, ce) ->
+      let e_l = get_sub_exps e in
+      let e_l = Utils.map3 (fun e -> make_exp (E_when (e, ce))) e_l ty_l ct_l in
+      simplify_list p_l e_l
+
+    | E_split (ce, e, ec_l) ->
+      let e_l = get_sub_exps e in
+      let e_l =
+        Utils.map3 (fun e -> make_exp (E_split (ce, e, ec_l))) e_l ty_l ct_l
+      in
+      simplify_list p_l e_l
+
+    | E_bmerge (ce, e1, e2) ->
+      let e1_l = get_sub_exps e1 in
+      let e2_l = get_sub_exps e2 in
+      let e_l =
+        Utils.map4
+          (fun e1 e2 -> make_exp (E_bmerge (ce, e1, e2)))
+          e1_l
+          e2_l
+          ty_l
+          ct_l
+      in
+      simplify_list p_l e_l
+
+    | E_merge (ce, c_l) ->
+      let e_l = List.map (fun c -> c.c_body) c_l in
+      let e_ll = List.map get_sub_exps e_l in
+      let e_ll = Utils.transpose e_ll in
+      let c_ll =
+        List.map
+          (fun e_l -> List.map2 (fun c e -> { c with c_body = e; }) c_l e_l)
+          e_ll
+      in
+      let e_l =
+        Utils.map3 (fun c_l -> make_exp (E_merge (ce, c_l))) c_ll ty_l ct_l
+      in
+      simplify_list p_l e_l
+
+    | E_clock_annot (e, cka) ->
+      let e_l = get_sub_exps e in
+      let e_l =
+        Utils.map3 (fun e -> make_exp (E_clock_annot (e, cka))) e_l ty_l ct_l
+      in
+      simplify_list p_l e_l
+
+    | E_type_annot (_, Ty_prod _) ->
+      (* TODO *)
+      invalid_arg "unimplemented prod type ann"
+
+    | E_buffer (e, bu) ->
+      let e_l = get_sub_exps e in
+      let e_l =
+        Utils.map3 (fun e -> make_exp (E_buffer (e, bu))) e_l ty_l ct_l
+      in
+      simplify_list p_l e_l
+
+
+
+
+and simplify_list p_l e_l =
+  List.fold_left2 (fun acc p e -> simplify p e @ acc) [] p_l e_l
+
+(* let rec map_sub_tuple mk acc e = *)
+(*   match e.e_desc with *)
+(*   | E_var _ -> mk e :: acc *)
+(*   | E_tuple e_l -> List.fold_left (map_sub_tuple mk) acc e_l *)
+(*   | _ -> invalid_arg "map_sub_tuple" *)
+
+(* let tag_with_type l ty = *)
+(*   let open Data_types in *)
+(*   match ty with *)
+(*   | Ty_prod ty_l -> ty_l *)
+(*   | Ty_var _ | Ty_scal _ | Ty_cond _ -> List.map (fun x -> ty) l *)
+
+(* let tag_with_clock l ct = *)
+(*   let open Clock_types in *)
+(*   match ct with *)
+(*   | Ct_prod ct_l -> List.combine l ct_l *)
+(*   | Ct_var _ | Ct_stream _ -> List.map (fun x -> x, ct) l *)
+
+  (* let orig_p = p in *)
+  (* let orig_e = e in *)
+  (* match p.p_desc, e.e_desc with *)
+  (* | P_split _, _ *)
+  (* | _, (E_fst _ | E_snd _ | E_fby _ | E_ifthenelse _) *)
+  (* | P_var _, E_tuple _ *)
+  (* | P_tuple _, E_var _ *)
+  (*   -> *)
+  (*   assert false (\* lowered before *\) *)
+
+  (* | P_tuple _, E_const _ -> *)
+  (*   assert false (\* ill-typed *\) *)
+
+  (* | P_var _, _ *)
+  (* | P_tuple _, (E_app _ | E_where _) *)
+  (*   -> *)
+  (*   [p, e] *)
+
+  (* | P_clock_annot (p, a), _ -> *)
+  (*   let update (p, e) = *)
+  (*     make_pat p.p_info#pi_data orig_p.p_info#pi_clock (P_clock_annot (p, a)), *)
+  (*     e *)
+  (*   in *)
+  (*   List.map update (simplify p e) *)
+
+  (* | P_type_annot (p, ty), _ -> *)
+  (*   let update ((p, e), a) = *)
+  (*     make_pat p.p_info#pi_data orig_p.p_info#pi_clock (P_type_annot (p, a)), *)
+  (*     e *)
+  (*   in *)
+  (*   List.map update (tag_with_type (simplify p e) ty) *)
+
+  (* | P_spec_annot (p, spec), _ -> *)
+  (*   (\* We know that p is of scalar type *\) *)
+  (*   let update (p, e) = { p with p_desc = P_spec_annot (p, spec); }, e in *)
+  (*   List.map update (simplify p e) *)
+
+  (* | P_tuple p_l, E_tuple e_l -> *)
+  (*   simplify_list p_l e_l *)
+
+  (* | P_tuple p_l, E_when (e, ce) -> *)
+  (*   let mk (p, e) = { orig *)
+
+and simplify_eq eqs eq =
+  match eq.eq_desc with
+  | Eq_plain (p, e) ->
+    let pseudo_eqs = simplify p e in
+    List.map (fun (p, e) -> make_plain_eq ~loc:eq.eq_loc p e) pseudo_eqs @ eqs
+  | Eq_condvar _ -> eq :: eqs
+
+and simplify_block block =
+  let body = List.fold_left simplify_eq [] block.b_body in
+  { block with b_body = body; }
+
+let rec simplify_exp e =
+  let e =
+    match e.e_desc with
+    | E_where (e', block) ->
+      { e with e_desc = E_where (e', simplify_block block); }
+    | _ ->
+      e
+  in
+  SUB.map_sub_exp simplify_exp e
 
 (** {2 Putting it all together} *)
 
@@ -254,6 +469,7 @@ let lower_file
   let env = initial_env file.f_info#interfaces in
   let file = apply_to_node_bodies (decompose_tuple_exp env) file in
   let file = apply_to_node_bodies remove_proj_exp file in
+  let file = apply_to_node_bodies simplify_exp file in
   ctx, file
 
 let pass =

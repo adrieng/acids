@@ -77,6 +77,7 @@ let make_clock_exp_pword ?(loc = Loc.dummy) st pw =
   let l, u = Ast_misc.bounds_of_int_pword p in
   let it = Interval.make l u in
   make_clock_exp
+    ~loc
     Data_types.Tys_int
     st
     it
@@ -117,10 +118,10 @@ let make_pat ty ct pd =
       end;
   }
 
-let make_plain_eq p e =
+let make_plain_eq ?(loc = Loc.dummy) p e =
   {
     eq_desc = Eq_plain (p, e);
-    eq_loc = Loc.dummy;
+    eq_loc = loc;
     eq_info = ();
   }
 

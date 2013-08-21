@@ -47,7 +47,7 @@ module Env :
     val of_assoc_list : (key * 'a) list -> 'a t
     val union : 'a t -> 'a t -> 'a t
     val print :
-      (Format.formatter -> key * 'a -> unit) ->
+      (Format.formatter -> 'a -> unit) ->
       string ->
       Format.formatter ->
       'a t ->

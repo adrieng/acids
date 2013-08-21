@@ -94,12 +94,7 @@ type typing_env =
   }
 
 let debug_typing_env fmt env =
-  let p fmt (id, ty) =
-    Format.fprintf fmt "@[%a -> %a@]"
-      Ident.print id
-      VarTy.print ty
-  in
-  Ident.Env.print p ";" fmt env.idents
+  Ident.Env.print VarTy.print ";" fmt env.idents
 
 let initial_typing_env info =
   {

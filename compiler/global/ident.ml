@@ -131,16 +131,16 @@ struct
 
   open Format
 
-  let print print sep fmt env =
+  let print print_val sep fmt env =
     let size = cardinal env in
     fprintf fmt "@[";
-    ignore (M.fold
-              (fun k v n ->
-                if n < size
-                then fprintf fmt "%a%s@ " print (k, v) sep
-                else print fmt (k, v);
-                n + 1)
-              env
-              1);
+    ignore
+      (M.fold
+         (fun k v n ->
+           fprintf fmt "@[%a -> %a@]" print k print_val v;
+           if n < size then fprintf fmt "%s@ " sep;
+           n + 1)
+         env
+         1);
     fprintf fmt "@]"
 end

@@ -359,11 +359,6 @@ let get_sub_exps e =
 let rec flatten p e =
   let open Data_types in
 
-  Format.eprintf "@[flatten @[%a@]@ @[%a@]@]@."
-    print_pat p
-    print_exp e
-  ;
-
   let make_exp desc ty ct = make_exp ~loc:e.e_loc ty ct desc in
 
   let ty_l = get_sub_types e.e_info#ei_data in

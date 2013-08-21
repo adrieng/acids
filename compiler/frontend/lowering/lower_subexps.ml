@@ -145,11 +145,8 @@ and lower_exp current_eqs e =
     in
     eq :: current_eqs, { e with e_desc = E_var cnd; }
 
-and lower_block block =
-  let current_eqs, body =
-    Utils.mapfold_left lower_eq [] block.b_body
-  in
-  { block with b_body = current_eqs @ body; }
+and lower_block current_eqs block =
+  List.fold_left lower_eq current_eqs block.b_body
 
 and lower_eq current_eqs eq =
   let current_eqs, eqd =
@@ -161,7 +158,7 @@ and lower_eq current_eqs eq =
       let current_eqs, e = lower_sub_exp current_eqs e in
       current_eqs, Eq_condvar (v, specs, e)
   in
-  current_eqs, { eq with eq_desc = eqd; }
+  { eq with eq_desc = eqd; } :: current_eqs
 
 and close_exp e =
   let current_eqs, e = lower_exp [] e in

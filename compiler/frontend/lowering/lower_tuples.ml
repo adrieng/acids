@@ -336,7 +336,7 @@ let remove_proj_node input body = input, remove_proj_exp body
   (x1, x2) = buffer (y1, y2) -> x1 = buffer x2 and y1 = buffer y2
 *)
 
-let sub_types ty =
+let get_sub_types ty =
   let open Data_types in
   match ty with
   | Ty_prod ty_l -> ty_l
@@ -360,14 +360,9 @@ let get_sub_exps e =
 let rec simplify p e =
   let open Data_types in
 
-  (* Format.eprintf "simplify %a %a@." *)
-  (*   print_pat p *)
-  (*   print_exp e *)
-  (* ; *)
-
   let make_exp desc ty ct = make_exp ~loc:e.e_loc ty ct desc in
 
-  let ty_l = sub_types e.e_info#ei_data in
+  let ty_l = get_sub_types e.e_info#ei_data in
   let arity = List.length ty_l in
 
   match p.p_desc with
@@ -398,12 +393,27 @@ let rec simplify p e =
       let e_l = Utils.map3 (fun e -> make_exp (E_when (e, ce))) e_l ty_l ct_l in
       simplify_list p_l e_l
 
-    | E_split (ce, e, ec_l) ->
+    (* Note that splits are multi-output, so we only decompose in the case of a
+       product of products. E.g.:
+
+       (x, y) = split z ... -> (x, y) = split z ...
+
+       ((x, y), (z, k)) = split (h1, h2) ... ->
+           (x, y) = split h1 ...
+       and (z, k) = split h2 ...
+
+       We distinguish between the two by looking at the structure of e.
+    *)
+
+    | E_split (ce, ({ e_desc = E_tuple _; } as e), ec_l) ->
       let e_l = get_sub_exps e in
       let e_l =
         Utils.map3 (fun e -> make_exp (E_split (ce, e, ec_l))) e_l ty_l ct_l
       in
       simplify_list p_l e_l
+
+    | E_split _ ->
+      [p, e]
 
     | E_bmerge (ce, e1, e2) ->
       let e1_l = get_sub_exps e1 in
@@ -495,7 +505,7 @@ let lower_prod_annot =
 
 let lower_proj =
   let tr ctx file = ctx, apply_to_node_defs remove_proj_node file in
-  make_transform tr "power_projections"
+  make_transform tr "lower_projections"
 
 let lower_tuples =
   let tr ctx file = ctx, apply_to_node_defs simplify_node file in

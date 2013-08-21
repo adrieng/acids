@@ -23,8 +23,7 @@
 
     It works in two phases:
 
-    1/ Eliminate variables of product type, and product type annotations.
-    TODO and move clock type annotations to variables
+    1/ Eliminate variables of product type.
 
     x = (1, 2)
     y = 4
@@ -36,9 +35,12 @@
     y = 4
     (z1, (z2, z3)) = (y, (x1, x2)) when ce
 
-    2/ Remove projections
+    2/ Move annotations inward in exps and tuples so that they always apply to
+    variables.
 
-    3/ Simplify equations with tuple patterns on the left.
+    3/ Remove projections
+
+    4/ Simplify equations with tuple patterns on the left.
 
     (x1, x2) = (1, 2)
     y = 4
@@ -61,6 +63,14 @@ open Acids_causal
 open Acids_causal_utils
 
 let prod_var_prefix = "t"
+
+(** {2 Utilities} *)
+
+let not_prod ty =
+  let open Data_types in
+  match ty with
+  | Ty_prod _ -> false
+  | _ -> true
 
 (** {2 Environments} *)
 
@@ -121,20 +131,7 @@ let rec decompose_tuple_pat p env =
   | P_clock_annot (p, cka) ->
     let p, env = decompose_tuple_pat p env in
     { p with p_desc = P_clock_annot (p, cka) ; }, env
-  | P_type_annot (p, Ty_prod ty_l) ->
-    (
-      let p, env = decompose_tuple_pat p env in
-      match p.p_desc with
-      | P_tuple p_l ->
-        let p_l =
-          let retag p ty = { p with p_desc = P_type_annot (p, ty); } in
-          List.map2 retag p_l ty_l
-        in
-        { p with p_desc = P_tuple p_l; }, env
-      | _ ->
-        assert false
-    )
-  | P_type_annot (p, ((Ty_var _ | Ty_scal _ | Ty_cond _) as tya)) ->
+  | P_type_annot (p, tya) ->
     let p, env = decompose_tuple_pat p env in
     { p with p_desc = P_type_annot (p, tya) ; }, env
   | P_spec_annot (p, spec) ->
@@ -181,6 +178,92 @@ let rec decompose_tuple_exp env e =
   SUB.map_sub_exp (decompose_tuple_exp env) e
 
 let decompose_tuple_node env input body = input, decompose_tuple_exp env body
+
+(** {2 Move annotations inward} *)
+
+(* P_clock_annot (p, cka) annotates a pattern p with a stream type cka, so we
+   don't have to decompose cka when moving it to variables. *)
+let rec sink_clock_annot_pat k_p p =
+  match p.p_desc with
+  | P_split _ ->
+    assert false (* lowered before *)
+
+  | P_var _ | P_spec_annot _ ->
+    assert (not_prod p.p_info#pi_data); (* scalar *)
+    k_p p
+
+  | P_type_annot (p, tya) ->
+    { p with p_desc = P_type_annot (sink_clock_annot_pat k_p p, tya); }
+  | P_tuple p_l ->
+    { p with p_desc = P_tuple (List.map (sink_clock_annot_pat k_p) p_l); }
+
+  | P_clock_annot (p', cka) ->
+    let k_p p' = k_p { p with p_desc = P_clock_annot (p', cka); } in
+    sink_clock_annot_pat k_p p'
+
+(* The use may have annotated patterns with product types, so we have to
+   decompose them when moving inward.
+
+   This function should be applied after sink_clock_annot_pat.
+ *)
+let rec sink_type_annot_pat p =
+  match p.p_desc with
+  | P_split _ ->
+    assert false (* lowered before *)
+
+  | P_var _ | P_spec_annot _ | P_clock_annot _ ->
+    assert (not_prod p.p_info#pi_data); (* scalar *)
+    p
+
+  | P_tuple p_l ->
+    { p with p_desc = P_tuple (List.map sink_type_annot_pat p_l); }
+
+  | P_type_annot (p, tya) ->
+    distribute_annot tya (sink_type_annot_pat p)
+
+and distribute_annot tya p =
+  match p.p_desc with
+  | P_split _ ->
+    assert false (* lowered before *)
+
+  | P_var _ | P_spec_annot _ | P_clock_annot _ | P_type_annot _ ->
+    assert (not_prod p.p_info#pi_data); (* scalar *)
+    { p with p_desc = P_type_annot (p, tya); }
+
+  | P_tuple p_l ->
+    let open Data_types in
+    let p_l =
+      match tya with
+      | Ty_cond _ | Ty_scal _ -> assert false (* ill-typed *)
+      | Ty_var _ -> List.map (distribute_annot tya) p_l
+      | Ty_prod tya_l -> List.map2 distribute_annot tya_l p_l
+    in
+    { p with p_desc = P_tuple p_l; }
+
+let sink_annot_pat p = sink_type_annot_pat (sink_clock_annot_pat (fun x -> x) p)
+
+let sink_annot_block block =
+  let sink_annot_eq eq =
+    let eqd =
+      match eq.eq_desc with
+      | Eq_plain (p, e) -> Eq_plain (sink_annot_pat p, e)
+      | Eq_condvar _ -> eq.eq_desc
+    in
+    { eq with eq_desc = eqd; }
+  in
+  { block with b_body = List.map sink_annot_eq block.b_body; }
+
+let rec sink_annot_exp e =
+  let e =
+    match e.e_desc with
+    | E_where (e', block) ->
+      { e with e_desc = E_where (e', sink_annot_block block); }
+    | _ ->
+      e
+  in
+  SUB.map_sub_exp sink_annot_exp e
+
+let sink_annot_node input body = sink_annot_pat input, sink_annot_exp body
 
 (** {2 Remove projections} *)
 
@@ -249,12 +332,6 @@ let remove_proj_node input body = input, remove_proj_exp body
   - buffer: flatten
   (x1, x2) = buffer (y1, y2) -> x1 = buffer x2 and y1 = buffer y2
 *)
-
-let not_prod ty =
-  let open Data_types in
-  match ty with
-  | Ty_prod _ -> false
-  | _ -> true
 
 let sub_types ty =
   let open Data_types in
@@ -409,6 +486,10 @@ let lower_prod_var =
     ctx, file
   in
   make_transform tr "lower_product_variables"
+
+let lower_prod_annot =
+  let tr ctx file = ctx, apply_to_node_defs sink_annot_node file in
+  make_transform tr "lower_product_annotations"
 
 let lower_proj =
   let tr ctx file = ctx, apply_to_node_defs remove_proj_node file in

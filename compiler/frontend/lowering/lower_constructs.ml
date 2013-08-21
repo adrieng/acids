@@ -267,9 +267,9 @@ let lower_phrase env phr =
 (** {2 Putting it all together} *)
 
 let pass =
-  let tr ctx file =
+  let tr file =
     let env = initial_env file.f_info#interfaces in
     let _, body = Utils.mapfold_left lower_phrase env file.f_body in
-    ctx, { file with f_body = body; }
+    { file with f_body = body; }
   in
-  Lowering_utils.make_transform tr "lower_constructs"
+  Lowering_utils.make_transform_by_file tr "lower_constructs"

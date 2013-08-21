@@ -63,6 +63,4 @@ let lower_where_node input body = input, close_exp body
 
 (** {2 Putting it all together} *)
 
-let pass =
-  let tr ctx file = ctx, apply_to_node_defs lower_where_node file in
-  Lowering_utils.make_transform tr "lower_nested_defs"
+let pass = Lowering_utils.make_transform_by_node lower_where_node "lower_where"

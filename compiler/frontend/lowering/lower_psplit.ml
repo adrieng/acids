@@ -140,6 +140,4 @@ let node_def input body =
 
 (** {2 Putting it all together} *)
 
-let pass =
-  let tr ctx file = ctx, apply_to_node_defs node_def file in
-  Lowering_utils.make_transform tr "lower_psplit"
+let pass = Lowering_utils.make_transform_by_node node_def "lower_psplit"

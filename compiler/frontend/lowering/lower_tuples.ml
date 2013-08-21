@@ -284,7 +284,7 @@ let rec remove_proj_exp e =
 
 let remove_proj_node input body = input, remove_proj_exp body
 
-(** {2 Simplify equations} *)
+(** {2 Flatten equations} *)
 
 (*
   Simplification rules:
@@ -357,8 +357,13 @@ let get_sub_exps e =
   | E_tuple e_l -> e_l
   | _ -> invalid_arg "get_sub_exps"
 
-let rec simplify p e =
+let rec flatten p e =
   let open Data_types in
+
+  Format.eprintf "@[flatten @[%a@]@ @[%a@]@]@."
+    print_pat p
+    print_exp e
+  ;
 
   let make_exp desc ty ct = make_exp ~loc:e.e_loc ty ct desc in
 
@@ -382,7 +387,7 @@ let rec simplify p e =
       assert false (* lowered in preceding passes *)
 
     | E_tuple e_l ->
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     | E_app _ | E_where _ | E_dom _ | E_valof _
     | E_spec_annot _ | E_type_annot (_, (Ty_var _ | Ty_scal _ | Ty_cond _)) ->
@@ -391,7 +396,7 @@ let rec simplify p e =
     | E_when (e, ce) ->
       let e_l = get_sub_exps e in
       let e_l = Utils.map3 (fun e -> make_exp (E_when (e, ce))) e_l ty_l ct_l in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     (* Note that splits are multi-output, so we only decompose in the case of a
        product of products. E.g.:
@@ -410,7 +415,7 @@ let rec simplify p e =
       let e_l =
         Utils.map3 (fun e -> make_exp (E_split (ce, e, ec_l))) e_l ty_l ct_l
       in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     | E_split _ ->
       [p, e]
@@ -426,7 +431,7 @@ let rec simplify p e =
           ty_l
           ct_l
       in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     | E_merge (ce, c_l) ->
       let e_l = List.map (fun c -> c.c_body) c_l in
@@ -440,14 +445,14 @@ let rec simplify p e =
       let e_l =
         Utils.map3 (fun c_l -> make_exp (E_merge (ce, c_l))) c_ll ty_l ct_l
       in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     | E_clock_annot (e, cka) ->
       let e_l = get_sub_exps e in
       let e_l =
         Utils.map3 (fun e -> make_exp (E_clock_annot (e, cka))) e_l ty_l ct_l
       in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
     | E_type_annot (_, Ty_prod _) ->
       (* TODO *)
@@ -458,57 +463,57 @@ let rec simplify p e =
       let e_l =
         Utils.map3 (fun e -> make_exp (E_buffer (e, bu))) e_l ty_l ct_l
       in
-      simplify_list p_l e_l
+      flatten_list p_l e_l
 
-and simplify_list p_l e_l =
-  List.fold_left2 (fun acc p e -> simplify p e @ acc) [] p_l e_l
+and flatten_list p_l e_l =
+  List.fold_left2 (fun acc p e -> flatten p e @ acc) [] p_l e_l
 
-and simplify_eq eqs eq =
+and flatten_eq eqs eq =
   match eq.eq_desc with
   | Eq_plain (p, e) ->
-    let pseudo_eqs = simplify p e in
+    let pseudo_eqs = flatten p e in
     List.map (fun (p, e) -> make_plain_eq ~loc:eq.eq_loc p e) pseudo_eqs @ eqs
   | Eq_condvar _ -> eq :: eqs
 
-and simplify_block block =
-  let body = List.fold_left simplify_eq [] block.b_body in
+and flatten_block block =
+  let body = List.fold_left flatten_eq [] block.b_body in
   { block with b_body = body; }
 
-let rec simplify_exp e =
+let rec flatten_exp e =
   let e =
     match e.e_desc with
     | E_where (e', block) ->
-      { e with e_desc = E_where (e', simplify_block block); }
+      { e with e_desc = E_where (e', flatten_block block); }
     | _ ->
       e
   in
-  SUB.map_sub_exp simplify_exp e
+  SUB.map_sub_exp flatten_exp e
 
-let simplify_node input body = input, simplify_exp body
+let flatten_node input body = input, flatten_exp body
 
 (** {2 Putting it all together} *)
 
 open Pass_manager
 open Lowering_utils
 
-let lower_prod_var =
-  let tr ctx file =
+let lower_tuple_var =
+  let do_file file =
     let env = initial_env file.f_info#interfaces in
-    let file = apply_to_node_defs (decompose_tuple_node env) file in
-    ctx, file
+    apply_to_node_defs (decompose_tuple_node env) file
   in
-  make_transform tr "lower_product_variables"
+  make_transform_by_file do_file "lower_tuples_variables"
 
-let lower_prod_annot =
-  let tr ctx file = ctx, apply_to_node_defs sink_annot_node file in
-  make_transform tr "lower_product_annotations"
+let lower_tuple_annot =
+  make_transform_by_node sink_annot_node "lower_tuples_annotations"
 
-let lower_proj =
-  let tr ctx file = ctx, apply_to_node_defs remove_proj_node file in
-  make_transform tr "lower_projections"
+let lower_tuple_proj =
+  make_transform_by_node remove_proj_node "lower_tuples_projections"
 
-let lower_tuples =
-  let tr ctx file = ctx, apply_to_node_defs simplify_node file in
-  make_transform tr "lower_tuples"
+let lower_tuple_flatten =
+  make_transform_by_node flatten_node "lower_tuples_flatten"
 
-let pass = lower_prod_var +>+ lower_proj +>+ lower_tuples
+let pass =
+  lower_tuple_var
+  +>+ lower_tuple_annot
+  +>+ lower_tuple_proj
+  +>+ lower_tuple_flatten

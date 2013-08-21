@@ -21,13 +21,13 @@ type annotated_file =
     static_nodes : Acids_static.node_def list;
   > Acids_causal.file
 
-type lowering_transform =
-  Pass_manager.ctx -> annotated_file -> Pass_manager.ctx * annotated_file
-
-let make_transform (tr : lowering_transform) name =
+let make_transform_by_file (do_file : annotated_file -> annotated_file) name =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
        ~print_out:Acids_causal.print_file
        name
-       tr)
+       (fun ctx file -> ctx, do_file file))
+
+let make_transform_by_node do_node name =
+  make_transform_by_file (Acids_causal_utils.apply_to_node_defs do_node) name

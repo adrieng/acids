@@ -134,8 +134,12 @@ let rec remove_psplit_exp e =
   in
   SUB.map_sub_exp remove_psplit_exp e
 
+let node_def input body =
+  let input, eqs = remove_psplit_in_pat input [] in
+  input, remove_psplit_exp (add_eqs_to_exp eqs body)
+
 (** {2 Putting it all together} *)
 
 let pass =
-  let tr ctx file = ctx, apply_to_node_bodies remove_psplit_exp file in
+  let tr ctx file = ctx, apply_to_node_defs node_def file in
   Lowering_utils.make_transform tr "lower_psplit"

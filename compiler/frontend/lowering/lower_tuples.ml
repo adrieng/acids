@@ -180,6 +180,8 @@ let rec decompose_tuple_exp env e =
   in
   SUB.map_sub_exp (decompose_tuple_exp env) e
 
+let decompose_tuple_node env input body = input, decompose_tuple_exp env body
+
 (** {2 Remove projections} *)
 
 let rec remove_proj_exp e =
@@ -193,6 +195,8 @@ let rec remove_proj_exp e =
       e
   in
   SUB.map_sub_exp remove_proj_exp e
+
+let remove_proj_node input body = input, remove_proj_exp body
 
 (** {2 Simplify equations} *)
 
@@ -391,30 +395,27 @@ let rec simplify_exp e =
   in
   SUB.map_sub_exp simplify_exp e
 
+let simplify_node input body = input, simplify_exp body
+
 (** {2 Putting it all together} *)
 
 open Pass_manager
 open Lowering_utils
 
 let lower_prod_var =
-  let tr =
-    fun ctx file ->
-      let env = initial_env file.f_info#interfaces in
-      let file = apply_to_node_bodies (decompose_tuple_exp env) file in
-      ctx, file
+  let tr ctx file =
+    let env = initial_env file.f_info#interfaces in
+    let file = apply_to_node_defs (decompose_tuple_node env) file in
+    ctx, file
   in
   make_transform tr "lower_product_variables"
 
 let lower_proj =
-  let tr =
-    fun ctx file -> ctx, apply_to_node_bodies remove_proj_exp file
-  in
+  let tr ctx file = ctx, apply_to_node_defs remove_proj_node file in
   make_transform tr "power_projections"
 
 let lower_tuples =
-  let tr =
-    fun ctx file -> ctx, apply_to_node_bodies simplify_exp file
-  in
+  let tr ctx file = ctx, apply_to_node_defs simplify_node file in
   make_transform tr "lower_tuples"
 
 let pass = lower_prod_var +>+ lower_proj +>+ lower_tuples

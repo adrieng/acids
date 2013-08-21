@@ -161,22 +161,14 @@ and lower_eq current_eqs eq =
 
 and close_exp e =
   let current_eqs, e = lower_exp [] e in
-  match current_eqs with
-  | [] -> e
-  | _ :: _ ->
-    let e', block =
-      match e.e_desc with
-      | E_where (e', block) ->
-        e', { block with b_body = current_eqs @ block.b_body; }
-      | _ ->
-        e, make_block current_eqs
-    in
-    { e with e_desc = E_where (e', block); }
+  add_eqs_to_exp current_eqs e
+
+let node_def input body = input, close_exp body
 
 (** {2 Putting it all together} *)
 
 let pass =
   let tr ctx file =
-    ctx, Acids_causal_utils.apply_to_node_bodies close_exp file
+    ctx, Acids_causal_utils.apply_to_node_defs node_def file
   in
   Lowering_utils.make_transform tr "lower_subexps"

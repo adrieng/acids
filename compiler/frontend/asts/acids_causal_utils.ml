@@ -132,10 +132,22 @@ let make_block eqs =
     b_info = ();
   }
 
-let apply_to_node_bodies f_node file =
+let add_eqs_to_exp eqs e =
+  match eqs with
+  | [] -> e
+  | _ :: _ ->
+    let e', block =
+      match e.e_desc with
+      | E_where (e', block) -> e', { block with b_body = eqs @ block.b_body; }
+      | _ -> e, make_block eqs
+    in
+    { e with e_desc = E_where (e', block); }
+
+let apply_to_node_defs f_node file =
   let lower_node nd =
     Ident.set_current_ctx nd.n_info#ni_ctx;
-    { nd with n_body = f_node nd.n_body; }
+    let input, body = f_node nd.n_input nd.n_body in
+    { nd with n_input = input; n_body = body; }
   in
 
   let lower_phrase phr =

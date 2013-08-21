@@ -35,8 +35,7 @@
     y = 4
     (z1, (z2, z3)) = (y, (x1, x2)) when ce
 
-    2/ Move annotations inward in exps and tuples so that they always apply to
-    variables.
+    2/ Move annotations inward in tuples so that they always apply to variables.
 
     3/ Remove projections
 

@@ -1,0 +1,41 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node f () =
+    merge (0 1) with
+    | 0 -> (1, 2)
+    | 1 -> (1, 2)
+    end
+
+$$
+
+let node f e = (x, y) where
+  rec <(x^3 (y, k)^5)> = e
+
+$$
+
+let node f x = split x with (0 1) by (0, 1)
+
+$$
+
+let node f e = x where
+    rec <(x y)> = e
+
+$$
+
+let node f x = o2 where rec (o1, o2) = x
+
+$$
+
+let node f () = (1, 2)
+
+let node g (x, y) = ((fst x, x), (snd x, y, 42))
+
+let node h () = g (f (), 33)

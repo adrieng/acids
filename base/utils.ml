@@ -46,13 +46,15 @@ let range n m =
   walk [] n
 
 let transpose ll =
-  let rec walk acc ll =
-    match ll with
-    | [] -> acc
-    | x_l :: ll ->
-      walk (List.map2 (fun x l -> x :: l) x_l acc) ll
-  in
-  List.rev (walk [] ll)
+  match ll with
+  | [] -> []
+  | l :: ll ->
+    let rec walk acc ll =
+      match ll with
+      | [] -> acc
+      | x_l :: ll -> walk (List.map2 (fun x l -> x :: l) x_l acc) ll
+    in
+    List.map List.rev (walk (List.map (fun x -> [x]) l) ll)
 
 let rec map3 f l1 l2 l3 =
   match l1, l2, l3 with

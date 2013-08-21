@@ -46,11 +46,23 @@ let var_prefix = "s"
 
 (** {2 Walking the AST} *)
 
+(* TODO rename functions *)
+
 let rec lower_sub_exp (current_eqs : eq list) e =
   let current_eqs, ed =
     match e.e_desc with
     | E_var _ | E_const _ | E_valof _ ->
       current_eqs, e.e_desc
+
+    | E_dom (e, dom) ->
+      current_eqs, E_dom (close_exp e, dom)
+
+    | E_where (e, block) ->
+      let current_eqs = lower_block current_eqs block in
+      let current_eqs, e = lower_exp current_eqs e in
+      current_eqs, e.e_desc
+
+    (* The remaining are boring cases *)
 
     | E_fst e ->
       let current_eqs, e = lower_exp current_eqs e in
@@ -80,11 +92,6 @@ let rec lower_sub_exp (current_eqs : eq list) e =
     | E_app (app, e) ->
       let current_eqs, e = lower_exp current_eqs e in
       current_eqs, E_app (app, e)
-
-    | E_where (e, block) ->
-      let current_eqs, e = lower_exp current_eqs e in
-      let block = lower_block block in
-      current_eqs, E_where (e, block)
 
     | E_when (e, ce) ->
       let current_eqs, e = lower_exp current_eqs e in
@@ -118,9 +125,6 @@ let rec lower_sub_exp (current_eqs : eq list) e =
     | E_spec_annot (e, a) ->
       let current_eqs, e = lower_exp current_eqs e in
       current_eqs, E_spec_annot (e, a)
-
-    | E_dom (e, dom) ->
-      current_eqs, E_dom (close_exp e, dom)
 
     | E_buffer (e, bu) ->
       let current_eqs, e = lower_exp current_eqs e in

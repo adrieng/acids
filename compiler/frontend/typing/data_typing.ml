@@ -521,7 +521,7 @@ and type_exp env e =
           unify e.e_loc ce_ty ty)
         ec_l;
       let e', ty = type_exp env e' in
-      M.E_split (ce, e', ec_l), ty
+      M.E_split (ce, e', ec_l), tuple_ty (Utils.repeat (List.length ec_l) ty)
 
     | E_bmerge (ce, e1, e2) ->
       let ce = expect_clock_exp env (cond_ty bool_ty) ce in

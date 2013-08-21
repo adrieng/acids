@@ -36,3 +36,8 @@ let node f () = o where
 $$
 
 let node f () = valof ('012345')
+
+$$
+
+let node f x = (y, z, x + 1) where
+  rec (y, z) = split x with (0 1) by (0, 1)

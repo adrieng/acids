@@ -177,7 +177,10 @@ let rec decompose_tuple_exp env e =
   in
   SUB.map_sub_exp (decompose_tuple_exp env) e
 
-let decompose_tuple_node env input body = input, decompose_tuple_exp env body
+let decompose_tuple_node env input body =
+  let input, env = decompose_tuple_pat input env in
+  let body = decompose_tuple_exp env body in
+  input, body
 
 (** {2 Move annotations inward} *)
 
@@ -357,10 +360,10 @@ let get_sub_exps e =
 let rec simplify p e =
   let open Data_types in
 
-  Format.eprintf "simplify %a %a@."
-    print_pat p
-    print_exp e
-  ;
+  (* Format.eprintf "simplify %a %a@." *)
+  (*   print_pat p *)
+  (*   print_exp e *)
+  (* ; *)
 
   let make_exp desc ty ct = make_exp ~loc:e.e_loc ty ct desc in
 
@@ -374,7 +377,6 @@ let rec simplify p e =
     assert (arity = 1);
     [p, e]
   | P_tuple p_l ->
-    assert (arity = List.length p_l);
     let ct_l = sub_clocks arity e.e_info#ei_clock in
     match e.e_desc with
     | E_const _ ->

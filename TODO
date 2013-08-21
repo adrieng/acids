@@ -9,7 +9,6 @@ Compiler:
 - re-add exhaustiveness checker for patterns (was in interval_typing)
 - check if bounds inference works for user-defined enumerated types
 - Clock_types is growing enormous, move stuff to Clock_types_utils
-- Remove stupid make_located in parser
 - handle global static tuples
 - make static exps proper exps
 

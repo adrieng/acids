@@ -26,19 +26,17 @@
 
   let make_pword (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
 
-  let make_located make (x, loc) = make x loc
-
   let make_econstr n =
     Ast_misc.Ec_constr (Initial.make_longname n, Int.of_int (- 1))
 
-  let make_clock_exp ced loc =
+  let make_clock_exp (ced, loc) =
     {
       Acids_parsetree.ce_desc = ced;
       Acids_parsetree.ce_loc = loc;
       Acids_parsetree.ce_info = ();
     }
 
-  let make_static_exp sed loc =
+  let make_static_exp (sed, loc) =
     {
       Acids_parsetree.se_desc = sed;
       Acids_parsetree.se_loc = loc;
@@ -46,10 +44,10 @@
     }
 
   let make_static_exp_econstr (ec, loc) =
-    make_static_exp (Acids_parsetree.Info.Se_econstr ec) loc
+    make_static_exp (Acids_parsetree.Info.Se_econstr ec, loc)
 
   let make_static_exp_fword (i_l, loc) =
-    make_static_exp (Acids_parsetree.Info.Se_fword i_l) loc
+    make_static_exp (Acids_parsetree.Info.Se_fword i_l, loc)
 
   let make_domain par base e =
     let d =
@@ -72,14 +70,14 @@
       Acids_parsetree.s_loc = loc;
     }
 
-  let make_exp ed loc =
+  let make_exp (ed, loc) =
     {
       Acids_parsetree.e_desc = ed;
       Acids_parsetree.e_loc = loc;
       Acids_parsetree.e_info = ();
     }
 
-  let make_app e ln ln_loc =
+  let make_app e (ln, ln_loc) =
     let app =
       {
         Acids_parsetree.a_op = ln;
@@ -89,7 +87,7 @@
     in
     Acids_parsetree.E_app (app, e)
 
-  let make_tuple e_l loc = make_exp (Acids_parsetree.E_tuple e_l) loc
+  let make_tuple (e_l, loc) = make_exp (Acids_parsetree.E_tuple e_l, loc)
 
   let make_bin_op start stop op e1 e2 =
     let loc = Parser_utils.make_loc start stop in
@@ -101,9 +99,9 @@
         Acids_parsetree.a_loc = Parser_utils.make_loc start stop;
       }
     in
-    Acids_parsetree.E_app (app, make_tuple [e1; e2] loc)
+    Acids_parsetree.E_app (app, make_tuple ([e1; e2], loc))
 
-  let make_pat pd loc =
+  let make_pat (pd, loc) =
     match pd with
     | Acids_parsetree.P_tuple [p] -> p
     | _ ->
@@ -120,28 +118,28 @@
       Acids_parsetree.c_loc = loc;
     }
 
-  let make_eq desc loc =
+  let make_eq (desc, loc) =
     {
       Acids_parsetree.eq_desc = desc;
       Acids_parsetree.eq_loc = loc;
       Acids_parsetree.eq_info = ();
     }
 
-  let make_block eqs loc =
+  let make_block (eqs, loc) =
     {
       Acids_parsetree.b_body = eqs;
       Acids_parsetree.b_loc = loc;
       Acids_parsetree.b_info = ();
     }
 
-  let make_pragma (k, v) loc =
+  let make_pragma ((k, v), loc) =
     {
       Pragma.loc = loc;
       Pragma.key = k;
       Pragma.value = v;
     }
 
-  let make_node_def (s, n, p, e, pr) loc =
+  let make_node_def ((s, n, p, e, pr), loc) =
     {
       Acids_parsetree.n_name = n;
       Acids_parsetree.n_input = p;
@@ -152,7 +150,7 @@
       Acids_parsetree.n_info = ();
     }
 
-  let make_node_decl (name, data, static, clock) loc =
+  let make_node_decl ((name, data, static, clock), loc) =
     {
       Acids_parsetree.decl_name = name;
       Acids_parsetree.decl_data = data;
@@ -428,7 +426,7 @@ clock_exp_desc:
    { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_global ln) }
 
 clock_exp:
-| ced = with_loc(clock_exp_desc) { make_located make_clock_exp ced }
+| ced = with_loc(clock_exp_desc) { make_clock_exp ced }
 | ce = parens(clock_exp) { ce }
 
 (******************** STATIC EXPS ********************)
@@ -447,7 +445,7 @@ static_exp_desc:
    { Acids_parsetree.Info.Se_binop ("(/)", se1, se2) }
 
 static_exp:
-| sed = with_loc(static_exp_desc) { make_located make_static_exp sed }
+| sed = with_loc(static_exp_desc) { make_static_exp sed }
 | se = parens(static_exp) { se }
 
 static_exp_root:
@@ -472,7 +470,7 @@ simple_exp_desc:
                         { Acids_parsetree.E_spec_annot (e, s) }
 
 %inline simple_exp:
-| ed = with_loc(simple_exp_desc) { make_located make_exp ed }
+| ed = with_loc(simple_exp_desc) { make_exp ed }
 
 exp_desc:
 | ed = simple_exp_desc { ed }
@@ -505,7 +503,7 @@ exp_desc:
 | e1 = exp s = OP e2 = exp
             { make_bin_op $startpos $endpos s e1 e2 }
 
-| ln = with_loc(longname) e = exp %prec APP { make_located (make_app e) ln }
+| ln = with_loc(longname) e = exp %prec APP { make_app e ln }
 
 | e1 = exp FBY e2 = exp { Acids_parsetree.E_fby (e1, e2) }
 | IF e1 = exp THEN e2 = exp ELSE e3 = exp %prec IF
@@ -528,7 +526,7 @@ exp_desc:
 | BUFFER e = exp { Acids_parsetree.E_buffer (e, make_buffer ()) }
 
 %inline exp:
-| ed = with_loc(exp_desc) { make_located make_exp ed }
+| ed = with_loc(exp_desc) { make_exp ed }
 
 merge_clause_desc:
 | PIPE ec = econstr ARROW e = exp { (ec, e) }
@@ -546,13 +544,13 @@ eq_desc:
    { Acids_parsetree.Eq_condvar (id, specs, e) }
 
 eq:
-| eqd = with_loc(eq_desc) { make_located make_eq eqd }
+| eqd = with_loc(eq_desc) { make_eq eqd }
 
 block_desc:
 | separated_nonempty_list(AND, eq) { $1 }
 
 block:
-| b = with_loc(block_desc) { make_located make_block b }
+| b = with_loc(block_desc) { make_block b }
 
 clock_annot:
 | v = STVAR { Acids_parsetree.Ca_var v }
@@ -578,7 +576,7 @@ pat_desc:
    { Acids_parsetree.P_spec_annot (p, s) }
 
 pat:
-| pd = with_loc(pat_desc) { make_located make_pat pd }
+| pd = with_loc(pat_desc) { make_pat pd }
 
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
@@ -598,7 +596,7 @@ spec:
 | key = PRAGMAKEY value = braces(pragma_val) { (key, value) }
 
 %inline pragma:
-| pd = with_loc(pragma_desc) { make_located make_pragma pd }
+| pd = with_loc(pragma_desc) { make_pragma pd }
 
 %inline pragma_node:
 | p_l = list(pragma) { p_l }
@@ -608,7 +606,7 @@ node_def_desc:
    { (s, n, p, e, pr) }
 
 node_def:
-| nd = with_loc(node_def_desc) { make_located make_node_def nd }
+| nd = with_loc(node_def_desc) { make_node_def nd }
 
 // Declarations
 
@@ -675,7 +673,7 @@ node_decl_desc:
    { (nn, ty_sig, static_sig, ck_sig) }
 
 node_decl:
-| nd = with_loc(node_decl_desc) { make_located make_node_decl nd }
+| nd = with_loc(node_decl_desc) { make_node_decl nd }
 
 type_def_desc:
 | TYPE nn = IDENT EQUAL c_l = separated_nonempty_list(PIPE, UIDENT) { nn, c_l }

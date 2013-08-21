@@ -46,9 +46,7 @@ let var_prefix = "s"
 
 (** {2 Walking the AST} *)
 
-(* TODO rename functions *)
-
-let rec lower_sub_exp (current_eqs : eq list) e =
+let rec name_sub_exp (current_eqs : eq list) e =
   let current_eqs, ed =
     match e.e_desc with
     | E_var _ | E_const _ | E_valof _ ->
@@ -58,85 +56,85 @@ let rec lower_sub_exp (current_eqs : eq list) e =
       current_eqs, E_dom (close_exp e, dom)
 
     | E_where (e, block) ->
-      let current_eqs = lower_block current_eqs block in
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs = name_block current_eqs block in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, e.e_desc
 
     (* The remaining are boring cases *)
 
     | E_fst e ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_fst e
 
     | E_snd e ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_snd e
 
     | E_tuple e_l ->
       let e_l, current_eqs =
-        Utils.mapfold (Utils.double_flip lower_exp) e_l current_eqs
+        Utils.mapfold (Utils.double_flip name_exp) e_l current_eqs
       in
       current_eqs, E_tuple e_l
 
     | E_fby (e1, e2) ->
-      let current_eqs, e1 = lower_exp current_eqs e1 in
-      let current_eqs, e2 = lower_exp current_eqs e2 in
+      let current_eqs, e1 = name_exp current_eqs e1 in
+      let current_eqs, e2 = name_exp current_eqs e2 in
       current_eqs, E_fby (e1, e2)
 
     | E_ifthenelse (e1, e2, e3) ->
-      let current_eqs, e1 = lower_exp current_eqs e1 in
-      let current_eqs, e2 = lower_exp current_eqs e2 in
-      let current_eqs, e3 = lower_exp current_eqs e3 in
+      let current_eqs, e1 = name_exp current_eqs e1 in
+      let current_eqs, e2 = name_exp current_eqs e2 in
+      let current_eqs, e3 = name_exp current_eqs e3 in
       current_eqs, E_ifthenelse (e1, e2, e3)
 
     | E_app (app, e) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_app (app, e)
 
     | E_when (e, ce) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_when (e, ce)
 
     | E_split (ce, e, ec_l) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_split (ce, e, ec_l)
 
     | E_bmerge (ce, e1, e2) ->
-      let current_eqs, e1 = lower_exp current_eqs e1 in
-      let current_eqs, e2 = lower_exp current_eqs e2 in
+      let current_eqs, e1 = name_exp current_eqs e1 in
+      let current_eqs, e2 = name_exp current_eqs e2 in
       current_eqs, E_bmerge (ce, e1, e2)
 
     | E_merge (ce, c_l) ->
-      let lower_clause current_eqs c =
-        let current_eqs, body = lower_exp current_eqs c.c_body in
+      let name_clause current_eqs c =
+        let current_eqs, body = name_exp current_eqs c.c_body in
         current_eqs, { c with c_body = body; }
       in
-      let current_eqs, c_l = Utils.mapfold_left lower_clause current_eqs c_l in
+      let current_eqs, c_l = Utils.mapfold_left name_clause current_eqs c_l in
       current_eqs, E_merge (ce, c_l)
 
     | E_clock_annot (e, a) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_clock_annot (e, a)
 
     | E_type_annot (e, a) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_type_annot (e, a)
 
     | E_spec_annot (e, a) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_spec_annot (e, a)
 
     | E_buffer (e, bu) ->
-      let current_eqs, e = lower_exp current_eqs e in
+      let current_eqs, e = name_exp current_eqs e in
       current_eqs, E_buffer (e, bu)
   in
   current_eqs, { e with e_desc = ed; }
 
-and lower_exp current_eqs e =
+and name_exp current_eqs e =
   match e.e_desc with
   | E_var _ -> current_eqs, e
   | _ ->
-    let current_eqs, e = lower_sub_exp current_eqs e in
+    let current_eqs, e = name_sub_exp current_eqs e in
     let cnd = Ident.make_internal var_prefix in
     let eq =
       make_plain_eq
@@ -145,27 +143,27 @@ and lower_exp current_eqs e =
     in
     eq :: current_eqs, { e with e_desc = E_var cnd; }
 
-and lower_block current_eqs block =
-  List.fold_left lower_eq current_eqs block.b_body
+and name_block current_eqs block =
+  List.fold_left name_eq current_eqs block.b_body
 
-and lower_eq current_eqs eq =
+and name_eq current_eqs eq =
   let current_eqs, eqd =
     match eq.eq_desc with
     | Eq_plain (p, e) ->
-      let current_eqs, e = lower_sub_exp current_eqs e in
+      let current_eqs, e = name_sub_exp current_eqs e in
       current_eqs, Eq_plain (p, e)
     | Eq_condvar (v, specs, e) ->
-      let current_eqs, e = lower_sub_exp current_eqs e in
+      let current_eqs, e = name_sub_exp current_eqs e in
       current_eqs, Eq_condvar (v, specs, e)
   in
   { eq with eq_desc = eqd; } :: current_eqs
 
 and close_exp e =
-  let current_eqs, e = lower_exp [] e in
+  let current_eqs, e = name_exp [] e in
   add_eqs_to_exp current_eqs e
 
 let node_def input body = input, close_exp body
 
 (** {2 Putting it all together} *)
 
-let pass = Lowering_utils.make_transform_by_node node_def "lower_subexps"
+let pass = Lowering_utils.make_transform_by_node node_def "lower_name_subexps"

@@ -146,68 +146,68 @@ let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*
 let op = ['+' '-' '*' '-' '/' '^' '%' '#' '.']+
 
 rule token = parse
-| "(*" { comment lexbuf }
+  | "(*" { comment 0 lexbuf; token lexbuf }
 
-| "(" { LPAREN }
-| ")" { RPAREN }
-| "^" { CARET }
-| "{" { LBRACE }
-| "}" { RBRACE }
-| "[" { LBRACKET }
-| "]" { RBRACKET }
-| "=" { EQUAL }
-| "," { COMMA }
-| "." { DOT }
-| "::" { DCOLON }
-| ":" { COLON }
+  | "(" { LPAREN }
+  | ")" { RPAREN }
+  | "^" { CARET }
+  | "{" { LBRACE }
+  | "}" { RBRACE }
+  | "[" { LBRACKET }
+  | "]" { RBRACKET }
+  | "=" { EQUAL }
+  | "," { COMMA }
+  | "." { DOT }
+  | "::" { DCOLON }
+  | ":" { COLON }
 
-| "<=" { LE }
-| ">=" { GE }
-| "<" { LT }
-| ">" { GT }
+  | "<=" { LE }
+  | ">=" { GE }
+  | "<" { LT }
+  | ">" { GT }
 
-| "->" { ARROW }
-| "|" { PIPE }
+  | "->" { ARROW }
+  | "|" { PIPE }
 
-| "true" { BOOL true }
-| "false" { BOOL false }
-| int as i { INT (Int.of_string i) }
-| float as f { FLOAT (float_of_string f) }
+  | "true" { BOOL true }
+  | "false" { BOOL false }
+  | int as i { INT (Int.of_string i) }
+  | float as f { FLOAT (float_of_string f) }
 
-| keyword as kw { token_of_keyword kw }
+  | keyword as kw { token_of_keyword kw }
 
-| '\''(digit+ as s)'\'' { FWORD (int_list_of_string s) }
+  | '\''(digit+ as s)'\'' { FWORD (int_list_of_string s) }
 
-| "'a"(posint as i) { STVAR (int_of_string i) }
-| "'a"              { STVAR 0 }
-| "'b"(posint as i) { CTVAR (int_of_string i) }
-| "'b"              { CTVAR 0 }
-| "'x"(posint as i) { TYVAR (int_of_string i) }
-| "'x"              { TYVAR 0 }
-| "'s"(posint as i) { STATICVAR (int_of_string i) }
-| "'s"              { STATICVAR 0 }
+  | "'a"(posint as i) { STVAR (int_of_string i) }
+  | "'a"              { STVAR 0 }
+  | "'b"(posint as i) { CTVAR (int_of_string i) }
+  | "'b"              { CTVAR 0 }
+  | "'x"(posint as i) { TYVAR (int_of_string i) }
+  | "'x"              { TYVAR 0 }
+  | "'s"(posint as i) { STATICVAR (int_of_string i) }
+  | "'s"              { STATICVAR 0 }
 
-| '@' (ident as s) { PRAGMAKEY s }
-| lident as s { IDENT s }
-| uident as s { UIDENT s }
+  | '@' (ident as s) { PRAGMAKEY s }
+  | lident as s { IDENT s }
+  | uident as s { UIDENT s }
 
-| "+" { PLUS }
-| "-" { MINUS }
-| "*" { TIMES }
-| "/" { DIV }
+  | "+" { PLUS }
+  | "-" { MINUS }
+  | "*" { TIMES }
+  | "/" { DIV }
 
-| op as s { OP s }
+  | op as s { OP s }
 
-| ' '+ { token lexbuf }
-| '\n' { newline lexbuf; token lexbuf }
+  | ' '+ { token lexbuf }
+  | '\n' { newline lexbuf; token lexbuf }
 
-| _ { lexical_error lexbuf ("unknown character: " ^ lexeme lexbuf) }
+  | _ { lexical_error lexbuf ("unknown character: " ^ lexeme lexbuf) }
 
-| eof { EOF }
+  | eof { EOF }
 
-and comment = parse
-| "*)" { token lexbuf }
-| "(*" { comment lexbuf }
-| '\n' { newline lexbuf; comment lexbuf }
-| _ { comment lexbuf }
-| eof { lexical_error lexbuf "unterminated comment" }
+and comment cpt = parse
+  | "*)" { if cpt = 0 then () else comment (cpt - 1) lexbuf }
+  | "(*" { comment (cpt + 1) lexbuf }
+  | '\n' { newline lexbuf; comment cpt lexbuf }
+  | _ { comment cpt lexbuf }
+  | eof { lexical_error lexbuf "unterminated comment" }

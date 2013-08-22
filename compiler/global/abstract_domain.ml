@@ -36,7 +36,7 @@ sig
 
   val abs_const : Ast_misc.const -> t
 
-  val abs_word : (Ast_misc.econstr, Int.t) Tree_word.t -> t
+  val abs_word : Ast_misc.static_pword -> t
 end
 
 module type Elem =

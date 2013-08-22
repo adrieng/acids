@@ -85,7 +85,7 @@ type pword_item =
   {
     pi_name : Names.shortname;
     pi_type : Data_types.data_ty_scal;
-    pi_value : (Ast_misc.econstr, Int.t) Tree_word.t;
+    pi_value : Ast_misc.static_pword;
   }
 
 type t =

@@ -28,7 +28,7 @@ let node my_fby_sd_line (p1, p2) =
   merge first_sd_line (p1 when first_sd_line) (buffer p2)
 
 @max_burst{1000}
-let node reorder (p :: 'a on (720)) = ((p0, p1, p2) :: 'a1) where
+let node reorder (p :: 'a on ({sd_width})) = ((p0, p1, p2) :: 'a1) where
   rec p0 = if valof first_line_of_img then p1 else my_fby_sd_line (p1, p1)
   and p1 = buffer p
   and p2 = if valof last_line_of_img

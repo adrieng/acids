@@ -199,9 +199,9 @@ let rec sink_clock_annot_pat k_p p =
   | P_tuple p_l ->
     { p with p_desc = P_tuple (List.map (sink_clock_annot_pat k_p) p_l); }
 
-  | P_clock_annot (p', cka) ->
-    let k_p p' = k_p { p with p_desc = P_clock_annot (p', cka); } in
-    sink_clock_annot_pat k_p p'
+  | P_clock_annot (p, cka) ->
+    let k_p p = k_p { p with p_desc = P_clock_annot (p, cka); } in
+    sink_clock_annot_pat k_p p
 
 (* The use may have annotated patterns with product types, so we have to
    decompose them when moving inward.

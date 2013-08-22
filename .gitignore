@@ -8,3 +8,5 @@ _obuild
 *.old
 .emacs.desktop
 *.log
+tests/*/*.as
+tests/*/*.aso

@@ -15,15 +15,24 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Acids_causal_utils
+open Acids_causal
 
-let make_transform_by_file (do_file : annotated_file -> annotated_file) name =
+let do_file ctx (file : Acids_causal_utils.annotated_file) =
+  let nir_file : unit Nir.file =
+    {
+      Nir.f_name = file.f_name;
+      Nir.f_interfaces = file.f_info#interfaces;
+      Nir.f_type_defs = [];
+      Nir.f_body = [];
+    }
+  in
+  ctx, nir_file
+
+let pass =
   let open Pass_manager in
   P_transform
-    (Frontend_utils.make_transform
-       ~print_out:Acids_causal.print_file
-       name
-       (fun ctx file -> ctx, do_file file))
-
-let make_transform_by_node do_node name =
-  make_transform_by_file (Acids_causal_utils.apply_to_node_defs do_node) name
+    (make_transform
+       ~ext:"nir"
+       ~print_out:Nir_printer.print_file
+       "nir_of_acids"
+       do_file)

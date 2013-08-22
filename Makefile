@@ -35,6 +35,8 @@ $(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
                                -I compiler/frontend/typing \
                                -I compiler/frontend/lowering \
                                -I compiler/frontend/utils \
+                               -I compiler/middleend \
+                               -I compiler/middleend/asts \
                                -I compiler/backend
 
 $(SOLVER): OCAMLBUILDOPTS += -I resolution

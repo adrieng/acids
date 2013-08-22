@@ -17,6 +17,11 @@
 
 open Acids_causal
 
+(* Useful definition *)
+type annotated_file =
+  < interfaces : Interface.env;
+    static_nodes : Acids_static.node_def list; > file
+
 module T = Acids_utils.TRANSLATE_CLOCK_EXP(Acids_causal)
 
 let trans_clock_exp find_pword ce =

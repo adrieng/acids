@@ -90,6 +90,7 @@ let flow =
   +>+ Save_interface.pass
   (* Translation to middle-end IR *)
   +>+ Lower.pass
+  +>+ Nir_of_acids.pass
 
 (*****************************************************************************)
 (* File handling *)

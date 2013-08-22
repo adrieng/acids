@@ -1,0 +1,143 @@
+(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2013
+ *
+ * This file is part of Acid Synchrone.
+ *
+ * nsched is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version.
+ *
+ * nsched is distributed in the hope that it will be useful, but WITHOUT ANY
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+ * A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along with
+ * nsched. If not, see <http://www.gnu.org/licenses/>.
+ *)
+
+(** {1 AST for the middle-end} *)
+
+(** {2 Simple data types} *)
+
+type ty =
+  | Ty_var of int
+  | Ty_scal of Data_types.data_ty_scal
+
+type clock =
+  | Ck_base
+  | Ck_on of clock * Clock_types.clock_exp
+
+(** {2 Clock expressions} *)
+
+type 'a clock_exp =
+  {
+    ce_desc : 'a clock_exp_desc;
+    ce_data : ty;
+    ce_clock : clock;
+    ce_loc : Loc.t;
+  }
+
+and 'a clock_exp_desc =
+  | Ce_condvar of 'a
+  | Ce_pword of Ast_misc.static_pword
+  | Ce_equal of 'a clock_exp * Ast_misc.econstr
+
+(** {2 Processes} *)
+
+type buffer_info =
+  {
+    b_delay : bool;
+    b_size : Int.t;
+  }
+
+type builtin =
+  | Pervasives of Names.shortname
+
+type node_call =
+  {
+    a_name : Names.longname;
+    a_base_clock : clock;
+  }
+
+type 'a merge_clause =
+  {
+    c_sel : Ast_misc.econstr;
+    c_body : 'a;
+  }
+
+type 'a process =
+  | Var of 'a * 'a (** x = y *)
+  | Const of 'a * Ast_misc.const (** x = c *)
+
+  | Builtin of 'a list * builtin * 'a list
+  (** x_1, ..., x_n = OP(y_1, ..., y_m) *)
+  | Node of 'a list * node_call * 'a list
+
+  | Merge of 'a * 'a clock_exp * (Ast_misc.econstr * 'a) list
+  (** x = merge ce (ec_1 -> y_1) ... (ec_n -> y_n) *)
+  | Split of 'a list * 'a clock_exp * 'a * Ast_misc.econstr list
+  (** x_1, ..., x_n = split y with ce by ec_1, ... ec_n *)
+
+  | Valof of 'a * 'a clock_exp (* x = valof ce *)
+
+  | Buffer of 'a * buffer_info * 'a (** x = buffer y *)
+
+  | Block of 'a block
+
+and 'a eq =
+  {
+    eq_desc : 'a process;
+    eq_base_clock : clock;
+    eq_loc : Loc.t;
+  }
+
+and 'a block =
+  {
+    b_id : int;
+    b_body : 'a eq list;
+    b_base_clock : clock;
+    b_loc : Loc.t;
+  }
+
+(** {2 Nodes and files} *)
+
+type var_scope =
+  | Scope_persistent
+  | Scope_block of int
+
+type 'i var_dec =
+  {
+    vd_name : Ident.t;
+    vd_data : ty;
+    vd_clock : clock;
+    vd_scope : var_scope;
+    vd_loc : Loc.t;
+    vd_info : 'i;
+  }
+
+type 'i node =
+  {
+    n_name : Names.shortname;
+
+    n_input : Ident.t list;
+    n_output : Ident.t list;
+    n_env : 'i var_dec Ident.Env.t;
+    n_body : Ident.t block;
+
+    n_loc : Loc.t;
+  }
+
+type type_def =
+  {
+    ty_name : Names.shortname;
+    ty_body : Names.shortname list;
+    ty_loc : Loc.t;
+  }
+
+type 'i file =
+  {
+    f_name : Names.shortname;
+    f_interfaces : Interface.env;
+    f_type_defs : type_def list;
+    f_body : 'i node list;
+  }

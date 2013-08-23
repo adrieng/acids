@@ -70,3 +70,21 @@ val adapt : ?delay : Int.t -> pword -> pword -> bool
 val to_tree_pword : pword -> (Int.t, Int.t) Tree_word.t
 
 val pull_prefix_in : pword -> pword
+
+(* When consider_bypass is true, buffer_size computes the size of a buffer with
+   a true "bypass" mechanism, that is a buffer that at a given tick does not
+   need to store its whole input burst before producing its output burst.
+
+   It is false by default.
+
+   Examples:
+
+   buffer_size ~consider_bypass:false (1 1 0) (0 1 1) = 2
+
+   buffer_size ~consider_bypass:true (1 1 0) (0 1 1) = 1
+
+   buffer_size ~consider_bypass:false (2 0) (1 1) = 2
+
+   buffer_size ~consider_bypass:true (2 0) (1 1) = 1
+*)
+val buffer_size : ?consider_bypass : bool -> pword -> pword -> Int.t

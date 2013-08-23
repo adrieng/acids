@@ -341,6 +341,7 @@ struct
       let out_st = st_of_pre_st out_st in
       object
         method bui_is_delay = Clock_types.non_strict_adaptable in_st out_st
+        method bui_size = Clock_types.buffer_size in_st out_st
       end
 
   let update_node_info  { new_annot = na; old_annot = info; } =

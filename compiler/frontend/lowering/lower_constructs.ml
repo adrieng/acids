@@ -84,6 +84,7 @@ let fby_translation find_pword e1 e2 =
         bu_info =
           object
             method bui_is_delay = e2.e_info#ei_relevant_deps
+            method bui_size = Int.one
           end;
       }
     in

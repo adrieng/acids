@@ -85,10 +85,12 @@ struct
   type buffer_info =
     <
       bui_is_delay : bool;
+      bui_size : Int.t;
     >
   let print_buffer_info fmt bu =
-    Format.fprintf fmt " %sdelay"
+    Format.fprintf fmt " %sdelay, size %a"
       (if bu#bui_is_delay then "" else "not-")
+      Int.print bu#bui_size
 
   type node_info =
       <

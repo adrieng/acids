@@ -99,9 +99,17 @@ let pop_1 w =
     in
     i, w_rest
 
+let rec pop_pword w p = if w.size = Int.zero then pop_pword p.v p else pop w
+
 let unfold_max w1 w2 =
   let i1, k1, w1 = pop w1 in
   let i2, k2, w2 = pop w2 in
+  let k = min k1 k2 in
+  Int.(i1, i2, k, push i1 (k1 - k) w1, push i2 (k2 - k) w2)
+
+let unfold_max_pword w1 w2 p1 p2 =
+  let i1, k1, w1 = pop_pword w1 p1 in
+  let i2, k2, w2 = pop_pword w2 p2 in
   let k = min k1 k2 in
   Int.(i1, i2, k, push i1 (k1 - k) w1, push i2 (k2 - k) w2)
 
@@ -437,6 +445,10 @@ let common_behavior_nbones p1 p2 =
   let open Int in
   max p1.u.nbones p2.u.nbones + lcm p1.v.nbones p2.v.nbones
 
+let common_behavior_size p1 p2 =
+  let open Int in
+  max p1.u.size p2.u.size + lcm p1.v.size p2.v.size
+
 (* Check that forall i, O_p1(i) >= O_p2(i + delay) (with delay >= 0) *)
 let precedes ?(delay = Int.zero) p1 p2 =
   let open Int in
@@ -471,9 +483,10 @@ let precedes ?(delay = Int.zero) p1 p2 =
   in
   walk p1.u w2 zero o2 zero
 
-let synchro p1 p2 = Rat.(rate p1 = rate p2)
+let synchronizable p1 p2 = Rat.(rate p1 = rate p2)
 
-let adapt ?(delay = Int.zero) p1 p2 = synchro p1 p2 && precedes ~delay p1 p2
+let adapt ?(delay = Int.zero) p1 p2 =
+  synchronizable p1 p2 && precedes ~delay p1 p2
 
 let to_tree_pword p =
   { Tree_word.u = to_tree_word p.u; Tree_word.v = to_tree_word p.v; }
@@ -493,3 +506,24 @@ let pull_prefix_in p =
 
   let u, v = shift_inside (rev p.u) (empty, rev p.v) in
   make u v
+
+let buffer_size ?(consider_bypass = false) p1 p2 =
+  let open Int in
+
+  assert (synchronizable p1 p2);
+  assert (precedes p1 p2);
+
+  let h = common_behavior_size p1 p2 in
+
+  let rec walk w1 w2 o1 o2 size i =
+    if i > h then size
+    else
+      let x1, x2, n, w1, w2 = unfold_max_pword w1 w2 p1 p2 in
+      let o1 = o1 + x1 * n in
+      let o2' = o2 + x2 * n in
+      assert (o1 >= o2); (* should be guaranteed by adaptability check *)
+      let size' = o1 - if consider_bypass then o2' else o2 in
+      walk w1 w2 o1 o2' (max size size') (i + n)
+  in
+
+  walk p1.u p2.u zero zero zero zero

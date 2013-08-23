@@ -24,7 +24,7 @@ type ty =
   | Ty_scal of Data_types.data_ty_scal
 
 type clock =
-  | Ck_base
+  | Ck_block_base of int
   | Ck_on of clock * Clock_types.clock_exp
 
 (** {2 Clock expressions} *)
@@ -32,7 +32,8 @@ type clock =
 type 'a clock_exp =
   {
     ce_desc : 'a clock_exp_desc;
-    ce_data : ty;
+    ce_bounds : Interval.t;
+    ce_data : Data_types.data_ty_scal;
     ce_clock : clock;
     ce_loc : Loc.t;
   }
@@ -50,13 +51,14 @@ type buffer_info =
     b_size : Int.t;
   }
 
-type builtin =
-  | Pervasives of Names.shortname
+type op =
+  | Builtin of Names.shortname
+  | Node of Names.longname
 
-type node_call =
+type call =
   {
-    a_name : Names.longname;
-    a_base_clock : clock;
+    a_op : op;
+    a_clock_inst : (int * clock) list;
   }
 
 type 'a merge_clause =
@@ -69,9 +71,8 @@ type 'a process =
   | Var of 'a * 'a (** x = y *)
   | Const of 'a * Ast_misc.const (** x = c *)
 
-  | Builtin of 'a list * builtin * 'a list
+  | Call of 'a list * call * 'a list
   (** x_1, ..., x_n = OP(y_1, ..., y_m) *)
-  | Node of 'a list * node_call * 'a list
 
   | Merge of 'a * 'a clock_exp * (Ast_misc.econstr * 'a) list
   (** x = merge ce (ec_1 -> y_1) ... (ec_n -> y_n) *)
@@ -105,14 +106,20 @@ type var_scope =
   | Scope_persistent
   | Scope_block of int
 
+type annot =
+  | Ann_type of ty
+  | Ann_clock of clock
+  | Ann_spec of Ast_misc.spec
+
 type 'i var_dec =
   {
-    vd_name : Ident.t;
-    vd_data : ty;
-    vd_clock : clock;
-    vd_scope : var_scope;
-    vd_loc : Loc.t;
-    vd_info : 'i;
+    v_name : Ident.t;
+    v_data : ty;
+    v_clock : clock;
+    v_scope : var_scope;
+    v_annots : annot list;
+    v_loc : Loc.t;
+    v_info : 'i;
   }
 
 type 'i node =

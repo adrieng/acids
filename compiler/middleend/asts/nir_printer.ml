@@ -24,7 +24,7 @@ let print_ty fmt ty =
 
 let rec print_clock fmt ck =
   match ck with
-  | Ck_base -> Format.fprintf fmt "base"
+  | Ck_block_base i -> Format.fprintf fmt "'blk%d" i
   | Ck_on (ck, ce) ->
     Format.fprintf fmt "@[%a@ on %a@]"
       print_clock ck
@@ -43,7 +43,7 @@ let rec print_clock_exp print_var fmt ce =
   print_with_info
     (print_clock_exp_desc print_var)
     fmt
-    ce.ce_data
+    (Ty_scal ce.ce_data)
     ce.ce_clock
     ce.ce_desc
 
@@ -58,20 +58,16 @@ and print_clock_exp_desc print_var fmt ced =
       (print_clock_exp print_var) ce
       Ast_misc.print_econstr ec
 
-let print_builtin fmt b =
-  match b with
-  | Pervasives n ->
-    Format.fprintf fmt "(@[pervasives@ %a@])"
-      Names.print_shortname n
-
 let print_merge_clause print_var fmt (sel, body) =
   Format.fprintf fmt "(@[%a@ %a@])"
     Ast_misc.print_econstr sel
     print_var body
 
+let print_par p fmt x = Format.fprintf fmt "@[(%a@,)@]" p x
+
 let print_list print fmt x_l =
-  Format.fprintf fmt "(@[%a@])"
-    (Utils.print_list_r print "") x_l
+  Format.fprintf fmt "%a"
+    (print_par (Utils.print_list_r print "")) x_l
 
 let print_buffer fmt b =
   Format.fprintf fmt
@@ -79,11 +75,12 @@ let print_buffer fmt b =
     b.b_delay
     Int.print b.b_size
 
-let print_app fmt app =
-  Format.fprintf fmt "(@[<v 2>%a" Names.print_longname app.a_name;
-  if !Compiler_options.print_clock_info
-  then Format.fprintf fmt "@ :base_clock %a" print_clock app.a_base_clock;
-  Format.fprintf fmt "@])"
+let print_op fmt op =
+  match op with
+  | Builtin n -> Format.fprintf fmt "(builtin %a)" Names.print_shortname n
+  | Node ln -> Names.print_longname fmt ln
+
+let print_app fmt app = print_op fmt app.a_op
 
 let rec print_process print_var fmt p =
   let print_var_tuple = print_list print_var in
@@ -99,13 +96,7 @@ let rec print_process print_var fmt p =
       print_var x
       Ast_misc.print_const cst
 
-  | Builtin (x_l, builtin, y_l) ->
-    Format.fprintf fmt "%a = (@[<v 2>builtin@ %a@ %a@])"
-      print_var_tuple x_l
-      print_builtin builtin
-      print_var_tuple y_l
-
-  | Node (x_l, app, y_l) ->
+  | Call (x_l, app, y_l) ->
     Format.fprintf fmt "%a = (@[%a@ %a@])"
       print_var_tuple x_l
       print_app app
@@ -139,36 +130,49 @@ let rec print_process print_var fmt p =
     print_block print_var fmt block
 
 and print_eq print_var fmt eq =
-  Format.fprintf fmt "(@[<v 2>";
+  Format.fprintf fmt "@[(@[<v 2>";
   print_process print_var fmt eq.eq_desc;
   if !Compiler_options.print_clock_info
   then
-    Format.fprintf fmt ":base_clock %a" print_clock eq.eq_base_clock;
-  Format.fprintf fmt "@])"
+    Format.fprintf fmt "@ :base_clock %a" print_clock eq.eq_base_clock;
+  Format.fprintf fmt "@]@,)@]"
 
 and print_block print_var fmt block =
-  Format.fprintf fmt "(@[<v 2>block :id %d@ " block.b_id;
+  Format.fprintf fmt "@[(@[<v 2>block@ :id %d@ " block.b_id;
   if !Compiler_options.print_clock_info
   then Format.fprintf fmt ":base_clock %a" print_clock block.b_base_clock;
-  Format.fprintf fmt ":body %a@])"
+  Format.fprintf fmt ":body (@[<v 0>%a@])@]@,)@]"
     (Utils.print_list_r (print_eq print_var) "") block.b_body
 
 let print_var_dec print_info fmt vd =
   match print_info with
   | None ->
-    print_with_info Ident.print fmt vd.vd_data vd.vd_clock vd.vd_name;
+    print_with_info Ident.print fmt vd.v_data vd.v_clock vd.v_name;
   | Some print ->
     let close = false in
-    print_with_info ~close Ident.print fmt vd.vd_data vd.vd_clock vd.vd_name;
-    Format.fprintf fmt ":info %a@])" print vd.vd_info
+    print_with_info ~close Ident.print fmt vd.v_data vd.v_clock vd.v_name;
+    Format.fprintf fmt ":info %a@])" print vd.v_info
 
 let print_node print_info fmt node =
+  let print_env fmt env =
+    let r = ref (Ident.Env.cardinal env) in
+    let print_binding k v =
+      Format.fprintf fmt "(%a %a)"
+        Ident.print k
+        (print_var_dec print_info) v;
+      decr r;
+      if !r > 0 then Format.fprintf fmt "@ "
+    in
+    Format.fprintf fmt "(@[<v 0>";
+    Ident.Env.iter print_binding env;
+    Format.fprintf fmt "@])"
+  in
   Format.fprintf fmt
-    "(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a@ :body %a@])"
+    "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a@ :body %a@]@,)@]"
     Names.print_shortname node.n_name
     (print_list Ident.print) node.n_input
     (print_list Ident.print) node.n_output
-    (Ident.Env.print (print_var_dec print_info) "") node.n_env
+    print_env node.n_env
     (print_block Ident.print) node.n_body
 
 let print_type_def fmt td =
@@ -179,7 +183,7 @@ let print_type_def fmt td =
 
 let print_file ?(print_info = None) fmt file =
   Format.fprintf fmt
-    "(@[<v 2>file@ :name %a@ :types %a@ :body %a@])"
+    "@[(@[<v 2>file@ :name %a@ :types %a@ :body %a@]@,)@]@\n"
     Names.print_shortname file.f_name
     (print_list print_type_def) file.f_type_defs
     (print_list (print_node print_info)) file.f_body

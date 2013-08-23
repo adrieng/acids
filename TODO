@@ -12,6 +12,7 @@ Compiler:
 - handle global static tuples
 - make static exps proper exps
 - rename node_decl into node_dec
+- rework equations, remove Eq_condvar, add "cond" expression
 
 Resolution:
 - Only compute causal solutions

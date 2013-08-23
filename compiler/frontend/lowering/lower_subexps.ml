@@ -133,15 +133,17 @@ let rec name_sub_exp (current_eqs : eq list) e =
 and name_exp current_eqs e =
   match e.e_desc with
   | E_var _ -> current_eqs, e
-  | _ ->
-    let current_eqs, e = name_sub_exp current_eqs e in
-    let cnd = Ident.make_internal var_prefix in
-    let eq =
-      make_plain_eq
-        (make_pat e.e_info#ei_data e.e_info#ei_clock (P_var cnd))
-        e
-    in
-    eq :: current_eqs, { e with e_desc = E_var cnd; }
+  | _ -> name_exp_even_if_named current_eqs e
+
+and name_exp_even_if_named current_eqs e =
+  let current_eqs, e = name_sub_exp current_eqs e in
+  let cnd = Ident.make_internal var_prefix in
+  let eq =
+    make_plain_eq
+      (make_pat e.e_info#ei_data e.e_info#ei_clock (P_var cnd))
+      e
+  in
+  eq :: current_eqs, { e with e_desc = E_var cnd; }
 
 and name_block current_eqs block =
   List.fold_left name_eq current_eqs block.b_body
@@ -159,7 +161,7 @@ and name_eq current_eqs eq =
   { eq with eq_desc = eqd; } :: current_eqs
 
 and close_exp e =
-  let current_eqs, e = name_exp [] e in
+  let current_eqs, e = name_exp_even_if_named [] e in
   add_eqs_to_exp current_eqs e
 
 let node_def input body = input, close_exp body

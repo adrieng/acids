@@ -249,7 +249,7 @@ let rec translate_eq_exp env x_l e =
       Nir.Call (x_l,
                 Nir.({ a_op = op; a_clock_inst = inst; }),
                 var_list_of_tuple e),
-      Nir_clock_utils.common_clock (List.map snd inst),
+      Nir.Ck_block_base (get_current_block env),
       env
 
     | E_where _ ->
@@ -329,8 +329,6 @@ let rec translate_eq_exp env x_l e =
       env
 
     | E_buffer (e', bu) ->
-      let input_clock = translate_clock_type env e'.e_info#ei_clock in
-      let output_clock = translate_clock_type env e.e_info#ei_clock in
       let y = Utils.get_single (var_list_of_tuple e') in
       let bu =
         {
@@ -339,7 +337,7 @@ let rec translate_eq_exp env x_l e =
         }
       in
       Nir.Buffer (Utils.get_single x_l, bu, y),
-      Nir_clock_utils.common_clock [input_clock; output_clock],
+      Nir.Ck_block_base (get_current_block env),
       env
 
     (* For now we do nothing with the annotations. *)
@@ -389,6 +387,7 @@ let translate_node_def env nd =
     Nir.n_input = inputs;
     Nir.n_output = outputs;
     Nir.n_env = get_locals env;
+    Nir.n_block_count = get_current_block env + 1;
     Nir.n_body = block;
     Nir.n_loc = nd.n_loc;
   }

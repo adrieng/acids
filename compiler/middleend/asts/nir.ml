@@ -129,6 +129,7 @@ type 'i node =
     n_input : Ident.t list;
     n_output : Ident.t list;
     n_env : 'i var_dec Ident.Env.t;
+    n_block_count : int;
     n_body : Ident.t block;
 
     n_loc : Loc.t;

@@ -22,6 +22,7 @@
 type ty =
   | Ty_var of int
   | Ty_scal of Data_types.data_ty_scal
+  | Ty_clock
 
 type clock =
   | Ck_block_base of int

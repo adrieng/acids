@@ -21,6 +21,7 @@ let print_ty fmt ty =
   match ty with
   | Ty_var i -> Data_types.(print_ty fmt (Ty_var i))
   | Ty_scal tys -> Data_types.print_ty_scal fmt tys
+  | Ty_clock -> Format.fprintf fmt "clock"
 
 let rec print_clock fmt ck =
   match ck with

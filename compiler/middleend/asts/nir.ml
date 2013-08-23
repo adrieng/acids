@@ -17,6 +17,8 @@
 
 (** {1 AST for the middle-end} *)
 
+type block_id = int
+
 (** {2 Simple data types} *)
 
 type ty =
@@ -95,7 +97,7 @@ and 'a eq =
 
 and 'a block =
   {
-    b_id : int;
+    b_id : block_id;
     b_body : 'a eq list;
     b_base_clock : clock;
     b_loc : Loc.t;
@@ -104,8 +106,8 @@ and 'a block =
 (** {2 Nodes and files} *)
 
 type var_scope =
-  | Scope_persistent
-  | Scope_block of int
+  | Scope_context
+  | Scope_internal of block_id
 
 type annot =
   | Ann_type of ty

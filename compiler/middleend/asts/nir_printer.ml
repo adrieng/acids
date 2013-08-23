@@ -31,14 +31,14 @@ let rec print_clock fmt ck =
       print_clock ck
       Clock_types.print_clock_exp ce
 
-let print_with_info ?(close = true) print fmt ty ck x =
+let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
-  if !Compiler_options.print_data_info
-  then Format.fprintf fmt "@[:type@ %a@]@ " print_ty ty;
-  if !Compiler_options.print_clock_info
-  then Format.fprintf fmt "@[:clock@ %a@]@ " print_clock ck;
   print fmt x;
-  if close then Format.fprintf fmt "@])"
+  if !Compiler_options.print_data_info
+  then Format.fprintf fmt "@ @[:type %a@]@ " print_ty ty;
+  if !Compiler_options.print_clock_info
+  then Format.fprintf fmt "@ @[:clock %a@]@ " print_clock ck;
+  Format.fprintf fmt "@])"
 
 let rec print_clock_exp print_var fmt ce =
   print_with_info
@@ -114,7 +114,7 @@ let rec print_process print_var fmt p =
       print_var_tuple x_l
       print_clock_exp ce
       print_var y
-      (Utils.print_list_r Ast_misc.print_econstr "") ec_l
+      (print_list Ast_misc.print_econstr) ec_l
 
   | Valof (x, ce) ->
     Format.fprintf fmt "%a = (@[valof %a@])"
@@ -145,14 +145,32 @@ and print_block print_var fmt block =
   Format.fprintf fmt ":body (@[<v 0>%a@])@]@,)@]"
     (Utils.print_list_r (print_eq print_var) "") block.b_body
 
+let print_scope fmt s =
+  match s with
+  | Scope_context -> Format.fprintf fmt "(context)"
+  | Scope_internal id -> Format.fprintf fmt "(internal 'blk%d)" id
+
+let print_annot fmt ann =
+  match ann with
+  | Ann_type ty ->
+    Format.fprintf fmt "(type %a)" print_ty ty
+  | Ann_clock ck ->
+    Format.fprintf fmt "(clock %a)" print_clock ck
+  | Ann_spec spec ->
+    Format.fprintf fmt "(spec %a)" Ast_misc.print_spec spec
+
 let print_var_dec print_info fmt vd =
-  match print_info with
-  | None ->
-    print_with_info Ident.print fmt vd.v_data vd.v_clock vd.v_name;
-  | Some print ->
-    let close = false in
-    print_with_info ~close Ident.print fmt vd.v_data vd.v_clock vd.v_name;
-    Format.fprintf fmt ":info %a@])" print vd.v_info
+  let print_plain fmt vd =
+    Format.fprintf fmt "%a@ :scope %a@ :annots %a"
+      Ident.print vd.v_name
+      print_scope vd.v_scope
+      (print_list print_annot) vd.v_annots
+    ;
+    match print_info with
+    | None -> ()
+    | Some print_info -> Format.fprintf fmt "@ :info %a" print_info vd.v_info
+  in
+  print_with_info print_plain fmt vd.v_data vd.v_clock vd
 
 let print_node print_info fmt node =
   let print_env fmt env =

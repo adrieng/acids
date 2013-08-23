@@ -11,8 +11,8 @@ Compiler:
 - Clock_types is growing enormous, move stuff to Clock_types_utils
 - handle global static tuples
 - make static exps proper exps
+- rename node_decl into node_dec
 
 Resolution:
 - Only compute causal solutions
 - User-supplied word reconstruction choice
-- Add missing first one in period in linear system

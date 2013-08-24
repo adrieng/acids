@@ -17,7 +17,9 @@
 
 (** {1 AST for the middle-end} *)
 
-type block_id = int
+type block_id = Block_id of int
+
+type clock_id = Clock_id of int
 
 (** {2 Simple data types} *)
 
@@ -26,9 +28,7 @@ type ty =
   | Ty_scal of Data_types.data_ty_scal
   | Ty_clock
 
-type clock =
-  | Ck_block_base of int
-  | Ck_on of clock * Clock_types.clock_exp
+type clock = Clock_types.stream_type
 
 (** {2 Clock expressions} *)
 
@@ -99,13 +99,12 @@ and 'a block =
   {
     b_id : block_id;
     b_body : 'a eq list;
-    b_base_clock : clock;
     b_loc : Loc.t;
   }
 
 (** {2 Nodes and files} *)
 
-type var_scope =
+type scope =
   | Scope_context
   | Scope_internal of block_id
 
@@ -119,7 +118,7 @@ type 'i var_dec =
     v_name : Ident.t;
     v_data : ty;
     v_clock : clock;
-    v_scope : var_scope;
+    v_scope : scope;
     v_annots : annot list;
     v_loc : Loc.t;
     v_info : 'i;
@@ -132,6 +131,7 @@ type 'i node =
     n_input : Ident.t list;
     n_output : Ident.t list;
     n_env : 'i var_dec Ident.Env.t;
+    n_clocks : scope Utils.Int_map.t;
     n_block_count : int;
     n_body : Ident.t block;
 

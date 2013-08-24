@@ -23,13 +23,7 @@ let print_ty fmt ty =
   | Ty_scal tys -> Data_types.print_ty_scal fmt tys
   | Ty_clock -> Format.fprintf fmt "clock"
 
-let rec print_clock fmt ck =
-  match ck with
-  | Ck_block_base i -> Format.fprintf fmt "'blk%d" i
-  | Ck_on (ck, ce) ->
-    Format.fprintf fmt "@[%a@ on %a@]"
-      print_clock ck
-      Clock_types.print_clock_exp ce
+let print_clock fmt st = Clock_types.print_stream_type fmt st
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
@@ -39,6 +33,10 @@ let print_with_info print fmt ty ck x =
   if !Compiler_options.print_clock_info
   then Format.fprintf fmt "@ @[:clock %a@]@ " print_clock ck;
   Format.fprintf fmt "@])"
+
+let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
+
+let print_clock_id fmt (Clock_id id) = Format.fprintf fmt "'a%d" id
 
 let rec print_clock_exp print_var fmt ce =
   print_with_info
@@ -139,16 +137,15 @@ and print_eq print_var fmt eq =
   Format.fprintf fmt "@]@,)@]"
 
 and print_block print_var fmt block =
-  Format.fprintf fmt "@[(@[<v 2>block@ :id %d@ " block.b_id;
-  if !Compiler_options.print_clock_info
-  then Format.fprintf fmt ":base_clock %a" print_clock block.b_base_clock;
-  Format.fprintf fmt ":body (@[<v 0>%a@])@]@,)@]"
+  Format.fprintf fmt
+    "@[(@[<v 2>block@ :id %a@ :body (@[<v 0>%a@])@]@,)@]"
+    print_block_id block.b_id
     (Utils.print_list_r (print_eq print_var) "") block.b_body
 
 let print_scope fmt s =
   match s with
   | Scope_context -> Format.fprintf fmt "(context)"
-  | Scope_internal id -> Format.fprintf fmt "(internal 'blk%d)" id
+  | Scope_internal id -> Format.fprintf fmt "(internal %a)" print_block_id id
 
 let print_annot fmt ann =
   match ann with

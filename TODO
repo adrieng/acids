@@ -6,14 +6,16 @@ Compiler:
 - unify handling of interface environments (LocalModule / Modname)
 - currently, (x, y) = (1, x) is not considered "causal" (schedulable),
   is this reasonable?
-- re-add exhaustiveness checker for patterns (was in interval_typing)
 - check if bounds inference works for user-defined enumerated types
 - Clock_types is growing enormous, move stuff to Clock_types_utils
 - handle global static tuples
 - make static exps proper exps
 - rename node_decl into node_dec
 - rework equations, remove Eq_condvar, add "cond" expression
+- dump clocking info into Emacs-compatible format (à la Lucy-n)
 
 Resolution:
 - Only compute causal solutions
 - User-supplied word reconstruction choice
+- Choice of linear objective
+- Abstract resolution

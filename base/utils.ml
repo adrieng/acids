@@ -71,6 +71,8 @@ let rec map4 f l1 l2 l3 l4 =
   | _ ->
     invalid_arg "map4"
 
+let tailrec_map f l = List.rev (List.rev_map f l)
+
 let rec split_3 l =
   match l with
   | [] -> ([], [], [])

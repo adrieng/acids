@@ -77,6 +77,6 @@ and fold_eq f eq acc = fold_process f eq.eq_desc acc
 
 and fold_block f block acc = List.fold_right (fold_eq f) block.b_body acc
 
-(** Variable definitions *)
+(** Compute variale occurences *)
 
 let vars_block block = fold_block (fun v acc -> v :: acc) block []

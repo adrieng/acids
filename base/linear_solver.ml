@@ -156,7 +156,10 @@ let variables_in_textual_order sys =
   in
 
   let add_variables_of_terms (variables, waiting) term =
-    List.fold_left add_variable (variables, waiting) (List.map snd term)
+    List.fold_left
+      add_variable
+      (variables, waiting)
+      (Utils.tailrec_map snd term)
   in
 
   let variables, waiting =
@@ -188,7 +191,7 @@ let default_solver_command : solver_command =
   (* "gurobi_cl LogFile=%LOG ResultFile=%SOL %SYS" *)
 
 let write_const_cplex_format fmt cst =
-  let sign = if cst < Int.zero then "-" else "+" in
+  let sign = if Int.(cst < zero) then "-" else "+" in
   Format.fprintf fmt "%s %a" sign Int.print (Int.abs cst)
 
 let print_var fmt v = Format.fprintf fmt "%s" v
@@ -305,8 +308,8 @@ let read_solution sys sol_fn =
     then library_internal_error ();
 
     let rec skip_rows m =
-      if m = Int.zero then ()
-      else (ignore (input_line sol_file); skip_rows Int.(m - one))
+      if Int.(m = zero) then ()
+      else (ignore (input_line sol_file); skip_rows (Int.pred m))
     in
     skip_rows m;
 

@@ -41,7 +41,7 @@ let ( >= ) = ( >= )
 
 let ( > ) = ( > )
 
-let ( = ) i1 i2 = i1 = i2
+let ( = ) i1 i2 = Nativeint.compare i1 i2 = 0
 
 let min = Pervasives.min
 

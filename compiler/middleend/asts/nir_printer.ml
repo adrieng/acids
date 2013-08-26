@@ -23,7 +23,14 @@ let print_ty fmt ty =
   | Ty_scal tys -> Data_types.print_ty_scal fmt tys
   | Ty_clock -> Format.fprintf fmt "clock"
 
-let print_clock fmt st = Clock_types.print_stream_type fmt st
+let print_clock fmt ck =
+  match ck with
+  | Ck_var i ->
+    Clock_types.(print_clock_type fmt (Ct_var i))
+  | Ck_stream st ->
+    Clock_types.print_stream_type fmt st
+  | Ck_block_base ->
+    Format.fprintf fmt "."
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";

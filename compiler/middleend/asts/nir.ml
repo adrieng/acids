@@ -28,7 +28,10 @@ type ty =
   | Ty_scal of Data_types.data_ty_scal
   | Ty_clock
 
-type clock = Clock_types.stream_type
+type clock =
+  | Ck_var of int
+  | Ck_stream of Clock_types.stream_type
+  | Ck_block_base
 
 (** {2 Clock expressions} *)
 
@@ -61,7 +64,7 @@ type op =
 type call =
   {
     a_op : op;
-    a_clock_inst : (int * clock) list;
+    a_clock_inst : (int * Clock_types.stream_type) list;
   }
 
 type 'a merge_clause =
@@ -131,7 +134,6 @@ type 'i node =
     n_input : Ident.t list;
     n_output : Ident.t list;
     n_env : 'i var_dec Ident.Env.t;
-    n_clocks : scope Utils.Int_map.t;
     n_block_count : int;
     n_body : Ident.t block;
 

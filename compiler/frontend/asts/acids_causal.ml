@@ -46,14 +46,11 @@ struct
       fmt
       ei#ei_relevant_deps
 
-  type app_info =
-    <
-      ai_clock_inst : (int * Clock_types.stream_type) list;
-    >
-  let print_app_info (_ : Format.formatter) _ = () (* TODO *)
+  type app_info = Acids_clocked.Info.app_info
+  let print_app_info = Acids_clocked.Info.print_app_info
 
-  type block_info = unit
-  let print_block_info (_ : Format.formatter) _ = ()
+  type block_info = Acids_clocked.Info.block_info
+  let print_block_info = Acids_clocked.Info.print_block_info
 
   type pat_info =
       <

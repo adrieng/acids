@@ -59,17 +59,21 @@ struct
 
   type app_info =
     <
-      ai_clock_inst : (int * Clock_types.stream_type) list;
+      ai_clock_inst : (int * Clock_types.clock_type) list;
+      ai_stream_inst : (int * Clock_types.stream_type) list;
     >
   let print_app_info fmt ci =
-    let print_inst fmt (i, st) =
-      let open Clock_types in
-      Format.fprintf fmt "%a / %a"
-        print_stream_type (St_var i)
-        print_stream_type st
+    let open Clock_types in
+    let print_inst mk_var p fmt (i, ty) =
+      Format.fprintf fmt "%a / %a" p (mk_var i) p ty
     in
-    Format.fprintf fmt "[%a]"
-      (Utils.print_list_r print_inst ",") ci#ai_clock_inst
+
+    let print_clock_inst = print_inst (fun i -> Ct_var i) print_clock_type in
+    let print_stream_inst = print_inst (fun i -> St_var i) print_stream_type in
+    Format.fprintf fmt "Ct: [%a]"
+      (Utils.print_list_r print_clock_inst ",") ci#ai_clock_inst;
+    Format.fprintf fmt "St: [%a]"
+      (Utils.print_list_r print_stream_inst ",") ci#ai_stream_inst
 
   type block_info = unit
   let print_block_info (_ : Format.formatter) _ = ()

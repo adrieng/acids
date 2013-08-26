@@ -64,7 +64,8 @@ type op =
 type call =
   {
     a_op : op;
-    a_clock_inst : (int * Clock_types.stream_type) list;
+    a_clock_inst : (int * clock) list;
+    a_stream_inst : (int * Clock_types.stream_type) list;
   }
 
 type 'a merge_clause =

@@ -237,16 +237,23 @@ let rec translate_eq_exp env x_l e =
       non_lowered "ifthenelse"
 
     | E_app (app, e) ->
-      let inst = app.a_info#ai_clock_inst in
-      let op =
-        let open Names in
-        match app.a_op.modn with
-        | Module "Pervasives" -> Nir.Builtin app.a_op.shortn
-        | _ -> Nir.Node app.a_op
+      let app =
+        {
+          Nir.a_op =
+            (
+              let open Names in
+              match app.a_op.modn with
+              | Module "Pervasives" -> Nir.Builtin app.a_op.shortn
+              | _ -> Nir.Node app.a_op
+            );
+          Nir.a_clock_inst =
+            List.map
+              (fun (i, ct) -> i, translate_clock_type env ct)
+              app.a_info#ai_clock_inst;
+          Nir.a_stream_inst = app.a_info#ai_stream_inst;
+        }
       in
-      Nir.Call (x_l,
-                Nir.({ a_op = op; a_clock_inst = inst; }),
-                var_list_of_tuple e),
+      Nir.Call (x_l, app, var_list_of_tuple e),
       Nir.Ck_block_base,
       env
 
@@ -400,7 +407,7 @@ let translate_type_def td =
     Nir.ty_loc = td.ty_loc;
   }
 
-let translate_phrase phr (type_defs, node_defs, env) =
+let translate_phrase (type_defs, node_defs, env) phr =
   match phr with
   | Phr_static_def _ | Phr_node_decl _ ->
     type_defs, node_defs, env
@@ -414,7 +421,7 @@ let translate_phrase phr (type_defs, node_defs, env) =
 let file ctx (file : Acids_causal_utils.annotated_file) =
   let env = initial_env file.f_info#interfaces in
   let type_defs, node_defs, _ =
-    List.fold_right translate_phrase file.f_body ([], [], env)
+    List.fold_left translate_phrase ([], [], env) file.f_body
   in
   let nir_file : unit Nir.file =
     {

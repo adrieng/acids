@@ -216,7 +216,7 @@ struct
     | Exp of VarTy.t
     | ClockExp of VarTySt.t
     | Node of Clock_types.clock_sig
-    | App of (int * VarTySt.t) list
+    | App of (int * VarTy.t) list * (int * VarTySt.t) list
     | Buffer of VarTySt.t * VarTySt.t (* in st * out st *)
 
   let print_new_annot fmt na =
@@ -225,12 +225,16 @@ struct
     | ClockExp st -> VarTySt.print fmt st
     | Node csig ->
       Clock_types.print_sig fmt csig
-    | App inst ->
-      let print_binding fmt (i, ty) =
-        Format.fprintf fmt "%d -> %a" i VarTySt.print ty
+    | App (ct_inst, st_inst) ->
+      let print_ct_binding fmt (i, (ct : VarTy.t)) =
+        Format.fprintf fmt "%d -> %a" i VarTy.print ct
       in
-      Format.fprintf fmt "@[%a@]"
-        (Utils.print_list_r print_binding ",") inst
+      let print_st_binding fmt (i, st) =
+        Format.fprintf fmt "%d -> %a" i VarTySt.print st
+      in
+      Format.fprintf fmt "@[%a@ | %a@]"
+        (Utils.print_list_r print_ct_binding ",") ct_inst
+        (Utils.print_list_r print_st_binding ",") st_inst
     | Buffer (in_st, out_st) ->
       Format.fprintf fmt "@[%a <: %a@]"
         VarTySt.print in_st
@@ -249,8 +253,8 @@ let annotate_clock_exp info st =
 let annotate_node info csig =
   ANN_INFO.annotate info (A.Node csig)
 
-let annotate_app info app =
-  ANN_INFO.annotate info (A.App app)
+let annotate_app info inst_ct inst_st =
+  ANN_INFO.annotate info (A.App (inst_ct, inst_st))
 
 let annotate_buffer info in_st out_st =
   ANN_INFO.annotate info (A.Buffer (in_st, out_st))
@@ -309,10 +313,12 @@ struct
   let update_app_info { new_annot = na; old_annot = (); } =
     match na with
     | Exp _ | Node _ | ClockExp _ | Buffer _ -> invalid_arg "update_app_info"
-    | App inst ->
-      let trans (i, pst) = i, st_of_pre_st pst in
+    | App (inst_ct, inst_st) ->
+      let trans_ct (i, pct) = i, ty_of_pre_ty pct in
+      let trans_st (i, pst) = i, st_of_pre_st pst in
       object
-        method ai_clock_inst = List.map trans inst
+        method ai_clock_inst = List.map trans_ct inst_ct
+        method ai_stream_inst = List.map trans_st inst_st
       end
 
   let update_block_info _ = ()
@@ -468,14 +474,14 @@ and clock_exp env e acc =
 
   | E_app (app, e) ->
     let csig = find_node_signature env app.a_op in
-    let ty_in, ty_out, preconstrs, inst =
+    let ty_in, ty_out, preconstrs, inst_ct, inst_st =
       Clock_types.instantiate_clock_sig loc csig
     in
     let app =
       {
         M.a_op = app.a_op;
         M.a_loc = app.a_loc;
-        M.a_info = annotate_app app.a_info inst;
+        M.a_info = annotate_app app.a_info inst_ct inst_st;
       }
     in
     let e, (ctx, cstrs) = expect_exp env ty_in e acc in

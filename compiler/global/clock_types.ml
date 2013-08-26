@@ -369,11 +369,13 @@ let instantiate_clock_sig loc csig =
   let ty_in = inst_ct csig.ct_sig_input in
   let ty_out = inst_ct csig.ct_sig_output in
   let ty_constr = List.map inst_constraint csig.ct_constraints in
-  let insts =
-    let add_inst i ty inst_l = (i, ty) :: inst_l in
-    Hashtbl.fold add_inst ht_st []
+
+  let make_inst ht =
+    let add_inst i x inst = (i, x) :: inst in
+    Hashtbl.fold add_inst ht []
   in
-  ty_in, ty_out, ty_constr, (insts : (int * VarTySt.t) list)
+
+  ty_in, ty_out, ty_constr, make_inst ht_ct, make_inst ht_st
 
 let rec reroot_st bst st =
   let open PreTySt in

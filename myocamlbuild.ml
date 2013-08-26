@@ -27,6 +27,7 @@ let df = function
       (S [A "-w"; A "-39"]);
 
     ocaml_lib "base/asc_base";
+    ocaml_lib "mllp/asc_mllp";
     ocaml_lib "resolution/asc_resolution";
 
   | _ -> ()

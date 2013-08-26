@@ -441,5 +441,6 @@ let pass =
     (make_transform
        ~ext:"nir"
        ~print_out:Nir_printer.print_file
+       ~guarantee:Nir_invariants.all
        "nir_of_acids"
        file)

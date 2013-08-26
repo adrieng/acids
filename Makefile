@@ -49,6 +49,11 @@ clean:
 	ocamlbuild -clean
 	rm -f $(wildcard lib/*.aso)
 	rm -f $(wildcard examples/*.aso)
+	make -C tests clean
+
+realclean: clean
+	rm -f $(TARGETS)
+	make -C tests realclean
 
 %.byte: .FORCE
 	ocamlbuild ${OCAMLBUILDOPTS} $@

@@ -56,7 +56,7 @@ let pword incrust_end =
     (false^{hd_width * (hd_height - sd_height)}
      [false^{hd_width - sd_width} true^{sd_width}]^{sd_height})
 
-@max_burst{100000} @max_int{1000000}
+@max_burst{10000000} @max_int{100000000}
 let node picture_in_picture (p1, p2) = o where
     rec small = buffer (downscaler p1)
     and big = p2 when (incrust_end = false)

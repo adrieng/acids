@@ -247,7 +247,7 @@ let rec add_fresh_types_for_pat env p =
   | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     add_fresh_types_for_pat env p
   | P_split w ->
-    Ast_misc.fold_upword
+    Tree_word.fold_upword
       (Utils.flip add_fresh_types_for_pat)
       (fun _ env -> env)
       w
@@ -636,7 +636,7 @@ and type_pattern p env =
       let expect_pat = expect_pat ty in
       let expect_static_exp_int e env = expect_static_exp env int_ty e, env in
       let w, env =
-        Ast_misc.mapfold_upword expect_pat expect_static_exp_int w env
+        Tree_word.mapfold_upword expect_pat expect_static_exp_int w env
       in
       M.P_split w, ty, env
   in
@@ -738,7 +738,7 @@ and type_static_word env w =
   let ty = fresh_ty () in
   let expect = expect_static_exp env ty in
   let expect_int = expect_static_exp env int_ty in
-  Ast_misc.map_upword expect expect_int w, ty
+  Tree_word.map_upword expect expect_int w, ty
 
 let type_node_def env nd =
   reset_ty ();

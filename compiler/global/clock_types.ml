@@ -17,7 +17,7 @@
 
 type clock_exp =
   | Ce_condvar of clock_exp_cond_var
-  | Ce_pword of (Ast_misc.econstr, Int.t) Ast_misc.t
+  | Ce_pword of Ast_misc.static_pword
   | Ce_equal of clock_exp * Ast_misc.econstr
 
 and clock_exp_cond_var =
@@ -55,7 +55,7 @@ let rec print_clock_exp fmt ce =
       Ast_misc.print_interval_annot cev.cecv_bounds
       (Utils.print_list Ast_misc.print_spec_annot) cev.cecv_specs
   | Ce_pword pw ->
-    Ast_misc.print_upword_int Ast_misc.print_econstr fmt pw
+    Ast_misc.print_static_pword fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "(%a = %a)"
       print_clock_exp ce
@@ -96,7 +96,7 @@ let print_sig fmt cs =
       Format.fprintf fmt "@ with {@[%a@]}"
         (Utils.print_list_r print_constraint ",") cs
   in
-  Format.fprintf fmt "@[%a -> %a%a@]"
+  Format.fprintf fmt "@[%a ->@ %a%a@]"
     print_clock_type cs.ct_sig_input
     print_clock_type cs.ct_sig_output
     print_constraints cs.ct_constraints
@@ -131,7 +131,7 @@ struct
   type 'a pre_ty =
   | Pce_var of 'a
   | Pce_condvar of clock_exp_cond_var
-  | Pce_pword of (Ast_misc.econstr, Int.t) Ast_misc.t
+  | Pce_pword of Ast_misc.static_pword
   | Pce_equal of 'a pre_ty * Ast_misc.econstr
 
   let rec print print_var fmt pce =
@@ -143,7 +143,7 @@ struct
         Ast_misc.print_interval_annot pcv.cecv_bounds
         (Utils.print_list Ast_misc.print_spec_annot) pcv.cecv_specs
     | Pce_pword pw ->
-      Ast_misc.print_upword_int Ast_misc.print_econstr fmt pw
+      Ast_misc.print_static_pword fmt pw
     | Pce_equal (pce, ec) ->
       Format.fprintf fmt "(%a = %a)"
         (print print_var) pce
@@ -402,14 +402,14 @@ let rec interp_ce ce =
     in
     has_full_spec cev.cecv_specs
   | Ce_pword p ->
-    Some (Ast_misc.map_upword Ast_misc.int_of_econstr (fun x -> x) p)
+    Some (Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) p)
   | Ce_equal (ce, ec) ->
     let i = Ast_misc.int_of_econstr ec in
     match interp_ce ce with
     | None -> None
     | Some p ->
       Some
-        (Ast_misc.map_upword
+        (Tree_word.map_upword
            (fun i' -> Int.of_bool (0 = Utils.int_compare i i'))
            (fun x -> x)
            p)
@@ -447,7 +447,7 @@ let map_stream_type_of_sig f ty_sig =
 
 let ce_pword_of_pword p =
   let p = Pword.to_tree_pword p in
-  let p = Ast_misc.(map_upword (fun i -> Ec_int i) (fun i -> i) p) in
+  let p = Tree_word.map_upword (fun i -> Ast_misc.Ec_int i) (fun i -> i) p in
   Ce_pword p
 
 (* Remove ... on (1) ... from stream types *)
@@ -510,7 +510,7 @@ let rec simplify_prefix_st st =
     | Ce_condvar _ -> ce
     | Ce_pword pw ->
       let p =
-        Ast_misc.map_upword
+        Tree_word.map_upword
           (fun ec -> Ast_misc.int_of_econstr ec)
           (fun x -> x)
           pw

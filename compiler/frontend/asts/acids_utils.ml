@@ -114,7 +114,7 @@ struct
       | Ce_condvar v ->
         OUT.Ce_condvar v
       | Ce_pword (Pd_lit w) ->
-        let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
+        let w = Tree_word.map_upword extract_static_exp extract_static_exp w in
         OUT.Ce_pword (OUT.Pd_lit w)
       | Ce_pword (Pd_global ln) ->
         OUT.Ce_pword (OUT.Pd_global ln)
@@ -199,7 +199,7 @@ struct
       | P_spec_annot (p, spec) ->
         OUT.P_spec_annot (extract_pattern p, extract_spec spec)
       | P_split w ->
-        OUT.P_split (Ast_misc.map_upword extract_pattern extract_static_exp w)
+        OUT.P_split (Tree_word.map_upword extract_pattern extract_static_exp w)
     in
     {
       OUT.p_desc = pd;
@@ -250,7 +250,7 @@ struct
       match spec.s_desc with
       | Unspec -> OUT.Unspec
       | Word w ->
-        let w = Ast_misc.map_upword extract_static_exp extract_static_exp w in
+        let w = Tree_word.map_upword extract_static_exp extract_static_exp w in
         OUT.Word w
       | Interval (l, u) ->
         OUT.Interval (extract_static_exp l, extract_static_exp u)
@@ -400,7 +400,7 @@ struct
     | P_type_annot (p, _) -> fv_pattern fv p
     | P_spec_annot (p, _) -> fv_pattern fv p
     | P_split pw ->
-      Ast_misc.fold_upword (Utils.flip fv_pattern) (fun _ l -> l) pw fv
+      Tree_word.fold_upword (Utils.flip fv_pattern) (fun _ l -> l) pw fv
 
   and fv_spec fv spec =
     match spec.s_desc with
@@ -445,7 +445,7 @@ struct
         Ce_condvar v, env
       | Ce_pword (Pd_lit pw) ->
         let pw, env =
-          Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
+          Tree_word.mapfold_upword refresh_static_exp refresh_static_exp pw env
         in
         Ce_pword (Pd_lit pw), env
       | Ce_pword (Pd_global ln) ->
@@ -587,7 +587,7 @@ struct
       | Unspec -> Unspec, env
       | Word pw ->
         let pw, env =
-          Ast_misc.mapfold_upword refresh_static_exp refresh_static_exp pw env
+          Tree_word.mapfold_upword refresh_static_exp refresh_static_exp pw env
         in
         Word pw, env
       | Interval (l, u) ->
@@ -647,7 +647,7 @@ struct
 
       | P_split pt ->
         let pt, env =
-          Ast_misc.mapfold_upword refresh_pattern refresh_static_exp pt env
+          Tree_word.mapfold_upword refresh_pattern refresh_static_exp pt env
         in
         P_split pt, env
     in

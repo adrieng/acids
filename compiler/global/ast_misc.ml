@@ -15,8 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-include Tree_word
-
 type 'a var_dec =
     {
       v_ident : Ident.t;
@@ -83,7 +81,7 @@ let int_of_econstr ec =
 type static_pword = (econstr, Int.t) Tree_word.t
 
 let print_static_pword fmt pw =
-  Tree_word.print_upword print_econstr Int.print fmt pw
+  Tree_word.print_upword_int print_econstr fmt pw
 
 type const =
   | Cconstr of econstr
@@ -200,5 +198,5 @@ let bounds_of_int_pword p =
     then (l := i; u := i)
     else (l := Int.min !l i; u := Int.max !u i)
   in
-  iter_upword check (fun _ -> ()) p;
+  Tree_word.iter_upword check (fun _ -> ()) p;
   !l, !u

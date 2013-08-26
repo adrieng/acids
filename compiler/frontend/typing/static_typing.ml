@@ -61,8 +61,6 @@ exception Non_constant_pword
 
 (* A tree pword is constant if all its sub-pwordexps are syntacticaly equal *)
 let is_constant_pword get w =
-  let open Ast_misc in
-
   let check_constant se acc =
     match acc with
     | Some prev_se ->
@@ -72,7 +70,9 @@ let is_constant_pword get w =
     | None ->
       Some se
   in
-  try ignore (fold_upword check_constant (fun _ acc -> acc) w None); true
+  try
+    ignore (Tree_word.fold_upword check_constant (fun _ acc -> acc) w None);
+    true
   with Non_constant_pword -> false
 
 (** {2 Typing environments} *)
@@ -284,7 +284,7 @@ let rec enrich_pat env p =
   | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     enrich_pat env p
   | P_split pt ->
-    Ast_misc.fold_upword
+    Tree_word.fold_upword
       (fun p env -> enrich_pat env p)
       (fun _ env -> env)
       pt
@@ -341,7 +341,7 @@ and type_static_word env pw =
     let get se = se.se_desc in
     if is_constant_pword get pw then static_ty else dynamic_ty
   in
-  Ast_misc.map_upword type_fun type_fun pw, ty
+  Tree_word.map_upword type_fun type_fun pw, ty
 
 and type_static_exp env se =
   let open Acids_scoped.Info in
@@ -561,7 +561,7 @@ and type_pat env p =
     | P_split pt ->
       let ty = fresh_ty () in
       let pt =
-        Ast_misc.map_upword (expect_pat loc env ty) (type_static_exp env) pt
+        Tree_word.map_upword (expect_pat loc env ty) (type_static_exp env) pt
       in
       M.P_split pt, ty
   in
@@ -621,7 +621,7 @@ and type_spec env spec =
     | Unspec -> M.Unspec
     | Word w ->
       let type_fun = type_static_exp env in
-      let w = Ast_misc.map_upword type_fun type_fun w in
+      let w = Tree_word.map_upword type_fun type_fun w in
       M.Word w
     | Interval (l, u) ->
       let l = type_static_exp env l in

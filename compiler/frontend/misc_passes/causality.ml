@@ -92,7 +92,7 @@ let rec annot_clock_exp ce =
   }
 
 and annot_static_word pw =
-  Ast_misc.map_upword annot_static_exp annot_static_exp pw
+  Tree_word.map_upword annot_static_exp annot_static_exp pw
 
 and annot_static_exp se =
   {
@@ -225,7 +225,7 @@ and annot_pattern p =
     | P_spec_annot (p, spec) ->
       Acids_causal.P_spec_annot (annot_pattern p, annot_spec spec)
     | P_split pw ->
-      let pw = Ast_misc.map_upword annot_pattern annot_static_exp pw in
+      let pw = Tree_word.map_upword annot_pattern annot_static_exp pw in
       Acids_causal.P_split pw
   in
   {
@@ -240,7 +240,7 @@ and annot_spec spec =
     | Unspec ->
       Acids_causal.Unspec
     | Word pw ->
-      let pw = Ast_misc.map_upword annot_static_exp annot_static_exp pw in
+      let pw = Tree_word.map_upword annot_static_exp annot_static_exp pw in
       Acids_causal.Word pw
     | Interval (l, u) ->
       Acids_causal.Interval (annot_static_exp l, annot_static_exp u)

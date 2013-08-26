@@ -311,7 +311,7 @@ and eval_pattern env p v =
   | P_clock_annot (p, _) | P_type_annot (p, _) | P_spec_annot (p, _) ->
     eval_pattern env p v
   | P_split pw ->
-    Ast_misc.fold_upword
+    Tree_word.fold_upword
       (fun p env -> eval_pattern env p v)
       (fun _ env -> env)
       pw

@@ -30,7 +30,7 @@ struct
       (print_info I.print_clock_exp_info) ce.ce_info
 
   and print_static_word fmt pw =
-    Ast_misc.print_upword print_static_exp print_static_exp fmt pw
+    Tree_word.print_upword print_static_exp print_static_exp fmt pw
 
   and print_clock_exp_desc fmt ced =
     match ced with
@@ -168,7 +168,7 @@ struct
         print_pat p
         print_spec spec
     | P_split p_t ->
-      Ast_misc.print_upword print_pat print_static_exp fmt p_t
+      Tree_word.print_upword print_pat print_static_exp fmt p_t
 
   and print_clause fmt clause =
     Format.fprintf fmt "@ | @[<hv 2>%a ->@ %a@]"

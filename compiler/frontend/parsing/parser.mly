@@ -22,9 +22,9 @@
     match l with
     | [] -> invalid_arg "make_concat: empty list"
     | [x] -> x
-    | _ :: _ -> Ast_misc.Concat l
+    | _ :: _ -> Tree_word.Concat l
 
-  let make_pword (u, v) = { Ast_misc.u = u; Ast_misc.v = v; }
+  let make_pword (u, v) = { Tree_word.u = u; Tree_word.v = v; }
 
   let make_econstr n =
     Ast_misc.Ec_constr (Initial.make_longname n, Int.of_int (- 1))
@@ -336,15 +336,15 @@
 | LBRACE x = X RBRACE { x }
 
 simple_ptree(X, Y):
-| x = X { Ast_misc.Leaf x }
-| t = simple_ptree(X, Y) CARET y = Y { Ast_misc.Power (t, y) }
+| x = X { Tree_word.Leaf x }
+| t = simple_ptree(X, Y) CARET y = Y { Tree_word.Power (t, y) }
 | t = brackets(ptree(X, Y)) { t }
 
 %inline ptree(X, Y):
 | pt = nonempty_list(simple_ptree(X, Y)) { make_concat pt }
 
 %inline upword_desc(X, Y, Z):
-| v = Z(ptree(X, Y)) { (Ast_misc.Concat [], v) }
+| v = Z(ptree(X, Y)) { (Tree_word.Concat [], v) }
 | u = ptree(X, Y) v = Z(ptree(X, Y)) { (u, v) }
 
 %inline upword(X, Y, Z):

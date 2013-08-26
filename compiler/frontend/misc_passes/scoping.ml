@@ -410,11 +410,11 @@ let check_pattern block_loc block_env p =
     | P_split pw ->
         let rec walk_ptree pat_env pt =
           match pt with
-          | Ast_misc.Leaf p -> walk pat_env p
-          | Ast_misc.Concat p_l -> List.fold_left walk_ptree pat_env p_l
-          | Ast_misc.Power (p, _) -> walk_ptree pat_env p
+          | Tree_word.Leaf p -> walk pat_env p
+          | Tree_word.Concat p_l -> List.fold_left walk_ptree pat_env p_l
+          | Tree_word.Power (p, _) -> walk_ptree pat_env p
         in
-        walk_ptree (walk_ptree pat_env pw.Ast_misc.u) pw.Ast_misc.v
+        walk_ptree (walk_ptree pat_env pw.Tree_word.u) pw.Tree_word.v
   in
   let pat_env = walk Utils.String_set.empty p in
   Utils.String_set.union block_env pat_env
@@ -554,10 +554,7 @@ and scope_static_word env upw =
   let open Tree_word in
 
   let { u = u; v = v; } =
-    Ast_misc.map_upword
-      (scope_static_exps env)
-      (scope_static_exp_one env)
-      upw
+    map_upword (scope_static_exps env) (scope_static_exp_one env) upw
   in
 
   (* Remove list leaves coming from Se_fword *)
@@ -767,7 +764,7 @@ and scope_pattern p env =
     | P_split upw ->
       let scope_static_exp se env = scope_static_exp_one env se, env in
       let p_l, env =
-        Ast_misc.mapfold_upword scope_pattern scope_static_exp upw env
+        Tree_word.mapfold_upword scope_pattern scope_static_exp upw env
       in
       Acids_scoped.P_split p_l, env
   in

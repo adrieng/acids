@@ -132,7 +132,7 @@ let rec simpl_static_var env v =
 
 and simpl_static_word env loc pw =
   let pw =
-    Ast_misc.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
+    Tree_word.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
   in
 
   let check_pos se =
@@ -214,7 +214,7 @@ and simpl_pattern env p =
 
     | P_split pt ->
       let pt =
-        Ast_misc.map_upword (simpl_pattern env) (simpl_static_exp env) pt
+        Tree_word.map_upword (simpl_pattern env) (simpl_static_exp env) pt
       in
       Acids_prespec.P_split pt
   in
@@ -410,7 +410,7 @@ and simpl_spec env spec =
     | Word pw ->
       let simpl_static_exp = simpl_static_exp env in
       let pw =
-        Ast_misc.map_upword simpl_static_exp simpl_static_exp pw
+        Tree_word.map_upword simpl_static_exp simpl_static_exp pw
       in
       Acids_prespec.Word pw
     | Interval (l, u) ->

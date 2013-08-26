@@ -182,10 +182,10 @@ let rec interp_ce env pce =
   | Pce_equal (ce, ec) ->
     let p = interp_ce env ce in
     let i = Ast_misc.int_of_econstr ec in
-    Ast_misc.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
+    Tree_word.map_upword (fun i' -> Int.of_bool (Int.equal i i')) (fun x -> x) p
 
 let unit_ipword =
-  let open Ast_misc in
+  let open Tree_word in
   { u = Concat []; v = Concat [Leaf Int.one]; }
 
 (** {2 Word constraints} *)
@@ -461,7 +461,7 @@ let solve_constraints env ctx pragma_env loc sys =
       let open VarCe in
       assert (v.v_link = None);
       let pw =
-        Ast_misc.map_upword (fun i -> Ast_misc.Ec_int i) (fun x -> x) p
+        Tree_word.map_upword (fun i -> Ast_misc.Ec_int i) (fun x -> x) p
       in
       v.v_link <- Some (PreCe.Pce_pword pw)
     | None ->

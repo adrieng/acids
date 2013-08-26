@@ -163,6 +163,7 @@ let trans_clock_exp env ce =
   Clock_types.pre_ce_of_ce cce
 
 let rec int_ptree_of_ptree current pt =
+  let open Tree_word in
   let open Ast_misc in
   match pt with
   | Leaf _ -> Int.succ current, Leaf (Ec_int current)
@@ -174,13 +175,13 @@ let rec int_ptree_of_ptree current pt =
     current, Concat pt_l
 
 let int_pword_of_pword pw =
-  let open Ast_misc in
+  let open Tree_word in
   let current, u = int_ptree_of_ptree Int.zero pw.u in
   let _, v = int_ptree_of_ptree current pw.v in
   Clock_types.PreCe.Pce_pword { u = u; v = v; }
 
 let rec psplit_length pt =
-  let open Ast_misc in
+  let open Tree_word in
   match pt with
   | Leaf _ -> Int.of_int 1
   | Power (pt, se) ->
@@ -378,7 +379,7 @@ and clock_clock_exp env ce acc =
       let st = fresh_st () in
       let pw, acc =
         let expect = expect_static_exp (ty_of_st st) in
-        Ast_misc.mapfold_upword expect expect pw acc
+        Tree_word.mapfold_upword expect expect pw acc
       in
       M.Ce_pword (M.Pd_lit pw), st, acc
 
@@ -669,6 +670,7 @@ and expect_spec expected_ty spec acc =
 
 and clock_psplit env loc pw acc =
   let open Ast_misc in
+  let open Tree_word in
 
   let pw_ce = int_pword_of_pword pw in
   let ty = fresh_ty () in
@@ -857,7 +859,7 @@ let clock_pword_def env pd =
   let st = fresh_st () in
   let pw, _ =
     let expect = expect_static_exp (ty_of_st st) in
-    Ast_misc.mapfold_upword expect expect pd.pd_body (Ident.Env.empty, [])
+    Tree_word.mapfold_upword expect expect pd.pd_body (Ident.Env.empty, [])
   in
   {
     M.pd_name = pd.pd_name;

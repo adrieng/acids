@@ -46,12 +46,12 @@ let rec print_power_tree_int print_a fmt tr =
 type ('a, 'b) t = { u : ('a, 'b) power_tree; v : ('a, 'b) power_tree; }
 
 let print_upword print_a print_b fmt { u = u; v = v; } =
-  Format.fprintf fmt "%a(%a)"
+  Format.fprintf fmt "@[%a(@[%a@])@]"
     (print_power_tree print_a print_b) u
     (print_power_tree print_a print_b) v
 
 let print_upword_int print_a fmt { u = u; v = v; } =
-  Format.fprintf fmt "%a(%a)"
+  Format.fprintf fmt "@[%a(@[%a@])@]"
     (print_power_tree_int print_a) u
     (print_power_tree_int print_a) v
 

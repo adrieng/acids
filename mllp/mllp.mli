@@ -15,49 +15,81 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-(** {2 Type definitions} *)
+(** {2 Exceptions} *)
 
-type state_open
-type state_closed
-type state_solved
+type error =
+  | Duplicate_variable of string
+  | No_objective
+  | No_bounds
+  | Internal_error of string
+  | Internal_solver_error of int
 
-type 'state system
+exception Error of error
 
-type 'a var
+val print_error : Format.formatter -> error -> unit
 
-type 'a term
+(** {2 Systems} *)
 
-type 'a cstr
+type system
 
-(** {2 Constraint construction functions} *)
+val make_system : unit -> system
 
-val var : 'a var -> 'a term
+type var
 
-val ( * ) : 'a -> 'a term -> 'a term
+val make_var : system -> string -> var
 
-val ( + ) : 'a term -> 'a term -> 'a term
+(** {2 Terms and constraints} *)
 
-val ( < ) : 'a term -> 'a term -> 'a cstr
+type term
 
-val ( <= ) : 'a term -> 'a term -> 'a cstr
+type cstr
 
-val ( > ) : 'a term -> 'a term -> 'a cstr
+val var : var -> term
 
-val ( >= ) : 'a term -> 'a term -> 'a cstr
+val const : Int.t -> term
 
-val ( = ) : 'a term -> 'a term -> 'a cstr
+val ( + ) : term -> term -> term
+
+val ( - ) : term -> term -> term
+
+val ( * ) : Int.t -> term -> term
+
+val ( < ) : term -> term -> cstr
+
+val ( <= ) : term -> term -> cstr
+
+val ( > ) : term -> term -> cstr
+
+val ( >= ) : term -> term -> cstr
+
+val ( = ) : term -> term -> cstr
 
 (** {2 System construction functions} *)
 
-val make_system : unit -> state_open system
+val add_constraint : system -> cstr -> system
 
-val add_constraint : state_open system -> 'a cstr -> state_open system
+type objective =
+  | Minimize of term
+  | Mazimize of term
 
-val set_objective : state_open system -> 'a term -> state_closed system
+val minimize_all_variables : system -> objective
+
+val set_objective : system -> objective -> system
+
+val bound_all : system -> Int.t * Int.t -> system
 
 (** {2 System solving} *)
 
-val solve : state_closed system -> state_solved system
+type solution
 
-val value_of : state_solved system -> 'a var -> 'a
+type solver =
+  | Glpk
 
+val solve :
+  ?solver:solver ->
+  ?verbose : bool ->
+  ?profile : bool ->
+  system ->
+  solution option
+
+val value_of : solution -> var -> Int.t

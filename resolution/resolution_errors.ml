@@ -22,7 +22,7 @@ type error =
 | Rate_inconsistency
 | Precedence_inconsistency
 | Internal_error of (Int.t, Int.t) Tree_word.t Utils.Env.t
-| Solver_error of Linear_solver.error
+| Solver_error of Mllp.error
 
 exception Could_not_solve of error
 
@@ -35,13 +35,15 @@ let print_error fmt err =
   | Precedence_inconsistency ->
     Format.fprintf fmt "precedence inconsistency"
   | Internal_error sol ->
-    Format.printf "the solver returned the following incorrect solution:@\n@[{@ %a@ }@]@."
+    Format.fprintf
+      fmt
+      "the solver returned the following incorrect solution:@\n@[{@ %a@ }@]@."
       (Utils.Env.print
          Utils.print_string
          (Tree_word.print_upword_int Int.print)) sol;
   | Solver_error err ->
     Format.printf "linear solver error: %a"
-      Linear_solver.print_error err
+      Mllp.print_error err
 
 let constant_inconsistency () =
   raise (Could_not_solve Constant_inconsistency)

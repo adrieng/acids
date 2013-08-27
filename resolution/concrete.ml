@@ -438,18 +438,12 @@ let solve_balance_equations verbose max_int csys =
   let find_c lsys env c =
     try Utils.Env.find c env, lsys, env
     with Not_found ->
-      let open Linear_solver in
-      let lsys, k' = add_variable lsys (c ^ "_k'") in
-      let lsys =
-        bound_variable (Int.one, max_int) lsys k'
-      in
+      let open Mllp in
+      let k' = make_var lsys (c ^ "_k'") in
       k', lsys, Utils.Env.add c k' env
   in
 
-  let open Int in
-
   let add_balance_equations (lsys, env) ((co_x, p_x), (co_y, p_y)) =
-    let open Linear_solver in
     let open Pword in
 
     let find_vars lsys env co =
@@ -469,51 +463,47 @@ let solve_balance_equations verbose max_int csys =
 
     let bal_eq_k' =
       (* |p_x.v|_1 * k'_x - |p_y.v|_1 * k'_y = 0 *)
-      {
-        lc_terms =
-          [
-            nbones p_x.v, k'_x;
-            neg (nbones p_y.v), k'_y;
-          ];
-        lc_comp = Leq;
-        lc_const = zero;
-      }
+      Mllp.(nbones p_x.v * var k'_x = nbones p_y.v * var k'_y)
     in
 
-    add_constraint lsys bal_eq_k', env
+    Mllp.add_constraint lsys bal_eq_k', env
   in
 
   (* Build linear system *)
   let lsys, env =
     List.fold_left
       add_balance_equations
-      (Linear_solver.empty_system, Utils.Env.empty)
+      (Mllp.make_system (), Utils.Env.empty)
       csys.constraints
   in
 
   (* Minimize variables *)
   let lsys =
-    let open Linear_solver in
-    set_objective_function lsys (minimize_all_variables lsys)
+    let open Mllp in
+    bound_all
+      (set_objective lsys (minimize_all_variables lsys))
+      (Int.one, max_int)
   in
 
   Format.print_flush ();
 
   (* Solve it *)
   let sol =
-    let open Linear_solver in
-    try solve ~verbose:Pervasives.(verbose >= 2) lsys
-    with
-    | Error Could_not_solve ->
-      Resolution_errors.rate_inconsistency ()
-    | Error err ->
+    let open Mllp in
+    try
+      (
+        match solve ~verbose:Pervasives.(verbose >= 2) lsys with
+        | None -> Resolution_errors.rate_inconsistency ()
+        | Some sol -> sol
+      )
+    with Error err ->
       Resolution_errors.solver_error err
   in
 
   (* Reconstruct per-unknown solution *)
   let reconstruct c _ balance_results =
     let k'_c = Utils.Env.find c env in
-    let k' = Linear_solver.Env.find k'_c sol in
+    let k' = Mllp.value_of sol k'_c in
     Utils.Env.add c k' balance_results
   in
 
@@ -889,117 +879,107 @@ let solve_linear_system
     ~profile
     max_int
     csys =
-  let find_size_var (size_vars, indexes_vars, lsys) c =
-    try (size_vars, indexes_vars, lsys), Utils.Env.find c size_vars
+  let lsys = Mllp.make_system () in
+
+  let find_size_var size_vars c =
+    try size_vars, Utils.Env.find c size_vars
     with Not_found ->
       let s = "size_" ^ c in
-      let lsys, v = Linear_solver.add_variable lsys s in
-      (Utils.Env.add c v size_vars, indexes_vars, lsys), v
+      let v = Mllp.make_var lsys s in
+      Utils.Env.add c v size_vars, v
   in
 
-  let find_index (size_vars, indexes_vars, lsys) c j =
+  let find_index indexes_vars c j =
     let indexes_c =
       try Utils.Env.find c indexes_vars with Not_found -> Int.Env.empty
     in
 
-    let v, indexes_c, lsys =
-      try Int.Env.find j indexes_c, indexes_c, lsys
+    let v, indexes_c =
+      try Int.Env.find j indexes_c, indexes_c
       with Not_found ->
         let s = Printf.sprintf "I_%s_%s" c (Int.to_string j) in
-        let lsys, v = Linear_solver.add_variable lsys s in
-        v, Int.Env.add j v indexes_c, lsys
+        let v = Mllp.make_var lsys s in
+        v, Int.Env.add j v indexes_c
     in
 
-    (size_vars, Utils.Env.add c indexes_c indexes_vars, lsys), v
+    Utils.Env.add c indexes_c indexes_vars, v
   in
 
-  let translate_linear_term (acc, cst, terms) (i, lv) =
-    let open Int in
+  let translate_lvar (size_vars, indexes_vars) lv =
     match lv with
     | Size c ->
-      let acc, c = find_size_var acc c in
-      acc, cst, (i, c) :: terms
+      let size_vars, v = find_size_var size_vars c in
+      (size_vars, indexes_vars), Mllp.var v
     | Iof (c, j) ->
-      let acc, c = find_index acc c j in
-      acc, cst, (i, c) :: terms
-    | Const k ->
-      acc, cst - i * k, terms
+      let indexes_vars, v = find_index indexes_vars c j in
+      (size_vars, indexes_vars), Mllp.var v
+    | Const cst ->
+      (size_vars, indexes_vars), Mllp.const cst
   in
 
-  let translate_linear_constr acc cstr =
-    let make_linear_constraint acc terms cmp cst =
-      let acc, cst, terms =
-        List.fold_left translate_linear_term (acc, cst, []) terms
-      in
-      acc,
-      {
-        Linear_solver.lc_terms = terms;
-        Linear_solver.lc_comp = cmp;
-        Linear_solver.lc_const = cst;
-      }
-    in
-
-    let (size_vars, indexes_vars, lsys), lc =
-      match cstr with
-      | Eq (terms, cst) ->
-        make_linear_constraint acc terms Linear_solver.Leq cst
-      | Le (terms, cst) ->
-        make_linear_constraint acc terms Linear_solver.Lle cst
-      | Ge (terms, cst) ->
-        make_linear_constraint acc terms Linear_solver.Lge cst
-    in
-
-    (size_vars, indexes_vars, Linear_solver.add_constraint lsys lc)
+  let translate_linear_term acc (i, lv) =
+    let acc, t = translate_lvar acc lv in
+    acc, Mllp.(i * t)
   in
 
-  let size_vars, indexes_vars, lsys =
+  let translate_linear_terms acc t_l =
+    let acc, t_l = Utils.mapfold_left translate_linear_term acc t_l in
+    acc, Utils.fold_left_1 Mllp.(+) t_l
+  in
+
+  let translate_linear_constr (vars, lsys) cstr =
+    let open Mllp in
+    match cstr with
+    | Eq (t, cst) ->
+      let vars, t = translate_linear_terms vars t in
+      vars, add_constraint lsys (t = const cst)
+    | Le (t, cst) ->
+      let vars, t = translate_linear_terms vars t in
+      vars, add_constraint lsys (t <= const cst)
+    | Ge (t, cst) ->
+      let vars, t = translate_linear_terms vars t in
+      vars, add_constraint lsys (t >= const cst)
+  in
+
+  let (size_vars, indexes_vars), lsys =
     fold_left_over_linear_constraints
       translate_linear_constr
-      (Utils.Env.empty, Utils.Env.empty, Linear_solver.empty_system)
+      ((Utils.Env.empty, Utils.Env.empty), lsys)
       csys
   in
 
-  let lsys = Linear_solver.bound_all_variables lsys (Int.one, max_int) in
+  let lsys = Mllp.bound_all lsys (Int.one, max_int) in
   let lsys =
-    Linear_solver.(set_objective_function lsys (minimize_all_variables lsys))
+    Mllp.(set_objective lsys (minimize_all_variables lsys))
   in
 
   Format.print_flush ();
 
   let lsol =
-    try Linear_solver.solve ~verbose:(verbose >= 2) ~profile lsys
-    with
-      Linear_solver.Error err ->
-        (
-          match err with
-          | Linear_solver.Could_not_solve ->
-            Resolution_errors.precedence_inconsistency ()
-          | _ ->
-            Resolution_errors.solver_error err
-        )
-
+    try
+      (
+        match Mllp.solve ~verbose:(verbose >= 2) ~profile lsys with
+        | Some sol -> sol
+        | None -> Resolution_errors.precedence_inconsistency ()
+      )
+    with Mllp.Error err -> Resolution_errors.solver_error err
   in
-
-  if verbose >= 4
-  then
-    Format.printf "(* Solution: @[%a@] *)@."
-      (Linear_solver.Env.print Linear_solver.print_var Int.print) lsol;
 
   let reconstruct_word c (nbones_c_u, nbones_c_v) sol =
     let indexes_for_c = Utils.Env.find c indexes_vars in
 
     let size_c_v =
       let size_v = Utils.Env.find c size_vars in
-      Linear_solver.Env.find size_v lsol
+      Mllp.value_of lsol size_v
     in
 
     let size_c_u =
       let first_one_v = Int.Env.find (Int.succ nbones_c_u) indexes_for_c in
-      Int.pred (Linear_solver.Env.find first_one_v lsol)
+      Int.pred (Mllp.value_of lsol first_one_v)
     in
 
     let iof =
-      let add j v_i iof = (j, Linear_solver.Env.find v_i lsol) :: iof in
+      let add j v_i iof = (j, Mllp.value_of lsol v_i) :: iof in
       List.rev (Int.Env.fold add indexes_for_c [])
     in
 

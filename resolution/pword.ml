@@ -616,29 +616,32 @@ let cache_ones p =
     nbones_v = p.v.nbones;
   }
 
-(* let find_value_ones cache nbones i = *)
-(*   let idx = find_index cache i in *)
-(*   let n = *)
-(*     (if idx = Array.length cache.cache_indexes *)
-(*      then cache.word_size else cache.cache_indexes.(idx + 1)) *)
-(*     - cache.cache_indexes.(idx) + 1 *)
-(*   in *)
-(*   let x = *)
-(*     ((if idx = Array.length cache.cache_indexes *)
-(*      then nbones else cache.cache_values.(idx + 1)) *)
-(*     - cache.cache_values.(idx)) / n *)
-(*   in *)
-(*   cache.cache_values.(idx) + x * () *)
+let find_value_ones cache nbones (i : Int.t) =
+  let idx = find_index cache (Int.to_int i) in
+  let n =
+    (if idx = Array.length cache.cache_indexes
+     then Int.to_int cache.word_size else cache.cache_indexes.(idx + 1))
+    - cache.cache_indexes.(idx) + 1
+  in
+  let open Int in
+  let x =
+    ((if Pervasives.(=) idx (Array.length cache.cache_indexes)
+     then nbones else cache.cache_values.(Pervasives.succ idx))
+    - cache.cache_values.(idx)) / of_int n
+  in
+  cache.cache_values.(idx)
+  + x * (of_int cache.cache_indexes.(idx) - i)
 
 let ones_cached pc i =
   let open Int in
   assert (i >= one);
   if i <= pc.cu.word_size
-  then find_value pc.cu i
+  then find_value_ones pc.cu pc.nbones_u i
   else
     let i = i - pc.cu.word_size in
     let nbones_start_period =
       let nth_iter = div_b1 i pc.cv.word_size in
       pc.nbones_u + pc.nbones_v * nth_iter
     in
-    nbones_start_period + find_value pc.cv (mod_b1 i pc.cv.word_size)
+    nbones_start_period
+    + find_value_ones pc.cv pc.nbones_v (mod_b1 i pc.cv.word_size)

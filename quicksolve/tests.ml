@@ -113,7 +113,7 @@ let ones =
   let w1 = p "3^2 (1 0^4 2)" in
   let l =
     [
-      w1, 2, 6;
+      w1, 1, 3;
       w1, 10, 10;
       w1, 11, 10;
       w1, 14, 12;
@@ -122,6 +122,24 @@ let ones =
   in
   List.map
     (fun (p, i, o) () -> eq_int (Pword.ones p (Int.of_int i)) (Int.of_int o))
+    l
+
+let ones_cached =
+  let w1 = p "3^2 (1 0^4 2)" in
+  let w1_c = Pword.cache_ones w1 in
+  let l =
+    [
+      w1_c, 1, 3;
+      w1_c, 2, 6;
+      w1_c, 10, 10;
+      w1_c, 11, 10;
+      w1_c, 14, 12;
+      w1_c, 15, 13;
+    ]
+  in
+  List.map
+    (fun (p, i, o) () ->
+      eq_int (Pword.ones_cached p (Int.of_int i)) (Int.of_int o))
     l
 
 (* Stupid unit test framework *)
@@ -141,6 +159,7 @@ let tests =
   @ name_tests "make_word_alap" alap
   @ name_tests "on" on
   @ name_tests "ones" ones
+  @ name_tests "ones_cached" ones_cached
 
 let run_test (failed, passed, total) (test_name, test) =
   Format.printf "%s: @[" test_name;

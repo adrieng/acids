@@ -88,3 +88,11 @@ val pull_prefix_in : pword -> pword
    buffer_size ~consider_bypass:true (2 0) (1 1) = 1
 *)
 val buffer_size : ?consider_bypass : bool -> pword -> pword -> Int.t
+
+(** {2 Precomputations} *)
+
+type ones_cached
+
+val cache_ones : pword -> ones_cached
+
+val ones_cached : ones_cached -> Int.t -> Int.t

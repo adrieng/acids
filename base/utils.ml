@@ -303,6 +303,11 @@ let print_opt ?(s = "") p fmt o =
   | None -> Format.fprintf fmt "%s" s
   | Some x -> p fmt x
 
+let print_array p fmt arr =
+  Format.fprintf fmt "[@[ ";
+  Array.iter (fun x -> Format.fprintf fmt "%a@ " p x) arr;
+  Format.fprintf fmt "]@]"
+
 let print_list p fmt l = List.iter (p fmt) l
 
 let rec print_list_eol p fmt l =

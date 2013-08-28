@@ -18,11 +18,12 @@
 type reason = string
 
 type error =
-| Constant_inconsistency
-| Rate_inconsistency
-| Precedence_inconsistency
-| Internal_error of (Int.t, Int.t) Tree_word.t Utils.Env.t
-| Solver_error of Mllp.error
+  | Constant_inconsistency
+  | Rate_inconsistency
+  | Precedence_inconsistency
+  | Internal_error of (Int.t, Int.t) Tree_word.t Utils.Env.t
+  | Solver_error of Mllp.error
+  | Bad_option of string
 
 exception Could_not_solve of error
 
@@ -42,8 +43,10 @@ let print_error fmt err =
          Utils.print_string
          (Tree_word.print_upword_int Int.print)) sol;
   | Solver_error err ->
-    Format.printf "linear solver error: %a"
+    Format.fprintf fmt "linear solver error: %a"
       Mllp.print_error err
+  | Bad_option opt_name ->
+    Format.fprintf fmt "bad option %s" opt_name
 
 let constant_inconsistency () =
   raise (Could_not_solve Constant_inconsistency)
@@ -59,3 +62,6 @@ let internal_error bad_sol =
 
 let solver_error err =
   raise (Could_not_solve (Solver_error err))
+
+let bad_option opt_n =
+  raise (Could_not_solve (Bad_option opt_n))

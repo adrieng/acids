@@ -272,12 +272,14 @@ type solution = Int.t Utils.Int_map.t
 
 type solver =
   | Glpk
+  | Gurobi
 
 let prefered = Glpk
 
 let backend_of_solver solver =
   match solver with
   | Glpk -> Mllp_backend_glpk.backend
+  | Gurobi -> Mllp_backend_gurobi.backend
 
 let solve
     ?(solver = prefered)
@@ -288,11 +290,11 @@ let solve
   then Some Utils.Int_map.empty
   else
     let backend = backend_of_solver solver in
-    let log_fn = Filename.temp_file "log-" ".log" in
-    let prob_fn = Filename.temp_file "sys-" ".lp" in
+    let log_fn = Filename.temp_file "mllp-" ".log" in
+    let prob_fn = Filename.temp_file "mllp-" ".lp" in
     let out_fns =
       List.map
-        (fun ext -> Filename.temp_file (ext ^ "-") ("." ^ ext))
+        (fun ext -> Filename.temp_file "mllp-" ("." ^ ext))
         backend.output_exts
     in
   (* Translate to low-level system *)

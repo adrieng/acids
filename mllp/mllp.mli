@@ -84,6 +84,7 @@ type solution
 
 type solver =
   | Glpk
+  | Gurobi
 
 val solve :
   ?solver:solver ->

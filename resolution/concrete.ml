@@ -432,7 +432,7 @@ let compute_sampler_sizes csys =
         k'_x * |p_x.v|_1 = k'_y * |p_y.v|_1
 
 *)
-let solve_balance_equations verbose max_int csys =
+let solve_balance_equations solver verbose max_int csys =
   let r = ref 0 in
 
   let find_c lsys env c =
@@ -492,7 +492,7 @@ let solve_balance_equations verbose max_int csys =
     let open Mllp in
     try
       (
-        match solve ~verbose:Pervasives.(verbose >= 2) lsys with
+        match solve ~solver ~verbose:Pervasives.(verbose >= 2) lsys with
         | None -> Resolution_errors.rate_inconsistency ()
         | Some sol -> sol
       )
@@ -877,6 +877,7 @@ let build_sufficient_indexes_constraints csys =
 let solve_linear_system
     ~verbose
     ~profile
+    solver
     max_int
     csys =
   let lsys = Mllp.make_system () in
@@ -958,7 +959,7 @@ let solve_linear_system
   let lsol =
     try
       (
-        match Mllp.solve ~verbose:(verbose >= 2) ~profile lsys with
+        match Mllp.solve ~solver ~verbose:(verbose >= 2) ~profile lsys with
         | Some sol -> sol
         | None -> Resolution_errors.precedence_inconsistency ()
       )
@@ -1046,6 +1047,17 @@ let solve sys =
   in
   let profile = find_bool ~default:false sys.options "profile" in
 
+  let solver =
+    let table =
+      [
+        "glpk", Mllp.Glpk;
+        "gurobi", Mllp.Gurobi;
+      ]
+    in
+    try List.assoc (find_string ~default:"glpk" sys.options "ilp") table
+    with Not_found -> Resolution_errors.bad_option "solver"
+  in
+
   let run_profiled pref f x =
     if profile then Utils.time_call ~name:pref f x else f x
   in
@@ -1067,7 +1079,7 @@ let solve sys =
   let csys =
     run_profiled
       "solve_balance_equations"
-      (solve_balance_equations verbose max_int)
+      (solve_balance_equations solver verbose max_int)
       csys
   in
   let csys =
@@ -1133,7 +1145,7 @@ let solve sys =
   let sol =
     run_profiled
       "solve_linear_system"
-      (solve_linear_system ~verbose ~profile max_int)
+      (solve_linear_system ~verbose ~profile solver max_int)
       csys
   in
   build_solution sys pre_sol sol

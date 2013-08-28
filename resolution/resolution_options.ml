@@ -18,11 +18,13 @@
 type value =
   | Bool of bool
   | Int of Int.t
+  | String of string
 
 let print_value fmt value =
   match value with
   | Bool b -> Format.fprintf fmt "%b" b
   | Int i -> Int.print fmt i
+  | String s -> Format.fprintf fmt "%s" s
 
 type t = string * value
 
@@ -60,6 +62,7 @@ let find_bool ~default env s =
     match find env s with
     | Bool b -> b
     | Int _ -> option_error s "bool" "int"
+    | String _ -> option_error s "bool" "string"
   with Not_found ->
     default
 
@@ -68,5 +71,15 @@ let find_int ~default env s =
     match find env s with
     | Bool _ -> option_error s "int" "bool"
     | Int i -> i
+    | String _ -> option_error s "int" "string"
+  with Not_found ->
+    default
+
+let find_string ~default env s =
+  try
+    match find env s with
+    | Bool _ -> option_error s "string" "bool"
+    | Int _ -> option_error s "string" "int"
+    | String s -> s
   with Not_found ->
     default

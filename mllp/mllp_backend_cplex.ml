@@ -41,11 +41,11 @@ let write_constraint_cplex_format oc (t, c) =
 
 let write_bound_cplex_format oc v (min, max) =
   output_string oc "  ";
-  write_const_cplex_format oc min;
+  output_string oc (Int.to_string min);
   output_string oc " <= ";
   output_string oc v.name;
   output_string oc " <= ";
-  write_const_cplex_format oc max;
+  output_string oc (Int.to_string max);
   output_string oc "\n"
 
 let write_constraints_cplex_format oc sys =
@@ -62,7 +62,7 @@ let write_problem_file oc sys =
   (* Header *)
   output_string oc "Minimize\n";
   write_term_cplex_format oc sys.ll_minimize;
-  output_string oc "\n";
+  output_string oc "\n\n";
   (* Constraints *)
   output_string oc "Subject To\n";
   write_constraints_cplex_format oc sys;

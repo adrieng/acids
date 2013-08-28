@@ -34,6 +34,14 @@ let complete = ref false
 
 let profile = ref false
 
+let ilp_solvers =
+  [
+    "glpk";
+    "gurobi";
+  ]
+
+let ilp_solver = ref (List.hd ilp_solvers)
+
 let parse_file filen =
   Solver_utils.set_current_file_name filen;
   try
@@ -74,6 +82,7 @@ let do_sys sys =
         "unrefined", Bool !unrefined;
         "complete", Bool !complete;
         "profile", Bool !profile;
+        "ilp", String !ilp_solver;
       ]
     in
 
@@ -153,6 +162,10 @@ let _ =
         "-profile",
         Unit (fun () -> profile := true),
         " enable profiling messages";
+
+        "-ilp",
+        Symbol (ilp_solvers, (fun s -> ilp_solver := s)),
+        " choose ilp solver (default: " ^ !ilp_solver ^ ")";
       ]
   in
   let files = ref [] in

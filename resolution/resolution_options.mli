@@ -18,6 +18,7 @@
 type value =
   | Bool of bool
   | Int of Int.t
+  | String of string
 
 type t
 
@@ -49,3 +50,6 @@ val find_bool : default : bool -> env -> string -> bool
 
 (* convenience function, may raise Option_error *)
 val find_int : default : Int.t -> env -> string -> Int.t
+
+(* convenience function, may raise Option_error *)
+val find_string : default : string -> env -> string -> string

@@ -426,7 +426,12 @@ let add_options_to_word_constraints ?(check = false) pragma_env sys =
 
   let options =
     List.fold_left
-      (fun options (key, value, _, _) -> add options (make key !value))
+      (fun options (key, value, _, _) ->
+        let already_present =
+          try ignore (find options key); true with Not_found -> false
+        in
+        if already_present then options else add options (make key !value)
+      )
       options
       Compiler_options.resolution_options
   in

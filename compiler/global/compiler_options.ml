@@ -60,6 +60,34 @@ let search_path =
       Filename.concat (Filename.dirname Sys.argv.(0)) Compiler.lib;
     ]
 
+let resolution_options =
+  [
+    "ilp",
+    ref (Resolution_options.String "glpk"),
+    ["glpk"; "gurobi"],
+    " Choice of ILP solver (default: glpk)";
+
+    "max_burst",
+    ref (Resolution_options.Int Int.one),
+    [],
+    " Maximum inferred burst (default: 1)";
+  ]
+
+let make_arg_option_of_resolution_option (key, value_ref, choices, msg) =
+  let open Resolution_options in
+  let arg =
+    match !value_ref with
+    | String _ ->
+      if choices <> []
+      then Arg.Symbol (choices, (fun s -> value_ref := String s))
+      else Arg.String (fun s -> value_ref := String s)
+    | Int _ ->
+      Arg.Int (fun i -> value_ref := Int (Int.of_int i))
+    | Bool _ ->
+      Arg.Bool (fun b -> value_ref := Bool b)
+  in
+  "-" ^ key, arg, msg
+
 let set r x () = r := x
 
 let add lr x = set lr (x :: !lr) ()
@@ -99,6 +127,7 @@ let options =
   Arg.align
     (
       List.map make ctx_options
+      @ List.map make_arg_option_of_resolution_option resolution_options
       @
         [
           "-nopervasives",

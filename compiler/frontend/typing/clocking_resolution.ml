@@ -424,6 +424,13 @@ let add_options_to_word_constraints ?(check = false) pragma_env sys =
     Utils.Env.fold add_pragma_if_possible pragma_env initial_options
   in
 
+  let options =
+    List.fold_left
+      (fun options (key, value, _, _) -> add options (make key !value))
+      options
+      Compiler_options.resolution_options
+  in
+
   { sys with Resolution.options = options; }
 
 (** {2 Top-level function} *)

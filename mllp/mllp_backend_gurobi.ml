@@ -44,7 +44,7 @@ let read_solution_file ic sys =
   let could_read_header =
     try
       read_line ();
-      matches "^# Objective value = \\([0-9]+\\)$"
+      matches "^# Objective value = \\([0-9]+\\)"
     with End_of_file ->
       false
   in
@@ -57,11 +57,11 @@ let read_solution_file ic sys =
       else
         (
           read_line ();
-          if not (matches "^\\([a-zA-Z0-9'_]+\\) +\\([0-9]\\)+$")
+          if not (matches "^\\([a-zA-Z0-9'_]+\\) +\\([0-9]\\)+")
           then Error ("bad format (unexpected " ^ !line ^ ")")
           else
             let name = get 1 in
-            let value = Int.of_string (get 2) in
+            let value = Int.of_int (Utils.int_of_string_exp !line) in
             let v = Hashtbl.find sys.ll_vars name in
             read_values (Utils.Int_map.add v.id value sol) (count - 1)
         )

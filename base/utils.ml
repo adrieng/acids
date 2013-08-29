@@ -496,3 +496,30 @@ struct
     in
     memoized_f
 end
+
+let int_of_string_exp =
+  let int_exp_re =
+    let int_re = "\\([0-9]+\\)" in
+    Printf.sprintf "%s\\(\\.%s[eE][+-]?%s\\)?"
+      int_re
+      int_re
+      int_re
+  in
+  let re = Str.regexp int_exp_re in
+  fun s ->
+    ignore (Str.search_forward re s 0);
+    let v_s = Str.matched_group 1 s in
+    let s =
+      try
+        let e = int_of_string (Str.matched_group 4 s) in
+        let f_s = Str.matched_group 3 s in
+        let e_m = min e (String.length f_s) in
+        (* check that dropped part only holds 0s *)
+        String.iter
+          (fun c -> assert (c = '0'))
+          (String.sub f_s e_m (String.length f_s - e_m));
+        v_s ^ String.sub f_s 0 e_m ^ String.make (e - e_m) '0'
+      with Not_found ->
+        v_s
+    in
+    int_of_string s

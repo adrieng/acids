@@ -83,16 +83,22 @@ let resolution_options =
 
 let make_arg_option_of_resolution_option (key, value_ref, choices, msg) =
   let open Resolution_options in
-  let arg =
+  let key, arg =
     match !value_ref with
     | String _ ->
+      key,
       if choices <> []
       then Arg.Symbol (choices, (fun s -> value_ref := String s))
       else Arg.String (fun s -> value_ref := String s)
     | Int _ ->
+      key,
       Arg.Int (fun i -> value_ref := Int (Int.of_int i))
-    | Bool _ ->
-      Arg.Bool (fun b -> value_ref := Bool b)
+    | Bool false ->
+      key,
+      Arg.Unit (fun () -> value_ref := Bool true)
+    | Bool true ->
+      "no" ^ key,
+      Arg.Unit (fun () -> value_ref := Bool false)
   in
   "-" ^ key, arg, msg
 

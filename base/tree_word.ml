@@ -25,6 +25,10 @@ let rec print_power_tree print_a print_b fmt tr =
   | Leaf a -> print_a fmt a
   | Concat tr_l ->
     Utils.print_list_r (print_power_tree print_a print_b) "" fmt tr_l
+  | Power (Concat _ as tr, pw) ->
+    Format.fprintf fmt "[%a]^%a"
+      (print_power_tree print_a print_b) tr
+      print_b pw
   | Power (tr, pw) ->
     Format.fprintf fmt "%a^%a"
       (print_power_tree print_a print_b) tr
@@ -35,13 +39,16 @@ let rec print_power_tree_int print_a fmt tr =
   | Leaf a -> print_a fmt a
   | Concat tr_l ->
     Utils.print_list_r (print_power_tree_int print_a) "" fmt tr_l
+  | Power (tr, pw) when pw = Int.one ->
+    print_power_tree_int print_a fmt tr
+  | Power (Concat _ as tr, pw) ->
+    Format.fprintf fmt "[%a]^%a"
+      (print_power_tree_int print_a) tr
+      Int.print pw
   | Power (tr, pw) ->
-    if pw = Int.one
-    then print_power_tree_int print_a fmt tr
-    else
-      Format.fprintf fmt "%a^%a"
-        (print_power_tree_int print_a) tr
-        Int.print pw
+    Format.fprintf fmt "%a^%a"
+      (print_power_tree_int print_a) tr
+      Int.print pw
 
 type ('a, 'b) t = { u : ('a, 'b) power_tree; v : ('a, 'b) power_tree; }
 

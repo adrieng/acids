@@ -217,7 +217,7 @@ struct
     | ClockExp of VarTySt.t
     | Node of Clock_types.clock_sig
     | App of (int * VarTy.t) list * (int * VarTySt.t) list
-    | Buffer of VarTySt.t * VarTySt.t (* in st * out st *)
+    | Buffer of Loc.t * VarTySt.t * VarTySt.t (* in st * out st *)
 
   let print_new_annot fmt na =
     match na with
@@ -235,7 +235,7 @@ struct
       Format.fprintf fmt "@[%a@ | %a@]"
         (Utils.print_list_r print_ct_binding ",") ct_inst
         (Utils.print_list_r print_st_binding ",") st_inst
-    | Buffer (in_st, out_st) ->
+    | Buffer (_, in_st, out_st) ->
       Format.fprintf fmt "@[%a <: %a@]"
         VarTySt.print in_st
         VarTySt.print out_st
@@ -256,8 +256,8 @@ let annotate_node info csig =
 let annotate_app info inst_ct inst_st =
   ANN_INFO.annotate info (A.App (inst_ct, inst_st))
 
-let annotate_buffer info in_st out_st =
-  ANN_INFO.annotate info (A.Buffer (in_st, out_st))
+let annotate_buffer info loc in_st out_st =
+  ANN_INFO.annotate info (A.Buffer (loc, in_st, out_st))
 
 let annotate_dummy info =
   let dummy_sch = PreTy.Pct_var { VarTy.v_id = -1; VarTy.v_link = None; } in
@@ -343,13 +343,24 @@ struct
   let update_buffer_info { new_annot = na; old_annot = (); } =
     match na with
     | Node _ | App _ | Exp _ | ClockExp _ -> invalid_arg "update_buffer_info"
-    | Buffer (in_st, out_st) ->
+    | Buffer (loc, in_st, out_st) ->
       let in_st = st_of_pre_st in_st in
       let out_st = st_of_pre_st out_st in
-      object
-        method bui_is_delay = Clock_types.non_strict_adaptable in_st out_st
-        method bui_size = Clock_types.buffer_size in_st out_st
-      end
+      let info =
+        object
+          method bui_is_delay = Clock_types.non_strict_adaptable in_st out_st
+          method bui_size = Clock_types.buffer_size in_st out_st
+        end
+      in
+      if !Compiler_options.print_buffer_info
+      then
+        Format.printf "(* @[%abuffer of size %a, delay: %b@] *)@."
+          Loc.print loc
+          Int.print info#bui_size
+          info#bui_is_delay
+      ;
+      info
+
 
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
@@ -566,7 +577,7 @@ and clock_exp env e acc =
   | E_buffer (e, bu) ->
     let st, st', acc = adaptable_sts loc acc in
     let e, acc = expect_exp env (ty_of_st st) e acc in
-    let bu = clock_buffer env st st' bu in
+    let bu = clock_buffer env loc st st' bu in
     M.E_buffer (e, bu), ty_of_st st', acc
 
   in
@@ -796,9 +807,9 @@ and clock_dom env loc dom e acc =
     ty),
   (ctx, cstrs)
 
-and clock_buffer _ in_st out_st bu =
+and clock_buffer _ loc in_st out_st bu =
   {
-    M.bu_info = annotate_buffer bu.bu_info in_st out_st;
+    M.bu_info = annotate_buffer bu.bu_info loc in_st out_st;
   }
 
 let clock_node_def env nd =

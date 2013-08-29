@@ -539,27 +539,6 @@ type iof_cached =
     p : pword;
   }
 
-(*   { *)
-(*     u_iof : int Hashtbl.t; *)
-(*     v_iof : int array; *)
-(*     u_nbones : Int.t; *)
-(*     v_nbones : Int.t; *)
-(*   } *)
-
-(* let make_iof_array w = *)
-(*   let a = Array.make w.nbones 0 in *)
-(*   let rec fill i j desc = *)
-(*     match desc with *)
-(*     | [] -> *)
-(*       assert Int.(of_int i = w.size); *)
-(*       () *)
-(*     | (x, n) :: desc -> *)
-
-(*     if i = w.size *)
-(*     then () *)
-(*     else *)
-(*       match *)
-
 let cache_iof p =
   {
     u_cache = Hashtbl.create 117;
@@ -593,129 +572,37 @@ let iof_cached cache j =
 
 (** {3 Ones} *)
 
-(*
-  Table layout:
-
-  0^3 1 2^2 5
-
-  ->
-
-    indexes: [0, 4, 5, 7]
-     values: [0, 1, 4, 9]
-  word_size: 7
-*)
-type cache_table =
-  {
-    cache_indexes : int array;
-    cache_values : Int.t array;
-    word_size : Int.t;
-  }
-
-let print_cache_table fmt cache =
-  Format.fprintf fmt "@[<v 2>{@ ";
-  Format.fprintf fmt "cache_indexes: @[%a@],@ "
-    (Utils.print_array Utils.print_int) cache.cache_indexes;
-  Format.fprintf fmt "cache_values: @[%a@],@ "
-    (Utils.print_array Int.print) cache.cache_values;
-  Format.fprintf fmt "word_size: %a@ }@]"
-    Int.print cache.word_size
-
-let find_index cache i =
-  (* Format.eprintf "find_index %a %d@." *)
-  (*   print_cache_table cache *)
-  (*   i *)
-  (* ; *)
-  assert (i >= 1);
-  assert Int.(of_int i <= cache.word_size);
-  assert (Array.length cache.cache_indexes = Array.length cache.cache_values);
-  let rec walk min max =
-    (* Format.eprintf "walk %d %d@." min max; *)
-    assert (min <= max);
-    assert (max <= Array.length cache.cache_indexes);
-    if min = max then min
-    else
-      let middle = min + (max - min) / 2 in
-      let middle_value = cache.cache_indexes.(middle) in
-      let next_middle_value = cache.cache_indexes.(middle + 1) in
-      assert (middle_value >= 1);
-      assert Int.(of_int middle_value <= cache.word_size);
-      if middle_value <= i && i < next_middle_value then middle
-      else
-        if middle_value <= i
-        then walk (middle + 1) max
-        else walk min (middle - 1)
-  in
-  walk 0 (Array.length cache.cache_indexes - 1)
-
-let find_value cache i = cache.cache_values.(find_index cache (Int.to_int i))
-
-let caches_word f acc w =
-  let res =
-    {
-      cache_indexes = Array.make (List.length w.desc) 0;
-      cache_values = Array.make (List.length w.desc) Int.zero;
-      word_size = w.size;
-    }
-  in
-
-  let rec fold i pos_word acc desc =
-    match desc with
-    | [] -> ()
-    | (x, n) :: desc ->
-      res.cache_indexes.(i) <- Int.to_int pos_word;
-      let acc = f x n acc in
-      res.cache_values.(i) <- acc;
-      fold (i + 1) Int.(pos_word + n) acc desc
-  in
-  fold 0 Int.one acc w.desc;
-  res
-
 type ones_cached =
   {
-    cu : cache_table;
-    cv : cache_table;
-    nbones_u : Int.t;
-    nbones_v : Int.t;
+    u_cache : (Int.t, Int.t) Hashtbl.t;
+    v_cache : (Int.t, Int.t) Hashtbl.t;
+    p : pword;
   }
 
 let cache_ones p =
-  let caches_word_ones w =
-    caches_word (fun x n ones -> Int.(x * n + ones)) Int.zero w
-  in
   {
-    cu = caches_word_ones p.u;
-    cv = caches_word_ones p.v;
-    nbones_u = p.u.nbones;
-    nbones_v = p.v.nbones;
+    u_cache = Hashtbl.create 117;
+    v_cache = Hashtbl.create 117;
+    p = p;
   }
 
-let find_value_ones cache nbones (i : Int.t) =
-  let idx = find_index cache (Int.to_int i) in
-  let n =
-    (if idx = Array.length cache.cache_indexes - 1
-     then Int.to_int cache.word_size
-     else cache.cache_indexes.(idx + 1))
-    - cache.cache_indexes.(idx) + 1
-  in
-  let open Int in
-  let x =
-    ((if Pervasives.(idx = Array.length cache.cache_indexes - 1)
-     then nbones else cache.cache_values.(Pervasives.succ idx))
-    - cache.cache_values.(idx)) / of_int n
-  in
-  cache.cache_values.(idx)
-  + x * (of_int cache.cache_indexes.(idx) - i)
+let ones_word_cached cache w i =
+  try Hashtbl.find cache i
+  with Not_found ->
+    let j = ones_word Int.zero w i in
+    Hashtbl.add cache i j;
+    j
 
-let ones_cached pc i =
+let ones_cached cache i =
   let open Int in
   assert (i >= one);
-  if i <= pc.cu.word_size
-  then find_value_ones pc.cu pc.nbones_u i
+  if i <= cache.p.u.size
+  then ones_word_cached cache.u_cache cache.p.u i
   else
-    let i = i - pc.cu.word_size in
+    let i = i - cache.p.u.size in
     let nbones_start_period =
-      let nth_iter = div_b1 i pc.cv.word_size in
-      pc.nbones_u + pc.nbones_v * nth_iter
+      let nth_iter = div_b1 i cache.p.v.size in
+      cache.p.u.nbones + cache.p.v.nbones * nth_iter
     in
     nbones_start_period
-    + find_value_ones pc.cv pc.nbones_v (mod_b1 i pc.cv.word_size)
+    + ones_word_cached cache.v_cache cache.p.v (mod_b1 i cache.p.v.size)

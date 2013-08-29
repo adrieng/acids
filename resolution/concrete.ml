@@ -653,6 +653,8 @@ let build_refined_precedence_constraints csys =
       else
         (* let i_x = Pword.iof p_x j in *)
         (* let i_y = Pword.iof p_y j in *)
+        (* let o_i_x = Pword.ones p_x i_x in *)
+        (* let o_i_y = Pword.ones p_y i_y in *)
         let i_x = Pword.iof_cached p_x_c_iof j in
         let i_y = Pword.iof_cached p_y_c_iof j in
         let o_i_x = Pword.ones_cached p_x_c_ones i_x in

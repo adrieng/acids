@@ -91,6 +91,12 @@ val buffer_size : ?consider_bypass : bool -> pword -> pword -> Int.t
 
 (** {2 Precomputations} *)
 
+type iof_cached
+
+val cache_iof : pword -> iof_cached
+
+val iof_cached : iof_cached -> Int.t -> Int.t
+
 type ones_cached
 
 val cache_ones : pword -> ones_cached

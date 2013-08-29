@@ -531,6 +531,80 @@ let buffer_size ?(consider_bypass = false) p1 p2 =
 
 (** {2 Precomputations} *)
 
+(** {3 Iof} *)
+
+type iof_cached =
+  {
+    u_cache : (Int.t, Int.t) Hashtbl.t;
+    v_cache : (Int.t, Int.t) Hashtbl.t;
+    p : pword;
+  }
+
+(*   { *)
+(*     u_iof : int Hashtbl.t; *)
+(*     v_iof : int array; *)
+(*     u_nbones : Int.t; *)
+(*     v_nbones : Int.t; *)
+(*   } *)
+
+(* let make_iof_array w = *)
+(*   let a = Array.make w.nbones 0 in *)
+(*   let rec fill i j desc = *)
+(*     match desc with *)
+(*     | [] -> *)
+(*       assert Int.(of_int i = w.size); *)
+(*       () *)
+(*     | (x, n) :: desc -> *)
+
+(*     if i = w.size *)
+(*     then () *)
+(*     else *)
+(*       match *)
+
+let cache_iof p =
+  {
+    u_cache = Hashtbl.create 117;
+    v_cache = Hashtbl.create 117;
+    p = p;
+  }
+
+let iof_word_cached cache w j =
+  try Hashtbl.find cache j
+  with Not_found ->
+    let i = iof_word w j in
+    Hashtbl.add cache j i;
+    i
+
+let iof_cached cache j =
+  let open Int in
+  assert (j >= zero);
+  assert (j <= cache.p.u.nbones || cache.p.v.nbones >= one);
+  let r =
+    if j <= cache.p.u.nbones
+    then iof_word_cached cache.u_cache cache.p.u j
+    else
+      let j_v = j - cache.p.u.nbones in
+      let base_pos =
+        cache.p.u.size + cache.p.v.size * Int.div_b1 j_v cache.p.v.nbones
+      in
+      let j_v' = mod_b1 j_v cache.p.v.nbones in
+      base_pos + iof_word_cached cache.v_cache cache.p.v j_v'
+  in
+  r
+
+(** {3 Ones} *)
+
+(*
+  Table layout:
+
+  0^3 1 2^2 5
+
+  ->
+
+    indexes: [0, 4, 5, 7]
+     values: [0, 1, 4, 9]
+  word_size: 7
+*)
 type cache_table =
   {
     cache_indexes : int array;

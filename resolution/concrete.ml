@@ -634,16 +634,20 @@ let build_refined_precedence_constraints csys =
       seen, if seen then seen_set else ConstrSet.add cstr seen_set
     in
 
-    let p_x_c = Pword.cache_ones p_x in
-    let p_y_c = Pword.cache_ones p_y in
+    let p_x_c_iof = Pword.cache_iof p_x in
+    let p_y_c_iof = Pword.cache_iof p_y in
+    let p_x_c_ones = Pword.cache_ones p_x in
+    let p_y_c_ones = Pword.cache_ones p_y in
 
     let rec build lsys seen_set prev_o_i_x j =
       if j > h then lsys, seen_set
       else
-        let i_x = Pword.iof p_x j in
-        let i_y = Pword.iof p_y j in
-        let o_i_x = Pword.ones_cached p_x_c i_x in
-        let o_i_y = Pword.ones_cached p_y_c i_y in
+        (* let i_x = Pword.iof p_x j in *)
+        (* let i_y = Pword.iof p_y j in *)
+        let i_x = Pword.iof_cached p_x_c_iof j in
+        let i_y = Pword.iof_cached p_y_c_iof j in
+        let o_i_x = Pword.ones_cached p_x_c_ones i_x in
+        let o_i_y = Pword.ones_cached p_y_c_ones i_y in
         let lsys, seen_set =
           if o_i_x >= o_i_y && prev_o_i_x < o_i_x
           then

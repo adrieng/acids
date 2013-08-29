@@ -528,7 +528,6 @@ let buffer_size ?(consider_bypass = false) p1 p2 =
 
   walk p1.u p2.u zero zero zero zero
 
-
 (** {2 Precomputations} *)
 
 (** {3 Iof} *)

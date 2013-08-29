@@ -82,6 +82,7 @@ type concrete_system =
     increasing_indexes : lconstr list;
     max_burst_indexes : lconstr list;
     sufficient_indexes : lconstr list;
+    objective : lexp;
   }
 
 let print_var_option fmt co =
@@ -219,6 +220,13 @@ module ConstrSet =
     (struct
         type t = lconstr
         let compare = lconstr_compare
+     end)
+
+module LvarSet =
+  Set.Make
+    (struct
+        type t = lvar
+        let compare = lvar_compare
      end)
 
 (* <<< *)
@@ -369,6 +377,7 @@ let make_concrete_system
     increasing_indexes = [];
     max_burst_indexes = [];
     sufficient_indexes = [];
+    objective = [];
   },
   pre_sol
 
@@ -881,6 +890,46 @@ let build_sufficient_indexes_constraints csys =
 
   { csys with sufficient_indexes = sufficient_indexes; }
 
+let build_objective_function csys =
+  let gather_term (iof_vars, size_vars) (_, t) =
+    match t with
+    | Iof _ -> LvarSet.add t iof_vars, size_vars
+    | Size _ -> iof_vars, LvarSet.add t size_vars
+    | Const _ -> iof_vars, size_vars
+  in
+
+  let gather_constraint (iof_vars, size_vars) cstr =
+    let t =
+      match cstr with
+      | Eq (t, _)
+      | Le (t, _)
+      | Ge (t, _) ->
+        t
+    in
+    List.fold_left gather_term (iof_vars, size_vars) t
+  in
+
+  let iof_vars, size_vars =
+    fold_left_over_linear_constraints
+      gather_constraint
+      (LvarSet.empty, LvarSet.empty)
+      csys
+  in
+
+  (* For now, minimize size *)
+  let objective =
+    LvarSet.fold (fun v t -> (Int.one, v) :: t) size_vars csys.objective
+  in
+
+  let objective =
+    let add_i_nbones_prefix c (nbones_u, _) objective =
+      Int.(one, Iof (c, succ nbones_u)) :: objective
+    in
+    Utils.Env.fold add_i_nbones_prefix csys.nbones_per_unknown objective
+  in
+
+  { csys with objective = objective; }
+
 let solve_linear_system
     ~verbose
     ~profile
@@ -949,17 +998,19 @@ let solve_linear_system
       vars, add_constraint lsys (t >= const cst)
   in
 
-  let (size_vars, indexes_vars), lsys =
+  let acc, lsys =
     fold_left_over_linear_constraints
       translate_linear_constr
       ((Utils.Env.empty, Utils.Env.empty), lsys)
       csys
   in
 
-  let lsys = Mllp.bound_all lsys (Int.one, max_int) in
-  let lsys =
-    Mllp.(set_objective lsys (minimize_all_variables lsys))
+  let (size_vars, indexes_vars), obj =
+    translate_linear_terms acc csys.objective
   in
+
+  let lsys = Mllp.(set_objective lsys (Minimize obj)) in
+  let lsys = Mllp.bound_all lsys (Int.one, max_int) in
 
   Format.print_flush ();
 
@@ -1143,6 +1194,12 @@ let solve sys =
     run_profiled
       "build_sufficient_indexes_constraints"
       build_sufficient_indexes_constraints
+      csys
+  in
+  let csys =
+    run_profiled
+      "build_objective_function"
+      build_objective_function
       csys
   in
   if verbose >= 4

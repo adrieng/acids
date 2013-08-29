@@ -38,8 +38,8 @@ let read_column_names_from_solution_file ic =
     let re = Str.regexp regexp in
     let continue = ref true in
     while !continue do
-      line := input_line ic;
       try
+        line := input_line ic;
         ignore (Str.search_forward re !line 0);
         continue := false
       with
@@ -62,7 +62,7 @@ let read_column_names_from_solution_file ic =
   skip_until "---";
   for i = 1 to column_count do
       (* i     column_name *)
-    skip_until (string_of_int i ^ " +\\([^ ]+\\) ");
+    skip_until ("^ +" ^ string_of_int i ^ " +\\([^ ]+\\)\\( \\|$\\)");
     names := get 1 :: !names
   done;
   List.rev !names

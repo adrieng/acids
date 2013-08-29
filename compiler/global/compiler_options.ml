@@ -71,6 +71,11 @@ let resolution_options =
     ref (Resolution_options.Int Int.one),
     [],
     " Maximum inferred burst (default: 1)";
+
+    "profile",
+    ref (Resolution_options.Bool false),
+    [],
+    " Gather timing information";
   ]
 
 let make_arg_option_of_resolution_option (key, value_ref, choices, msg) =

@@ -619,13 +619,14 @@ let cache_ones p =
 let find_value_ones cache nbones (i : Int.t) =
   let idx = find_index cache (Int.to_int i) in
   let n =
-    (if idx = Array.length cache.cache_indexes
-     then Int.to_int cache.word_size else cache.cache_indexes.(idx + 1))
+    (if idx = Array.length cache.cache_indexes - 1
+     then Int.to_int cache.word_size
+     else cache.cache_indexes.(idx + 1))
     - cache.cache_indexes.(idx) + 1
   in
   let open Int in
   let x =
-    ((if Pervasives.(=) idx (Array.length cache.cache_indexes)
+    ((if Pervasives.(idx = Array.length cache.cache_indexes - 1)
      then nbones else cache.cache_values.(Pervasives.succ idx))
     - cache.cache_values.(idx)) / of_int n
   in

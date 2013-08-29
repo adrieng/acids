@@ -43,7 +43,7 @@ let digit = ['0'-'9']
 let ident = (alpha | '_' | ''' | digit)+
 
 rule token = parse
-| "(*" { comment lexbuf }
+| "(*" { comment 1 lexbuf }
 
 | "(" { LPAREN }
 | ")" { RPAREN }
@@ -70,9 +70,9 @@ rule token = parse
 
 | eof { EOF }
 
-and comment = parse
-| "*)" { token lexbuf }
-| "(*" { comment lexbuf }
-| '\n' { newline lexbuf; comment lexbuf }
-| _ { comment lexbuf }
+and comment n = parse
+| "*)" { if n = 1 then token lexbuf else comment (n - 1) lexbuf }
+| "(*" { comment (n + 1) lexbuf }
+| '\n' { newline lexbuf; comment n lexbuf }
+| _ { comment n lexbuf }
 | eof { lexical_error lexbuf "unterminated comment" }

@@ -983,7 +983,7 @@ let solve_linear_system
 
   let translate_linear_terms acc t_l =
     let acc, t_l = Utils.mapfold_left translate_linear_term acc t_l in
-    acc, Utils.fold_left_1 Mllp.(+) t_l
+    acc, List.fold_left Mllp.(+) (Mllp.const Int.zero) t_l
   in
 
   let translate_linear_constr (vars, lsys) cstr =

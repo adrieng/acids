@@ -37,6 +37,8 @@ let rec map_process f proc =
     Valof (f x, ce)
   | Buffer (x, bu, y) ->
     Buffer (f x, bu, f y)
+  | Delay (x, y) ->
+    Delay (f x, f y)
   | Block block ->
     Block (map_block f block)
 
@@ -68,7 +70,7 @@ let rec fold_process f proc acc =
     List.fold_right f x_l acc
   | Valof (x, _) ->
     f x acc
-  | Buffer (x, _, y) ->
+  | Buffer (x, _, y) | Delay (x, y) ->
     f x (f y acc)
   | Block block ->
     fold_block f block acc

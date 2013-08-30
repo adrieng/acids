@@ -911,7 +911,7 @@ let build_objective_function csys =
     List.fold_left gather_term (iof_vars, size_vars) t
   in
 
-  let iof_vars, size_vars =
+  let _, size_vars =
     fold_left_over_linear_constraints
       gather_constraint
       (LvarSet.empty, LvarSet.empty)

@@ -89,6 +89,7 @@ type 'a process =
   | Valof of 'a * 'a clock_exp (* x = valof ce *)
 
   | Buffer of 'a * buffer_info * 'a (** x = buffer y *)
+  | Delay of 'a * 'a (** x = delay y *)
 
   | Block of 'a block
 

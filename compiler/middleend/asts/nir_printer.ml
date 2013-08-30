@@ -132,6 +132,11 @@ let rec print_process print_var fmt p =
       print_buffer b
       print_var y
 
+  | Delay (x, y) ->
+    Format.fprintf fmt "%a = (@[delay %a@])"
+      print_var x
+      print_var y
+
   | Block block ->
     print_block print_var fmt block
 

@@ -55,7 +55,7 @@ Code generation features are not yet implemented.
 ACKNOWLEDGMENTS
 ===============
 
-This project uses the OCaml Union-Find implemenetation from Pottier, Rémy and
+This project uses the OCaml Union-Find implementation from Pottier, Rémy and
 Régis-Gianas. See base/UnionFind.ml{,i}.
 
 Its test infrastructure re-uses code from Plateau and Mandel's Lucy-n

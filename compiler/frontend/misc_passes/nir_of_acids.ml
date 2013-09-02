@@ -246,10 +246,7 @@ let rec translate_eq_exp env x_l e =
               | Module "Pervasives" -> Nir.Builtin app.a_op.shortn
               | _ -> Nir.Node app.a_op
             );
-          Nir.a_clock_inst =
-            List.map
-              (fun (i, ct) -> i, translate_clock_type env ct)
-              app.a_info#ai_clock_inst;
+          Nir.a_clock_inst = app.a_info#ai_clock_inst;
           Nir.a_stream_inst = app.a_info#ai_stream_inst;
         }
       in

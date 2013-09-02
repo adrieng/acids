@@ -64,7 +64,7 @@ type op =
 type call =
   {
     a_op : op;
-    a_clock_inst : (int * clock) list;
+    a_clock_inst : (int * Clock_types.clock_type) list;
     a_stream_inst : (int * Clock_types.stream_type) list;
   }
 

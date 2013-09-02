@@ -17,6 +17,10 @@
 
 open Nir
 
+let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
+
+let print_clock_id fmt (Clock_id id) = Format.fprintf fmt "'a%d" id
+
 let print_ty fmt ty =
   match ty with
   | Ty_var i -> Data_types.(print_ty fmt (Ty_var i))
@@ -29,8 +33,8 @@ let print_clock fmt ck =
     Clock_types.(print_clock_type fmt (Ct_var i))
   | Ck_stream st ->
     Clock_types.print_stream_type fmt st
-  | Ck_block_base ->
-    Format.fprintf fmt "."
+  | Ck_block_base bid ->
+    Format.fprintf fmt "B %a" print_block_id bid
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
@@ -40,10 +44,6 @@ let print_with_info print fmt ty ck x =
   if !Compiler_options.print_clock_info
   then Format.fprintf fmt "@ @[:clock %a@]@ " print_clock ck;
   Format.fprintf fmt "@])"
-
-let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
-
-let print_clock_id fmt (Clock_id id) = Format.fprintf fmt "'a%d" id
 
 let rec print_clock_exp print_var fmt ce =
   print_with_info

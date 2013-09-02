@@ -251,7 +251,7 @@ let rec translate_eq_exp env x_l e =
         }
       in
       Nir.Call (x_l, app, var_list_of_tuple e),
-      Nir.Ck_block_base,
+      Nir.Ck_block_base (get_current_block env),
       env
 
     | E_where _ ->
@@ -343,7 +343,7 @@ let rec translate_eq_exp env x_l e =
         }
       in
       Nir.Buffer (Utils.get_single x_l, bu, y),
-      Nir.Ck_block_base,
+      Nir.Ck_block_base (get_current_block env),
       env
 
     (* For now we do nothing with the annotations. *)

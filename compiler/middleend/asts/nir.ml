@@ -31,7 +31,7 @@ type ty =
 type clock =
   | Ck_var of int
   | Ck_stream of Clock_types.stream_type
-  | Ck_block_base
+  | Ck_block_base of block_id
 
 (** {2 Clock expressions} *)
 

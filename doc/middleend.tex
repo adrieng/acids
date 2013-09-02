@@ -1,0 +1,46 @@
+\chapter{Code generation and optimization}
+
+\section{Overview}
+
+The middle-end of Acid Synchrone uses an intermediate language called \nir{}. It
+is a first-order data-flow language similar to Acid Synchrone, with the
+following differences:
+\begin{itemize}
+\item it is in three-address forms: an equation's subexpressions are only
+  variables;
+\item there are no tuples and function calls are n-ary;
+\item it has a notion of scheduling-constrained equation lists called \textit{blocks}.
+\end{itemize}
+
+\section{Translation process}
+
+The goal of this part of the compiler is to produce valid imperative code. It
+has to deal with the following questions:
+\begin{itemize}
+\item How to remove integer clocks?
+\item How to sequentialize mutually recursive equations?
+\end{itemize}
+
+The middle-end applies the following mandatory transformations, in this order:
+\begin{enumerate}
+\item put each equation in its own block;
+\item materialize clock variables as boolean variables;
+\item put buffers on variable uses in nested blocks;
+\item schedule blocks hiearchically.
+\end{enumerate}
+
+\section{Optimizations}
+
+WIP
+
+\begin{itemize}
+\item Copy elimination
+\item Constant folding
+\item Minimization
+\item Buffer sharing
+\item Block transformations
+  \begin{itemize}
+  \item Fusion
+  \item Fission
+  \end{itemize}
+\end{itemize}

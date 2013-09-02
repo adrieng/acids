@@ -1,0 +1,15 @@
+$$
+${
+(*
+        run_test:
+        [
+                Good: "asc -check"
+        ]
+*)
+$}
+
+let node f (x, y) = ((0 fby x), y)
+
+let node g () = (o1 + snd o2) where
+  rec m = 0 fby (m + 1)
+  and (o1, o2) = f (m, (true, 3))

@@ -27,8 +27,8 @@ let error_is_internal exn =
   | Scoping.Scoping_error _
   | Interface.Interface_error _
   | Data_typing.Typing_error _
-  | Static_typing.Typing_error _
-  | Static_simpl.Simplification_error _
+  | Const_typing.Typing_error _
+  | Const_simpl.Simplification_error _
   | Spec_annot.Annotation_error _
   | Clocking.Clocking_error _
   | Clocking_resolution.Resolution_error _
@@ -57,10 +57,10 @@ let print_error _ fmt exn =
     Interface.print_error fmt err
   | Data_typing.Typing_error err ->
     Data_typing.print_error fmt err
-  | Static_typing.Typing_error err ->
-    Static_typing.print_error fmt err
-  | Static_simpl.Simplification_error err ->
-    Static_simpl.print_error fmt err
+  | Const_typing.Typing_error err ->
+    Const_typing.print_error fmt err
+  | Const_simpl.Simplification_error err ->
+    Const_simpl.print_error fmt err
   | Spec_annot.Annotation_error err ->
     Spec_annot.print_error fmt err
   | Clocking.Clocking_error err ->
@@ -80,10 +80,10 @@ let flow =
   (* Parsing and scoping *)
   Parsing_pass.pass
   +>+ Scoping.pass
-  (* Static analyses for safety *)
+  (* Const analyses for safety *)
   +>+ Data_typing.pass
-  +>+ Static_typing.pass
-  +>+ Static_simpl.pass
+  +>+ Const_typing.pass
+  +>+ Const_simpl.pass
   +>+ Spec_annot.pass
   +>+ Clocking.pass
   +>+ Causality.pass

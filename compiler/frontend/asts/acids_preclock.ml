@@ -23,27 +23,27 @@ struct
   type clock_exp_info =
       <
         ci_data : Data_types.data_ty_scal;
-        ci_static : Static_types.ty_scal;
+        ci_const : Const_types.ty_scal;
       >
   let print_clock_exp_info fmt cei =
     Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann cei#ci_data
-      Static_types.print_ty_scal_ann cei#ci_static
+      Const_types.print_ty_scal_ann cei#ci_const
 
-  type static_exp_info =
+  type const_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
-        pwi_static : Static_types.ty_scal;
+        pwi_const : Const_types.ty_scal;
       >
-  let print_static_exp_info fmt (pwi : static_exp_info) =
+  let print_const_exp_info fmt (pwi : const_exp_info) =
     Format.fprintf fmt "%a%a"
       Data_types.print_ty_scal_ann pwi#pwi_data
-      Static_types.print_ty_scal_ann pwi#pwi_static
+      Const_types.print_ty_scal_ann pwi#pwi_const
 
-  type static_exp_desc =
+  type const_exp_desc =
   | Se_econstr of Ast_misc.econstr
   | Se_fword of Int.t list (* [0-9] int *)
-  let print_static_exp_desc fmt sed =
+  let print_const_exp_desc fmt sed =
     match sed with
     | Se_econstr ec -> Ast_misc.print_econstr fmt ec
     | Se_fword i_l ->
@@ -52,11 +52,11 @@ struct
   type exp_info =
       <
         ei_data : Data_types.data_ty;
-        ei_static : Static_types.ty;
+        ei_const : Const_types.ty;
       >
   let print_exp_info fmt ei =
     Data_types.print_ty_ann fmt ei#ei_data;
-    Static_types.print_ty_ann fmt ei#ei_static
+    Const_types.print_ty_ann fmt ei#ei_const
 
   type app_info = unit
   let print_app_info (_ : Format.formatter) _ = ()
@@ -67,11 +67,11 @@ struct
   type pat_info =
       <
         pi_data : Data_types.data_ty;
-        pi_static : Static_types.ty;
+        pi_const : Const_types.ty;
       >
   let print_pat_info fmt pi =
     Data_types.print_ty_ann fmt pi#pi_data;
-    Static_types.print_ty_ann fmt pi#pi_static
+    Const_types.print_ty_ann fmt pi#pi_const
 
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
@@ -80,12 +80,12 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
+        ni_const : Const_types.ty_sig;
       >
   let print_node_info fmt ni =
     Format.fprintf fmt "%a%a"
       Data_types.print_sig_ann ni#ni_data
-      Static_types.print_sig_ann ni#ni_static
+      Const_types.print_sig_ann ni#ni_const
 
   type domain_info = unit
   let print_domain_info (_ : Format.formatter) _ = ()

@@ -31,16 +31,16 @@ type env
 
 val make_env : Interface.env -> env
 
-val add_node_def : env -> Acids_static.node_def -> env
+val add_node_def : env -> Acids_const.node_def -> env
 
-val add_local_defs : env -> Acids_static.block -> env
+val add_local_defs : env -> Acids_const.block -> env
 
-val add_static : env -> Names.shortname -> desc -> env
+val add_const : env -> Names.shortname -> desc -> env
 
-val add_pword : env -> Names.shortname -> Acids_static.static_word -> env
+val add_pword : env -> Names.shortname -> Acids_const.const_word -> env
 
-val eval_exp : env -> Acids_static.exp -> desc
+val eval_exp : env -> Acids_const.exp -> desc
 
-val eval_static_exp : env -> Acids_static.static_exp -> desc
+val eval_const_exp : env -> Acids_const.const_exp -> desc
 
 val eval_var : env -> Ident.t -> desc

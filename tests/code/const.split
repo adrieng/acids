@@ -8,9 +8,9 @@ ${
 *)
 $}
 
-(* See {Static typing} in the manual *)
+(* See {Const typing} in the manual *)
 
-let static node f () = valof ('11')
+let const node f () = valof ('11')
 
 $$
 
@@ -22,13 +22,13 @@ let node f () = 0 when ({x} {y}) where rec (x, y) = (true, false)
 
 $$
 
-let static node f x = 0 when ({x})
+let const node f x = 0 when ({x})
 
 let node g () = f true
 
 $$
 
-let static node f x = 42 when ({x})
+let const node f x = 42 when ({x})
 
 let node g () = (f y, f x) where rec x = y and y = true
 
@@ -42,7 +42,7 @@ ${
 *)
 $}
 
-let static node f x = y where rec y = x
+let const node f x = y where rec y = x
 
 let node g () = 0 when ({b}) where rec b = f (true fby false)
 
@@ -51,12 +51,12 @@ ${
 (*
         run_test:
         [
-                Bad 1 "Static variable b.*itself": "asc -check"
+                Bad 1 "Const variable b.*itself": "asc -check"
         ]
 *)
 $}
 
-(* See {Static typing} in the manual *)
+(* See {Const typing} in the manual *)
 
 let node f () = 0 when ({b}) where rec b = b
 
@@ -65,7 +65,7 @@ ${
 (*
         run_test:
         [
-                Bad 1 "Could not unify D with S": "asc -check"
+                Bad 1 "Could not unify N with C": "asc -check"
         ]
 *)
 $}
@@ -78,7 +78,7 @@ ${
 (*
         run_test:
         [
-                Bad 1 "Could not unify D with S": "asc -check"
+                Bad 1 "Could not unify N with C": "asc -check"
         ]
 *)
 $}
@@ -97,7 +97,7 @@ ${
 *)
 $}
 
-let static node f () = true
+let const node f () = true
 
 let node g () = 0 when ({b}) where rec b = f ()
 
@@ -107,7 +107,7 @@ ${
         run_test:
         [
                 Bad 1
-                "Node f has static inputs but has not been declared static":
+                "Node f has const inputs but has not been declared const":
                  "asc -check"
         ]
 *)
@@ -125,24 +125,24 @@ ${
 *)
 $}
 
-let static node f b = 0 when ({b})
+let const node f b = 0 when ({b})
 
 $$
 
-let static node f (x, y) = a where
+let const node f (x, y) = a where
     rec <(a^2 b^{x})> = y
 
 let node g y = f (1, y)
 
 $$
 
-let static test = true
+let const test = true
 
 let node f x = x when ({test} false) + x when (true false)
 
 $$
 
-let static node f (x, y) = a where
+let const node f (x, y) = a where
     rec <(a^2 b^{x})> = y
 
 let node g y = 1 when ({b}) where
@@ -158,17 +158,17 @@ ${
 *)
 $}
 
-let static x = true fby true
+let const x = true fby true
 
 $$
 
-let static test = false
+let const test = false
 
 let node f x = x when ({test} false) + x when (true false)
 
 $$
 
-let static test = true
+let const test = true
 
 let node f x = (x when ({test} false) + x when (true false)) where
     rec test = true fby false

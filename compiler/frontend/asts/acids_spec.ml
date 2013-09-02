@@ -32,19 +32,19 @@ struct
       Ast_misc.print_interval_annot cei#ci_bounds
       (Utils.print_list Ast_misc.print_spec_annot) cei#ci_specs
 
-  type static_exp_info =
+  type const_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
         pwi_spec : Ast_misc.spec list;
       >
-  let print_static_exp_info fmt (pwi : static_exp_info) =
+  let print_const_exp_info fmt (pwi : const_exp_info) =
     Format.fprintf fmt "@[%a%a@]"
       Data_types.print_ty_scal_ann pwi#pwi_data
       (Utils.print_list_r Ast_misc.print_spec_annot "") pwi#pwi_spec
 
-  type 'a static_exp_desc = 'a Acids_prespec.Info.static_exp_desc
-  let print_static_exp_desc = Acids_prespec.Info.print_static_exp_desc
-  let map_static_exp_desc = Acids_prespec.Info.map_static_exp_desc
+  type 'a const_exp_desc = 'a Acids_prespec.Info.const_exp_desc
+  let print_const_exp_desc = Acids_prespec.Info.print_const_exp_desc
+  let map_const_exp_desc = Acids_prespec.Info.map_const_exp_desc
 
   type exp_info =
       <
@@ -76,11 +76,11 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
+        ni_const : Const_types.ty_sig;
       >
   let print_node_info fmt ni =
     Data_types.print_sig_ann fmt ni#ni_data;
-    Static_types.print_sig_ann fmt ni#ni_static
+    Const_types.print_sig_ann fmt ni#ni_const
 
   type domain_info = unit
   let print_domain_info (_ : Format.formatter) _ = ()

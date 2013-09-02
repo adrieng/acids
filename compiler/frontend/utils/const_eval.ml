@@ -15,7 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Acids_static
+open Acids_const
 
 (** {2 Errors} *)
 
@@ -39,7 +39,7 @@ and desc =
   | Const of Ast_misc.const
   | Tuple of value list
 
-let not_static s =
+let not_const s =
   invalid_arg (s ^ ": expression cannot be evaluated")
 
 let force thunk = Lazy.force thunk
@@ -142,8 +142,8 @@ and env =
     intf_env : Interface.env;
     external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
     current_nodes : node_fun Names.ShortEnv.t;
-    current_statics : desc Names.ShortEnv.t;
-    current_pwords : Ast_misc.static_pword Names.ShortEnv.t;
+    current_consts : desc Names.ShortEnv.t;
+    current_pwords : Ast_misc.const_pword Names.ShortEnv.t;
     values : value Ident.Env.t;
   }
 
@@ -180,20 +180,20 @@ let find_node loc env ln =
     let mod_env = ShortEnv.find modn env.external_nodes in
     ShortEnv.find ln.shortn mod_env
 
-let add_static env sn value =
+let add_const env sn value =
   {
     env with
-      current_statics = Names.ShortEnv.add sn value env.current_statics;
+      current_consts = Names.ShortEnv.add sn value env.current_consts;
   }
 
-let find_static env ln =
+let find_const env ln =
   let open Names in
   match ln.modn with
   | LocalModule ->
-    ShortEnv.find ln.shortn env.current_statics
+    ShortEnv.find ln.shortn env.current_consts
   | Module modn ->
     let intf = ShortEnv.find modn env.intf_env in
-    let si = Interface.find_static intf ln.shortn in
+    let si = Interface.find_const intf ln.shortn in
     Const si.Interface.si_value
 
 let find_pword env ln =
@@ -206,31 +206,31 @@ let find_pword env ln =
     let pw = Interface.((find_pword intf ln.shortn).pi_value) in
     pw
 
-(** {2 Static evaluation itself} *)
+(** {2 Const evaluation itself} *)
 
 let rec eval_var env v =
   try force (find_var env v)
   with Lazy.Undefined -> non_causal v
 
 and eval_clock_exp env ce =
-  assert (ce.ce_info#ci_static <> Static_types.S_dynamic);
+  assert (ce.ce_info#ci_const <> Const_types.S_nonconst);
   match ce.ce_desc with
   | Ce_condvar v ->
     eval_var env v
   | Ce_pword (Pd_lit pw) ->
     let se = Tree_word.get_first_leaf_period pw in
-    eval_static_exp env se
+    eval_const_exp env se
   | Ce_pword (Pd_global ln) ->
     let pw = find_pword env ln in
     econstr (Tree_word.get_first_leaf_period pw)
   | Ce_equal (ce, se) ->
     let val_ce = eval_clock_exp env ce in
-    let val_se = eval_static_exp env se in
+    let val_se = eval_const_exp env se in
     bool (equal_val val_ce val_se)
 
 and eval_exp env e =
-  assert (e.e_info#ei_static
-          <> Static_types.Sy_scal Static_types.S_dynamic);
+  assert (e.e_info#ei_const
+          <> Const_types.Sy_scal Const_types.S_nonconst);
   match e.e_desc with
   | E_var v ->
     eval_var env v
@@ -248,7 +248,7 @@ and eval_exp env e =
     Tuple (List.map (fun e -> lazy (eval_exp env e)) e_l)
 
   | E_fby _ ->
-    not_static "eval_exp"
+    not_const "eval_exp"
 
   | E_ifthenelse (e1, e2, e3) ->
     let cst = val_const (eval_exp env e1) in
@@ -281,8 +281,8 @@ and eval_exp env e =
   | E_dom (e, _) | E_buffer (e, _) ->
     eval_exp env e
 
-and eval_static_exp env se =
-  assert (se.se_info#pwi_static <> Static_types.S_dynamic);
+and eval_const_exp env se =
+  assert (se.se_info#pwi_const <> Const_types.S_nonconst);
   let open Acids_scoped.Info in
   match se.se_desc with
   | Se_var v ->
@@ -290,10 +290,10 @@ and eval_static_exp env se =
   | Se_econstr ec ->
     econstr ec
   | Se_global ln ->
-    find_static env ln
+    find_const env ln
   | Se_binop (op, se1, se2) ->
-    let ec1 = eval_static_exp env se1 in
-    let ec2 = eval_static_exp env se2 in
+    let ec1 = eval_const_exp env se1 in
+    let ec2 = eval_const_exp env se2 in
     let f_op = List.assoc op builtins in
     f_op (lazy (Tuple [lazy ec1; lazy ec2]))
 
@@ -353,8 +353,8 @@ let add_node_def env nd =
   add_node env nd.n_name f
 
 let add_pword env pn pw =
-  let get se = get_econstr (lazy (eval_static_exp env se)) in
-  let get_int se = get_int (lazy (eval_static_exp env se)) in
+  let get se = get_econstr (lazy (eval_const_exp env se)) in
+  let get_int se = get_int (lazy (eval_const_exp env se)) in
   let p = Tree_word.map_upword get get_int pw in
   { env with current_pwords = Names.ShortEnv.add pn p env.current_pwords; }
 
@@ -367,7 +367,7 @@ let make_env intf_env =
       external_nodes = ShortEnv.empty;
       current_nodes = ShortEnv.empty;
       values = Ident.Env.empty;
-      current_statics = ShortEnv.empty;
+      current_consts = ShortEnv.empty;
       current_pwords = ShortEnv.empty;
     }
   in
@@ -376,10 +376,10 @@ let make_env intf_env =
     let add_node node_name ni env =
       let open Interface in
       match ni with
-      | I_static sni ->
+      | I_const sni ->
         let f = node_fun_of_node_def env sni.sn_body in
         add_external_node env intf_name node_name f
-      | I_dynamic _ ->
+      | I_nonconst _ ->
         env
     in
     ShortEnv.fold add_node intf.Interface.i_nodes env

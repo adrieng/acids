@@ -58,7 +58,7 @@ and print_clock_exp_desc print_var fmt ced =
   | Ce_condvar v ->
     print_var fmt v
   | Ce_pword pw ->
-    Ast_misc.print_static_pword fmt pw
+    Ast_misc.print_const_pword fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "(=)@ %a@ %a"
       (print_clock_exp print_var) ce

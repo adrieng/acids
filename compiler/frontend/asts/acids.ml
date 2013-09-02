@@ -23,19 +23,19 @@ sig
   type clock_exp_info
   val print_clock_exp_info : Format.formatter -> clock_exp_info -> unit
 
-  type static_exp_info
-  val print_static_exp_info : Format.formatter -> static_exp_info -> unit
+  type const_exp_info
+  val print_const_exp_info : Format.formatter -> const_exp_info -> unit
 
-  type 'a static_exp_desc
-  val print_static_exp_desc :
+  type 'a const_exp_desc
+  val print_const_exp_desc :
     (Format.formatter -> 'a -> unit) ->
     Format.formatter ->
-    'a static_exp_desc ->
+    'a const_exp_desc ->
     unit
-  val map_static_exp_desc :
+  val map_const_exp_desc :
     ('a -> 'b) ->
-    'a static_exp_desc ->
-    'b static_exp_desc
+    'a const_exp_desc ->
+    'b const_exp_desc
 
   type exp_info
   val print_exp_info : Format.formatter -> exp_info -> unit
@@ -75,19 +75,19 @@ sig
   and clock_exp_desc =
   | Ce_condvar of I.var
   | Ce_pword of pword_desc
-  | Ce_equal of clock_exp * static_exp
+  | Ce_equal of clock_exp * const_exp
 
   and pword_desc =
-  | Pd_lit of static_word
+  | Pd_lit of const_word
   | Pd_global of Names.longname
 
-  and static_word = (static_exp, static_exp) Tree_word.t
+  and const_word = (const_exp, const_exp) Tree_word.t
 
-  and static_exp =
+  and const_exp =
     {
-      se_desc : static_exp I.static_exp_desc;
+      se_desc : const_exp I.const_exp_desc;
       se_loc : Loc.t;
-      se_info : I.static_exp_info;
+      se_info : I.const_exp_info;
     }
 
   and clock_annot = Ca_var of int | Ca_on of clock_annot * clock_exp
@@ -142,7 +142,7 @@ sig
   | P_clock_annot of pat * clock_annot
   | P_type_annot of pat * Data_types.data_ty
   | P_spec_annot of pat * spec
-  | P_split of (pat, static_exp) Tree_word.t
+  | P_split of (pat, const_exp) Tree_word.t
 
   and merge_clause = {
     c_sel : Ast_misc.econstr;
@@ -164,8 +164,8 @@ sig
 
   and spec_desc =
   | Unspec
-  | Word of (static_exp, static_exp) Tree_word.t
-  | Interval of static_exp * static_exp
+  | Word of (const_exp, const_exp) Tree_word.t
+  | Interval of const_exp * const_exp
 
   and buffer =
     {
@@ -177,7 +177,7 @@ sig
     n_input : pat;
     n_body : exp;
     n_pragma : Pragma.t;
-    n_static : bool;
+    n_const : bool;
     n_loc : Loc.t;
     n_info : I.node_info;
   }
@@ -185,7 +185,7 @@ sig
   type node_decl = {
     decl_name : Names.shortname;
     decl_data : Data_types.data_sig;
-    decl_static : Static_types.ty_sig;
+    decl_const : Const_types.ty_sig;
     decl_clock : Clock_types.clock_sig;
     decl_loc : Loc.t;
   }
@@ -196,7 +196,7 @@ sig
     ty_loc : Loc.t;
   }
 
-  type static_def =
+  type const_def =
     {
       sd_name : Names.shortname;
       sd_body : exp;
@@ -206,7 +206,7 @@ sig
   type pword_def =
     {
       pd_name : Names.shortname;
-      pd_body : static_word;
+      pd_body : const_word;
       pd_loc : Loc.t;
     }
 
@@ -214,7 +214,7 @@ sig
   | Phr_node_def of node_def
   | Phr_node_decl of node_decl
   | Phr_type_def of type_def
-  | Phr_static_def of static_def
+  | Phr_const_def of const_def
   | Phr_pword_def of pword_def
 
   type 'a file = {
@@ -240,19 +240,19 @@ module Make = functor (S : S) ->
     and clock_exp_desc =
     | Ce_condvar of I.var
     | Ce_pword of pword_desc
-    | Ce_equal of clock_exp * static_exp
+    | Ce_equal of clock_exp * const_exp
 
     and pword_desc =
-    | Pd_lit of static_word
+    | Pd_lit of const_word
     | Pd_global of Names.longname
 
-    and static_word = (static_exp, static_exp) Tree_word.t
+    and const_word = (const_exp, const_exp) Tree_word.t
 
-    and static_exp =
+    and const_exp =
       {
-        se_desc : static_exp I.static_exp_desc;
+        se_desc : const_exp I.const_exp_desc;
         se_loc : Loc.t;
-        se_info : I.static_exp_info;
+        se_info : I.const_exp_info;
       }
 
     and clock_annot =
@@ -334,7 +334,7 @@ module Make = functor (S : S) ->
     | P_clock_annot of pat * clock_annot
     | P_type_annot of pat * Data_types.data_ty
     | P_spec_annot of pat * spec
-    | P_split of (pat, static_exp) Tree_word.t
+    | P_split of (pat, const_exp) Tree_word.t
 
     and merge_clause =
       {
@@ -358,8 +358,8 @@ module Make = functor (S : S) ->
 
     and spec_desc =
     | Unspec
-    | Word of (static_exp, static_exp) Tree_word.t
-    | Interval of static_exp * static_exp
+    | Word of (const_exp, const_exp) Tree_word.t
+    | Interval of const_exp * const_exp
 
     and buffer =
       {
@@ -372,7 +372,7 @@ module Make = functor (S : S) ->
         n_input : pat;
         n_body : exp;
         n_pragma : Pragma.t;
-        n_static : bool;
+        n_const : bool;
         n_loc : Loc.t;
         n_info : S.node_info;
       }
@@ -381,7 +381,7 @@ module Make = functor (S : S) ->
       {
         decl_name : Names.shortname;
         decl_data : Data_types.data_sig;
-        decl_static : Static_types.ty_sig;
+        decl_const : Const_types.ty_sig;
         decl_clock : Clock_types.clock_sig;
         decl_loc : Loc.t;
       }
@@ -393,7 +393,7 @@ module Make = functor (S : S) ->
         ty_loc : Loc.t;
       }
 
-    type static_def =
+    type const_def =
       {
         sd_name : Names.shortname;
         sd_body : exp;
@@ -403,7 +403,7 @@ module Make = functor (S : S) ->
     type pword_def =
       {
         pd_name : Names.shortname;
-        pd_body : static_word;
+        pd_body : const_word;
         pd_loc : Loc.t;
       }
 
@@ -411,7 +411,7 @@ module Make = functor (S : S) ->
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
     | Phr_type_def of type_def
-    | Phr_static_def of static_def
+    | Phr_const_def of const_def
     | Phr_pword_def of pword_def
 
     type 'a file =

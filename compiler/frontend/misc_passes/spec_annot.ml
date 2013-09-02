@@ -242,8 +242,8 @@ let rec annot_clock_exp env ce =
 
           let pw =
             Tree_word.map_upword
-              (annot_static_exp env)
-              (annot_static_exp env)
+              (annot_const_exp env)
+              (annot_const_exp env)
               pw
           in
 
@@ -257,7 +257,7 @@ let rec annot_clock_exp env ce =
 
     | Ce_equal (ce, se) ->
       let ce, it, specs = annot_clock_exp env ce in
-      let se = annot_static_exp env se in
+      let se = annot_const_exp env se in
 
       let i_se = Ast_misc.int_of_econstr se.Acids_spec.se_desc in
 
@@ -291,7 +291,7 @@ let rec annot_clock_exp env ce =
 
   if it.Interval.l < Int.zero then negative_bounds ce it else (ce, it, specs)
 
-and annot_static_exp _ se =
+and annot_const_exp _ se =
   let i = Ast_misc.int_of_econstr se.se_desc in
   {
     Acids_spec.se_desc = se.se_desc;
@@ -422,12 +422,12 @@ and annot_spec env spec =
     | Unspec -> Acids_spec.Unspec
     | Word p ->
       let p =
-        Tree_word.map_upword (annot_static_exp env) (annot_static_exp env) p
+        Tree_word.map_upword (annot_const_exp env) (annot_const_exp env) p
       in
       Acids_spec.Word p
     | Interval (l, u) ->
-      let l = annot_static_exp env l in
-      let u = annot_static_exp env u in
+      let l = annot_const_exp env l in
+      let u = annot_const_exp env u in
       Acids_spec.Interval (l, u)
   in
   {
@@ -458,7 +458,7 @@ and annot_pattern env p =
       Acids_spec.P_spec_annot (p, spec)
     | P_split w ->
       let w =
-        Tree_word.map_upword (annot_pattern env) (annot_static_exp env) w
+        Tree_word.map_upword (annot_pattern env) (annot_const_exp env) w
       in
       Acids_spec.P_split w
   in
@@ -527,7 +527,7 @@ let annot_node_def env nd =
     Acids_spec.n_input = input;
     Acids_spec.n_body = body;
     Acids_spec.n_pragma = nd.n_pragma;
-    Acids_spec.n_static = nd.n_static;
+    Acids_spec.n_const = nd.n_const;
     Acids_spec.n_loc = nd.n_loc;
     Acids_spec.n_info = nd.n_info;
   }
@@ -536,7 +536,7 @@ let annot_node_decl _ ndecl =
   {
     Acids_spec.decl_name = ndecl.decl_name;
     Acids_spec.decl_data = ndecl.decl_data;
-    Acids_spec.decl_static = ndecl.decl_static;
+    Acids_spec.decl_const = ndecl.decl_const;
     Acids_spec.decl_clock = ndecl.decl_clock;
     Acids_spec.decl_loc = ndecl.decl_loc;
   }
@@ -548,7 +548,7 @@ let annot_type_def _ tdef =
     Acids_spec.ty_loc = tdef.ty_loc;
   }
 
-let annot_static_def env sd =
+let annot_const_def env sd =
   {
     Acids_spec.sd_name = sd.sd_name;
     Acids_spec.sd_body = annot_exp env sd.sd_body;
@@ -558,8 +558,8 @@ let annot_static_def env sd =
 let annot_pword_def env pd =
   let body =
     Tree_word.map_upword
-      (annot_static_exp env)
-      (annot_static_exp env)
+      (annot_const_exp env)
+      (annot_const_exp env)
       pd.pd_body
   in
   {
@@ -577,8 +577,8 @@ let annot_ty_phrase env phr =
     env, Acids_spec.Phr_node_decl (annot_node_decl env nd)
   | Phr_type_def td ->
     env, Acids_spec.Phr_type_def (annot_type_def env td)
-  | Phr_static_def sd ->
-    env, Acids_spec.Phr_static_def (annot_static_def env sd)
+  | Phr_const_def sd ->
+    env, Acids_spec.Phr_const_def (annot_const_def env sd)
   | Phr_pword_def pd ->
     let pd, env = annot_pword_def env pd in
     env, Acids_spec.Phr_pword_def pd
@@ -601,7 +601,7 @@ let annot_file
     (file :
      <
        interfaces : Interface.env;
-       static_nodes : Acids_static.node_def list
+       const_nodes : Acids_const.node_def list
      > Acids_prespec.file) =
   ctx, annot_file file
 

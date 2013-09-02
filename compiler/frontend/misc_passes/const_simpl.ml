@@ -15,7 +15,7 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Acids_static
+open Acids_const
 
 (** {2 Exceptions} *)
 
@@ -23,7 +23,7 @@ type error =
   | Non_causal of Loc.t * Names.shortname * Ident.t
   | Negative_pword of
       Loc.t *
-      (Acids_prespec.static_exp, Acids_prespec.static_exp) Tree_word.t
+      (Acids_prespec.const_exp, Acids_prespec.const_exp) Tree_word.t
   | Unimplemented_builtin of Loc.t * Names.longname
 
 exception Simplification_error of error
@@ -32,7 +32,7 @@ let print_error fmt err =
   match err with
   | Non_causal (l, nn, v) ->
     Format.fprintf fmt
-      "%aStatic variable %a in node %a is defined in terms of itself"
+      "%aConst variable %a in node %a is defined in terms of itself"
       Loc.print l
       Ident.print v
       Names.print_shortname nn
@@ -40,7 +40,7 @@ let print_error fmt err =
     Format.fprintf fmt
       "%aThe expression %a should be positive"
       Loc.print l
-      Acids_prespec.print_static_word p
+      Acids_prespec.print_const_word p
   | Unimplemented_builtin (loc, ln) ->
     Format.fprintf fmt
       "%aThe built-in function %a is not currently implemented"
@@ -59,14 +59,14 @@ let unimplemented_builtin loc ln =
 (** {2 Utility functions} *)
 
 let get_econstr value =
-  let open Static_eval in
+  let open Const_eval in
   let open Ast_misc in
   match value with
   | Const (Cconstr ec) -> ec
   | _ -> invalid_arg "get_econstr"
 
 let get_int value =
-  let open Static_eval in
+  let open Const_eval in
   let open Ast_misc in
   match value with
   | Const (Cconstr (Ec_int i)) -> i
@@ -77,62 +77,62 @@ let get_int value =
 type env =
   {
     intf_env : Interface.env;
-    eval_env : Static_eval.env;
-    static_nodes : Acids_static.node_def list;
-    static_node_env : Acids_static.node_def Names.ShortEnv.t;
+    eval_env : Const_eval.env;
+    const_nodes : Acids_const.node_def list;
+    const_node_env : Acids_const.node_def Names.ShortEnv.t;
   }
 
 let initial_env intf_env =
   {
     intf_env = intf_env;
-    eval_env = Static_eval.make_env intf_env;
-    static_nodes = [];
-    static_node_env = Names.ShortEnv.empty;
+    eval_env = Const_eval.make_env intf_env;
+    const_nodes = [];
+    const_node_env = Names.ShortEnv.empty;
   }
 
 let add_local_defs env block =
-  { env with eval_env = Static_eval.add_local_defs env.eval_env block; }
+  { env with eval_env = Const_eval.add_local_defs env.eval_env block; }
 
 let add_node_def env nd =
-  { env with eval_env = Static_eval.add_node_def env.eval_env nd; }
+  { env with eval_env = Const_eval.add_node_def env.eval_env nd; }
 
-let add_static_node_def env nd =
+let add_const_node_def env nd =
   {
     env with
-      static_nodes = nd :: env.static_nodes;
-      static_node_env = Names.ShortEnv.add nd.n_name nd env.static_node_env;
+      const_nodes = nd :: env.const_nodes;
+      const_node_env = Names.ShortEnv.add nd.n_name nd env.const_node_env;
   }
 
-let add_static_var env var value =
+let add_const_var env var value =
   {
     env with
-      eval_env = Static_eval.add_static env.eval_env var value;
+      eval_env = Const_eval.add_const env.eval_env var value;
   }
 
 let add_pword env var body =
   {
     env with
-      eval_env = Static_eval.add_pword env.eval_env var body;
+      eval_env = Const_eval.add_pword env.eval_env var body;
   }
 
-let find_static_node_def env ln =
+let find_const_node_def env ln =
   let open Names in
   match ln.modn with
-  | LocalModule -> ShortEnv.find ln.shortn env.static_node_env
+  | LocalModule -> ShortEnv.find ln.shortn env.const_node_env
   | Module modn ->
     let intf = ShortEnv.find modn env.intf_env in
     Interface.node_definition_of_node_item (Interface.find_node intf ln.shortn)
 
-let static_nodes env = env.static_nodes
+let const_nodes env = env.const_nodes
 
 (** {2 Putting it all together} *)
 
-let rec simpl_static_var env v =
-  Static_eval.eval_var env.eval_env v
+let rec simpl_const_var env v =
+  Const_eval.eval_var env.eval_env v
 
-and simpl_static_word env loc pw =
+and simpl_const_word env loc pw =
   let pw =
-    Tree_word.map_upword (simpl_static_exp env) (simpl_static_exp env) pw
+    Tree_word.map_upword (simpl_const_exp env) (simpl_const_exp env) pw
   in
 
   let check_pos se =
@@ -151,7 +151,7 @@ and simpl_clock_exp env ce =
       Acids_prespec.Ce_condvar v
 
     | Ce_pword (Pd_lit pw) ->
-      let pw = simpl_static_word env ce.ce_loc pw in
+      let pw = simpl_const_word env ce.ce_loc pw in
       Acids_prespec.Ce_pword (Acids_prespec.Pd_lit pw)
 
     | Ce_pword (Pd_global ln) ->
@@ -159,7 +159,7 @@ and simpl_clock_exp env ce =
 
     | Ce_equal (ce, se) ->
       let ce = simpl_clock_exp env ce in
-      let se = simpl_static_exp env se in
+      let se = simpl_const_exp env se in
       Acids_prespec.Ce_equal (ce, se)
   in
   {
@@ -171,10 +171,10 @@ and simpl_clock_exp env ce =
       end
   }
 
-and simpl_static_exp env se =
-  let open Static_eval in
+and simpl_const_exp env se =
+  let open Const_eval in
   let ec =
-    match eval_static_exp env.eval_env se with
+    match eval_const_exp env.eval_env se with
     | Const (Ast_misc.Cconstr ec) -> ec
     | _ -> invalid_arg "ill-typed"
   in
@@ -214,7 +214,7 @@ and simpl_pattern env p =
 
     | P_split pt ->
       let pt =
-        Tree_word.map_upword (simpl_pattern env) (simpl_static_exp env) pt
+        Tree_word.map_upword (simpl_pattern env) (simpl_const_exp env) pt
       in
       Acids_prespec.P_split pt
   in
@@ -264,7 +264,7 @@ and simpl_exp env e =
       Acids_prespec.E_ifthenelse (e1, e2, e3)
 
     | E_app (app, e_arg) ->
-      if app.a_info.Info.ai_is_static
+      if app.a_info.Info.ai_is_const
       then simpl_inline env app.a_op e e_arg
       else
         let app =
@@ -372,11 +372,11 @@ and simpl_buffer _ bu =
 
 and simpl_inline env ln e_app e_arg =
   (*
-    When "f p = e" is static, we translate "f e_arg" to
+    When "f p = e" is const, we translate "f e_arg" to
      "e where rec p = e_arg"
   *)
-  let nd = find_static_node_def env ln in
-  let module R = Acids_utils.REFRESH(Acids_static) in
+  let nd = find_const_node_def env ln in
+  let module R = Acids_utils.REFRESH(Acids_const) in
   let nd = R.refresh_node nd in
   let e =
     {
@@ -408,14 +408,14 @@ and simpl_spec env spec =
     match spec.s_desc with
     | Unspec -> Acids_prespec.Unspec
     | Word pw ->
-      let simpl_static_exp = simpl_static_exp env in
+      let simpl_const_exp = simpl_const_exp env in
       let pw =
-        Tree_word.map_upword simpl_static_exp simpl_static_exp pw
+        Tree_word.map_upword simpl_const_exp simpl_const_exp pw
       in
       Acids_prespec.Word pw
     | Interval (l, u) ->
-      let l = simpl_static_exp env l in
-      let u = simpl_static_exp env u in
+      let l = simpl_const_exp env l in
+      let u = simpl_const_exp env u in
       Acids_prespec.Interval (l, u)
   in
   {
@@ -424,7 +424,7 @@ and simpl_spec env spec =
   }
 
 let simpl_node_def env nd =
-  assert (not nd.n_static);
+  assert (not nd.n_const);
   try
     (* /!\ NEEDED FOR INLINING /!\ *)
     Ident.set_current_ctx nd.n_info#ni_ctx;
@@ -433,26 +433,26 @@ let simpl_node_def env nd =
       Acids_prespec.n_input = simpl_pattern env nd.n_input;
       Acids_prespec.n_body = simpl_exp env nd.n_body;
       Acids_prespec.n_pragma = nd.n_pragma;
-      Acids_prespec.n_static = nd.n_static;
+      Acids_prespec.n_const = nd.n_const;
       Acids_prespec.n_loc = nd.n_loc;
       Acids_prespec.n_info =
         object
           method ni_ctx = nd.n_info#ni_ctx
           method ni_data = nd.n_info#ni_data
-          method ni_static = nd.n_info#ni_static
+          method ni_const = nd.n_info#ni_const
         end;
     }
   with
-  | Static_eval.Error (Static_eval.Non_causal v) ->
+  | Const_eval.Error (Const_eval.Non_causal v) ->
     non_causal nd.n_loc nd.n_name v
-  | Static_eval.Error (Static_eval.Unimplemented_builtin (loc, ln)) ->
+  | Const_eval.Error (Const_eval.Unimplemented_builtin (loc, ln)) ->
     unimplemented_builtin loc ln
 
 let simpl_node_decl nd =
   {
     Acids_prespec.decl_name = nd.decl_name;
     Acids_prespec.decl_data = nd.decl_data;
-    Acids_prespec.decl_static = nd.decl_static;
+    Acids_prespec.decl_const = nd.decl_const;
     Acids_prespec.decl_clock = nd.decl_clock;
     Acids_prespec.decl_loc = nd.decl_loc;
   }
@@ -464,13 +464,13 @@ let simpl_type_def td =
     Acids_prespec.ty_loc = td.ty_loc;
   }
 
-let simpl_static_def env sd =
-  let open Static_eval in
+let simpl_const_def env sd =
+  let open Const_eval in
   let c =
     let res = eval_exp env.eval_env sd.sd_body in
     match res with
     | Const c -> c
-    | _ -> assert false (* static-typing error? *)
+    | _ -> assert false (* const-typing error? *)
   in
   {
     Acids_prespec.sd_name = sd.sd_name;
@@ -485,10 +485,10 @@ let simpl_static_def env sd =
       };
     Acids_prespec.sd_loc = sd.sd_loc;
   },
-  add_static_var env sd.sd_name (Const c)
+  add_const_var env sd.sd_name (Const c)
 
 let simpl_pword_def env pd =
-  let body = simpl_static_word env pd.pd_loc pd.pd_body in
+  let body = simpl_const_word env pd.pd_loc pd.pd_body in
   {
     Acids_prespec.pd_name = pd.pd_name;
     Acids_prespec.pd_body = body;
@@ -500,8 +500,8 @@ let simpl_phrase (body, env) phr =
   match phr with
   | Phr_node_def nd ->
     let body, env =
-      if nd.n_static
-      then body, add_static_node_def env nd
+      if nd.n_const
+      then body, add_const_node_def env nd
       else Acids_prespec.Phr_node_def (simpl_node_def env nd) :: body, env
     in
     body, add_node_def env nd
@@ -512,9 +512,9 @@ let simpl_phrase (body, env) phr =
   | Phr_type_def td ->
     Acids_prespec.Phr_type_def (simpl_type_def td) :: body, env
 
-  | Phr_static_def sd ->
-    let sd, env = simpl_static_def env sd in
-    Acids_prespec.Phr_static_def sd :: body, env
+  | Phr_const_def sd ->
+    let sd, env = simpl_const_def env sd in
+    Acids_prespec.Phr_const_def sd :: body, env
 
   | Phr_pword_def pd ->
     let pd, env = simpl_pword_def env pd in
@@ -526,7 +526,7 @@ let simpl_file file =
   let info =
     object
       method interfaces = file.f_info#interfaces
-      method static_nodes = static_nodes env
+      method const_nodes = const_nodes env
     end
   in
   {
@@ -538,7 +538,7 @@ let simpl_file file =
 
 let simpl_file
     ctx
-    (file : < interfaces : Interface.env > Acids_static.file) =
+    (file : < interfaces : Interface.env > Acids_const.file) =
   ctx, simpl_file file
 
 let pass =
@@ -546,5 +546,5 @@ let pass =
   P_transform
     (Frontend_utils.make_transform
        ~print_out:Acids_prespec.print_file
-       "static_simpl"
+       "const_simpl"
        simpl_file)

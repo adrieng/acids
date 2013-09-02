@@ -53,28 +53,28 @@ let ill_formed_interface intfn =
 
 (** {2 Definitions of data types} *)
 
-type static_node_decl =
+type const_node_decl =
   {
-    sn_info : Acids_static.Info.node_info;
-    sn_body : Acids_static.node_def;
+    sn_info : Acids_const.Info.node_info;
+    sn_body : Acids_const.node_def;
   }
 
-type dynamic_node_decl =
+type nonconst_node_decl =
   {
     dn_info : Acids_causal.Info.node_info;
     dn_body : unit; (* Nir.t option *)
   }
 
 type node_item =
-  | I_static of static_node_decl
-  | I_dynamic of dynamic_node_decl
+  | I_const of const_node_decl
+  | I_nonconst of nonconst_node_decl
 
 type type_item =
   {
     td_constr : Names.shortname list;
   }
 
-type static_item =
+type const_item =
   {
     si_name : Names.shortname;
     si_type : Data_types.data_ty;
@@ -85,7 +85,7 @@ type pword_item =
   {
     pi_name : Names.shortname;
     pi_type : Data_types.data_ty_scal;
-    pi_value : Ast_misc.static_pword;
+    pi_value : Ast_misc.const_pword;
   }
 
 type t =
@@ -98,7 +98,7 @@ type t =
     (** maps constr name to type name *)
     i_constrs : Names.shortname Names.ShortEnv.t;
     (** maps constant name to econstr *)
-    i_statics : static_item Names.ShortEnv.t;
+    i_consts : const_item Names.ShortEnv.t;
     (** maps pword names to pwords *)
     i_pwords : pword_item Names.ShortEnv.t;
   }
@@ -109,23 +109,23 @@ type env = t Names.ShortEnv.t
 
 let data_signature_of_node_item ni =
   match ni with
-  | I_static snd -> snd.sn_info#ni_data
-  | I_dynamic dnd -> dnd.dn_info#ni_data
+  | I_const snd -> snd.sn_info#ni_data
+  | I_nonconst dnd -> dnd.dn_info#ni_data
 
-let static_signature_of_node_item ni =
+let const_signature_of_node_item ni =
   match ni with
-  | I_static snd -> snd.sn_info#ni_static
-  | I_dynamic dnd -> dnd.dn_info#ni_static
+  | I_const snd -> snd.sn_info#ni_const
+  | I_nonconst dnd -> dnd.dn_info#ni_const
 
 let clock_signature_of_node_item ni =
   match ni with
-  | I_static _ -> invalid_arg "clock_signature_of_node_item: static node"
-  | I_dynamic dnd -> dnd.dn_info#ni_clock
+  | I_const _ -> invalid_arg "clock_signature_of_node_item: const node"
+  | I_nonconst dnd -> dnd.dn_info#ni_clock
 
 let node_definition_of_node_item ni =
   match ni with
-  | I_static snd -> snd.sn_body
-  | I_dynamic _ -> invalid_arg "node_definition_of_node_item"
+  | I_const snd -> snd.sn_body
+  | I_nonconst _ -> invalid_arg "node_definition_of_node_item"
 
 let find_node intf shortn = Names.ShortEnv.find shortn intf.i_nodes
 
@@ -142,7 +142,7 @@ let find_constructor_rank intf cstr =
   let ty_i = find_type intf ty_n in
   Utils.find_rank cstr ty_i.td_constr
 
-let find_static intf shortn = Names.ShortEnv.find shortn intf.i_statics
+let find_const intf shortn = Names.ShortEnv.find shortn intf.i_consts
 
 let find_pword intf shortn = Names.ShortEnv.find shortn intf.i_pwords
 
@@ -241,13 +241,13 @@ let load_interface_from_module_name modn =
 let interface_of_file file =
   let open Acids_causal in
 
-  let add_dynamic node_env phr =
+  let add_nonconst node_env phr =
     match phr with
     | Phr_node_def nd ->
       Names.ShortEnv.add
         nd.n_name
         (
-          I_dynamic
+          I_nonconst
             {
               dn_info = nd.n_info;
               dn_body = ();
@@ -259,39 +259,39 @@ let interface_of_file file =
         object
           method ni_ctx = Ident.make_ctx ()
           method ni_data = nd.decl_data
-          method ni_static = nd.decl_static
+          method ni_const = nd.decl_const
           method ni_clock = nd.decl_clock
         end
       in
       Names.ShortEnv.add
         nd.decl_name
         (
-          I_dynamic
+          I_nonconst
             {
               dn_info = n_info;
               dn_body = ();
             }
         )
         node_env
-    | Phr_type_def _ | Phr_static_def _ | Phr_pword_def _ ->
+    | Phr_type_def _ | Phr_const_def _ | Phr_pword_def _ ->
       node_env
   in
 
-  let add_static node_env nd =
-    let open Acids_static in
+  let add_const node_env nd =
+    let open Acids_const in
     Names.ShortEnv.add
       nd.n_name
-      (I_static { sn_info = nd.n_info; sn_body = nd; })
+      (I_const { sn_info = nd.n_info; sn_body = nd; })
       node_env
   in
 
   let node_env = Names.ShortEnv.empty in
-  let node_env = List.fold_left add_dynamic node_env file.f_body in
-  let node_env = List.fold_left add_static node_env file.f_info#static_nodes in
+  let node_env = List.fold_left add_nonconst node_env file.f_body in
+  let node_env = List.fold_left add_const node_env file.f_info#const_nodes in
 
   let add_type (type_env, constr_env) phr =
     match phr with
-    | Phr_node_def _ | Phr_node_decl _ | Phr_static_def _ | Phr_pword_def _ ->
+    | Phr_node_def _ | Phr_node_decl _ | Phr_const_def _ | Phr_pword_def _ ->
       type_env, constr_env
     | Phr_type_def td ->
       let constr_env =
@@ -311,16 +311,16 @@ let interface_of_file file =
     List.fold_left add_type (type_env, constr_env) file.f_body
   in
 
-  let add_static static_env phr =
+  let add_const const_env phr =
     match phr with
     | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ | Phr_pword_def _ ->
-      static_env
-    | Phr_static_def sd ->
+      const_env
+    | Phr_const_def sd ->
       let open Acids_causal in
       let c =
         match sd.sd_body.e_desc with
         | E_const c -> c
-        | _ -> assert false (* should be static simplified *)
+        | _ -> assert false (* should be const simplified *)
       in
       let si =
         {
@@ -329,13 +329,13 @@ let interface_of_file file =
           si_value = c;
         }
       in
-      Names.ShortEnv.add sd.sd_name si static_env
+      Names.ShortEnv.add sd.sd_name si const_env
   in
-  let static_env = List.fold_left add_static Names.ShortEnv.empty file.f_body in
+  let const_env = List.fold_left add_const Names.ShortEnv.empty file.f_body in
 
   let add_pword pword_env phr =
     match phr with
-    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ ->
+    | Phr_node_def _ | Phr_node_decl _ | Phr_type_def _ | Phr_const_def _ ->
       pword_env
     | Phr_pword_def pd ->
       let open Acids_causal in
@@ -364,6 +364,6 @@ let interface_of_file file =
     i_nodes = node_env;
     i_types = type_env;
     i_constrs = constr_env;
-    i_statics = static_env;
+    i_consts = const_env;
     i_pwords = pword_env;
   }

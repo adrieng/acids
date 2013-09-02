@@ -39,12 +39,12 @@ type error =
   | Unknown_node of Names.shortname * Loc.t
   | Unknown_constr of Names.shortname * Loc.t
   | Unknown_type of Names.shortname * Loc.t
-  | Unknown_static of Names.shortname * Loc.t
+  | Unknown_const of Names.shortname * Loc.t
   | Unknown_pword of Names.shortname * Loc.t
   | Node_not_found of Names.modname * Names.shortname * Loc.t
   | Constr_not_found of Names.modname * Names.shortname * Loc.t
   | Type_not_found of Names.modname * Names.shortname * Loc.t
-  | Static_not_found of Names.modname * Names.shortname * Loc.t
+  | Const_not_found of Names.modname * Names.shortname * Loc.t
   | Pword_not_found of Names.modname * Names.shortname * Loc.t
   | Unbound_var of string * Loc.t
   | Multiple_binding_pattern of string * Loc.t
@@ -52,7 +52,7 @@ type error =
   | Duplicate_node of Names.shortname * Loc.t
   | Duplicate_constr of Names.shortname * Loc.t
   | Duplicate_type of Names.shortname * Loc.t
-  | Duplicate_static of Names.shortname * Loc.t
+  | Duplicate_const of Names.shortname * Loc.t
   | Duplicate_pword of Names.shortname * Loc.t
 
 exception Scoping_error of error
@@ -71,8 +71,8 @@ let print_error fmt err =
     Format.fprintf fmt "%aUnknown type %a"
       Loc.print l
       Names.print_shortname shortn
-  | Unknown_static (shortn, l) ->
-    Format.fprintf fmt "%aUnknown static %a"
+  | Unknown_const (shortn, l) ->
+    Format.fprintf fmt "%aUnknown const %a"
       Loc.print l
       Names.print_shortname shortn
   | Unknown_pword (shortn, l) ->
@@ -94,8 +94,8 @@ let print_error fmt err =
       Loc.print l
       Names.print_shortname constrn
       Names.print_modname modn
-  | Static_not_found (modn, constrn, l) ->
-    Format.fprintf fmt "%aStatic %a not found in module %a"
+  | Const_not_found (modn, constrn, l) ->
+    Format.fprintf fmt "%aConst %a not found in module %a"
       Loc.print l
       Names.print_shortname constrn
       Names.print_modname modn
@@ -127,11 +127,11 @@ let print_error fmt err =
     Format.fprintf fmt "%aType %a is defined several times in this module"
       Loc.print l
       Names.print_shortname typen
-  | Duplicate_static (staticn, l) ->
+  | Duplicate_const (constn, l) ->
     Format.fprintf fmt
-      "%aStatic identifier %a is defined several times in this module"
+      "%aConst identifier %a is defined several times in this module"
       Loc.print l
-      Names.print_shortname staticn
+      Names.print_shortname constn
   | Duplicate_pword (pwordn, l) ->
     Format.fprintf fmt
       "%aPword identifier %a is defined several times in this module"
@@ -146,8 +146,8 @@ let unknown_constr shortn loc =
 let unknown_type shortn loc =
   raise (Scoping_error (Unknown_type (shortn, loc)))
 
-let unknown_static shortn loc =
-  raise (Scoping_error (Unknown_static (shortn, loc)))
+let unknown_const shortn loc =
+  raise (Scoping_error (Unknown_const (shortn, loc)))
 
 let unknown_pword shortn loc =
   raise (Scoping_error (Unknown_pword (shortn, loc)))
@@ -161,8 +161,8 @@ let constr_not_found modn shortn loc =
 let type_not_found modn shortn loc =
   raise (Scoping_error (Type_not_found (modn, shortn, loc)))
 
-let static_not_found modn shortn loc =
-  raise (Scoping_error (Static_not_found (modn, shortn, loc)))
+let const_not_found modn shortn loc =
+  raise (Scoping_error (Const_not_found (modn, shortn, loc)))
 
 let pword_not_found modn shortn loc =
   raise (Scoping_error (Pword_not_found (modn, shortn, loc)))
@@ -184,8 +184,8 @@ let duplicate_constr constrn loc =
 let duplicate_type typen loc =
   raise (Scoping_error (Duplicate_type (typen, loc)))
 
-let duplicate_static staticn loc =
-  raise (Scoping_error (Duplicate_static (staticn, loc)))
+let duplicate_const constn loc =
+  raise (Scoping_error (Duplicate_const (constn, loc)))
 
 let duplicate_pword pwordn loc =
   raise (Scoping_error (Duplicate_pword (pwordn, loc)))
@@ -198,7 +198,7 @@ type env =
     local_constrs : Names.ShortSet.t;
     local_constrs_ranks : Int.t Names.ShortEnv.t;
     local_types : Names.ShortSet.t;
-    local_statics : Names.ShortSet.t;
+    local_consts : Names.ShortSet.t;
     local_pwords : Names.ShortSet.t;
     imported_mods : string list;
     id_env : Ident.t Utils.Env.t;
@@ -211,7 +211,7 @@ let initial_env intf_env imported_mods =
     local_constrs = Names.ShortSet.empty;
     local_constrs_ranks = Names.ShortEnv.empty;
     local_types = Names.ShortSet.empty;
-    local_statics = Names.ShortSet.empty;
+    local_consts = Names.ShortSet.empty;
     local_pwords = Names.ShortSet.empty;
     imported_mods = imported_mods;
     id_env = Utils.Env.empty;
@@ -250,8 +250,8 @@ let find_module_with_constr =
 let find_module_with_type_name =
   find_module_with_shortname (fun i -> i.Interface.i_types) unknown_type
 
-let find_module_with_static_name =
-  find_module_with_shortname (fun i -> i.Interface.i_statics) unknown_static
+let find_module_with_const_name =
+  find_module_with_shortname (fun i -> i.Interface.i_consts) unknown_const
 
 let find_module_with_pword_name =
   find_module_with_shortname (fun i -> i.Interface.i_pwords) unknown_pword
@@ -287,8 +287,8 @@ let check_module_with_constr =
 let check_module_with_type_name =
   check_module_with_name (fun i -> i.Interface.i_types) type_not_found
 
-let check_module_with_static_name =
-  check_module_with_name (fun i -> i.Interface.i_statics) static_not_found
+let check_module_with_const_name =
+  check_module_with_name (fun i -> i.Interface.i_consts) const_not_found
 
 let check_module_with_pword_name =
   check_module_with_name (fun i -> i.Interface.i_pwords) pword_not_found
@@ -323,11 +323,11 @@ let scope_type_name =
   let access env = env.local_types in
   scope_longname find_module_with_type_name check_module_with_type_name access
 
-let scope_static_name =
-  let access env = env.local_statics in
+let scope_const_name =
+  let access env = env.local_consts in
   scope_longname
-    find_module_with_static_name
-    check_module_with_static_name
+    find_module_with_const_name
+    check_module_with_const_name
     access
 
 let scope_pword_name =
@@ -344,8 +344,8 @@ let add_var env v =
 let add_local_node env n =
   { env with local_nodes = Names.ShortSet.add n env.local_nodes; }
 
-let add_static env n =
-  { env with local_statics = Names.ShortSet.add n env.local_statics; }
+let add_const env n =
+  { env with local_consts = Names.ShortSet.add n env.local_consts; }
 
 let add_pword env n =
   { env with local_pwords = Names.ShortSet.add n env.local_pwords; }
@@ -354,12 +354,12 @@ let find_var env loc v =
   try Utils.Env.find v env.id_env
   with Not_found -> unbound_var v loc
 
-let find_var_static env loc v =
+let find_var_const env loc v =
   try Acids_scoped.Info.Se_var (Utils.Env.find v env.id_env)
   with Not_found ->
     (try
        Acids_scoped.Info.Se_global
-         (scope_static_name
+         (scope_const_name
             env
             loc
             Names.({ modn = LocalModule; shortn = v; }))
@@ -446,8 +446,8 @@ let check_type_constr loc env cn =
 let check_type_name env tn loc =
   if Names.ShortSet.mem tn env.local_types then duplicate_type tn loc
 
-let check_static_name env sn loc =
-  if Names.ShortSet.mem sn env.local_statics then duplicate_static sn loc
+let check_const_name env sn loc =
+  if Names.ShortSet.mem sn env.local_consts then duplicate_const sn loc
 
 let find_scoped_constr_rank env cstr =
   let open Names in
@@ -485,21 +485,21 @@ and scope_clock_annot env cka =
     Acids_scoped.Ca_on (cka, ce)
 
 and scope_clock_exp env ce =
-  let scope_static_exp_one = scope_static_exp_one env in
+  let scope_const_exp_one = scope_const_exp_one env in
   let scope_clock_exp = scope_clock_exp env in
   let ced =
     match ce.ce_desc with
     | Ce_condvar v ->
       find_var_pword env ce.ce_loc v
     | Ce_pword (Pd_lit upw) ->
-      let upw = scope_static_word env upw in
+      let upw = scope_const_word env upw in
       Acids_scoped.Ce_pword (Acids_scoped.Pd_lit upw)
     | Ce_pword (Pd_global ln) ->
       let ln = scope_pword_name env ce.ce_loc ln in
       Acids_scoped.Ce_pword (Acids_scoped.Pd_global ln)
     | Ce_equal (ce, se) ->
       let ce = scope_clock_exp ce in
-      let se = scope_static_exp_one se in
+      let se = scope_const_exp_one se in
       Acids_scoped.Ce_equal (ce, se)
   in
   {
@@ -508,8 +508,8 @@ and scope_clock_exp env ce =
     Acids_scoped.ce_info = ce.ce_info;
   }
 
-(* Because of Se_fword, one static exp may get scoped into several ones *)
-and scope_static_exps env se =
+(* Because of Se_fword, one const exp may get scoped into several ones *)
+and scope_const_exps env se =
   let mk sed =
     {
       Acids_scoped.se_desc = sed;
@@ -520,9 +520,9 @@ and scope_static_exps env se =
   let ed_l =
     match se.se_desc with
     | Acids_parsetree.Info.Se_var v ->
-      [find_var_static env se.se_loc v]
+      [find_var_const env se.se_loc v]
     | Acids_parsetree.Info.Se_global ln ->
-      let ln = scope_static_name env se.se_loc ln in
+      let ln = scope_const_name env se.se_loc ln in
       [Acids_scoped.Info.Se_global ln]
     | Acids_parsetree.Info.Se_econstr ec ->
       [Acids_scoped.Info.Se_econstr ec]
@@ -539,22 +539,22 @@ and scope_static_exps env se =
         ]
       in
       assert (List.mem op binops);
-      let se1 = scope_static_exp_one env se1 in
-      let se2 = scope_static_exp_one env se2 in
+      let se1 = scope_const_exp_one env se1 in
+      let se2 = scope_const_exp_one env se2 in
       [Acids_scoped.Info.Se_binop (op, se1, se2)]
   in
   List.map mk ed_l
 
-and scope_static_exp_one env se =
-  match scope_static_exps env se with
+and scope_const_exp_one env se =
+  match scope_const_exps env se with
   | [se] -> se
   | _ -> assert false
 
-and scope_static_word env upw =
+and scope_const_word env upw =
   let open Tree_word in
 
   let { u = u; v = v; } =
-    map_upword (scope_static_exps env) (scope_static_exp_one env) upw
+    map_upword (scope_const_exps env) (scope_const_exp_one env) upw
   in
 
   (* Remove list leaves coming from Se_fword *)
@@ -762,9 +762,9 @@ and scope_pattern p env =
       let spec = scope_spec env spec in
       Acids_scoped.P_spec_annot (p, spec), env
     | P_split upw ->
-      let scope_static_exp se env = scope_static_exp_one env se, env in
+      let scope_const_exp se env = scope_const_exp_one env se, env in
       let p_l, env =
-        Tree_word.mapfold_upword scope_pattern scope_static_exp upw env
+        Tree_word.mapfold_upword scope_pattern scope_const_exp upw env
       in
       Acids_scoped.P_split p_l, env
   in
@@ -790,16 +790,16 @@ and scope_buffer bu =
   }
 
 and scope_spec env spec =
-  let scope_static_exp_one = scope_static_exp_one env in
+  let scope_const_exp_one = scope_const_exp_one env in
   let sd =
     match spec.s_desc with
     | Unspec ->
       Acids_scoped.Unspec
     | Word upw ->
-      Acids_scoped.Word (scope_static_word env upw)
+      Acids_scoped.Word (scope_const_word env upw)
     | Interval (l, u) ->
-      let l = scope_static_exp_one l in
-      let u = scope_static_exp_one u in
+      let l = scope_const_exp_one l in
+      let u = scope_const_exp_one u in
       Acids_scoped.Interval (l, u)
   in
   {
@@ -820,7 +820,7 @@ let scope_node_def env node =
       Acids_scoped.n_input = inp;
       Acids_scoped.n_body = body;
       Acids_scoped.n_pragma = node.n_pragma;
-      Acids_scoped.n_static = node.n_static;
+      Acids_scoped.n_const = node.n_const;
       Acids_scoped.n_loc = node.n_loc;
       Acids_scoped.n_info = Ident.get_current_ctx ();
     }
@@ -840,7 +840,7 @@ let scope_node_decl env decl =
   {
     Acids_scoped.decl_name = decl.decl_name;
     Acids_scoped.decl_data = dsig;
-    Acids_scoped.decl_static = decl.decl_static;
+    Acids_scoped.decl_const = decl.decl_const;
     Acids_scoped.decl_clock = decl.decl_clock;
     Acids_scoped.decl_loc = decl.decl_loc;
   },
@@ -857,19 +857,19 @@ let scope_type_def env tdef =
   },
   env
 
-let scope_static_def env sd =
-  check_static_name env sd.sd_name sd.sd_loc;
+let scope_const_def env sd =
+  check_const_name env sd.sd_name sd.sd_loc;
   let body = scope_exp env sd.sd_body in
   {
     Acids_scoped.sd_name = sd.sd_name;
     Acids_scoped.sd_body = body;
     Acids_scoped.sd_loc = sd.sd_loc;
   },
-  add_static env sd.sd_name
+  add_const env sd.sd_name
 
 let scope_pword_def env pd =
-  check_static_name env pd.pd_name pd.pd_loc;
-  let body = scope_static_word env pd.pd_body in
+  check_const_name env pd.pd_name pd.pd_loc;
+  let body = scope_const_word env pd.pd_body in
   {
     Acids_scoped.pd_name = pd.pd_name;
     Acids_scoped.pd_body = body;
@@ -888,9 +888,9 @@ let scope_phrase env phr =
   | Phr_type_def td ->
     let td, env = scope_type_def env td in
     env, Acids_scoped.Phr_type_def td
-  | Phr_static_def sd ->
-    let sd, env = scope_static_def env sd in
-    env, Acids_scoped.Phr_static_def sd
+  | Phr_const_def sd ->
+    let sd, env = scope_const_def env sd in
+    env, Acids_scoped.Phr_const_def sd
   | Phr_pword_def pd ->
     let pd, env = scope_pword_def env pd in
     env, Acids_scoped.Phr_pword_def pd

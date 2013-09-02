@@ -35,7 +35,7 @@ let psplit_var_prefix = "pspl"
 
 let translate_psplit st ps =
   let add p (i, p_l) =
-    make_static_exp_int st i, (Int.succ i, p :: p_l)
+    make_const_exp_int st i, (Int.succ i, p :: p_l)
   in
 
   let pw, (sup, p_l) =

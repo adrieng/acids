@@ -78,9 +78,9 @@ let int_of_econstr ec =
   | Ec_int i -> i
   | Ec_constr (_, rank) -> rank
 
-type static_pword = (econstr, Int.t) Tree_word.t
+type const_pword = (econstr, Int.t) Tree_word.t
 
-let print_static_pword fmt pw =
+let print_const_pword fmt pw =
   Tree_word.print_upword_int print_econstr fmt pw
 
 type const =

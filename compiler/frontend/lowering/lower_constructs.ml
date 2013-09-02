@@ -58,8 +58,8 @@ let fby_translation find_pword e1 e2 =
 
   let pw_se =
     Tree_word.map_upword
-      (make_static_exp_bool base_st)
-      (make_static_exp_int base_st)
+      (make_const_exp_bool base_st)
+      (make_const_exp_int base_st)
       pw
   in
 
@@ -149,7 +149,7 @@ let merge_translation find_pword e1 e2 e3 =
 type env =
   {
     intf_env : Interface.env;
-    local_pwords : Ast_misc.static_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
   }
 
 let initial_env intf_env =
@@ -262,7 +262,7 @@ let lower_node env nd =
 let lower_phrase env phr =
   match phr with
   | Phr_node_def nd -> env, Phr_node_def (lower_node env nd)
-  | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ -> env, phr
+  | Phr_node_decl _ | Phr_type_def _ | Phr_const_def _ -> env, phr
   | Phr_pword_def pd -> add_pword env pd.pd_name pd.pd_body, phr
 
 (** {2 Putting it all together} *)

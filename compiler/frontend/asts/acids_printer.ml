@@ -29,25 +29,25 @@ struct
       print_clock_exp_desc ce.ce_desc
       (print_info I.print_clock_exp_info) ce.ce_info
 
-  and print_static_word fmt pw =
-    Tree_word.print_upword print_static_exp print_static_exp fmt pw
+  and print_const_word fmt pw =
+    Tree_word.print_upword print_const_exp print_const_exp fmt pw
 
   and print_clock_exp_desc fmt ced =
     match ced with
     | Ce_condvar v -> I.print_var fmt v
     | Ce_pword pd -> print_pword_desc fmt pd
     | Ce_equal (ce, se) ->
-      Format.fprintf fmt "(%a = %a)" print_clock_exp ce print_static_exp se
+      Format.fprintf fmt "(%a = %a)" print_clock_exp ce print_const_exp se
 
   and print_pword_desc fmt pd =
     match pd with
-    | Pd_lit p -> print_static_word fmt p
+    | Pd_lit p -> print_const_word fmt p
     | Pd_global ln -> Names.print_longname fmt ln
 
-  and print_static_exp fmt se =
+  and print_const_exp fmt se =
     Format.fprintf fmt "@[%a%a@]"
-      (I.print_static_exp_desc print_static_exp) se.se_desc
-      (print_info I.print_static_exp_info) se.se_info
+      (I.print_const_exp_desc print_const_exp) se.se_desc
+      (print_info I.print_const_exp_info) se.se_info
 
   and print_exp fmt e =
     Format.fprintf fmt "@[%a%a@]"
@@ -168,7 +168,7 @@ struct
         print_pat p
         print_spec spec
     | P_split p_t ->
-      Tree_word.print_upword print_pat print_static_exp fmt p_t
+      Tree_word.print_upword print_pat print_const_exp fmt p_t
 
   and print_clause fmt clause =
     Format.fprintf fmt "@ | @[<hv 2>%a ->@ %a@]"
@@ -195,11 +195,11 @@ struct
   and print_spec fmt spec =
     match spec.s_desc with
     | Unspec -> Format.fprintf fmt "unspec"
-    | Word w -> Tree_word.print_upword print_static_exp print_static_exp fmt w
+    | Word w -> Tree_word.print_upword print_const_exp print_const_exp fmt w
     | Interval (l, u) ->
       Format.fprintf fmt "@[[%a,@ %a]@]"
-        print_static_exp l
-        print_static_exp u
+        print_const_exp l
+        print_const_exp u
 
   let print_node_def fmt nd =
     let print_pragmas fmt pragmas =
@@ -211,7 +211,7 @@ struct
     in
     Format.fprintf fmt "@[%a@[<hov 2>let %snode@ %a%a@ %a =@ %a@]@]"
       print_pragmas nd.n_pragma
-      (if nd.n_static then "static " else "")
+      (if nd.n_const then "const " else "")
       Names.print_shortname nd.n_name
       (print_info I.print_node_info) nd.n_info
       print_pat nd.n_input
@@ -223,22 +223,22 @@ struct
       Names.print_shortname decl.decl_name
       Data_types.print_sig decl.decl_data
       Clock_types.print_sig decl.decl_clock
-      Static_types.print_sig decl.decl_static
+      Const_types.print_sig decl.decl_const
 
   let print_type_def fmt tydef =
     Format.fprintf fmt "@[type %a =@ %a@]"
       Names.print_shortname tydef.ty_name
       (Utils.print_list_r Names.print_shortname "|") tydef.ty_body
 
-  let print_static_def fmt sdef =
-    Format.fprintf fmt "@[let static %a =@ %a@]"
+  let print_const_def fmt sdef =
+    Format.fprintf fmt "@[let const %a =@ %a@]"
       Names.print_shortname sdef.sd_name
       print_exp sdef.sd_body
 
   let print_pword_def fmt pdef =
     Format.fprintf fmt "@[let pword %a =@ %a@]"
       Names.print_shortname pdef.pd_name
-      print_static_word pdef.pd_body
+      print_const_word pdef.pd_body
 
   let print_phrase fmt phr =
     (
@@ -246,7 +246,7 @@ struct
       | Phr_node_def def -> print_node_def fmt def
       | Phr_node_decl decl -> print_node_decl fmt decl
       | Phr_type_def tydef -> print_type_def fmt tydef
-      | Phr_static_def sdef -> print_static_def fmt sdef
+      | Phr_const_def sdef -> print_const_def fmt sdef
       | Phr_pword_def pdef -> print_pword_def fmt pdef
     );
     Format.fprintf fmt "@\n"

@@ -17,26 +17,26 @@
 
 open Acids_causal
 
-let print_dynamic_signatures fmt (nn, info) =
+let print_nonconst_signatures fmt (nn, info) =
   Format.fprintf fmt
     "@[<v 2>val %a@ @[%s %a@]@ @[%s %a@]@ @[%s %a@]@]@\n"
     Names.print_shortname nn
     Data_types.printing_prefix
     Data_types.print_sig info#ni_data
-    Static_types.printing_prefix
-    Static_types.print_sig info#ni_static
+    Const_types.printing_prefix
+    Const_types.print_sig info#ni_const
     Clock_types.printing_prefix
     Clock_types.print_sig info#ni_clock
 
-let print_static_signatures fmt nd =
-  let open Acids_static in
+let print_const_signatures fmt nd =
+  let open Acids_const in
   Format.fprintf fmt
-    "@[<v 2>static val %a@ @[%s %a@]@ @[%s %a@]@]@\n"
+    "@[<v 2>const val %a@ @[%s %a@]@ @[%s %a@]@]@\n"
     Names.print_shortname nd.n_name
     Data_types.printing_prefix
     Data_types.print_sig nd.n_info#ni_data
-    Static_types.printing_prefix
-    Static_types.print_sig nd.n_info#ni_static
+    Const_types.printing_prefix
+    Const_types.print_sig nd.n_info#ni_const
 
 let print_signatures_of_node_defs file =
   let info_l =
@@ -44,14 +44,14 @@ let print_signatures_of_node_defs file =
       match phr with
       | Phr_node_def nd -> (nd.n_name, nd.n_info) :: info_l
       | Phr_node_decl _ | Phr_type_def _
-      | Phr_static_def _ | Phr_pword_def _ -> info_l
+      | Phr_const_def _ | Phr_pword_def _ -> info_l
     in
     List.fold_right add_sig file.f_body []
   in
-  Format.printf "%a" (Utils.print_list_eol print_dynamic_signatures) info_l;
-  if List.length file.f_info#static_nodes > 0 then Format.printf "@\n";
+  Format.printf "%a" (Utils.print_list_eol print_nonconst_signatures) info_l;
+  if List.length file.f_info#const_nodes > 0 then Format.printf "@\n";
   Format.printf "%a@?"
-    (Utils.print_list_eol print_static_signatures) file.f_info#static_nodes
+    (Utils.print_list_eol print_const_signatures) file.f_info#const_nodes
   ;
   flush stdout
 
@@ -59,7 +59,7 @@ let file
     ctx
     (file :
      < interfaces : Interface.env;
-       static_nodes : Acids_static.node_def list; > file)
+       const_nodes : Acids_const.node_def list; > file)
     =
   if Pass_manager.ctx_get_attr ctx "i" then print_signatures_of_node_defs file;
   let intf = Interface.interface_of_file file in

@@ -16,24 +16,24 @@
  *)
 
 type ty_scal =
-  | S_static
-  | S_dynamic
+  | S_const
+  | S_nonconst
 
 type ty =
   | Sy_var of int
   | Sy_scal of ty_scal
   | Sy_prod of ty list
 
-type ty_sig = { input : ty; output : ty; static : ty_scal; }
+type ty_sig = { input : ty; output : ty; const : ty_scal; }
 
 let print_ty_scal fmt ss =
   match ss with
-  | S_static -> Format.fprintf fmt "S"
-  | S_dynamic -> Format.fprintf fmt "D"
+  | S_const -> Format.fprintf fmt "C"
+  | S_nonconst -> Format.fprintf fmt "N"
 
 let rec print_ty fmt sty =
   match sty with
-  | Sy_var v -> Format.fprintf fmt "'s%a" Utils.print_int_non_zero v
+  | Sy_var v -> Format.fprintf fmt "'c%a" Utils.print_int_non_zero v
   | Sy_scal ss -> print_ty_scal fmt ss
   | Sy_prod sty_l ->
     Format.fprintf fmt "(@[%a@])"
@@ -42,26 +42,26 @@ let rec print_ty fmt sty =
 let print_sig fmt csig =
   Format.fprintf fmt "@[%a -{%a}->@ %a@]"
     print_ty csig.input
-    print_ty_scal csig.static
+    print_ty_scal csig.const
     print_ty csig.output
 
 let printing_prefix = "is"
 
 let print_ty_scal_ann =
   Ast_misc.print_annot
-    Compiler_options.print_static_info
+    Compiler_options.print_const_info
     printing_prefix
     print_ty_scal
 
 let print_ty_ann =
   Ast_misc.print_annot
-    Compiler_options.print_static_info
+    Compiler_options.print_const_info
     printing_prefix
     print_ty
 
 let print_sig_ann =
   Ast_misc.print_annot
-    Compiler_options.print_static_info
+    Compiler_options.print_const_info
     printing_prefix
     print_sig
 
@@ -111,24 +111,24 @@ let rec ty_of_pre_ty ?(make_var = fun v -> Sy_var v) pty =
   | Psy_scal ss -> Sy_scal ss
   | Psy_prod pty_l -> Sy_prod (List.map (ty_of_pre_ty ~make_var) pty_l)
 
-let rec is_static st =
+let rec is_const st =
   match st with
   | Sy_var _ -> false
-  | Sy_scal S_static -> true
-  | Sy_scal S_dynamic -> false
-  | Sy_prod st_l -> List.exists is_static st_l
+  | Sy_scal S_const -> true
+  | Sy_scal S_nonconst -> false
+  | Sy_prod st_l -> List.exists is_const st_l
 
-let generalize_sig static inp out =
+let generalize_sig const inp out =
   let make_var = Ast_misc.memoize_make_var (fun i -> Sy_var i) in
   let inp = ty_of_pre_ty ~make_var inp in
   let out = ty_of_pre_ty ~make_var out in
   {
     input = inp;
     output = out;
-    static = if static then S_static else S_dynamic;
+    const = if const then S_const else S_nonconst;
   }
 
-let is_static_signature ssig = ssig.static = S_static
+let is_const_signature ssig = ssig.const = S_const
 
 (** {2 Unification *)
 
@@ -187,8 +187,8 @@ let rec unify loc ty1 ty2 =
     occur_check loc id ty;
     r.v_link <- Some ty
 
-  | Psy_scal S_static, Psy_scal S_static
-  | Psy_scal S_dynamic, Psy_scal S_dynamic ->
+  | Psy_scal S_const, Psy_scal S_const
+  | Psy_scal S_nonconst, Psy_scal S_nonconst ->
     ()
 
   | _ ->
@@ -270,24 +270,24 @@ let solve ?(unify_remaining = true) constraints =
           solve worklist
 
         (* S <: D *)
-        | Psy_scal S_static, Psy_scal S_dynamic
-        | Psy_scal S_static, Psy_scal S_static
-        | Psy_scal S_dynamic, Psy_scal S_dynamic ->
+        | Psy_scal S_const, Psy_scal S_nonconst
+        | Psy_scal S_const, Psy_scal S_const
+        | Psy_scal S_nonconst, Psy_scal S_nonconst ->
           solve worklist
 
-        | Psy_scal S_dynamic, Psy_scal S_static ->
+        | Psy_scal S_nonconst, Psy_scal S_const ->
           unification_conflict c.loc lhs rhs
 
         (* ty <: S -> ty = S, D <: ty -> ty = D *)
-        | Psy_var { v_id = v; }, Psy_scal S_static
-        | Psy_scal S_dynamic, Psy_var { v_id = v; } ->
+        | Psy_var { v_id = v; }, Psy_scal S_const
+        | Psy_scal S_nonconst, Psy_var { v_id = v; } ->
           let awakened_constraints = Waitlist.take_items waitlist v in
           unify c.loc lhs rhs;
           solve (awakened_constraints @ worklist)
 
         (* S <: ty and ty <: D are always satisfied *)
-        | Psy_var { v_id = _; }, Psy_scal S_dynamic
-        | Psy_scal S_static, Psy_var { v_id = _; } ->
+        | Psy_var { v_id = _; }, Psy_scal S_nonconst
+        | Psy_scal S_const, Psy_var { v_id = _; } ->
           solve worklist
 
         (* Subtyping of products, a bit shaky *)

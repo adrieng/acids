@@ -124,8 +124,8 @@ type typing_env =
     current_constr : Names.shortname Names.ShortEnv.t;
     (** maps nodes from the current module to type signatures *)
     current_nodes : Data_types.data_sig Names.ShortEnv.t;
-    (** maps statics from the current module to type signatures *)
-    current_statics : Data_types.data_sig Names.ShortEnv.t;
+    (** maps consts from the current module to type signatures *)
+    current_consts : Data_types.data_sig Names.ShortEnv.t;
     (** maps pword from the current module to pword signatures *)
     (* In theory, there is no type instantiation to perform since pwords are
        always monomorphic *)
@@ -141,7 +141,7 @@ let initial_typing_env info =
     intf_env = info#interfaces;
     current_constr = Names.ShortEnv.empty;
     current_nodes = Names.ShortEnv.empty;
-    current_statics = Names.ShortEnv.empty;
+    current_consts = Names.ShortEnv.empty;
     current_pwords = Names.ShortEnv.empty;
     idents = Ident.Env.empty;
     exists = Utils.Int_map.empty;
@@ -185,22 +185,22 @@ let find_node =
 let add_node env nn dsig =
   { env with current_nodes = Names.ShortEnv.add nn dsig env.current_nodes; }
 
-let add_static env sn ty =
+let add_const env sn ty =
   let ty_sig = generalize_sig (PreTy.Pty_prod []) ty in
   {
     env with
-      current_statics = Names.ShortEnv.add sn ty_sig env.current_statics;
+      current_consts = Names.ShortEnv.add sn ty_sig env.current_consts;
   }
 
-let find_static env ln =
+let find_const env ln =
   let open Names in
   let ty_sig =
     match ln.modn with
     | LocalModule ->
-      Names.ShortEnv.find ln.shortn env.current_statics
+      Names.ShortEnv.find ln.shortn env.current_consts
     | Module modn ->
       let intf = Names.ShortEnv.find modn env.intf_env in
-      let si = Interface.find_static intf ln.shortn in
+      let si = Interface.find_const intf ln.shortn in
       { data_sig_input = Ty_prod []; data_sig_output = si.Interface.si_type; }
   in
   let _, pty = instantiate_sig fresh_ty ty_sig in
@@ -327,16 +327,16 @@ struct
           invalid_arg "update_clock_exp_info"
       )
 
-  let update_static_exp_info { new_annot = na; old_annot = (); } =
+  let update_const_exp_info { new_annot = na; old_annot = (); } =
     match na with
-    | Node _ -> invalid_arg "update_static_exp_info"
+    | Node _ -> invalid_arg "update_const_exp_info"
     | Exp pty ->
       let ty = Data_types.ty_of_pre_ty pty in
       (
         match ty with
         | Ty_scal tys ->
           object method pwi_data = tys end
-        | _ -> invalid_arg "update_static_exp_info"
+        | _ -> invalid_arg "update_const_exp_info"
       )
 
   let update_exp_info { new_annot = na; old_annot = (); } =
@@ -399,7 +399,7 @@ and type_clock_exp env ce =
       M.Ce_condvar id, ty
 
     | Ce_pword (Pd_lit w) ->
-      let w, ty = type_static_word env w in
+      let w, ty = type_const_word env w in
       M.Ce_pword (M.Pd_lit w), cond_ty ty
 
     | Ce_pword (Pd_global ln) ->
@@ -407,7 +407,7 @@ and type_clock_exp env ce =
       M.Ce_pword (M.Pd_global ln), cond_ty ty
 
     | Ce_equal (ce, se) ->
-      let se, ty = type_static_exp env se in
+      let se, ty = type_const_exp env se in
       let ce = expect_clock_exp env (cond_ty ty) ce in
       M.Ce_equal (ce, se), cond_ty bool_ty
   in
@@ -423,7 +423,7 @@ and expect_clock_exp env expected_ty ce =
   unify ce.M.ce_loc expected_ty effective_ty;
   ce
 
-and type_static_exp env se =
+and type_const_exp env se =
   let open Acids_scoped.Info in
   let sed, ty =
     match se.se_desc with
@@ -432,7 +432,7 @@ and type_static_exp env se =
     | Se_econstr ec ->
       Se_econstr ec, type_econstr env ec
     | Se_global ln ->
-      Se_global ln, find_static env ln
+      Se_global ln, find_const env ln
     | Se_binop (op, se1, se2) ->
       let ty_in1, ty_in2, ty_out =
         List.assoc op
@@ -443,8 +443,8 @@ and type_static_exp env se =
             "(/)", (int_ty, int_ty, int_ty);
           ]
       in
-      let se1 = expect_static_exp env ty_in1 se1 in
-      let se2 = expect_static_exp env ty_in2 se2 in
+      let se1 = expect_const_exp env ty_in1 se1 in
+      let se2 = expect_const_exp env ty_in2 se2 in
       Se_binop (op, se1, se2), ty_out
   in
   {
@@ -454,8 +454,8 @@ and type_static_exp env se =
   },
   ty
 
-and expect_static_exp env expected_ty se =
-  let se, effective_ty = type_static_exp env se in
+and expect_const_exp env expected_ty se =
+  let se, effective_ty = type_const_exp env se in
   unify se.M.se_loc expected_ty effective_ty;
   se
 
@@ -634,9 +634,9 @@ and type_pattern p env =
     | P_split w ->
       let ty = fresh_ty () in
       let expect_pat = expect_pat ty in
-      let expect_static_exp_int e env = expect_static_exp env int_ty e, env in
+      let expect_const_exp_int e env = expect_const_exp env int_ty e, env in
       let w, env =
-        Tree_word.mapfold_upword expect_pat expect_static_exp_int w env
+        Tree_word.mapfold_upword expect_pat expect_const_exp_int w env
       in
       M.P_split w, ty, env
   in
@@ -716,11 +716,11 @@ and type_spec env spec =
     match spec.s_desc with
     | Unspec -> M.Unspec, fresh_ty ()
     | Word w ->
-      let w, ty = type_static_word env w in
+      let w, ty = type_const_word env w in
       M.Word w, ty
     | Interval (l, u) ->
-      let l = expect_static_exp env int_ty l in
-      let u = expect_static_exp env int_ty u in
+      let l = expect_const_exp env int_ty l in
+      let u = expect_const_exp env int_ty u in
       M.Interval (l, u), int_ty
   in
   {
@@ -734,10 +734,10 @@ and expect_spec env expected_ty spec =
   unify spec.M.s_loc expected_ty actual_ty;
   spec
 
-and type_static_word env w =
+and type_const_word env w =
   let ty = fresh_ty () in
-  let expect = expect_static_exp env ty in
-  let expect_int = expect_static_exp env int_ty in
+  let expect = expect_const_exp env ty in
+  let expect_int = expect_const_exp env int_ty in
   Tree_word.map_upword expect expect_int w, ty
 
 let type_node_def env nd =
@@ -751,7 +751,7 @@ let type_node_def env nd =
     M.n_input = p;
     M.n_body = e;
     M.n_pragma = nd.n_pragma;
-    M.n_static = nd.n_static;
+    M.n_const = nd.n_const;
     M.n_loc = nd.n_loc;
     M.n_info = annotate_node nd.n_info inp_ty out_ty;
   },
@@ -761,7 +761,7 @@ let type_node_decl env nd =
   {
     M.decl_name = nd.decl_name;
     M.decl_data = nd.decl_data;
-    M.decl_static = nd.decl_static;
+    M.decl_const = nd.decl_const;
     M.decl_clock = nd.decl_clock;
     M.decl_loc = nd.decl_loc;
   },
@@ -775,17 +775,17 @@ let type_type_def env td =
   },
   add_type_constrs env td.ty_name td.ty_body
 
-let type_static_def env sd =
+let type_const_def env sd =
   let body, ty = type_exp env sd.sd_body in
   {
     M.sd_name = sd.sd_name;
     M.sd_body = body;
     M.sd_loc = sd.sd_loc;
   },
-  add_static env sd.sd_name ty
+  add_const env sd.sd_name ty
 
 let type_pword_def env pd =
-  let body, ty = type_static_word env pd.pd_body in
+  let body, ty = type_const_word env pd.pd_body in
   {
     M.pd_name = pd.pd_name;
     M.pd_body = body;
@@ -804,9 +804,9 @@ let type_phrase env phr =
   | Phr_type_def td ->
     let td, env = type_type_def env td in
     env, M.Phr_type_def td
-  | Phr_static_def sd ->
-    let sd, env = type_static_def env sd in
-    env, M.Phr_static_def sd
+  | Phr_const_def sd ->
+    let sd, env = type_const_def env sd in
+    env, M.Phr_const_def sd
   | Phr_pword_def pd ->
     let pd, env = type_pword_def env pd in
     env, M.Phr_pword_def pd

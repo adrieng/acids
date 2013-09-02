@@ -26,19 +26,19 @@ open Acids_causal
 
 let non_lowered feat = Compiler.internal_error (feat ^ " was not lowered")
 
-let translate_static_exp se = se.se_desc
+let translate_const_exp se = se.se_desc
 
-let translate_static_exp_int se = Ast_misc.get_int (translate_static_exp se)
+let translate_const_exp_int se = Ast_misc.get_int (translate_const_exp se)
 
-let translate_static_pword pw =
-  Tree_word.map_upword translate_static_exp translate_static_exp_int pw
+let translate_const_pword pw =
+  Tree_word.map_upword translate_const_exp translate_const_exp_int pw
 
 (** {2 Environments} *)
 
 type env =
   {
     intf_env : Interface.env;
-    local_pwords : Ast_misc.static_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
     current_block : int;
     current_locals : unit Nir.var_dec Ident.Env.t;
   }
@@ -52,7 +52,7 @@ let initial_env intf_env =
   }
 
 let add_pword env pn pw =
-  let p = translate_static_pword pw in
+  let p = translate_const_pword pw in
   { env with local_pwords = Names.ShortEnv.add pn p env.local_pwords; }
 
 let find_pword env ln =
@@ -104,11 +104,11 @@ let rec translate_clock_exp env ce =
     | Ce_condvar v ->
       Nir.Ce_condvar v
     | Ce_pword (Pd_lit pw) ->
-      Nir.Ce_pword (translate_static_pword pw)
+      Nir.Ce_pword (translate_const_pword pw)
     | Ce_pword (Pd_global ln) ->
       Nir.Ce_pword (find_pword env ln)
     | Ce_equal (ce, se) ->
-      Nir.Ce_equal (translate_clock_exp env ce, translate_static_exp se)
+      Nir.Ce_equal (translate_clock_exp env ce, translate_const_exp se)
   in
   {
     Nir.ce_desc = ced;
@@ -154,12 +154,12 @@ let translate_spec spec =
     invalid_arg "translate_spec: Unspec"
   | Word pw ->
     let p =
-      Tree_word.map_upword translate_static_exp_int translate_static_exp_int pw
+      Tree_word.map_upword translate_const_exp_int translate_const_exp_int pw
     in
     Ast_misc.Word p
   | Interval (l, u) ->
-    let l = translate_static_exp_int l in
-    let u = translate_static_exp_int u in
+    let l = translate_const_exp_int l in
+    let u = translate_const_exp_int u in
     Ast_misc.Interval (Interval.make l u)
 
 let rec translate_pattern p (env, v_l) =
@@ -409,7 +409,7 @@ let translate_type_def td =
 
 let translate_phrase (type_defs, node_defs, env) phr =
   match phr with
-  | Phr_static_def _ | Phr_node_decl _ ->
+  | Phr_const_def _ | Phr_node_decl _ ->
     type_defs, node_defs, env
   | Phr_pword_def pd ->
     type_defs, node_defs, add_pword env pd.pd_name pd.pd_body

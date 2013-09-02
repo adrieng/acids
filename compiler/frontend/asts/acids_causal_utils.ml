@@ -20,7 +20,7 @@ open Acids_causal
 (* Useful definition *)
 type annotated_file =
   < interfaces : Interface.env;
-    static_nodes : Acids_static.node_def list; > file
+    const_nodes : Acids_const.node_def list; > file
 
 module T = Acids_utils.TRANSLATE_CLOCK_EXP(Acids_causal)
 
@@ -29,7 +29,7 @@ let trans_clock_exp find_pword ce =
   let find_specs info = info#ci_specs in
   T.trans_clock_exp find_pword find_bounds find_specs ce
 
-let make_static_exp ?(loc = Loc.dummy) ty st desc =
+let make_const_exp ?(loc = Loc.dummy) ty st desc =
   {
     se_desc = desc;
     se_info =
@@ -40,11 +40,11 @@ let make_static_exp ?(loc = Loc.dummy) ty st desc =
     se_loc = loc;
   }
 
-let make_static_exp_bool ?(loc = Loc.dummy) st b =
-  make_static_exp ~loc Data_types.Tys_bool st (Ast_misc.Ec_bool b)
+let make_const_exp_bool ?(loc = Loc.dummy) st b =
+  make_const_exp ~loc Data_types.Tys_bool st (Ast_misc.Ec_bool b)
 
-let make_static_exp_int ?(loc = Loc.dummy) st i =
-  make_static_exp ~loc Data_types.Tys_int st (Ast_misc.Ec_int i)
+let make_const_exp_int ?(loc = Loc.dummy) st i =
+  make_const_exp ~loc Data_types.Tys_int st (Ast_misc.Ec_int i)
 
 let make_clock_exp ?(loc = Loc.dummy) ty st bounds specs desc =
   {
@@ -74,7 +74,7 @@ let make_clock_exp_not ?(loc = Loc.dummy) ce =
   make_clock_exp_bool
     ~loc
     base_st
-    (Ce_equal (ce, make_static_exp_bool base_st false))
+    (Ce_equal (ce, make_const_exp_bool base_st false))
 
 let make_clock_exp_pword ?(loc = Loc.dummy) st pw =
   let get se = Ast_misc.int_of_econstr se.se_desc in
@@ -159,7 +159,7 @@ let apply_to_node_defs f_node file =
     match phr with
     | Phr_node_def nd ->
       Phr_node_def (lower_node nd)
-    | Phr_node_decl _ | Phr_type_def _ | Phr_static_def _ | Phr_pword_def _ ->
+    | Phr_node_decl _ | Phr_type_def _ | Phr_const_def _ | Phr_pword_def _ ->
       phr
   in
 

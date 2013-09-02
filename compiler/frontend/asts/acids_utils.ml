@@ -46,12 +46,12 @@ struct
   type clock_exp_info = A.I.clock_exp_info annot
   let print_clock_exp_info = print_annot A.I.print_clock_exp_info
 
-  type static_exp_info = A.I.static_exp_info annot
-  let print_static_exp_info = print_annot A.I.print_static_exp_info
+  type const_exp_info = A.I.const_exp_info annot
+  let print_const_exp_info = print_annot A.I.print_const_exp_info
 
-  type 'a static_exp_desc = 'a A.I.static_exp_desc
-  let print_static_exp_desc = A.I.print_static_exp_desc
-  let map_static_exp_desc = A.I.map_static_exp_desc
+  type 'a const_exp_desc = 'a A.I.const_exp_desc
+  let print_const_exp_desc = A.I.print_const_exp_desc
+  let map_const_exp_desc = A.I.map_const_exp_desc
 
   type exp_info = A.I.exp_info annot
   let print_exp_info = print_annot A.I.print_exp_info
@@ -86,8 +86,8 @@ sig
   module OUT_INFO : Acids.S
 
   val update_clock_exp_info : IN_INFO.clock_exp_info -> OUT_INFO.clock_exp_info
-  val update_static_exp_info :
-    IN_INFO.static_exp_info -> OUT_INFO.static_exp_info
+  val update_const_exp_info :
+    IN_INFO.const_exp_info -> OUT_INFO.const_exp_info
   val update_exp_info : IN_INFO.exp_info -> OUT_INFO.exp_info
   val update_app_info : IN_INFO.app_info -> OUT_INFO.app_info
   val update_block_info : IN_INFO.block_info -> OUT_INFO.block_info
@@ -102,7 +102,7 @@ module MakeMap
   (IN : Acids.A)
   (OUT : Acids.A
    with type I.var = IN.I.var
-   and type 'a I.static_exp_desc = 'a IN.I.static_exp_desc)
+   and type 'a I.const_exp_desc = 'a IN.I.const_exp_desc)
   (M : INFO_MAP with module IN_INFO = IN.I and module OUT_INFO = OUT.I)
   =
 struct
@@ -114,12 +114,12 @@ struct
       | Ce_condvar v ->
         OUT.Ce_condvar v
       | Ce_pword (Pd_lit w) ->
-        let w = Tree_word.map_upword extract_static_exp extract_static_exp w in
+        let w = Tree_word.map_upword extract_const_exp extract_const_exp w in
         OUT.Ce_pword (OUT.Pd_lit w)
       | Ce_pword (Pd_global ln) ->
         OUT.Ce_pword (OUT.Pd_global ln)
       | Ce_equal (ce, se) ->
-        OUT.Ce_equal (extract_clock_exp ce, extract_static_exp se)
+        OUT.Ce_equal (extract_clock_exp ce, extract_const_exp se)
     in
     {
       OUT.ce_desc = ced;
@@ -127,11 +127,11 @@ struct
       OUT.ce_info = M.update_clock_exp_info ce.ce_info;
     }
 
-  and extract_static_exp se =
+  and extract_const_exp se =
     {
-      OUT.se_desc = IN.I.map_static_exp_desc extract_static_exp se.se_desc;
+      OUT.se_desc = IN.I.map_const_exp_desc extract_const_exp se.se_desc;
       OUT.se_loc = se.se_loc;
-      OUT.se_info = M.update_static_exp_info se.se_info;
+      OUT.se_info = M.update_const_exp_info se.se_info;
     }
 
   and extract_exp e =
@@ -199,7 +199,7 @@ struct
       | P_spec_annot (p, spec) ->
         OUT.P_spec_annot (extract_pattern p, extract_spec spec)
       | P_split w ->
-        OUT.P_split (Tree_word.map_upword extract_pattern extract_static_exp w)
+        OUT.P_split (Tree_word.map_upword extract_pattern extract_const_exp w)
     in
     {
       OUT.p_desc = pd;
@@ -250,10 +250,10 @@ struct
       match spec.s_desc with
       | Unspec -> OUT.Unspec
       | Word w ->
-        let w = Tree_word.map_upword extract_static_exp extract_static_exp w in
+        let w = Tree_word.map_upword extract_const_exp extract_const_exp w in
         OUT.Word w
       | Interval (l, u) ->
-        OUT.Interval (extract_static_exp l, extract_static_exp u)
+        OUT.Interval (extract_const_exp l, extract_const_exp u)
     in
     {
       OUT.s_desc = sd;
@@ -266,7 +266,7 @@ struct
       OUT.n_input = extract_pattern nd.n_input;
       OUT.n_body = extract_exp nd.n_body;
       OUT.n_pragma = nd.n_pragma;
-      OUT.n_static = nd.n_static;
+      OUT.n_const = nd.n_const;
       OUT.n_loc = nd.n_loc;
       OUT.n_info = M.update_node_info nd.n_info;
     }
@@ -275,7 +275,7 @@ struct
     {
       OUT.decl_name = nd.decl_name;
       OUT.decl_data = nd.decl_data;
-      OUT.decl_static = nd.decl_static;
+      OUT.decl_const = nd.decl_const;
       OUT.decl_clock = nd.decl_clock;
       OUT.decl_loc = nd.decl_loc;
     }
@@ -287,7 +287,7 @@ struct
       OUT.ty_loc = td.ty_loc;
     }
 
-  let extract_static_def sd =
+  let extract_const_def sd =
     {
       OUT.sd_name = sd.sd_name;
       OUT.sd_body = extract_exp sd.sd_body;
@@ -299,8 +299,8 @@ struct
       OUT.pd_name = pd.pd_name;
       OUT.pd_body =
         Tree_word.map_upword
-          extract_static_exp
-          extract_static_exp
+          extract_const_exp
+          extract_const_exp
           pd.pd_body;
       OUT.pd_loc = pd.pd_loc;
     }
@@ -310,7 +310,7 @@ struct
     | Phr_node_def nd -> OUT.Phr_node_def (extract_node_def nd)
     | Phr_node_decl nd -> OUT.Phr_node_decl (extract_node_decl nd)
     | Phr_type_def td -> OUT.Phr_type_def (extract_type_def td)
-    | Phr_static_def sd -> OUT.Phr_static_def (extract_static_def sd)
+    | Phr_const_def sd -> OUT.Phr_const_def (extract_const_def sd)
     | Phr_pword_def pd -> OUT.Phr_pword_def (extract_pword_def pd)
 
   let extract_file f =
@@ -325,12 +325,12 @@ end
 module FREEVARS(A : Acids.A
                 with type I.var = Ident.t
                 and type
-                  'a I.static_exp_desc =
-                       'a Acids_prespec.Info.static_exp_desc) =
+                  'a I.const_exp_desc =
+                       'a Acids_prespec.Info.const_exp_desc) =
 struct
   open A
 
-  (* TODO: we currently do not consider static exps *)
+  (* TODO: we currently do not consider const exps *)
 
   let rec fv_clock_exp fv ce =
     match ce.ce_desc with
@@ -427,7 +427,7 @@ end
 module REFRESH(A : Acids.A
                with type I.var = Ident.t
                and type
-                 'a I.static_exp_desc = 'a Acids_scoped.Info.static_exp_desc) =
+                 'a I.const_exp_desc = 'a Acids_scoped.Info.const_exp_desc) =
 struct
   open A
 
@@ -445,19 +445,19 @@ struct
         Ce_condvar v, env
       | Ce_pword (Pd_lit pw) ->
         let pw, env =
-          Tree_word.mapfold_upword refresh_static_exp refresh_static_exp pw env
+          Tree_word.mapfold_upword refresh_const_exp refresh_const_exp pw env
         in
         Ce_pword (Pd_lit pw), env
       | Ce_pword (Pd_global ln) ->
         Ce_pword (Pd_global ln), env
       | Ce_equal (ce, se) ->
         let ce, env = refresh_clock_exp ce env in
-        let se, env = refresh_static_exp se env in
+        let se, env = refresh_const_exp se env in
         Ce_equal (ce, se), env
     in
     { ce with ce_desc = ced; }, env
 
-  and refresh_static_exp se env =
+  and refresh_const_exp se env =
     let open Acids_scoped.Info in
     let sed, env =
       match se.se_desc with
@@ -467,8 +467,8 @@ struct
       | Se_econstr _ | Se_global _ ->
         se.se_desc, env
       | Se_binop (op, se1, se2) ->
-        let se1, env = refresh_static_exp se1 env in
-        let se2, env = refresh_static_exp se2 env in
+        let se1, env = refresh_const_exp se1 env in
+        let se2, env = refresh_const_exp se2 env in
         Se_binop (op, se1, se2), env
     in
     { se with se_desc = sed; }, env
@@ -587,12 +587,12 @@ struct
       | Unspec -> Unspec, env
       | Word pw ->
         let pw, env =
-          Tree_word.mapfold_upword refresh_static_exp refresh_static_exp pw env
+          Tree_word.mapfold_upword refresh_const_exp refresh_const_exp pw env
         in
         Word pw, env
       | Interval (l, u) ->
-        let l, env = refresh_static_exp l env in
-        let u, env = refresh_static_exp u env in
+        let l, env = refresh_const_exp l env in
+        let u, env = refresh_const_exp u env in
         Interval (l, u), env
     in
     {
@@ -647,7 +647,7 @@ struct
 
       | P_split pt ->
         let pt, env =
-          Tree_word.mapfold_upword refresh_pattern refresh_static_exp pt env
+          Tree_word.mapfold_upword refresh_pattern refresh_const_exp pt env
         in
         P_split pt, env
     in
@@ -663,7 +663,7 @@ module DEP_GRAPH
   (
     A : Acids.A
    with type I.var = Ident.t
-   and type 'a I.static_exp_desc = 'a Acids_prespec.Info.static_exp_desc
+   and type 'a I.const_exp_desc = 'a Acids_prespec.Info.const_exp_desc
   ) =
 struct
   module G = Graph.Imperative.Digraph.ConcreteBidirectional(Ident)
@@ -785,7 +785,7 @@ module TRANSLATE_CLOCK_EXP
   (
     A : Acids.A
       with type I.var = Ident.t
-      and type 'a I.static_exp_desc = Ast_misc.econstr
+      and type 'a I.const_exp_desc = Ast_misc.econstr
   ) =
 struct
   open A
@@ -883,7 +883,7 @@ module SUBST
   (
     A : Acids.A
       with type I.var = Ident.t
-      and type 'a I.static_exp_desc = Ast_misc.econstr
+      and type 'a I.const_exp_desc = Ast_misc.econstr
   ) =
 struct
   module M = MAP_SUB(A)

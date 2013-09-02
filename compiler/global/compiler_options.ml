@@ -23,7 +23,7 @@ let print_full_info = ref false
 
 let print_data_info = ref false
 
-let print_static_info = ref false
+let print_const_info = ref false
 
 let print_spec_info = ref false
 
@@ -37,7 +37,7 @@ let info_list =
   [
     "full", print_full_info;
     "data", print_data_info;
-    "static", print_static_info;
+    "const", print_const_info;
     "spec", print_spec_info;
     "clock", print_clock_info;
     "caus", print_causality_info;

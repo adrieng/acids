@@ -36,7 +36,7 @@ sig
 
   val abs_const : Ast_misc.const -> t
 
-  val abs_word : Ast_misc.static_pword -> t
+  val abs_word : Ast_misc.const_pword -> t
 end
 
 module type Elem =

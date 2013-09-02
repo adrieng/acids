@@ -41,7 +41,7 @@
       "snd", SND;
       "let", LET;
       "node", NODE;
-      "static", STATIC;
+      "const", CONST;
       "pword", PWORD;
       "open", OPEN;
       "fby", FBY;
@@ -72,8 +72,8 @@
       "bool", BOOL_TY;
       "int", INT_TY;
       "float", FLOAT_TY;
-      "D", DYNAMIC_TY;
-      "S", STATIC_TY;
+      "N", NONCONST_TY;
+      "C", CONST_TY;
     ]
 
   let token_of_keyword =
@@ -97,7 +97,7 @@ let keyword =
   | "snd"
   | "let"
   | "node"
-  | "static"
+  | "const"
   | "pword"
   | "open"
   | "fby"
@@ -184,8 +184,8 @@ rule token = parse
   | "'b"              { CTVAR 0 }
   | "'x"(posint as i) { TYVAR (int_of_string i) }
   | "'x"              { TYVAR 0 }
-  | "'s"(posint as i) { STATICVAR (int_of_string i) }
-  | "'s"              { STATICVAR 0 }
+  | "'c"(posint as i) { CONSTVAR (int_of_string i) }
+  | "'c"              { CONSTVAR 0 }
 
   | '@' (ident as s) { PRAGMAKEY s }
   | lident as s { IDENT s }

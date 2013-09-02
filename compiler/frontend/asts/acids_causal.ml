@@ -23,12 +23,12 @@ struct
   type clock_exp_info = Acids_clocked.Info.clock_exp_info
   let print_clock_exp_info = Acids_clocked.Info.print_clock_exp_info
 
-  type static_exp_info = Acids_clocked.Info.static_exp_info
-  let print_static_exp_info = Acids_clocked.Info.print_static_exp_info
+  type const_exp_info = Acids_clocked.Info.const_exp_info
+  let print_const_exp_info = Acids_clocked.Info.print_const_exp_info
 
-  type 'a static_exp_desc = 'a Acids_spec.Info.static_exp_desc
-  let print_static_exp_desc = Acids_spec.Info.print_static_exp_desc
-  let map_static_exp_desc = Acids_spec.Info.map_static_exp_desc
+  type 'a const_exp_desc = 'a Acids_spec.Info.const_exp_desc
+  let print_const_exp_desc = Acids_spec.Info.print_const_exp_desc
+  let map_const_exp_desc = Acids_spec.Info.map_const_exp_desc
 
   type exp_info =
       <
@@ -75,12 +75,12 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
+        ni_const : Const_types.ty_sig;
         ni_clock : Clock_types.clock_sig;
       >
   let print_node_info fmt ni =
     Data_types.print_sig_ann fmt ni#ni_data;
-    Static_types.print_sig_ann fmt ni#ni_static;
+    Const_types.print_sig_ann fmt ni#ni_const;
     Clock_types.print_sig_ann fmt ni#ni_clock
 end
 

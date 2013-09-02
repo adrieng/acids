@@ -43,7 +43,7 @@ type env =
     intf_env : Interface.t Names.ModEnv.t;
     pragmas : Pragma.pragma Utils.Env.t;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
-    local_pwords : Ast_misc.static_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
 
@@ -151,7 +151,7 @@ let unify loc t1 t2 constrs =
 
 let prod_ty t_l = Pct_prod t_l
 
-let trans_static_exp_int se = Ast_misc.get_int se.se_desc
+let trans_const_exp_int se = Ast_misc.get_int se.se_desc
 
 module T = Acids_utils.TRANSLATE_CLOCK_EXP(Acids_spec)
 
@@ -169,7 +169,7 @@ let rec int_ptree_of_ptree current pt =
   | Leaf _ -> Int.succ current, Leaf (Ec_int current)
   | Power (pt, se) ->
     let current, pt = int_ptree_of_ptree current pt in
-    current, Power (pt, trans_static_exp_int se)
+    current, Power (pt, trans_const_exp_int se)
   | Concat pt_l ->
     let current, pt_l = Utils.mapfold_left int_ptree_of_ptree current pt_l in
     current, Concat pt_l
@@ -275,7 +275,7 @@ struct
 
   let ty_of_pre_ty = ty_of_pre_ty make_st_var make_ty_var
 
-  let map_static_exp_desc _ ec = ec
+  let map_const_exp_desc _ ec = ec
 
   let update_clock_exp_info { new_annot = na; old_annot = info; } =
     match na with
@@ -290,9 +290,9 @@ struct
         end
       )
 
-  let update_static_exp_info { new_annot = na; old_annot = info; } =
+  let update_const_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_static_exp_info"
+    | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_const_exp_info"
     | ClockExp pst ->
       (
         object
@@ -369,7 +369,7 @@ struct
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
-        method ni_static = info#ni_static
+        method ni_const = info#ni_const
         method ni_clock = csig
       end
 end
@@ -395,7 +395,7 @@ and clock_clock_exp env ce acc =
     | Ce_pword (Pd_lit pw) ->
       let st = fresh_st () in
       let pw, acc =
-        let expect = expect_static_exp (ty_of_st st) in
+        let expect = expect_const_exp (ty_of_st st) in
         Tree_word.mapfold_upword expect expect pw acc
       in
       M.Ce_pword (M.Pd_lit pw), st, acc
@@ -405,7 +405,7 @@ and clock_clock_exp env ce acc =
 
     | Ce_equal (ce, se) ->
       let (ce, st), acc = clock_clock_exp env ce acc in
-      let se, acc = expect_static_exp (ty_of_st st) se acc in
+      let se, acc = expect_const_exp (ty_of_st st) se acc in
       M.Ce_equal (ce, se), st, acc
   in
   (
@@ -425,7 +425,7 @@ and expect_clock_exp env expected_st ce (ctx, constrs) =
   in
   ce, (ctx, cstrs)
 
-and clock_static_exp se =
+and clock_const_exp se =
   let st = fresh_st () in
   {
     M.se_desc = se.se_desc;
@@ -434,8 +434,8 @@ and clock_static_exp se =
   },
   st
 
-and expect_static_exp expected_ty se (ctx, constrs) =
-  let se, actual_st = clock_static_exp se in
+and expect_const_exp expected_ty se (ctx, constrs) =
+  let se, actual_st = clock_const_exp se in
   se, (ctx, unify se.M.se_loc expected_ty (ty_of_st actual_st) constrs)
 
 and clock_exp env e acc =
@@ -663,15 +663,15 @@ and clock_spec spec acc =
     | Word w ->
       let w, acc =
         Tree_word.mapfold_upword
-          (expect_static_exp ty)
-          (expect_static_exp ty)
+          (expect_const_exp ty)
+          (expect_const_exp ty)
           w
           acc
       in
       M.Word w, acc
     | Interval (l, u) ->
-      let l, acc = expect_static_exp ty l acc in
-      let u, acc = expect_static_exp ty u acc in
+      let l, acc = expect_const_exp ty l acc in
+      let u, acc = expect_const_exp ty u acc in
       M.Interval (l, u), acc
   in
   {
@@ -700,7 +700,7 @@ and clock_psplit env loc pw acc =
       (Int.succ current, acc), Leaf p
     | Power (p, se) ->
       let (current, acc), p = clock_ptree (current, acc) p in
-      let se, _ = clock_static_exp se in (* TODO *)
+      let se, _ = clock_const_exp se in (* TODO *)
       (current, acc), Power (p, se)
     | Concat pt_l ->
       let (current, acc), p_l =
@@ -832,7 +832,7 @@ let clock_node_def env nd =
     M.n_input = input;
     M.n_body = body;
     M.n_pragma = nd.n_pragma;
-    M.n_static = nd.n_static;
+    M.n_const = nd.n_const;
     M.n_loc = nd.n_loc;
     M.n_info = annotate_node nd.n_info csig;
   }
@@ -842,7 +842,7 @@ let clock_node_decl env ndecl =
   {
     M.decl_name = ndecl.decl_name;
     M.decl_data = ndecl.decl_data;
-    M.decl_static = ndecl.decl_static;
+    M.decl_const = ndecl.decl_const;
     M.decl_clock = ndecl.decl_clock;
     M.decl_loc = ndecl.decl_loc;
   }
@@ -854,11 +854,11 @@ let clock_type_decl td =
     M.ty_loc = td.ty_loc;
   }
 
-let clock_static_def env sd =
+let clock_const_def env sd =
   let c =
     match sd.sd_body.e_desc with
     | E_const c -> c
-    | _ -> assert false (* static-simpl problem *)
+    | _ -> assert false (* const-simpl problem *)
   in
   {
     M.sd_name = sd.sd_name;
@@ -875,7 +875,7 @@ let clock_static_def env sd =
 let clock_pword_def env pd =
   let st = fresh_st () in
   let pw, _ =
-    let expect = expect_static_exp (ty_of_st st) in
+    let expect = expect_const_exp (ty_of_st st) in
     Tree_word.mapfold_upword expect expect pd.pd_body (Ident.Env.empty, [])
   in
   {
@@ -895,9 +895,9 @@ let clock_phrase env phr =
     env, M.Phr_node_decl nd
   | Phr_type_def td ->
     env, M.Phr_type_def (clock_type_decl td)
-  | Phr_static_def sd ->
-    let sd, env = clock_static_def env sd in
-    env, M.Phr_static_def sd
+  | Phr_const_def sd ->
+    let sd, env = clock_const_def env sd in
+    env, M.Phr_const_def sd
   | Phr_pword_def pd ->
     let pd, env = clock_pword_def env pd in
     env, M.Phr_pword_def pd
@@ -920,9 +920,9 @@ let clock_file ctx file =
   ctx, file
 
 let pass :
-    (< interfaces : Interface.env; static_nodes : Acids_static.node_def list >
+    (< interfaces : Interface.env; const_nodes : Acids_const.node_def list >
       Acids_spec.file ->
-     < interfaces : Interface.env; static_nodes : Acids_static.node_def list >
+     < interfaces : Interface.env; const_nodes : Acids_const.node_def list >
        Acids_clocked.file)
     Pass_manager.pass
     =

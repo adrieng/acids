@@ -79,11 +79,11 @@ let rec annot_clock_exp ce =
     | Ce_condvar v ->
       Acids_causal.Ce_condvar v
     | Ce_pword (Pd_lit pw) ->
-      Acids_causal.Ce_pword (Acids_causal.Pd_lit (annot_static_word pw))
+      Acids_causal.Ce_pword (Acids_causal.Pd_lit (annot_const_word pw))
     | Ce_pword (Pd_global ln) ->
       Acids_causal.Ce_pword (Acids_causal.Pd_global ln)
     | Ce_equal (ce, se) ->
-      Acids_causal.Ce_equal (annot_clock_exp ce, annot_static_exp se)
+      Acids_causal.Ce_equal (annot_clock_exp ce, annot_const_exp se)
   in
   {
     Acids_causal.ce_desc = ced;
@@ -91,10 +91,10 @@ let rec annot_clock_exp ce =
     Acids_causal.ce_info = ce.ce_info;
   }
 
-and annot_static_word pw =
-  Tree_word.map_upword annot_static_exp annot_static_exp pw
+and annot_const_word pw =
+  Tree_word.map_upword annot_const_exp annot_const_exp pw
 
-and annot_static_exp se =
+and annot_const_exp se =
   {
     Acids_causal.se_desc = se.se_desc;
     Acids_causal.se_loc = se.se_loc;
@@ -225,7 +225,7 @@ and annot_pattern p =
     | P_spec_annot (p, spec) ->
       Acids_causal.P_spec_annot (annot_pattern p, annot_spec spec)
     | P_split pw ->
-      let pw = Tree_word.map_upword annot_pattern annot_static_exp pw in
+      let pw = Tree_word.map_upword annot_pattern annot_const_exp pw in
       Acids_causal.P_split pw
   in
   {
@@ -240,10 +240,10 @@ and annot_spec spec =
     | Unspec ->
       Acids_causal.Unspec
     | Word pw ->
-      let pw = Tree_word.map_upword annot_static_exp annot_static_exp pw in
+      let pw = Tree_word.map_upword annot_const_exp annot_const_exp pw in
       Acids_causal.Word pw
     | Interval (l, u) ->
-      Acids_causal.Interval (annot_static_exp l, annot_static_exp u)
+      Acids_causal.Interval (annot_const_exp l, annot_const_exp u)
   in
   {
     Acids_causal.s_desc = sd;
@@ -278,7 +278,7 @@ let annot_node_def nd =
     Acids_causal.n_input = annot_pattern nd.n_input;
     Acids_causal.n_body = body;
     Acids_causal.n_pragma = nd.n_pragma;
-    Acids_causal.n_static = nd.n_static;
+    Acids_causal.n_const = nd.n_const;
     Acids_causal.n_loc = nd.n_loc;
     Acids_causal.n_info = nd.n_info;
   }
@@ -287,7 +287,7 @@ let annot_node_decl nd =
   {
     Acids_causal.decl_name = nd.decl_name;
     Acids_causal.decl_data = nd.decl_data;
-    Acids_causal.decl_static = nd.decl_static;
+    Acids_causal.decl_const = nd.decl_const;
     Acids_causal.decl_clock = nd.decl_clock;
     Acids_causal.decl_loc = nd.decl_loc;
   }
@@ -299,7 +299,7 @@ let annot_type_def td =
     Acids_causal.ty_loc = td.ty_loc;
   }
 
-let annot_static_def sd =
+let annot_const_def sd =
   {
     Acids_causal.sd_name = sd.sd_name;
     Acids_causal.sd_body = annot_exp sd.sd_body;
@@ -309,7 +309,7 @@ let annot_static_def sd =
 let annot_pword_def pd =
   {
     Acids_causal.pd_name = pd.pd_name;
-    Acids_causal.pd_body = annot_static_word pd.pd_body;
+    Acids_causal.pd_body = annot_const_word pd.pd_body;
     Acids_causal.pd_loc = pd.pd_loc;
   }
 
@@ -321,8 +321,8 @@ let annot_type_phrase phr =
     Acids_causal.Phr_node_decl (annot_node_decl nd)
   | Phr_type_def td ->
     Acids_causal.Phr_type_def (annot_type_def td)
-  | Phr_static_def sd ->
-    Acids_causal.Phr_static_def (annot_static_def sd)
+  | Phr_const_def sd ->
+    Acids_causal.Phr_const_def (annot_const_def sd)
   | Phr_pword_def pd ->
     Acids_causal.Phr_pword_def (annot_pword_def pd)
 
@@ -340,7 +340,7 @@ let file
     ctx
     (file
        :
-       < interfaces : Interface.env; static_nodes : Acids_static.node_def list >
+       < interfaces : Interface.env; const_nodes : Acids_const.node_def list >
          Acids_clocked.file)
     =
   ctx, annot_type_file file

@@ -15,36 +15,36 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-(** {1 Static typing} *)
+(** {1 Const typing} *)
 
 open Acids_typed
-open Static_types
+open Const_types
 
-(** Static typing is a very simple (two-element) type system used to distinguish
-    which nodes have to be inlined. It drives static evaluation later on. *)
+(** Const typing is a very simple (two-element) type system used to distinguish
+    which nodes have to be inlined. It drives const evaluation later on. *)
 
 (** {2 Errors} *)
 
 type error =
-  | Unification_error of Static_types.error
-  | Static_inputs of Names.shortname
+  | Unification_error of Const_types.error
+  | Const_inputs of Names.shortname
 
 exception Typing_error of error
 
 let print_error fmt err =
   match err with
   | Unification_error err ->
-    Static_types.print_error fmt err
-  | Static_inputs nn ->
+    Const_types.print_error fmt err
+  | Const_inputs nn ->
     Format.fprintf fmt
-      "Node %a has static inputs but has not been declared static"
+      "Node %a has const inputs but has not been declared const"
       Names.print_shortname nn
 
 let unification_error err =
   raise (Typing_error (Unification_error err))
 
-let static_inputs nn =
-  raise (Typing_error (Static_inputs nn))
+let const_inputs nn =
+  raise (Typing_error (Const_inputs nn))
 
 (** {2 Unification} *)
 
@@ -90,7 +90,7 @@ type typing_env =
     (** maps current idents to (pre)types *)
     idents : VarTy.t Ident.Env.t;
     (** subtyping constraint system *)
-    mutable constr : Static_types.constr list;
+    mutable constr : Const_types.constr list;
   }
 
 let debug_typing_env fmt env =
@@ -122,7 +122,7 @@ let find_node_signature env ln =
   | Module modn ->
     let intf = Names.ShortEnv.find modn env.intf_env in
     let ni = Interface.find_node intf ln.shortn in
-    Interface.static_signature_of_node_item ni
+    Interface.const_signature_of_node_item ni
 
 let add_local_node_signature env shortn ssig =
   { env with current_nodes = Names.ShortEnv.add shortn ssig env.current_nodes; }
@@ -143,31 +143,31 @@ let add_pword env pn w =
   in
   { env with current_pwords_const = current_pwords_const; }
 
-let solve_subtyping_constraints env = Static_types.solve env.constr
+let solve_subtyping_constraints env = Const_types.solve env.constr
 
 (** {2 High-level utilities} *)
 
-let static_ty = PreTy.Psy_scal S_static
-let dynamic_ty = PreTy.Psy_scal S_dynamic
+let const_ty = PreTy.Psy_scal S_const
+let nonconst_ty = PreTy.Psy_scal S_nonconst
 let tuple_ty ty_l = PreTy.Psy_prod ty_l
 
 module A =
 struct
   type new_annot =
   | Exp of VarTy.t
-  | Node of bool * VarTy.t * VarTy.t (* is_static * inp * out *)
-  | App of bool (* true iff application is static *)
+  | Node of bool * VarTy.t * VarTy.t (* is_const * inp * out *)
+  | App of bool (* true iff application is const *)
 
   let print_new_annot fmt na =
     match na with
     | Exp ty -> VarTy.print fmt ty
-    | Node (static, ty1, ty2) ->
+    | Node (const, ty1, ty2) ->
       Format.fprintf fmt "@[%a@ -{%b}>@ %a@]"
         VarTy.print ty1
-        static
+        const
         VarTy.print ty2
-    | App is_static ->
-      Format.fprintf fmt "app is%s static" (if is_static then " not" else "")
+    | App is_const ->
+      Format.fprintf fmt "app is%s const" (if is_const then " not" else "")
 end
 
 module ANN_INFO = Acids_utils.MakeAnnot(Acids_typed)(A)
@@ -175,17 +175,17 @@ module M = Acids.Make(ANN_INFO)
 
 let annotate_exp e ty = ANN_INFO.annotate e.e_info (A.Exp ty)
 let annotate_clock_exp ce ty = ANN_INFO.annotate ce.ce_info (A.Exp ty)
-let annotate_static_exp se ty = ANN_INFO.annotate se.se_info (A.Exp ty)
+let annotate_const_exp se ty = ANN_INFO.annotate se.se_info (A.Exp ty)
 let annotate_pat p ty = ANN_INFO.annotate p.p_info (A.Exp ty)
 let annotate_node node inp_ty out_ty =
-  ANN_INFO.annotate node.n_info (A.Node (node.n_static, inp_ty, out_ty))
-let annotate_app info static = ANN_INFO.annotate info (A.App static)
-let annotate_dummy info = ANN_INFO.annotate info (A.Exp static_ty)
+  ANN_INFO.annotate node.n_info (A.Node (node.n_const, inp_ty, out_ty))
+let annotate_app info const = ANN_INFO.annotate info (A.App const)
+let annotate_dummy info = ANN_INFO.annotate info (A.Exp const_ty)
 
 module MORPH =
 struct
   module IN_INFO = M.I
-  module OUT_INFO = Acids_static.Info
+  module OUT_INFO = Acids_const.Info
 
   open ANN_INFO
   open A
@@ -200,20 +200,20 @@ struct
         | Sy_scal tys ->
           object
             method ci_data = info#ci_data
-            method ci_static = tys
+            method ci_const = tys
           end
-        | Sy_var _ -> (* default to dynamic *)
+        | Sy_var _ -> (* default to nonconst *)
           object
             method ci_data = info#ci_data
-            method ci_static = S_dynamic
+            method ci_const = S_nonconst
           end
         | _ ->
           invalid_arg "update_clock_exp_info"
       )
 
-  let update_static_exp_info { new_annot = na; old_annot = info; } =
+  let update_const_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ -> invalid_arg "update_static_exp_info"
+    | Node _ | App _ -> invalid_arg "update_const_exp_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       (
@@ -221,9 +221,9 @@ struct
         | Sy_scal tys ->
           object
             method pwi_data = info#pwi_data
-            method pwi_static = tys
+            method pwi_const = tys
           end
-        | _ -> invalid_arg "update_static_exp_info"
+        | _ -> invalid_arg "update_const_exp_info"
       )
 
   let update_exp_info { new_annot = na; old_annot = info; } =
@@ -233,13 +233,13 @@ struct
       let ty = ty_of_pre_ty pty in
       object
         method ei_data = info#ei_data
-        method ei_static = ty
+        method ei_const = ty
       end
 
   let update_app_info { new_annot = na; _ } =
     match na with
     | Exp _ | Node _ -> invalid_arg "update_app_info"
-    | App is_static -> { Acids_static.Info.ai_is_static = is_static; }
+    | App is_const -> { Acids_const.Info.ai_is_const = is_const; }
 
   let update_block_info _ = ()
 
@@ -250,7 +250,7 @@ struct
       let ty = ty_of_pre_ty pty in
       object
         method pi_data = info#pi_data
-        method pi_static = ty
+        method pi_const = ty
       end
 
   let update_eq_info _ = ()
@@ -262,14 +262,14 @@ struct
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
     | Exp _ | App _ -> invalid_arg "update_node_info"
-    | Node (static, inp, out) ->
+    | Node (const, inp, out) ->
       object
         method ni_ctx = info#ni_ctx
         method ni_data = info#ni_data
-        method ni_static = generalize_sig static inp out
+        method ni_const = generalize_sig const inp out
       end
 end
-module EXTRACT = Acids_utils.MakeMap(M)(Acids_static)(MORPH)
+module EXTRACT = Acids_utils.MakeMap(M)(Acids_const)(MORPH)
 
 let exp_type e = e.M.e_info.ANN_INFO.new_annot
 
@@ -290,21 +290,21 @@ let rec enrich_pat env p =
       pt
       env
 
-let check_and_transform_non_static_sig name ssig =
-  let open Static_types in
+let check_and_transform_non_const_sig name ssig =
+  let open Const_types in
 
-  if Static_types.is_static ssig.input then static_inputs name;
+  if Const_types.is_const ssig.input then const_inputs name;
 
-  let rec remap_to_dynamic st =
+  let rec remap_to_nonconst st =
     match st with
-    | Sy_var _ | Sy_scal _ -> Sy_scal S_dynamic
-    | Sy_prod ty_l -> Sy_prod (List.map remap_to_dynamic ty_l)
+    | Sy_var _ | Sy_scal _ -> Sy_scal S_nonconst
+    | Sy_prod ty_l -> Sy_prod (List.map remap_to_nonconst ty_l)
   in
 
   {
-    input = remap_to_dynamic ssig.input;
-    output = remap_to_dynamic ssig.output;
-    static = S_dynamic;
+    input = remap_to_nonconst ssig.input;
+    output = remap_to_nonconst ssig.output;
+    const = S_nonconst;
   }
 
 (** {2 Typing AST nodes} *)
@@ -316,16 +316,16 @@ let rec type_clock_exp env ce =
       M.Ce_condvar id, find_ident env id
 
     | Ce_pword (Pd_lit pw) ->
-      let pw, ty = type_static_word env pw in
+      let pw, ty = type_const_word env pw in
       M.Ce_pword (M.Pd_lit pw), ty
 
     | Ce_pword (Pd_global ln) ->
       M.Ce_pword (M.Pd_global ln),
-      if is_constant_global_pword env ln then static_ty else dynamic_ty
+      if is_constant_global_pword env ln then const_ty else nonconst_ty
 
     | Ce_equal (ce, se) ->
       let ce, ty = type_clock_exp env ce in
-      let se = type_static_exp env se in
+      let se = type_const_exp env se in
       M.Ce_equal (ce, se), ty
   in
   {
@@ -335,35 +335,35 @@ let rec type_clock_exp env ce =
   },
   ty
 
-and type_static_word env pw =
-  let type_fun = type_static_exp env in
+and type_const_word env pw =
+  let type_fun = type_const_exp env in
   let ty =
     let get se = se.se_desc in
-    if is_constant_pword get pw then static_ty else dynamic_ty
+    if is_constant_pword get pw then const_ty else nonconst_ty
   in
   Tree_word.map_upword type_fun type_fun pw, ty
 
-and type_static_exp env se =
+and type_const_exp env se =
   let open Acids_scoped.Info in
   let sed, ty =
     match se.se_desc with
     | Se_var v ->
       let ty = find_ident env v in
-      unify se.se_loc static_ty ty;
+      unify se.se_loc const_ty ty;
       Se_var v, ty
     | Se_global ln ->
-      Se_global ln, static_ty
+      Se_global ln, const_ty
     | Se_econstr ec ->
-      Se_econstr ec, static_ty
+      Se_econstr ec, const_ty
     | Se_binop (op, se1, se2) ->
-      let se1 = type_static_exp env se1 in
-      let se2 = type_static_exp env se2 in
-      Se_binop (op, se1, se2), static_ty
+      let se1 = type_const_exp env se1 in
+      let se2 = type_const_exp env se2 in
+      Se_binop (op, se1, se2), const_ty
   in
   {
     M.se_desc = sed;
     M.se_loc = se.se_loc;
-    M.se_info = annotate_static_exp se ty;
+    M.se_info = annotate_const_exp se ty;
   }
 
 and type_exp env e =
@@ -374,7 +374,7 @@ and type_exp env e =
       M.E_var v, find_ident env v
 
     | E_const c ->
-      M.E_const c, static_ty
+      M.E_const c, const_ty
 
     | E_fst e ->
       let ty_l = fresh_ty () in
@@ -396,7 +396,7 @@ and type_exp env e =
     | E_fby (e1, e2) ->
       let e1, _ = type_exp env e1 in
       let e2, _ = type_exp env e2 in
-      M.E_fby (e1, e2), dynamic_ty
+      M.E_fby (e1, e2), nonconst_ty
 
     | E_ifthenelse (e1, e2, e3) ->
       let e1, ty = type_exp env e1 in
@@ -411,10 +411,10 @@ and type_exp env e =
           M.a_op = app.a_op;
           M.a_loc = app.a_loc;
           M.a_info =
-            annotate_app app.a_info (Static_types.is_static_signature ssig);
+            annotate_app app.a_info (Const_types.is_const_signature ssig);
         }
       in
-      let inp, out = Static_types.instantiate_ty_sig fresh_ty ssig in
+      let inp, out = Const_types.instantiate_ty_sig fresh_ty ssig in
       let e = expect_exp loc env inp e in
       M.E_app (app, e), out
 
@@ -497,12 +497,12 @@ and type_exp env e =
 
 and expect_clock_exp loc env expected_ty ce =
   let ce, actual_ty = type_clock_exp env ce in
-  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
+  add_constraint env (Const_types.make_constraint loc actual_ty expected_ty);
   ce
 
 and expect_exp loc env expected_ty e =
   let e, actual_ty = type_exp env e in
-  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
+  add_constraint env (Const_types.make_constraint loc actual_ty expected_ty);
   e
 
 and type_merge_clause env c =
@@ -561,7 +561,7 @@ and type_pat env p =
     | P_split pt ->
       let ty = fresh_ty () in
       let pt =
-        Tree_word.map_upword (expect_pat loc env ty) (type_static_exp env) pt
+        Tree_word.map_upword (expect_pat loc env ty) (type_const_exp env) pt
       in
       M.P_split pt, ty
   in
@@ -574,7 +574,7 @@ and type_pat env p =
 
 and expect_pat loc env expected_ty p =
   let p, actual_ty = type_pat env p in
-  add_constraint env (Static_types.make_constraint loc actual_ty expected_ty);
+  add_constraint env (Const_types.make_constraint loc actual_ty expected_ty);
   p
 
 and type_eq env eq =
@@ -620,12 +620,12 @@ and type_spec env spec =
     match spec.s_desc with
     | Unspec -> M.Unspec
     | Word w ->
-      let type_fun = type_static_exp env in
+      let type_fun = type_const_exp env in
       let w = Tree_word.map_upword type_fun type_fun w in
       M.Word w
     | Interval (l, u) ->
-      let l = type_static_exp env l in
-      let u = type_static_exp env u in
+      let l = type_const_exp env l in
+      let u = type_const_exp env u in
       M.Interval (l, u)
   in
   {
@@ -638,20 +638,20 @@ let type_node_def env nd =
   let env = enrich_pat env nd.n_input in
 
   let input, inp_ty = type_pat env nd.n_input in
-  let out_ty = if nd.n_static then static_ty else fresh_ty () in
+  let out_ty = if nd.n_const then const_ty else fresh_ty () in
   let body = expect_exp nd.n_loc env out_ty nd.n_body in
 
   (* TODO solve incrementally at where level *)
   solve_subtyping_constraints env;
 
-  let ssig = generalize_sig nd.n_static inp_ty out_ty in
+  let ssig = generalize_sig nd.n_const inp_ty out_ty in
 
-  (* non-static nodes may not have static inputs, and only have dynamic outputs,
+  (* non-const nodes may not have const inputs, and only have nonconst outputs,
      see the relevant section of the manual *)
   let ssig =
-    if nd.n_static
+    if nd.n_const
     then ssig
-    else check_and_transform_non_static_sig nd.n_name ssig
+    else check_and_transform_non_const_sig nd.n_name ssig
   in
 
   {
@@ -659,7 +659,7 @@ let type_node_def env nd =
     M.n_input = input;
     M.n_body = body;
     M.n_pragma = nd.n_pragma;
-    M.n_static = nd.n_static;
+    M.n_const = nd.n_const;
     M.n_loc = nd.n_loc;
     M.n_info = annotate_node nd inp_ty out_ty;
   },
@@ -669,11 +669,11 @@ let type_node_decl env nd =
   {
     M.decl_name = nd.decl_name;
     M.decl_data = nd.decl_data;
-    M.decl_static = nd.decl_static;
+    M.decl_const = nd.decl_const;
     M.decl_clock = nd.decl_clock;
     M.decl_loc = nd.decl_loc;
   },
-  add_local_node_signature env nd.decl_name nd.decl_static
+  add_local_node_signature env nd.decl_name nd.decl_const
 
 let type_type_def env td =
   {
@@ -683,8 +683,8 @@ let type_type_def env td =
   },
   env
 
-let type_static_def env sd =
-  let body = expect_exp sd.sd_loc env static_ty sd.sd_body in
+let type_const_def env sd =
+  let body = expect_exp sd.sd_loc env const_ty sd.sd_body in
   {
     M.sd_name = sd.sd_name;
     M.sd_body = body;
@@ -693,7 +693,7 @@ let type_static_def env sd =
   env
 
 let type_pword_def env pd =
-  let body, _ = type_static_word env pd.pd_body in
+  let body, _ = type_const_word env pd.pd_body in
   {
     M.pd_name = pd.pd_name;
     M.pd_body = body;
@@ -712,9 +712,9 @@ let type_phrase env phr =
   | Phr_type_def td ->
     let td, env = type_type_def env td in
     env, M.Phr_type_def td
-  | Phr_static_def sd ->
-    let sd, env = type_static_def env sd in
-    env, M.Phr_static_def sd
+  | Phr_const_def sd ->
+    let sd, env = type_const_def env sd in
+    env, M.Phr_const_def sd
   | Phr_pword_def pd ->
     let pd, env = type_pword_def env pd in
     env, M.Phr_pword_def pd
@@ -729,7 +729,7 @@ let type_file file =
       M.f_info = file.f_info;
       M.f_body = body;
     }
-  with Static_types.Unification_error err ->
+  with Const_types.Unification_error err ->
     unification_error err
 
 (** {2 Moving from pretypes to types} *)
@@ -748,6 +748,6 @@ let pass =
   let open Pass_manager in
   P_transform
     (Frontend_utils.make_transform
-       ~print_out:Acids_static.print_file
-       "static_typing"
+       ~print_out:Acids_const.print_file
+       "const_typing"
        type_file)

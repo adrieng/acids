@@ -31,7 +31,7 @@ let default_info_passes =
   [
     "data_typing";
     "interval_typing";
-    "static_typing";
+    "const_typing";
   ]
 
 let passes = ref []

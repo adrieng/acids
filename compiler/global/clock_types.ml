@@ -17,7 +17,7 @@
 
 type clock_exp =
   | Ce_condvar of clock_exp_cond_var
-  | Ce_pword of Ast_misc.static_pword
+  | Ce_pword of Ast_misc.const_pword
   | Ce_equal of clock_exp * Ast_misc.econstr
 
 and clock_exp_cond_var =
@@ -55,7 +55,7 @@ let rec print_clock_exp fmt ce =
       Ast_misc.print_interval_annot cev.cecv_bounds
       (Utils.print_list Ast_misc.print_spec_annot) cev.cecv_specs
   | Ce_pword pw ->
-    Ast_misc.print_static_pword fmt pw
+    Ast_misc.print_const_pword fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "(%a = %a)"
       print_clock_exp ce
@@ -131,7 +131,7 @@ struct
   type 'a pre_ty =
   | Pce_var of 'a
   | Pce_condvar of clock_exp_cond_var
-  | Pce_pword of Ast_misc.static_pword
+  | Pce_pword of Ast_misc.const_pword
   | Pce_equal of 'a pre_ty * Ast_misc.econstr
 
   let rec print print_var fmt pce =
@@ -143,7 +143,7 @@ struct
         Ast_misc.print_interval_annot pcv.cecv_bounds
         (Utils.print_list Ast_misc.print_spec_annot) pcv.cecv_specs
     | Pce_pword pw ->
-      Ast_misc.print_static_pword fmt pw
+      Ast_misc.print_const_pword fmt pw
     | Pce_equal (pce, ec) ->
       Format.fprintf fmt "(%a = %a)"
         (print print_var) pce

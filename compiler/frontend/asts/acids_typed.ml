@@ -27,16 +27,16 @@ struct
   let print_clock_exp_info fmt cei =
     Data_types.print_ty_scal_ann fmt cei#ci_data
 
-  type static_exp_info =
+  type const_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
       >
-  let print_static_exp_info fmt (pwi : static_exp_info) =
+  let print_const_exp_info fmt (pwi : const_exp_info) =
     Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
-  type 'a static_exp_desc = 'a Acids_scoped.Info.static_exp_desc
-  let print_static_exp_desc = Acids_scoped.Info.print_static_exp_desc
-  let map_static_exp_desc = Acids_scoped.Info.map_static_exp_desc
+  type 'a const_exp_desc = 'a Acids_scoped.Info.const_exp_desc
+  let print_const_exp_desc = Acids_scoped.Info.print_const_exp_desc
+  let map_const_exp_desc = Acids_scoped.Info.map_const_exp_desc
 
   type exp_info =
       <

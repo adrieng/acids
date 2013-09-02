@@ -46,7 +46,7 @@ type 'a clock_exp =
 
 and 'a clock_exp_desc =
   | Ce_condvar of 'a
-  | Ce_pword of Ast_misc.static_pword
+  | Ce_pword of Ast_misc.const_pword
   | Ce_equal of 'a clock_exp * Ast_misc.econstr
 
 (** {2 Processes} *)

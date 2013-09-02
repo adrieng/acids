@@ -23,15 +23,15 @@ struct
   type clock_exp_info = unit
   let print_clock_exp_info = Utils.print_nothing
 
-  type static_exp_info = unit
-  let print_static_exp_info = Utils.print_nothing
+  type const_exp_info = unit
+  let print_const_exp_info = Utils.print_nothing
 
-  type 'a static_exp_desc =
+  type 'a const_exp_desc =
   | Se_var of var
   | Se_global of Names.longname
   | Se_econstr of Ast_misc.econstr
   | Se_binop of Names.shortname * 'a * 'a
-  let print_static_exp_desc print fmt sed =
+  let print_const_exp_desc print fmt sed =
     match sed with
     | Se_var s -> Ident.print fmt s
     | Se_global ln -> Names.print_longname fmt ln
@@ -41,7 +41,7 @@ struct
         Names.print_shortname op
         print se1
         print se2
-  let map_static_exp_desc f sed =
+  let map_const_exp_desc f sed =
     match sed with
     | Se_var v -> Se_var v
     | Se_global ln -> Se_global ln

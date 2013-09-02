@@ -27,16 +27,16 @@ struct
   let print_clock_exp_info fmt cei =
     Data_types.print_ty_scal_ann fmt cei#ci_data
 
-  type static_exp_info =
+  type const_exp_info =
       <
         pwi_data : Data_types.data_ty_scal;
       >
-  let print_static_exp_info fmt (pwi : static_exp_info) =
+  let print_const_exp_info fmt (pwi : const_exp_info) =
     Data_types.print_ty_scal_ann fmt pwi#pwi_data
 
-  type 'a static_exp_desc = Ast_misc.econstr
-  let print_static_exp_desc _ fmt ec = Ast_misc.print_econstr fmt ec
-  let map_static_exp_desc _ ec = ec
+  type 'a const_exp_desc = Ast_misc.econstr
+  let print_const_exp_desc _ fmt ec = Ast_misc.print_econstr fmt ec
+  let map_const_exp_desc _ ec = ec
 
   type exp_info =
       <
@@ -65,11 +65,11 @@ struct
       <
         ni_ctx : Ident.ctx;
         ni_data : Data_types.data_sig;
-        ni_static : Static_types.ty_sig;
+        ni_const : Const_types.ty_sig;
       >
   let print_node_info fmt ni =
     Data_types.print_sig_ann fmt ni#ni_data;
-    Static_types.print_sig_ann fmt ni#ni_static
+    Const_types.print_sig_ann fmt ni#ni_const
 
   type domain_info = unit
   let print_domain_info (_ : Format.formatter) _ = ()

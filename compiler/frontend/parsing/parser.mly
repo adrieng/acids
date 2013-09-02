@@ -36,18 +36,18 @@
       Acids_parsetree.ce_info = ();
     }
 
-  let make_static_exp (sed, loc) =
+  let make_const_exp (sed, loc) =
     {
       Acids_parsetree.se_desc = sed;
       Acids_parsetree.se_loc = loc;
       Acids_parsetree.se_info = ();
     }
 
-  let make_static_exp_econstr (ec, loc) =
-    make_static_exp (Acids_parsetree.Info.Se_econstr ec, loc)
+  let make_const_exp_econstr (ec, loc) =
+    make_const_exp (Acids_parsetree.Info.Se_econstr ec, loc)
 
-  let make_static_exp_fword (i_l, loc) =
-    make_static_exp (Acids_parsetree.Info.Se_fword i_l, loc)
+  let make_const_exp_fword (i_l, loc) =
+    make_const_exp (Acids_parsetree.Info.Se_fword i_l, loc)
 
   let make_domain par base e =
     let d =
@@ -145,16 +145,16 @@
       Acids_parsetree.n_input = p;
       Acids_parsetree.n_body = e;
       Acids_parsetree.n_pragma = pr;
-      Acids_parsetree.n_static = s;
+      Acids_parsetree.n_const = s;
       Acids_parsetree.n_loc = loc;
       Acids_parsetree.n_info = ();
     }
 
-  let make_node_decl ((name, data, static, clock), loc) =
+  let make_node_decl ((name, data, const, clock), loc) =
     {
       Acids_parsetree.decl_name = name;
       Acids_parsetree.decl_data = data;
-      Acids_parsetree.decl_static = static;
+      Acids_parsetree.decl_const = const;
       Acids_parsetree.decl_clock = clock;
       Acids_parsetree.decl_loc = loc;
     }
@@ -165,14 +165,14 @@
       Data_types.data_sig_output = out;
     }
 
-  let make_static_sig inp out =
+  let make_const_sig inp out =
     {
-      Static_types.input = inp;
-      Static_types.output = out;
-      Static_types.static =
-        if Static_types.is_static inp
-        then Static_types.S_static
-        else Static_types.S_dynamic;
+      Const_types.input = inp;
+      Const_types.output = out;
+      Const_types.const =
+        if Const_types.is_const inp
+        then Const_types.S_const
+        else Const_types.S_nonconst;
     }
 
   let make_clock_sig inp out =
@@ -201,7 +201,7 @@
       Acids_parsetree.f_body = body;
     }
 
-  let make_static_def ((name, body), loc) =
+  let make_const_def ((name, body), loc) =
     {
       Acids_parsetree.sd_name = name;
       Acids_parsetree.sd_body = body;
@@ -255,7 +255,7 @@
 
 /* Keywords */
 
-%token LET NODE STATIC PWORD OPEN FST SND
+%token LET NODE CONST PWORD OPEN FST SND
 %token FBY IF THEN ELSE
 %token WHERE REC AND
 %token WHEN SPLIT MERGE
@@ -267,7 +267,7 @@
 %token COND
 %token UNSPEC
 
-%token BOOL_TY INT_TY FLOAT_TY DYNAMIC_TY STATIC_TY (* TOP_TY BOT_TY *)
+%token BOOL_TY INT_TY FLOAT_TY NONCONST_TY CONST_TY (* TOP_TY BOT_TY *)
 
 %token<bool> DOM                        (* true for parallelism *)
 
@@ -279,7 +279,7 @@
 %token<string> OP
 %token<int> STVAR
 %token<int> CTVAR
-%token<int> STATICVAR
+%token<int> CONSTVAR
 %token<int> TYVAR
 
 %token<bool> BOOL
@@ -387,9 +387,9 @@ op:
 | n = name { Initial.make_longname n }
 | ln = qualified_longname { ln }
 
-static:
+is_const:
 | { false }
-| STATIC { true }
+| CONST { true }
 
 %inline interval_desc:
 | l = INT COMMA u = INT { l, u }
@@ -412,15 +412,15 @@ const:
 | econstr { Ast_misc.Cconstr $1 }
 | FLOAT { Ast_misc.Cfloat $1 }
 
-static_pword:
-| pw = upword(static_exp_root_fword, static_exp_root, parens) { pw }
+const_pword:
+| pw = upword(const_exp_root_fword, const_exp_root, parens) { pw }
 
 clock_exp_desc:
 | v = IDENT
    { Acids_parsetree.Ce_condvar v }
-| ce = clock_exp EQUAL se = static_exp
+| ce = clock_exp EQUAL se = const_exp
    { Acids_parsetree.Ce_equal (ce, se) }
-| pw = static_pword
+| pw = const_pword
    { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_lit pw) }
 | ln = qualified_longname
    { Acids_parsetree.Ce_pword (Acids_parsetree.Pd_global ln) }
@@ -429,34 +429,34 @@ clock_exp:
 | ced = with_loc(clock_exp_desc) { make_clock_exp ced }
 | ce = parens(clock_exp) { ce }
 
-(******************** STATIC EXPS ********************)
+(******************** CONST EXPS ********************)
 
-static_exp_desc:
+const_exp_desc:
 | ec = econstr { Acids_parsetree.Info.Se_econstr ec }
 | v = IDENT { Acids_parsetree.Info.Se_var v }
 | ln = qualified_longname { Acids_parsetree.Info.Se_global ln }
-| se1 = static_exp PLUS se2 = static_exp
+| se1 = const_exp PLUS se2 = const_exp
    { Acids_parsetree.Info.Se_binop ("(+)", se1, se2) }
-| se1 = static_exp MINUS se2 = static_exp
+| se1 = const_exp MINUS se2 = const_exp
    { Acids_parsetree.Info.Se_binop ("(-)", se1, se2) }
-| se1 = static_exp TIMES se2 = static_exp
+| se1 = const_exp TIMES se2 = const_exp
    { Acids_parsetree.Info.Se_binop ("(*)", se1, se2) }
-| se1 = static_exp DIV se2 = static_exp
+| se1 = const_exp DIV se2 = const_exp
    { Acids_parsetree.Info.Se_binop ("(/)", se1, se2) }
 
-static_exp:
-| sed = with_loc(static_exp_desc) { make_static_exp sed }
-| se = parens(static_exp) { se }
+const_exp:
+| sed = with_loc(const_exp_desc) { make_const_exp sed }
+| se = parens(const_exp) { se }
 
-static_exp_root:
-| ec = with_loc(econstr) { make_static_exp_econstr ec }
-| se = braces(static_exp) { se }
+const_exp_root:
+| ec = with_loc(econstr) { make_const_exp_econstr ec }
+| se = braces(const_exp) { se }
 
-static_exp_root_fword:
-| wl = with_loc(FWORD) { make_static_exp_fword wl }
-| se = static_exp_root { se }
+const_exp_root_fword:
+| wl = with_loc(FWORD) { make_const_exp_fword wl }
+| se = const_exp_root { se }
 
-(******************** END STATIC EXPS ********************)
+(******************** END CONST EXPS ********************)
 
 simple_exp_desc:
 | c = const { Acids_parsetree.E_const c }
@@ -566,7 +566,7 @@ spec_ann:
 pat_desc:
 | id = IDENT { Acids_parsetree.P_var id }
 | p_l = parens(tuple_pat) { Acids_parsetree.P_tuple p_l }
-| pt = chevrons(upword(pat, static_exp_root, parens))
+| pt = chevrons(upword(pat, const_exp_root, parens))
    { Acids_parsetree.P_split pt }
 | LPAREN p = pat DCOLON ck = clock_annot RPAREN
    { Acids_parsetree.P_clock_annot (p, ck) }
@@ -580,9 +580,9 @@ pat:
 
 spec_desc:
 | UNSPEC { Acids_parsetree.Unspec }
-| p = upword(static_exp_root_fword, static_exp_root, parens)
+| p = upword(const_exp_root_fword, const_exp_root, parens)
    { Acids_parsetree.Word p }
-| LBRACKET l = static_exp COMMA u = static_exp RBRACKET
+| LBRACKET l = const_exp COMMA u = const_exp RBRACKET
    { Acids_parsetree.Interval (l, u) }
 
 spec:
@@ -602,7 +602,7 @@ spec:
 | p_l = list(pragma) { p_l }
 
 node_def_desc:
-| pr = pragma_node LET s = static NODE n = nodename p = pat EQUAL e = exp
+| pr = pragma_node LET s = is_const NODE n = nodename p = pat EQUAL e = exp
    { (s, n, p, e, pr) }
 
 node_def:
@@ -624,17 +624,17 @@ data_ty:
 data_ty_signature:
 | inp = data_ty ARROW out = data_ty { make_ty_sig inp out }
 
-static_ty_scal:
-| STATIC_TY { Static_types.S_static }
-| DYNAMIC_TY { Static_types.S_dynamic }
+const_ty_scal:
+| CONST_TY { Const_types.S_const }
+| NONCONST_TY { Const_types.S_nonconst }
 
-static_ty:
-| tys = static_ty_scal { Static_types.Sy_scal tys }
-| tyv = STATICVAR { Static_types.Sy_var tyv }
-| ty_l = parens(separated_list(TIMES, static_ty)) { Static_types.Sy_prod ty_l }
+const_ty:
+| tys = const_ty_scal { Const_types.Sy_scal tys }
+| tyv = CONSTVAR { Const_types.Sy_var tyv }
+| ty_l = parens(separated_list(TIMES, const_ty)) { Const_types.Sy_prod ty_l }
 
-static_ty_signature:
-| inp = static_ty ARROW out = static_ty { make_static_sig inp out }
+const_ty_signature:
+| inp = const_ty ARROW out = const_ty { make_const_sig inp out }
 
 concrete_spec:
 | UNSPEC { Ast_misc.Unspec }
@@ -668,9 +668,9 @@ node_decl_desc:
 | placeholder_sig_init
   VAL nn = nodename
   COLON ty_sig = data_ty_signature
-  IS static_sig = static_ty_signature
+  IS const_sig = const_ty_signature
   DCOLON ck_sig = clock_ty_signature
-   { (nn, ty_sig, static_sig, ck_sig) }
+   { (nn, ty_sig, const_sig, ck_sig) }
 
 node_decl:
 | nd = with_loc(node_decl_desc) { make_node_decl nd }
@@ -681,14 +681,14 @@ type_def_desc:
 type_def:
 | d = with_loc(type_def_desc) { make_type_def d }
 
-static_def_desc:
-| pragma_node LET STATIC s = IDENT EQUAL e = exp { (s, e) }
+const_def_desc:
+| pragma_node LET CONST s = IDENT EQUAL e = exp { (s, e) }
 
-static_def:
-| sdl = with_loc(static_def_desc) { make_static_def sdl }
+const_def:
+| sdl = with_loc(const_def_desc) { make_const_def sdl }
 
 pword_def_desc:
-| pragma_node LET PWORD s = IDENT EQUAL pw = static_pword { (s, pw) }
+| pragma_node LET PWORD s = IDENT EQUAL pw = const_pword { (s, pw) }
 
 pword_def:
 | pdl = with_loc(pword_def_desc) { make_pword_def pdl }
@@ -700,7 +700,7 @@ phrase:
 | nd = node_def { Acids_parsetree.Phr_node_def nd }
 | decl = node_decl { Acids_parsetree.Phr_node_decl decl }
 | td = type_def { Acids_parsetree.Phr_type_def td }
-| sd = static_def { Acids_parsetree.Phr_static_def sd }
+| sd = const_def { Acids_parsetree.Phr_const_def sd }
 | pd = pword_def { Acids_parsetree.Phr_pword_def pd }
 
 source_file:

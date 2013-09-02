@@ -74,7 +74,14 @@ type 'a merge_clause =
     c_body : 'a;
   }
 
-type 'a process =
+type 'a eq =
+  {
+    eq_desc : 'a eq_desc;
+    eq_base_clock : clock;
+    eq_loc : Loc.t;
+  }
+
+and 'a eq_desc =
   | Var of 'a * 'a (** x = y *)
   | Const of 'a * Ast_misc.const (** x = c *)
 
@@ -92,13 +99,6 @@ type 'a process =
   | Delay of 'a * 'a (** x = delay y *)
 
   | Block of 'a block (** have to be scheduled together *)
-
-and 'a eq =
-  {
-    eq_desc : 'a process;
-    eq_base_clock : clock;
-    eq_loc : Loc.t;
-  }
 
 and 'a block =
   {

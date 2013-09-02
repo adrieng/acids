@@ -88,7 +88,7 @@ let print_op fmt op =
 
 let print_app fmt app = print_op fmt app.a_op
 
-let rec print_process print_var fmt p =
+let rec print_eq_desc print_var fmt p =
   let print_var_tuple = print_list print_var in
   let print_clock_exp = print_clock_exp print_var in
   match p with
@@ -142,7 +142,7 @@ let rec print_process print_var fmt p =
 
 and print_eq print_var fmt eq =
   Format.fprintf fmt "@[(@[<v 2>";
-  print_process print_var fmt eq.eq_desc;
+  print_eq_desc print_var fmt eq.eq_desc;
   if !Compiler_options.print_clock_info
   then
     Format.fprintf fmt "@ :base_clock %a" print_clock eq.eq_base_clock;

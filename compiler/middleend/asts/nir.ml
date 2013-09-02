@@ -91,7 +91,7 @@ type 'a process =
   | Buffer of 'a * buffer_info * 'a (** x = buffer y *)
   | Delay of 'a * 'a (** x = delay y *)
 
-  | Block of 'a block
+  | Block of 'a block (** have to be scheduled together *)
 
 and 'a eq =
   {

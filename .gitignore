@@ -10,3 +10,4 @@ _obuild
 *.log
 tests/*/*.as
 tests/*/*.aso
+lib/*.aso

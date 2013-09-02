@@ -424,20 +424,12 @@ let file ctx (file : Acids_causal_utils.annotated_file) =
     {
       Nir.f_name = file.f_name;
       Nir.f_interfaces = file.f_info#interfaces;
-      Nir.f_type_defs = type_defs;
-      Nir.f_body = node_defs;
+      Nir.f_type_defs = List.rev type_defs;
+      Nir.f_body = List.rev node_defs;
     }
   in
   ctx, nir_file
 
 (** {2 Putting it all together} *)
 
-let pass =
-  let open Pass_manager in
-  P_transform
-    (make_transform
-       ~ext:"nir"
-       ~print_out:Nir_printer.print_file
-       ~guarantee:Nir_invariants.all
-       "nir_of_acids"
-       file)
+let pass = Middleend_utils.make_transform "nir_of_acids" file

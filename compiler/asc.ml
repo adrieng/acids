@@ -91,6 +91,8 @@ let flow =
   (* Translation to middle-end IR *)
   +>+ Lower.pass
   +>+ Nir_of_acids.pass
+  (* Middle-end *)
+  +>+ Block_formation.pass
 
 (*****************************************************************************)
 (* File handling *)

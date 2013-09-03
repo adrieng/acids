@@ -58,7 +58,7 @@ type buffer_info =
   }
 
 type op =
-  | Builtin of Names.shortname
+  (* | Builtin of Names.shortname *)
   | Node of Names.longname
 
 type call =
@@ -93,7 +93,7 @@ and 'a eq_desc =
   | Split of 'a list * 'a clock_exp * 'a * Ast_misc.econstr list
   (** x_1, ..., x_n = split y with ce by ec_1, ... ec_n *)
 
-  | Valof of 'a * 'a clock_exp (* x = valof ce *)
+  | Valof of 'a * 'a clock_exp (** x = valof ce *)
 
   | Buffer of 'a * buffer_info * 'a (** x = buffer y *)
   | Delay of 'a * 'a (** x = delay y *)

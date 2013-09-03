@@ -750,8 +750,7 @@ and clock_dom env loc dom e acc =
      4. If the domain is annotated with a base clock,
      add a constraint between bst and the former
      5. For each x : st free in e, add a constraint relating st[alpha/bst]
-     and its type
-     in the environment.
+     and its type in the environment.
      6. Remap the output type
   *)
 

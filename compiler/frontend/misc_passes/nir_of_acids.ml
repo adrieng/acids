@@ -243,7 +243,7 @@ let rec translate_eq_exp env x_l e =
             (
               let open Names in
               match app.a_op.modn with
-              | Module "Pervasives" -> Nir.Builtin app.a_op.shortn
+              (* | Module "Pervasives" -> Nir.Builtin app.a_op.shortn *)
               | _ -> Nir.Node app.a_op
             );
           Nir.a_clock_inst = app.a_info#ai_clock_inst;

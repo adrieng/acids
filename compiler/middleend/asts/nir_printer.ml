@@ -83,7 +83,7 @@ let print_buffer fmt b =
 
 let print_op fmt op =
   match op with
-  | Builtin n -> Format.fprintf fmt "(builtin %a)" Names.print_shortname n
+  (* | Builtin n -> Format.fprintf fmt "(builtin %a)" Names.print_shortname n *)
   | Node ln -> Names.print_longname fmt ln
 
 let print_app fmt app = print_op fmt app.a_op

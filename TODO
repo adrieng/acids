@@ -13,6 +13,7 @@ Compiler:
 - rename node_decl into node_dec
 - rework equations, remove Eq_condvar, add "cond" expression
 - dump clocking info into Emacs-compatible format (à la Lucy-n)
+- nir_of_acids: fix translation of free variables inside domains
 
 Resolution:
 - Only compute causal solutions

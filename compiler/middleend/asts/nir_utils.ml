@@ -21,7 +21,7 @@ open Nir
 
 (* Map *)
 
-let rec map_process f proc =
+let rec map_eq_desc f proc =
   match proc with
   | Var (x, y) ->
     Var (f x, f y)
@@ -42,14 +42,14 @@ let rec map_process f proc =
   | Block block ->
     Block (map_block f block)
 
-and map_eq f eq = { eq with eq_desc = map_process f eq.eq_desc; }
+and map_eq f eq = { eq with eq_desc = map_eq_desc f eq.eq_desc; }
 
 and map_block f block =
   { block with b_body = List.map (map_eq f) block.b_body; }
 
 (* Fold *)
 
-let rec fold_process f proc acc =
+let rec fold_eq_desc f proc acc =
   match proc with
   | Var (x, y) ->
     let acc = f y acc in
@@ -75,10 +75,25 @@ let rec fold_process f proc acc =
   | Block block ->
     fold_block f block acc
 
-and fold_eq f eq acc = fold_process f eq.eq_desc acc
+and fold_eq f eq acc = fold_eq_desc f eq.eq_desc acc
 
 and fold_block f block acc = List.fold_right (fold_eq f) block.b_body acc
 
 (** Compute variale occurences *)
 
+let vars_eq eq = fold_eq (fun v acc -> v :: acc) eq []
+
 let vars_block block = fold_block (fun v acc -> v :: acc) block []
+
+(** Compute block count *)
+
+let rec block_count_eq count eq =
+  match eq.eq_desc with
+  | Var _ | Const _ | Call _ | Merge _ | Split _ | Valof _ | Buffer _ | Delay _
+      ->
+    count
+  | Block block ->
+    block_count_block count block
+
+and block_count_block count block =
+  List.fold_left block_count_eq (succ count) block.b_body

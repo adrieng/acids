@@ -17,7 +17,7 @@
 
 open Nir
 
-let map_to_nodes f_node ctx file =
+let map_to_nodes f_node ctx (file : (unit, Interface.env) Nir.file) =
   ctx, { file with f_body = List.map f_node file.f_body; }
 
 let make_transform name tr =

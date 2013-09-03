@@ -17,7 +17,7 @@
 
 open Nir
 
-let rec equation env eq =
+let equation env eq =
   env, eq
 
 and block env block =

@@ -151,10 +151,10 @@ type type_def =
     ty_loc : Loc.t;
   }
 
-type 'i file =
+type ('var_info, 'file_info) file =
   {
     f_name : Names.shortname;
-    f_interfaces : Interface.env;
     f_type_defs : type_def list;
-    f_body : 'i node list;
+    f_body : 'var_info node list;
+    f_info : 'file_info;
   }

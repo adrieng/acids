@@ -42,7 +42,7 @@ let all_vars_well_def node =
 
 (** {2 Putting it all together} *)
 
-let all : unit Nir.file Pass_manager.prop =
+let all : (unit, Interface.env) Nir.file Pass_manager.prop =
   let invars =
     [
       all_vars_well_def;

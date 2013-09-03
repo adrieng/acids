@@ -421,12 +421,12 @@ let file ctx (file : Acids_causal_utils.annotated_file) =
   let type_defs, node_defs, _ =
     List.fold_left translate_phrase ([], [], env) file.f_body
   in
-  let nir_file : unit Nir.file =
+  let nir_file : (unit, Interface.env) Nir.file =
     {
       Nir.f_name = file.f_name;
-      Nir.f_interfaces = file.f_info#interfaces;
       Nir.f_type_defs = List.rev type_defs;
       Nir.f_body = List.rev node_defs;
+      Nir.f_info = file.f_info#interfaces;
     }
   in
   ctx, nir_file

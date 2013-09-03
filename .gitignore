@@ -11,3 +11,6 @@ _obuild
 tests/*/*.as
 tests/*/*.aso
 lib/*.aso
+doc/acids.pdf
+doc/auto
+doc/build

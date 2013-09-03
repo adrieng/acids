@@ -19,8 +19,9 @@ open Nir
 
 (** {1 Clock slicing}
 
-    This pass slices a node into several ones, according to clock variables. For
-    example, the following node will get sliced as two separate codes:
+    This pass slices a node into several ones, according to the clock variables
+    present in its signature. For example, the following node will get sliced as
+    two separate codes:
 
     let node f (x, y) = (0 fby x, 0 fby y)
 

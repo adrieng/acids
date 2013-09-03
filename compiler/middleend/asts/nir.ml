@@ -49,7 +49,7 @@ and 'a clock_exp_desc =
   | Ce_pword of Ast_misc.const_pword
   | Ce_equal of 'a clock_exp * Ast_misc.econstr
 
-(** {2 Processes} *)
+(** {2 Equations} *)
 
 type buffer_info =
   {
@@ -132,9 +132,11 @@ type 'i var_dec =
 type 'i node =
   {
     n_name : Names.shortname;
+    n_orig_info : Acids_causal.Info.node_info;
 
     n_input : Ident.t list;
     n_output : Ident.t list;
+
     n_env : 'i var_dec Ident.Env.t;
     n_block_count : int;
     n_body : Ident.t block;

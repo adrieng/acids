@@ -389,6 +389,7 @@ let translate_node_def env nd =
   let block, outputs, env = translate_block env nd.n_body in
   {
     Nir.n_name = nd.n_name;
+    Nir.n_orig_info = nd.n_info;
     Nir.n_input = inputs;
     Nir.n_output = outputs;
     Nir.n_env = get_locals env;

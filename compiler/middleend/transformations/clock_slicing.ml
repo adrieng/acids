@@ -257,7 +257,7 @@ let node env nd_l nd =
           n_input = inputs;
           n_output = outputs;
           n_env = var_env;
-          n_block_count = block_count;
+          n_block_count = succ block_count;
           n_body = { nd.n_body with b_body = body; };
           n_loc = nd.n_loc;
         }

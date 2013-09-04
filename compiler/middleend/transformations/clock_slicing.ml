@@ -185,12 +185,14 @@ let equation env eq =
     let x_l_by_base_rev = gather_vars env.current_vars VarEnv.empty x_l in
     let y_l_by_base_rev = gather_vars env.current_vars VarEnv.empty y_l in
 
-    let make_call env base_clock_var base_clock clock_inst stream_inst =
-      let x_l = List.rev (VarEnv.find base_clock_var x_l_by_base_rev) in
-      let y_l = List.rev (VarEnv.find base_clock_var y_l_by_base_rev) in
+    let make_call env orig_clock_var base_clock clock_inst stream_inst =
+      let base_clock_var = base_var_of_clock_type base_clock in
+      let find map = List.rev (VarEnv.find base_clock_var map) in
+      let x_l = find x_l_by_base_rev in
+      let y_l = find y_l_by_base_rev in
       let app =
         {
-          a_op = sliced_node_name env app.a_op base_clock_var;
+          a_op = sliced_node_name env app.a_op orig_clock_var;
           a_clock_inst = clock_inst;
           a_stream_inst = stream_inst;
         }
@@ -210,17 +212,14 @@ let equation env eq =
       then
         let base_clock_var = Clock in
         let base_clock = Ck_block_base (Block_id 0) in
-        make_call env base_clock_var base_clock clock_inst []
+        (* TODO *)
+        make_call env Clock base_clock clock_inst []
       else
         env
     in
 
     let make_call_st env (st_i_var, st) =
-      let base_clock_var = base_var_of_stream_type st in
-      let base_clock = Ck_stream st in
-      let stream_inst = [st_i_var, st] in
-      let clock_inst = [] in
-      make_call env base_clock_var base_clock clock_inst stream_inst
+      make_call env (Stream st_i_var) (Ck_stream st) [] [st_i_var, st]
     in
 
     let env = make_call_ct env app.a_clock_inst in

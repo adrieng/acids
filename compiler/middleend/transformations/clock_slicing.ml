@@ -210,9 +210,8 @@ let equation env eq =
     let make_call_ct env clock_inst =
       if clock_inst <> []
       then
-        let base_clock_var = Clock in
-        let base_clock = Ck_block_base (Block_id 0) in
         (* TODO *)
+        let base_clock = Ck_block_base (Block_id 0) in
         make_call env Clock base_clock clock_inst []
       else
         env

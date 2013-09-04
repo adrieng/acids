@@ -47,6 +47,36 @@ type clock_sig =
       ct_constraints : clock_constraint list;
     }
 
+let beautify_clock_sig ct_sig =
+  let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
+  let make_ct_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
+
+  let rec beautify_stream_type st =
+    match st with
+    | St_var i -> make_st_var i
+    | St_on (st, ce) -> St_on (beautify_stream_type st, ce)
+  in
+
+  let rec beautify_clock_type ct =
+    match ct with
+    | Ct_var i -> make_ct_var i
+    | Ct_stream st -> Ct_stream (beautify_stream_type st)
+    | Ct_prod ct_l -> Ct_prod (List.map beautify_clock_type ct_l)
+  in
+
+  let beautify_constraint cstr =
+    match cstr with
+    | Cc_adapt (st1, st2) ->
+      Cc_adapt (beautify_stream_type st1, beautify_stream_type st2)
+    | Cc_equal (ct1, ct2) ->
+      Cc_equal (beautify_clock_type ct1, beautify_clock_type ct2)
+  in
+  {
+    ct_sig_input = beautify_clock_type ct_sig.ct_sig_input;
+    ct_sig_output = beautify_clock_type ct_sig.ct_sig_output;
+    ct_constraints = List.map beautify_constraint ct_sig.ct_constraints;
+  }
+
 let rec print_clock_exp fmt ce =
   match ce with
   | Ce_condvar cev ->

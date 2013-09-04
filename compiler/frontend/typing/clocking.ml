@@ -812,6 +812,8 @@ and clock_buffer _ loc in_st out_st bu =
   }
 
 let clock_node_def env nd =
+  Clock_types.reset_st ();
+  Clock_types.reset_ty ();
   let env = reset_env env nd.n_pragma in
   Ident.set_current_ctx nd.n_info#ni_ctx;
   let (input, ty_in), acc =

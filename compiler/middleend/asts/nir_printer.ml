@@ -40,9 +40,9 @@ let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
   print fmt x;
   if !Compiler_options.print_data_info
-  then Format.fprintf fmt "@ @[:type %a@]@ " print_ty ty;
+  then Format.fprintf fmt "@ @[:type %a@]" print_ty ty;
   if !Compiler_options.print_clock_info
-  then Format.fprintf fmt "@ @[:clock %a@]@ " print_clock ck;
+  then Format.fprintf fmt "@ @[:clock %a@]" print_clock ck;
   Format.fprintf fmt "@])"
 
 let rec print_clock_exp print_var fmt ce =

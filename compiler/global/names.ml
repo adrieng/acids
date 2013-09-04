@@ -31,6 +31,8 @@ type longname =
 
 let make_longname modn shortn = { modn = modn; shortn = shortn; }
 
+let make_local shortn = make_longname LocalModule shortn
+
 let print_modname fmt m = Format.fprintf fmt "%s" m
 
 let print_shortname fmt s = Format.fprintf fmt "%s" s

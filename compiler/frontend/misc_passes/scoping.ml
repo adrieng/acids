@@ -359,22 +359,14 @@ let find_var_const env loc v =
   with Not_found ->
     (try
        Acids_scoped.Info.Se_global
-         (scope_const_name
-            env
-            loc
-            Names.({ modn = LocalModule; shortn = v; }))
+         (scope_const_name env loc (Names.make_local v))
      with _ -> unbound_var v loc)
 
 let find_var_pword env loc v =
   try Acids_scoped.Ce_condvar (Utils.Env.find v env.id_env)
   with Not_found ->
     (try
-       let ln =
-         scope_pword_name
-           env
-           loc
-           Names.({ modn = LocalModule; shortn = v; })
-       in
+       let ln = scope_pword_name env loc (Names.make_local v) in
        Acids_scoped.Ce_pword (Acids_scoped.Pd_global ln)
      with _ -> unbound_var v loc)
 

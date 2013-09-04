@@ -30,25 +30,26 @@ open Nir
     let node f_a0 x = 0 fby x
     let node f_a1 y = 0 fby y
 
-    Invariant: after this pass, each node has only one clock or stream variable, its
+    Invariant: after this pass, each node has at most one stream variable, its
     base clock variable.
 *)
 
 type var =
   | Stream of int
-  | Clock of int
+  | Clock
 
 let var_compare v1 v2 =
   let tag_to_int v =
     match v with
     | Stream _ -> 0
-    | Clock _ -> 1
+    | Clock -> 1
   in
   match v1, v2 with
-  | Stream i1, Stream i2
-  | Clock i1, Clock i2 ->
+  | Stream i1, Stream i2 ->
     Utils.int_compare i1 i2
-  | (Stream _ | Clock _), _ ->
+  | Clock, Clock ->
+    0
+  | (Stream _ | Clock), _ ->
     Utils.int_compare (tag_to_int v1) (tag_to_int v2)
 
 module VarEnv = Utils.MakeMap(struct type t = var let compare = var_compare end)
@@ -58,7 +59,7 @@ module VarEnv = Utils.MakeMap(struct type t = var let compare = var_compare end)
 let sliced_short_name sn v =
   match v with
   | Stream i -> sn ^ "_st" ^ string_of_int i
-  | Clock i -> sn ^ "_ck" ^ string_of_int i
+  | Clock -> sn ^ "_ck"
 
 let sliced_node_name (Node nn) v =
   let open Names in
@@ -72,42 +73,24 @@ let rec base_var_of_stream_type st =
 
 let base_var_of_clock_type ck =
   match ck with
-  | Ck_var v ->
-    Clock v
+  | Ck_var _ -> Clock
   | Ck_stream st -> base_var_of_stream_type st
-  | Ck_block_base _ ->
-    invalid_arg "base_var_of_clock_type: Ck_block_base"
-
-let base_var_eq eq =
-  match eq.eq_desc with
-  | Var _
-  | Const _
-  | Merge _
-  | Valof _
-  | Buffer _
-  | Delay _
-  | Block _
-    ->
-    base_var_of_clock_type eq.eq_base_clock
-
-  | Call _ ->
-    invalid_arg "base_var_eq"
-
-  | Split (_, ce, _, _) ->
-    base_var_of_clock_type ce.ce_clock
+  | Ck_block_base _ -> invalid_arg "base_var_of_clock_type: Ck_block_base"
 
 (** {2 Environments} *)
 
 type env =
   {
+    intf_env : Interface.env;
     current_vars : unit Nir.var_dec Ident.Env.t;
     current_nodes : (unit var_dec Ident.Env.t *
                      int *
                      Ident.t Nir.eq list) VarEnv.t;
   }
 
-let initial_env current_vars =
+let initial_env intf_env current_vars =
   {
+    intf_env = intf_env;
     current_vars = current_vars;
     current_nodes = VarEnv.empty;
   }
@@ -134,7 +117,31 @@ let add_eq_to_its_node env v eq =
 
   { env with current_nodes = VarEnv.add v node_info env.current_nodes; }
 
+let find_var_clock env x =
+  let x_vd = Ident.Env.find x env.current_vars in
+  x_vd.v_clock
+
 (** {2 AST traversal} *)
+
+let base_clock_var_eq env eq =
+  match eq.eq_desc with
+  | Var _
+  | Const _
+  | Merge _
+  | Valof _
+  | Delay _
+  | Block _
+    ->
+    base_var_of_clock_type eq.eq_base_clock
+
+  | Call _ ->
+    invalid_arg "base_var_eq"
+
+  | Split (_, ce, _, _) ->
+    base_var_of_clock_type ce.ce_clock
+
+  | Buffer (x, _, _) ->
+    base_var_of_clock_type (find_var_clock env x)
 
 let gather_vars var_env ck_env v_l =
   let add_var ck_env v =
@@ -171,31 +178,34 @@ let equation env eq =
       add_eq_to_its_node env base_clock_var eq
     in
 
-    let make_call_ct env (ct_i_var, ct) =
-      let base_clock_var = Clock ct_i_var in
-      let base_clock = Ck_block_base (Block_id 0) in
-      let stream_inst = [] in
-      let clock_inst = [ct_i_var, ct] in
-      make_call env base_clock_var base_clock clock_inst stream_inst
+    let make_call_ct env clock_inst =
+      if clock_inst <> []
+      then
+        let base_clock_var = Clock in
+        let base_clock = Ck_block_base (Block_id 0) in
+        make_call env base_clock_var base_clock clock_inst []
+      else
+        env
     in
 
     let make_call_st env (st_i_var, st) =
-      let base_clock_var = Stream st_i_var in
+      let base_clock_var = base_var_of_stream_type st in
       let base_clock = Ck_stream st in
       let stream_inst = [st_i_var, st] in
       let clock_inst = [] in
       make_call env base_clock_var base_clock clock_inst stream_inst
     in
 
-    let env = List.fold_left make_call_ct env app.a_clock_inst in
+    let env = make_call_ct env app.a_clock_inst in
     List.fold_left make_call_st env app.a_stream_inst
   | Var _ | Const _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->
-    let base_clock_var = base_var_eq eq in
+    let base_clock_var = base_clock_var_eq env eq in
     add_eq_to_its_node env base_clock_var eq
 
-let node nd_l nd =
-  let env = List.fold_left equation (initial_env nd.n_env) nd.n_body.b_body in
+let node intf_env nd_l nd =
+  let env = initial_env intf_env nd.n_env in
+  let env = List.fold_left equation env nd.n_body.b_body in
   let inputs_by_base_rev =
     gather_vars env.current_vars VarEnv.empty nd.n_input
   in
@@ -204,8 +214,12 @@ let node nd_l nd =
   in
 
   let make_node base_clock_var (var_env, block_count, body) nd_l =
-    let inputs = List.rev (VarEnv.find base_clock_var inputs_by_base_rev) in
-    let outputs = List.rev (VarEnv.find base_clock_var outputs_by_base_rev) in
+    let find_vars map =
+      try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
+    in
+
+    let inputs = find_vars inputs_by_base_rev in
+    let outputs = find_vars outputs_by_base_rev in
 
     let nd =
       {
@@ -225,7 +239,7 @@ let node nd_l nd =
   VarEnv.fold make_node env.current_nodes nd_l
 
 let file ctx file =
-  let nodes = List.fold_left node [] file.f_body in
+  let nodes = List.fold_left (node file.f_info) [] file.f_body in
   ctx, { file with f_body = List.rev nodes; }
 
 let pass =

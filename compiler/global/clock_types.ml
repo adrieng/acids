@@ -585,3 +585,41 @@ let buffer_size inp_st out_st =
   let _, p2 = decompose_pword out_st in
   (* TODO check bst1 = bst2 *)
   Pword.buffer_size p1 p2
+
+(* Clock variable stuff *)
+
+type var_kind =
+  | Var_clock of int
+  | Var_stream of int
+
+let var_kind_compare v1 v2 =
+  let tag_to_int v =
+    match v with
+    | Var_clock _ -> 0
+    | Var_stream _ -> 1
+  in
+  match v1, v2 with
+  | Var_clock i1, Var_clock i2
+  | Var_stream i1, Var_stream i2 ->
+    Utils.int_compare i1 i2
+  | (Var_clock _ | Var_stream _), _ ->
+    Utils.int_compare (tag_to_int v1) (tag_to_int v2)
+
+module VarKindSet =
+  Set.Make(struct type t = var_kind let compare = var_kind_compare end)
+
+let rec base_stream_var st =
+  match st with
+  | St_var i -> Var_stream i
+  | St_on (st, _) -> base_stream_var st
+
+let rec base_ty_var vars ty =
+  match ty with
+  | Ct_var i -> VarKindSet.add (Var_clock i) vars
+  | Ct_stream st -> VarKindSet.add (base_stream_var st) vars
+  | Ct_prod ty_l -> List.fold_left base_ty_var vars ty_l
+
+let base_sig_vars ty_sig =
+  base_ty_var
+    (base_ty_var VarKindSet.empty ty_sig.ct_sig_input)
+    ty_sig.ct_sig_output

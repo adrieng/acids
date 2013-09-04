@@ -56,15 +56,6 @@ module VarEnv = Utils.MakeMap(struct type t = var let compare = var_compare end)
 
 (** {2 Utilities} *)
 
-let sliced_short_name sn v =
-  match v with
-  | Stream i -> sn ^ "_st" ^ string_of_int i
-  | Clock -> sn ^ "_ck"
-
-let sliced_node_name (Node nn) v =
-  let open Names in
-  Node { nn with shortn = sliced_short_name nn.shortn v; }
-
 let rec base_var_of_stream_type st =
   let open Clock_types in
   match st with
@@ -82,18 +73,28 @@ let base_var_of_clock_type ck =
 type env =
   {
     intf_env : Interface.env;
+    local_clock_sigs : Clock_types.clock_sig Names.ShortEnv.t;
     current_vars : unit Nir.var_dec Ident.Env.t;
     current_nodes : (unit var_dec Ident.Env.t *
                      int *
                      Ident.t Nir.eq list) VarEnv.t;
   }
 
-let initial_env intf_env current_vars =
+let initial_env file =
+  let local_clock_sigs =
+    let add local_clock_sigs nd =
+      Names.ShortEnv.add nd.n_name nd.n_orig_info#ni_clock local_clock_sigs
+    in
+    List.fold_left add Names.ShortEnv.empty file.f_body
+  in
   {
-    intf_env = intf_env;
-    current_vars = current_vars;
+    intf_env = file.f_info;
+    local_clock_sigs = local_clock_sigs;
+    current_vars = Ident.Env.empty;
     current_nodes = VarEnv.empty;
   }
+
+let set_current_var env current_vars = { env with current_vars = current_vars; }
 
 let add_eq_to_its_node env v eq =
   let node_var_env, node_block_count, node_body =
@@ -120,6 +121,32 @@ let add_eq_to_its_node env v eq =
 let find_var_clock env x =
   let x_vd = Ident.Env.find x env.current_vars in
   x_vd.v_clock
+
+let find_node_sig env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    ShortEnv.find ln.shortn env.local_clock_sigs
+  | Module modn ->
+    let intf = ShortEnv.find modn env.intf_env in
+    Interface.(clock_signature_of_node_item (find_node intf ln.shortn))
+
+let has_several_clock_variables env ln =
+  let ct_sig = find_node_sig env ln in
+  Clock_types.(VarKindSet.cardinal (base_sig_vars ct_sig) > 1)
+
+let sliced_short_name sn v =
+  match v with
+  | Stream i -> sn ^ "_st" ^ string_of_int i
+  | Clock -> sn ^ "_ck"
+
+let sliced_node_name env (Node nn) v =
+  Node
+    (
+      if has_several_clock_variables env nn
+      then Names.({ nn with shortn = sliced_short_name nn.shortn v; })
+      else nn
+    )
 
 (** {2 AST traversal} *)
 
@@ -163,7 +190,7 @@ let equation env eq =
       let y_l = List.rev (VarEnv.find base_clock_var y_l_by_base_rev) in
       let app =
         {
-          a_op = sliced_node_name app.a_op base_clock_var;
+          a_op = sliced_node_name env app.a_op base_clock_var;
           a_clock_inst = clock_inst;
           a_stream_inst = stream_inst;
         }
@@ -203,43 +230,47 @@ let equation env eq =
     let base_clock_var = base_clock_var_eq env eq in
     add_eq_to_its_node env base_clock_var eq
 
-let node intf_env nd_l nd =
-  let env = initial_env intf_env nd.n_env in
-  let env = List.fold_left equation env nd.n_body.b_body in
-  let inputs_by_base_rev =
-    gather_vars env.current_vars VarEnv.empty nd.n_input
-  in
-  let outputs_by_base_rev =
-    gather_vars env.current_vars VarEnv.empty nd.n_output
-  in
-
-  let make_node base_clock_var (var_env, block_count, body) nd_l =
-    let find_vars map =
-      try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
+let node env nd_l nd =
+  if has_several_clock_variables env (Names.make_local nd.n_name)
+  then
+    let env = set_current_var env nd.n_env in
+    let env = List.fold_left equation env nd.n_body.b_body in
+    let inputs_by_base_rev =
+      gather_vars env.current_vars VarEnv.empty nd.n_input
+    in
+    let outputs_by_base_rev =
+      gather_vars env.current_vars VarEnv.empty nd.n_output
     in
 
-    let inputs = find_vars inputs_by_base_rev in
-    let outputs = find_vars outputs_by_base_rev in
+    let make_node base_clock_var (var_env, block_count, body) nd_l =
+      let find_vars map =
+        try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
+      in
 
-    let nd =
-      {
-        n_name = sliced_short_name nd.n_name base_clock_var;
-        n_orig_info = nd.n_orig_info;
-        n_input = inputs;
-        n_output = outputs;
-        n_env = var_env;
-        n_block_count = block_count;
-        n_body = { nd.n_body with b_body = body; };
-        n_loc = nd.n_loc;
-      }
+      let inputs = find_vars inputs_by_base_rev in
+      let outputs = find_vars outputs_by_base_rev in
+
+      let nd =
+        {
+          n_name = sliced_short_name nd.n_name base_clock_var;
+          n_orig_info = nd.n_orig_info;
+          n_input = inputs;
+          n_output = outputs;
+          n_env = var_env;
+          n_block_count = block_count;
+          n_body = { nd.n_body with b_body = body; };
+          n_loc = nd.n_loc;
+        }
+      in
+      nd :: nd_l
     in
+    VarEnv.fold make_node env.current_nodes nd_l
+  else
     nd :: nd_l
-  in
-
-  VarEnv.fold make_node env.current_nodes nd_l
 
 let file ctx file =
-  let nodes = List.fold_left (node file.f_info) [] file.f_body in
+  let env = initial_env file in
+  let nodes = List.fold_left (node env) [] file.f_body in
   ctx, { file with f_body = List.rev nodes; }
 
 let pass =

@@ -1073,7 +1073,7 @@ let solve_linear_system
         iof_v
     in
 
-    Utils.Env.add c (Pword.make u v) sol
+    Utils.Env.add c Pword.(pull_prefix_in (make u v)) sol
   in
   Utils.Env.fold reconstruct_word csys.nbones_per_unknown Utils.Env.empty
 

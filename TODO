@@ -14,6 +14,8 @@ Compiler:
 - rework equations, remove Eq_condvar, add "cond" expression
 - dump clocking info into Emacs-compatible format (à la Lucy-n)
 - nir_of_acids: fix translation of free variables inside domains
+- tuple lowering is wrong, you have to box tuples when instantiating
+type variables.
 
 Resolution:
 - Only compute causal solutions

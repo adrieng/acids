@@ -1,4 +1,4 @@
-# From Acid Synchrone, (c) Adrien Guatto 2013
+# Acid Synchrone, (c) Adrien Guatto 2013
 PREF=native
 
 UNAME := $(shell uname)
@@ -22,7 +22,9 @@ SOLVER=quicksolve/solve.$(PREF)
 
 TARGETS=$(SOLVER) $(COMPILER)
 
-.PHONY: clean all toprun test unit_test doc lib
+RELEASE_DIR=acids_bin
+
+.PHONY: clean clean_release all toprun test unit_test doc lib release
 .SUFFIX:
 
 all: $(TARGETS) lib
@@ -46,10 +48,15 @@ $(SOLVER): OCAMLBUILDOPTS += -I mllp -I resolution
 %.conflicts: %.mly
 	ocamlbuild $(OCAMLBUILDOPTS) $@
 
-clean:
+clean_release:
+	rm -f $(RELEASE_DIR)/*.{byte,native,as,asi}
+	rm -rf $(RELEASE_DIR)/examples
+
+clean: clean_release
 	ocamlbuild -clean
 	rm -f $(wildcard lib/*.aso)
 	rm -f $(wildcard examples/*.aso)
+	rm -f $(wildcard acids-*.tar.bz2)
 	make -C tests clean
 
 realclean: clean
@@ -73,5 +80,13 @@ realclean: clean
 
 lib: $(COMPILER)
 	./asc -nopervasives lib/pervasives.as
+
+release: clean_release
+	make PREF=byte all
+	cp asc.byte solve.byte lib/*.as $(RELEASE_DIR)/
+	mkdir $(RELEASE_DIR)/examples
+	cp examples/*.as $(RELEASE_DIR)/examples
+	tar cjf acids-`git rev-parse HEAD`.tar.bz2 $(RELEASE_DIR)/
+	scp acids-`git rev-parse HEAD`.tar.bz2 ludics:public_html
 
 .FORCE:

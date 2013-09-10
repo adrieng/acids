@@ -1,0 +1,15 @@
+This is a binary version of Acid Synchrone, an experimental programming language
+dedicated to stream processing systems. This directory holds two executables,
+asc.byte and solve.byte. The former is the compiler for the language and the
+latter is a simple tool to solve scheduling problems formulated as constraints
+on ultimately periodic integer words.
+
+To run these programs you need an OCaml runtime (version 4.0 should work) and an
+Integer Linear Programming solver. For the moment, only GLPK is fully supported.
+
+Some Acid Synchrone source code can be found in the examples/ directory.
+
+Do not hesitate to e-mail me questions and remarks. The full source code will be
+available soon.
+
+-- Adrien Guatto <adrien.guatto@laposte.net>

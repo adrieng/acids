@@ -22,7 +22,7 @@ SOLVER=quicksolve/solve.$(PREF)
 
 TARGETS=$(SOLVER) $(COMPILER)
 
-RELEASE_DIR=acids_bin
+RELEASE_DIR=acids_release
 
 .PHONY: clean clean_release all toprun test unit_test doc lib release
 .SUFFIX:
@@ -49,8 +49,8 @@ $(SOLVER): OCAMLBUILDOPTS += -I mllp -I resolution
 	ocamlbuild $(OCAMLBUILDOPTS) $@
 
 clean_release:
-	rm -f $(RELEASE_DIR)/*.{byte,native,as,asi}
-	rm -rf $(RELEASE_DIR)/examples
+	rm -f $(RELEASE_DIR)/*.{byte,native,as,aso}
+	rm -rf $(RELEASE_DIR)/{lib,examples}
 
 clean: clean_release
 	ocamlbuild -clean
@@ -83,7 +83,11 @@ lib: $(COMPILER)
 
 release: clean_release
 	make PREF=byte all
-	cp asc.byte solve.byte lib/*.as $(RELEASE_DIR)/
+	cp asc.byte solve.byte $(RELEASE_DIR)/
+	sed -i -e 's:^.*ocamlrun:#!/usr/bin/env ocamlrun:' \
+		$(RELEASE_DIR)/{asc,solve}.byte
+	mkdir $(RELEASE_DIR)/lib
+	cp lib/*.as $(RELEASE_DIR)/lib/
 	mkdir $(RELEASE_DIR)/examples
 	cp examples/*.as $(RELEASE_DIR)/examples
 	tar cjf acids-`git rev-parse HEAD`.tar.bz2 $(RELEASE_DIR)/

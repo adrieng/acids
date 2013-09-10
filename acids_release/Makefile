@@ -1,4 +1,4 @@
-ASC=asc.byte
+ASC=./asc.byte
 
 ASCFLAGS+=
 

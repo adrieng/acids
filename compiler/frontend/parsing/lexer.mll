@@ -125,6 +125,7 @@ let keyword =
   | "type"
   | "by"
   | "cond"
+  | "boxed"
   | "unspec"
   | "bool"
   | "int"

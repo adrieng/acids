@@ -731,6 +731,7 @@ and scope_type env loc ty =
   | Ty_scal tys -> Ty_scal (scope_type_scal env loc tys)
   | Ty_cond tys -> Ty_cond (scope_type_scal env loc tys)
   | Ty_prod ty_l -> Ty_prod (List.map scope_type ty_l)
+  | Ty_boxed ty -> Ty_boxed (scope_type ty)
 
 and scope_pattern p env =
   let pd, env =

@@ -26,6 +26,7 @@ type clock_id = Clock_id of int
 type ty =
   | Ty_var of int
   | Ty_scal of Data_types.data_ty_scal
+  | Ty_boxed
   | Ty_clock
 
 type clock =

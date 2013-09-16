@@ -68,6 +68,7 @@
       "type", TYPE;
       "by", BY;
       "cond", COND;
+      "boxed", BOXED;
       "unspec", UNSPEC;
       "bool", BOOL_TY;
       "int", INT_TY;

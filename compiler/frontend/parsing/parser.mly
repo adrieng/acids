@@ -265,6 +265,7 @@
 %token BUFFER
 %token VALOF
 %token COND
+%token BOXED
 %token UNSPEC
 
 %token BOOL_TY INT_TY FLOAT_TY NONCONST_TY CONST_TY (* TOP_TY BOT_TY *)
@@ -620,6 +621,7 @@ data_ty:
 | tys = data_ty_scal { Data_types.Ty_scal tys }
 | tyv = TYVAR { Data_types.Ty_var tyv }
 | ty_l = parens(separated_list(TIMES, data_ty)) { Data_types.Ty_prod ty_l }
+| ty = data_ty BOXED { Data_types.Ty_boxed ty }
 
 data_ty_signature:
 | inp = data_ty ARROW out = data_ty { make_ty_sig inp out }

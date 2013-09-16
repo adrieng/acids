@@ -197,7 +197,7 @@ let rec enrich_env_with_pattern env p =
     let rec check_no_cond loc id ty =
       let open Data_types in
       match ty with
-      | Ty_scal _ | Ty_var _ -> ()
+      | Ty_scal _ | Ty_var _ | Ty_boxed _ -> ()
       | Ty_cond _ -> non_cond_declared_var loc id
       | Ty_prod ty_l -> List.iter (check_no_cond loc id) ty_l
     in

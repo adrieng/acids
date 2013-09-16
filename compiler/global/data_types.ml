@@ -26,6 +26,7 @@ type data_ty =
   | Ty_scal of data_ty_scal
   | Ty_cond of data_ty_scal
   | Ty_prod of data_ty list
+  | Ty_boxed of data_ty
 
 type data_sig =
     {
@@ -48,6 +49,8 @@ let rec print_ty fmt ty =
   | Ty_prod ty_l ->
     Format.fprintf fmt "(@[%a@])"
       (Utils.print_list_r print_ty " *") ty_l
+  | Ty_boxed ty ->
+    Format.fprintf fmt "%a boxed" print_ty ty
 
 let print_sig fmt tys =
   Format.fprintf fmt "@[%a ->@ %a@]"
@@ -81,6 +84,7 @@ module PreTy =
       | Pty_scal of data_ty_scal
       | Pty_cond of 'a pre_ty
       | Pty_prod of 'a pre_ty list
+      | Pty_boxed of 'a pre_ty
 
     let rec print print_var fmt pty =
       match pty with
@@ -91,6 +95,9 @@ module PreTy =
       | Pty_prod pty_l ->
         Format.fprintf fmt "(@[%a@])"
           (Utils.print_list_r (print print_var) " *") pty_l
+      | Pty_boxed pty ->
+        Format.fprintf fmt "boxed %a"
+          (print print_var) pty
 
     let var_pref = "a"
   end
@@ -107,7 +114,8 @@ let rec ty_of_pre_ty ?(make_var = fun i -> Ty_var i) pty =
       | Ty_scal tys -> Ty_cond tys
       | _ -> invalid_arg "ty_of_pre_ty"
     )
-  | Pty_prod ty_l -> Ty_prod (List.map (ty_of_pre_ty ~make_var) ty_l)
+  | Pty_prod pty_l -> Ty_prod (List.map (ty_of_pre_ty ~make_var) pty_l)
+  | Pty_boxed pty -> Ty_boxed (ty_of_pre_ty ~make_var pty)
 
 let instantiate_sig fresh tysig =
   let find env id =
@@ -126,6 +134,9 @@ let instantiate_sig fresh tysig =
     | Ty_prod ty_l ->
       let env, pty_l = Utils.mapfold_left instantiate_ty env ty_l in
       env, Pty_prod pty_l
+    | Ty_boxed ty ->
+      let env, pty = instantiate_ty env ty in
+      env, Pty_boxed pty
   in
 
   let env = Utils.Int_map.empty in

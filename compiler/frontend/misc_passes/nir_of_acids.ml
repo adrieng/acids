@@ -86,6 +86,7 @@ let translate_data_type ty =
   match ty with
   | Ty_var i -> Nir.Ty_var i
   | Ty_scal tys | Ty_cond tys -> Nir.Ty_scal tys
+  | Ty_boxed _ -> Nir.Ty_boxed
   | Ty_prod _ -> invalid_arg "translate_data_type: product type"
 
 let translate_stream_type _ st =

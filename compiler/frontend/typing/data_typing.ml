@@ -61,6 +61,7 @@ let occur_check loc id ty =
     | Pty_scal _ -> ()
     | Pty_cond ty -> walk ty
     | Pty_prod ty_l -> List.iter walk ty_l
+    | Pty_boxed ty -> walk ty
   in
   walk ty
 
@@ -96,7 +97,10 @@ let unify loc ty1 ty2 =
       (try List.iter2 u ty_l1 ty_l2
        with Invalid_argument _ -> unification_conflict loc ty1 ty2)
 
-    | _ ->
+    | Pty_boxed ty1, Pty_boxed ty2 ->
+      u ty1 ty2
+
+    | (Pty_scal _ | Pty_cond _ | Pty_prod _ | Pty_boxed _), _ ->
       unification_conflict loc ty1 ty2
   in
   u ty1 ty2
@@ -269,6 +273,9 @@ let rec pre_ty_of_ty_annotation env ty =
   | Ty_prod ty_l ->
     let env, pty_l = Utils.mapfold_left pre_ty_of_ty_annotation env ty_l in
     env, PreTy.Pty_prod pty_l
+  | Ty_boxed ty ->
+    let env, pty = pre_ty_of_ty_annotation env ty in
+    env, PreTy.Pty_boxed pty
 
 (** {2 High-level utilities} *)
 

@@ -100,7 +100,7 @@ let rec make_scalar_pat_exp ty ct =
   let open Data_types in
   let open Clock_types in
   match ty, ct with
-  | (Ty_var _ | Ty_scal _ | Ty_cond _), _ ->
+  | (Ty_var _ | Ty_scal _ | Ty_cond _ | Ty_boxed _), _ ->
     let v = Ident.make_internal prod_var_prefix in
     make_exp ty ct (E_var v), make_pat ty ct (P_var v)
   | Ty_prod ty_l, Ct_prod ct_l ->
@@ -121,7 +121,7 @@ let rec decompose_tuple_pat p env =
       | Ty_prod _ ->
         let e, p = make_scalar_pat_exp p.p_info#pi_data p.p_info#pi_clock in
         p, add_var env v e
-      | Ty_var _ | Ty_scal _ | Ty_cond _ ->
+      | Ty_var _ | Ty_scal _ | Ty_cond _ | Ty_boxed _ ->
         p, env
     )
   | P_tuple p_l ->
@@ -236,7 +236,7 @@ and distribute_annot tya p =
     let open Data_types in
     let p_l =
       match tya with
-      | Ty_cond _ | Ty_scal _ -> assert false (* ill-typed *)
+      | Ty_cond _ | Ty_scal _ | Ty_boxed _ -> assert false (* ill-typed *)
       | Ty_var _ -> List.map (distribute_annot tya) p_l
       | Ty_prod tya_l -> List.map2 distribute_annot tya_l p_l
     in
@@ -339,7 +339,7 @@ let get_sub_types ty =
   let open Data_types in
   match ty with
   | Ty_prod ty_l -> ty_l
-  | Ty_var _ | Ty_cond _ | Ty_scal _ -> [ty]
+  | Ty_var _ | Ty_cond _ | Ty_scal _ | Ty_boxed _ -> [ty]
 
 let sub_clocks arity ct =
   let open Clock_types in
@@ -384,7 +384,8 @@ let rec flatten p e =
       flatten_list p_l e_l
 
     | E_app _ | E_where _ | E_dom _ | E_valof _
-    | E_spec_annot _ | E_type_annot (_, (Ty_var _ | Ty_scal _ | Ty_cond _)) ->
+    | E_spec_annot _
+    | E_type_annot (_, (Ty_var _ | Ty_scal _ | Ty_cond _ | Ty_boxed _)) ->
       [p, e]
 
     | E_when (e, ce) ->

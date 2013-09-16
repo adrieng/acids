@@ -140,13 +140,17 @@ let sliced_short_name sn v =
   | Stream i -> sn ^ "_st" ^ string_of_int i
   | Clock -> sn ^ "_ck"
 
-let sliced_node_name env (Node nn) v =
-  Node
-    (
-      if has_several_clock_variables env nn
-      then Names.({ nn with shortn = sliced_short_name nn.shortn v; })
-      else nn
-    )
+let sliced_node_name env op v =
+  match op with
+  | Node nn ->
+    Node
+      (
+        if has_several_clock_variables env nn
+        then Names.({ nn with shortn = sliced_short_name nn.shortn v; })
+        else nn
+      )
+  | Box | Unbox ->
+    op
 
 (** {2 AST traversal} *)
 

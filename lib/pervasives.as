@@ -68,3 +68,15 @@ val ( /. )
   : (float * float) -> float
   is ('c * 'c) -> 'c
   :: ('a * 'a) -> 'a
+
+(* Internal operators *)
+
+val box
+  : 'x -> 'x boxed
+  is 'c -> 'c
+  :: 'b -> 'b
+
+val unbox
+  : 'x boxed -> 'x
+  is 'c -> 'c
+  :: 'b -> 'b

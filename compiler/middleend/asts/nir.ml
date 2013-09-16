@@ -61,6 +61,8 @@ type buffer_info =
 type op =
   (* | Builtin of Names.shortname *)
   | Node of Names.longname
+  | Box
+  | Unbox
 
 type call =
   {

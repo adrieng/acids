@@ -38,6 +38,11 @@ type var =
   | Stream of int
   | Clock
 
+let print_var fmt v =
+  match v with
+  | Stream i -> Format.fprintf fmt "(stream %d)" i
+  | Clock -> Format.fprintf fmt "(clock)"
+
 let var_compare v1 v2 =
   let tag_to_int v =
     match v with

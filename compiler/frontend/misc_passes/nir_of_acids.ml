@@ -251,8 +251,9 @@ let rec translate_eq_exp env x_l e =
           Nir.a_op =
             (
               let open Names in
-              match app.a_op.modn with
-              (* | Module "Pervasives" -> Nir.Builtin app.a_op.shortn *)
+              match app.a_op.modn, app.a_op.shortn with
+              | Module "Pervasives", "box" -> Nir.Box
+              | Module "Pervasives", "unbox" -> Nir.Unbox
               | _ -> Nir.Node app.a_op
             );
           Nir.a_clock_inst = app.a_info#ai_clock_inst;

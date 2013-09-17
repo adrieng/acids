@@ -85,14 +85,16 @@ let fold_left_1 f l =
   | x :: l -> List.fold_left f x l
   | _ -> invalid_arg "fold_left_1: list too short"
 
-let rec mapfold f l acc = match l with
+let rec mapfold f l acc =
+  match l with
   | [] -> [], acc
   | x :: l ->
     let l, acc = mapfold f l acc in
     let x, acc = f x acc in
     x :: l, acc
 
-let rec mapfold_left f acc l = match l with
+let rec mapfold_left f acc l =
+  match l with
   | [] -> acc, []
   | x :: l ->
     let acc, x = f acc x in
@@ -108,6 +110,16 @@ let rec mapfold_2 f l1 l2 acc =
     x :: l, acc
   | [], _ :: _ | _ :: _, [] ->
     invalid_arg "mapfold_2"
+
+let rec mapfold_left_2 f acc l1 l2 =
+  match l1, l2 with
+  | [], [] -> acc, []
+  | x1 :: l1, x2 :: l2 ->
+    let acc, x = f acc x1 x2 in
+    let acc, l = mapfold_left_2 f acc l1 l2 in
+    acc, x :: l
+  | [], _ :: _ | _ :: _, [] ->
+    invalid_arg "mapfold_left_2"
 
 let iter_opt f x =
   match x with

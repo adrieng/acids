@@ -80,7 +80,7 @@ let flow =
   (* Parsing and scoping *)
   Parsing_pass.pass
   +>+ Scoping.pass
-  (* Const analyses for safety *)
+  (* Type systems and const inlining *)
   +>+ Data_typing.pass
   +>+ Const_typing.pass
   +>+ Const_simpl.pass

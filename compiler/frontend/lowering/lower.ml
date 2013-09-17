@@ -22,3 +22,4 @@ let pass =
   +>+ Lower_psplit.pass
   +>+ Lower_subexps.pass
   +>+ Lower_tuples.pass
+  +>+ Lower_polymorphism.pass

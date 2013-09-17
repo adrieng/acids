@@ -35,7 +35,7 @@ let print_clock fmt ck =
   | Ck_stream st ->
     Clock_types.print_stream_type fmt st
   | Ck_block_base bid ->
-    Format.fprintf fmt "B %a" print_block_id bid
+    Format.fprintf fmt "(B %a)" print_block_id bid
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";

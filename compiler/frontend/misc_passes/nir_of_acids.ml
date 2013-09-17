@@ -186,11 +186,19 @@ let rec translate_pattern p (env, v_l) =
         non_lowered "P_tuple inside annotations"
     in
     let v, annots = get_annots [] p in
+    let ty = translate_data_type p.p_info#pi_data in
+    let ck =
+      (* We know that boxed types may hold tuples of different clocks, so they
+         are set to the current base clock. *)
+      match ty with
+      | Nir.Ty_boxed -> Nir.Ck_block_base (get_current_block env)
+      | _ -> translate_clock_type env p.p_info#pi_clock
+    in
     let vd =
       {
         Nir.v_name = v;
-        Nir.v_data = translate_data_type p.p_info#pi_data;
-        Nir.v_clock = translate_clock_type env p.p_info#pi_clock;
+        Nir.v_data = ty;
+        Nir.v_clock = ck;
         Nir.v_scope = Nir.Scope_internal (get_current_block env);
         Nir.v_annots = annots;
         Nir.v_loc = p.p_loc;

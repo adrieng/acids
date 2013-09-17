@@ -131,6 +131,10 @@ let _ =
       Compiler_options.usage;
     files := List.rev !files;
     List.iter handle_file !files
-  with Compiler.Internal_error reason ->
+  with
+  | Compiler.Internal_error reason ->
     Format.eprintf "Internal error: %s@." reason;
     exit 2
+  | Compiler_options.Duplicate_option opt ->
+    Format.eprintf "Cannot set command-line option \"%s\" twice@." opt;
+    exit 1

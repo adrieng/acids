@@ -106,10 +106,12 @@ let set r x () = r := x
 
 let add lr x = set lr (x :: !lr) ()
 
-let set_once r x =
+exception Duplicate_option of string
+
+let set_once opt r x =
   match !r with
   | None -> r := Some x
-  | Some _ -> failwith "Could not set this option twice"
+  | Some _ -> raise (Duplicate_option opt)
 
 type default =
   | Enabled of bool ref
@@ -157,7 +159,7 @@ let options =
           " Serialize the output of the given transform";
 
           "-stop",
-          Arg.String (set_once stop_after),
+          Arg.String (set_once "-stop" stop_after),
           " Stop after the given transform";
 
           "-I",

@@ -64,9 +64,8 @@ let rec base_var_of_stream_type st =
 
 let base_var_of_clock_type ck =
   match ck with
-  | Ck_var _ -> Clock
+  | Ck_var _ | Ck_block_base _ -> Clock
   | Ck_stream st -> base_var_of_stream_type st
-  | Ck_block_base _ -> invalid_arg "base_var_of_clock_type: Ck_block_base"
 
 (** {2 Environments} *)
 

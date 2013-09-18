@@ -7,6 +7,10 @@ on ultimately periodic integer words.
 To run these programs you need an OCaml runtime (version 4.0 should work) and an
 Integer Linear Programming solver. For the moment, only GLPK is fully supported.
 
+Type "make" to build the standard library. The compiler should be run
+from the acids_release/ directory, or be passed the path to
+pervasives.aso through the -I command-line switch.
+
 Some Acid Synchrone source code can be found in the examples/ directory.
 
 Do not hesitate to e-mail me questions and remarks. The full source code will be

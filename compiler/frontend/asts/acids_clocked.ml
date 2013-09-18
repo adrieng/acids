@@ -70,9 +70,9 @@ struct
 
     let print_clock_inst = print_inst (fun i -> Ct_var i) print_clock_type in
     let print_stream_inst = print_inst (fun i -> St_var i) print_stream_type in
-    Format.fprintf fmt "Ct: [%a]"
+    Format.fprintf fmt " Ct: [%a]"
       (Utils.print_list_r print_clock_inst ",") ci#ai_clock_inst;
-    Format.fprintf fmt "St: [%a]"
+    Format.fprintf fmt " St: [%a]"
       (Utils.print_list_r print_stream_inst ",") ci#ai_stream_inst
 
   type block_info = unit

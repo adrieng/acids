@@ -74,9 +74,9 @@ val ( /. )
 val box
   : 'x -> 'x boxed
   is 'c -> 'c
-  :: 'b -> 'b
+  :: 'a -> 'a
 
 val unbox
   : 'x boxed -> 'x
   is 'c -> 'c
-  :: 'b -> 'b
+  :: 'a -> 'a

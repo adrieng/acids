@@ -30,8 +30,6 @@ let print_ty fmt ty =
 
 let print_clock fmt ck =
   match ck with
-  | Ck_var i ->
-    Clock_types.(print_clock_type fmt (Ct_var i))
   | Ck_stream st ->
     Clock_types.print_stream_type fmt st
   | Ck_block_base bid ->

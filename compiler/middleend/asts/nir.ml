@@ -30,7 +30,6 @@ type ty =
   | Ty_clock
 
 type clock =
-  | Ck_var of int
   | Ck_stream of Clock_types.stream_type
   | Ck_block_base of block_id
 
@@ -67,7 +66,6 @@ type op =
 type call =
   {
     a_op : op;
-    a_clock_inst : (int * Clock_types.clock_type) list;
     a_stream_inst : (int * Clock_types.stream_type) list;
   }
 

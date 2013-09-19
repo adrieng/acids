@@ -32,7 +32,6 @@ type stream_type =
   | St_on of stream_type * clock_exp
 
 type clock_type =
-  | Ct_var of int
   | Ct_stream of stream_type
   | Ct_prod of clock_type list
 
@@ -49,7 +48,6 @@ type clock_sig =
 
 let beautify_clock_sig ct_sig =
   let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
-  let make_ct_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
 
   let rec beautify_stream_type st =
     match st with
@@ -59,7 +57,6 @@ let beautify_clock_sig ct_sig =
 
   let rec beautify_clock_type ct =
     match ct with
-    | Ct_var i -> make_ct_var i
     | Ct_stream st -> Ct_stream (beautify_stream_type st)
     | Ct_prod ct_l -> Ct_prod (List.map beautify_clock_type ct_l)
   in
@@ -101,7 +98,6 @@ let rec print_stream_type fmt st =
 
 let rec print_clock_type fmt ct =
   match ct with
-  | Ct_var i -> Format.fprintf fmt "'b%a" Utils.print_int_non_zero i
   | Ct_stream st -> print_stream_type fmt st
   | Ct_prod st_l ->
     Format.fprintf fmt "(@[%a@])"
@@ -153,7 +149,7 @@ let print_sig_ann =
 
 let get_st ty =
   match ty with
-  | Ct_prod _ | Ct_var _ -> invalid_arg "get_st: not a stream type"
+  | Ct_prod _ -> invalid_arg "get_st: not a stream type"
   | Ct_stream st -> st
 
 module PreCe =
@@ -250,6 +246,14 @@ let rec unalias_st st =
   | _ ->
     st
 
+let reset_st, fresh_st =
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () ->
+    let v = !r in
+    incr r;
+    PreTySt.Pst_var { VarTySt.v_id = v; VarTySt.v_link = None; })
+
 module PreTy =
 struct
   type 'a pre_ty =
@@ -269,17 +273,19 @@ struct
 end
 module VarTy = Ast_misc.MakeVar(PreTy)
 
-let make_ty_var i = Ct_var i
-
-let rec ty_of_pre_ty make_st_var make_ty_var pty =
+let rec ty_of_pre_ty make_st_var pty =
   let open PreTy in
   match pty with
-  | Pct_var v ->
-    VarTy.ty_of_ty_var (ty_of_pre_ty make_st_var make_ty_var) make_ty_var v
+  | Pct_var { VarTy.v_link = Some pty; } ->
+    ty_of_pre_ty make_st_var pty
+  | Pct_var ({ VarTy.v_link = None; } as v) ->
+    let st = fresh_st () in
+    v.VarTy.v_link <- Some (Pct_stream st);
+    Ct_stream (st_of_pre_st make_st_var st)
   | Pct_stream pst ->
     Ct_stream (st_of_pre_st make_st_var pst)
   | Pct_prod pty_l ->
-    Ct_prod (List.map (ty_of_pre_ty make_st_var make_ty_var) pty_l)
+    Ct_prod (List.map (ty_of_pre_ty make_st_var) pty_l)
 
 let rec unalias_ty ty =
   let open PreTy in
@@ -291,6 +297,14 @@ let rec unalias_ty ty =
     ty
   | _ ->
     ty
+
+let reset_ty, fresh_ty =
+  let r = ref 0 in
+  (fun () -> r := 0),
+  (fun () ->
+    let v = !r in
+    incr r;
+    PreTy.Pct_var { VarTy.v_id = v; VarTy.v_link = None; })
 
 type ty_constr_desc =
   | Tc_adapt of VarTySt.t * VarTySt.t (* st1 <: st2 *)
@@ -321,40 +335,23 @@ let print_ty_constr_desc fmt tycd =
 let print_ty_constr fmt tyc =
   print_ty_constr_desc fmt tyc.desc
 
-let clock_constr_of_ty_constr make_st_var make_ty_var cstr =
+let clock_constr_of_ty_constr make_st_var cstr =
   match cstr.desc with
   | Tc_adapt (st1, st2) ->
     let st1 = st_of_pre_st make_st_var st1 in
     let st2 = st_of_pre_st make_st_var st2 in
     Cc_adapt (st1, st2)
   | Tc_equal (t1, t2) ->
-    let t1 = ty_of_pre_ty make_st_var make_ty_var t1 in
-    let t2 = ty_of_pre_ty make_st_var make_ty_var t2 in
+    let t1 = ty_of_pre_ty make_st_var t1 in
+    let t2 = ty_of_pre_ty make_st_var t2 in
     Cc_equal (t1, t2)
   | Tc_equal_st (st1, st2) ->
     let st1 = st_of_pre_st make_st_var st1 in
     let st2 = st_of_pre_st make_st_var st2 in
     Cc_equal (Ct_stream st1, Ct_stream st2)
 
-let reset_st, fresh_st =
-  let r = ref 0 in
-  (fun () -> r := 0),
-  (fun () ->
-    let v = !r in
-    incr r;
-    PreTySt.Pst_var { VarTySt.v_id = v; VarTySt.v_link = None; })
-
-let reset_ty, fresh_ty =
-  let r = ref 0 in
-  (fun () -> r := 0),
-  (fun () ->
-    let v = !r in
-    incr r;
-    PreTy.Pct_var { VarTy.v_id = v; VarTy.v_link = None; })
-
 let instantiate_clock_sig loc csig =
   let ht_st = Hashtbl.create 10 in
-  let ht_ct = Hashtbl.create 10 in
 
   let rec inst_st st =
     let open PreTySt in
@@ -373,14 +370,6 @@ let instantiate_clock_sig loc csig =
   let rec inst_ct ct =
     let open PreTy in
     match ct with
-    | Ct_var v ->
-      (
-        try Hashtbl.find ht_ct v
-        with Not_found ->
-          let ty = fresh_ty () in
-          Hashtbl.add ht_ct v ty;
-          ty
-      )
     | Ct_stream st -> Pct_stream (inst_st st)
     | Ct_prod ct_l -> Pct_prod (List.map inst_ct ct_l)
   in
@@ -405,7 +394,7 @@ let instantiate_clock_sig loc csig =
     Hashtbl.fold add_inst ht []
   in
 
-  ty_in, ty_out, ty_constr, make_inst ht_ct, make_inst ht_st
+  ty_in, ty_out, ty_constr, make_inst ht_st
 
 let rec reroot_st bst st =
   let open PreTySt in
@@ -463,10 +452,63 @@ let decompose_st st =
   let st, (p_l, _) = decompose_st_with_ce st in
   st, p_l
 
+let pword_of_econstr_tree pw =
+  let pw = Tree_word.map_upword Ast_misc.int_of_econstr (fun x -> x) pw in
+  Resolution_utils.pword_of_tree pw
+
+let rec ce_compare ce1 ce2 =
+  let tag_to_int ce =
+    match ce with
+    | Ce_condvar _ -> 0
+    | Ce_pword _ -> 1
+    | Ce_equal _ -> 2
+  in
+  match ce1, ce2 with
+  | Ce_condvar v1, Ce_condvar v2 ->
+    Ident.compare v1.cecv_name v2.cecv_name
+  | Ce_pword pw1, Ce_pword pw2 ->
+    let p1 = pword_of_econstr_tree pw1 in
+    let p2 = pword_of_econstr_tree pw2 in
+    if Pword.equal p1 p2 then 0 else 1
+  | Ce_equal (ce1, ec1), Ce_equal (ce2, ec2) ->
+    Utils.compare_both
+      (Ast_misc.econstr_compare ec1 ec2)
+      (fun () -> ce_compare ce1 ce2)
+  | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _ ->
+    Utils.int_compare (tag_to_int ce1) (tag_to_int ce2)
+
+let rec st_compare st1 st2 =
+  let tag_to_int st =
+    match st with
+    | St_var _ -> 0
+    | St_on _ -> 1
+  in
+  match st1, st2 with
+  | St_var v1, St_var v2 -> Utils.int_compare v1 v2
+  | St_on (st1, ce1), St_on (st2, ce2) ->
+    Utils.compare_both
+      (ce_compare ce1 ce2)
+      (fun () -> st_compare st1 st2)
+  | (St_var _ | St_on _), _ ->
+    Utils.int_compare (tag_to_int st1) (tag_to_int st2)
+
+let rec ct_compare ct1 ct2 =
+  let tag_to_int ct =
+    match ct with
+    | Ct_stream _ -> 0
+    | Ct_prod _ -> 1
+  in
+  match ct1, ct2 with
+  | Ct_stream st1, Ct_stream st2 ->
+    st_compare st1 st2
+  | Ct_prod ct_l1, Ct_prod ct_l2 ->
+    Utils.list_compare ct_compare ct_l1 ct_l2
+  | (Ct_stream _ | Ct_prod _), _ ->
+    Utils.int_compare (tag_to_int ct1) (tag_to_int ct2)
+
 let map_stream_type_of_sig f ty_sig =
   let rec map_ty ty =
     match ty with
-    | Ct_var _ -> ty
     | Ct_stream st -> Ct_stream (f st)
     | Ct_prod ty_l -> Ct_prod (List.map map_ty ty_l)
   in
@@ -541,13 +583,7 @@ let rec simplify_prefix_st st =
     match ce with
     | Ce_condvar _ -> ce
     | Ce_pword pw ->
-      let p =
-        Tree_word.map_upword
-          (fun ec -> Ast_misc.int_of_econstr ec)
-          (fun x -> x)
-          pw
-      in
-      let p = Resolution_utils.pword_of_tree p in
+      let p = pword_of_econstr_tree pw in
       let p = Pword.pull_prefix_in p in
       ce_pword_of_pword p
     | Ce_equal (ce, se) -> Ce_equal (simplify_prefix_ce ce, se)
@@ -565,13 +601,11 @@ let simplify_sig ty_sig =
 
 let generalize_clock_sig inp out cstrs =
   let make_st_var = Ast_misc.memoize_make_var (fun i -> St_var i) in
-  let make_ty_var = Ast_misc.memoize_make_var (fun i -> Ct_var i) in
   let ty_sig =
     {
-      ct_sig_input = ty_of_pre_ty make_st_var make_ty_var inp;
-      ct_sig_output = ty_of_pre_ty make_st_var make_ty_var out;
-      ct_constraints =
-        List.map (clock_constr_of_ty_constr make_st_var make_ty_var) cstrs;
+      ct_sig_input = ty_of_pre_ty make_st_var inp;
+      ct_sig_output = ty_of_pre_ty make_st_var out;
+      ct_constraints = List.map (clock_constr_of_ty_constr make_st_var) cstrs;
     }
   in
   simplify_sig ty_sig
@@ -606,7 +640,6 @@ let binary_stream_type st = Int.(max_burst_stream_type st <= one)
 
 let rec binary_clock_type ty =
   match ty with
-  | Ct_var _ -> true
   | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
   | Ct_stream st -> binary_stream_type st
 
@@ -616,24 +649,24 @@ let buffer_size inp_st out_st =
   (* TODO check bst1 = bst2 *)
   Pword.buffer_size p1 p2
 
+let rec st_of_synchronized_ct ct =
+  match ct with
+  | Ct_stream st ->
+    st
+  | Ct_prod [] ->
+    invalid_arg "clock_types_of_synchronized_ty: nullary product"
+  | Ct_prod ct_l ->
+    (* TODO: check that they are all equal *)
+    let ct = List.hd ct_l in
+    List.iter (fun ct' -> assert (0 = ct_compare ct ct')) (List.tl ct_l);
+    st_of_synchronized_ct ct
+
 (* Clock variable stuff *)
 
-type var_kind =
-  | Var_clock of int
-  | Var_stream of int
+type var_kind = Var_stream of int
 
-let var_kind_compare v1 v2 =
-  let tag_to_int v =
-    match v with
-    | Var_clock _ -> 0
-    | Var_stream _ -> 1
-  in
-  match v1, v2 with
-  | Var_clock i1, Var_clock i2
-  | Var_stream i1, Var_stream i2 ->
-    Utils.int_compare i1 i2
-  | (Var_clock _ | Var_stream _), _ ->
-    Utils.int_compare (tag_to_int v1) (tag_to_int v2)
+let var_kind_compare (Var_stream i1) (Var_stream i2) =
+  Utils.int_compare i1 i2
 
 module VarKindSet =
   Set.Make(struct type t = var_kind let compare = var_kind_compare end)
@@ -645,7 +678,6 @@ let rec base_stream_var st =
 
 let rec base_ty_var vars ty =
   match ty with
-  | Ct_var i -> VarKindSet.add (Var_clock i) vars
   | Ct_stream st -> VarKindSet.add (base_stream_var st) vars
   | Ct_prod ty_l -> List.fold_left base_ty_var vars ty_l
 

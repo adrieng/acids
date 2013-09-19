@@ -107,7 +107,7 @@ let rec make_scalar_pat_exp ty ct =
     let ep_l = List.map2 make_scalar_pat_exp ty_l ct_l in
     let e_l, p_l = List.split ep_l in
     make_exp ty ct (E_tuple e_l), make_pat ty ct (P_tuple p_l)
-  | Ty_prod ty_l, (Ct_var _ | Ct_stream _) ->
+  | Ty_prod ty_l, Ct_stream _ ->
     let ep_l = List.map (fun ty -> make_scalar_pat_exp ty ct) ty_l in
     let e_l, p_l = List.split ep_l in
     make_exp ty ct (E_tuple e_l), make_pat ty ct (P_tuple p_l)
@@ -347,7 +347,7 @@ let sub_clocks arity ct =
   | Ct_prod ct_l ->
     assert (List.length ct_l = arity);
     ct_l
-  | Ct_var _ | Ct_stream _ ->
+  | Ct_stream _ ->
     Utils.repeat arity ct
 
 let get_sub_exps e =

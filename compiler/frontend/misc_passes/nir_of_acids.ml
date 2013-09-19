@@ -95,7 +95,6 @@ let translate_stream_type _ st =
 let translate_clock_type env ct =
   let open Clock_types in
   match ct with
-  | Ct_var i -> Nir.Ck_var i
   | Ct_stream st -> translate_stream_type env st
   | Ct_prod _ -> invalid_arg "translate_clock_type: product clock"
 
@@ -187,13 +186,7 @@ let rec translate_pattern p (env, v_l) =
     in
     let v, annots = get_annots [] p in
     let ty = translate_data_type p.p_info#pi_data in
-    let ck =
-      (* We know that boxed types may hold tuples of different clocks, so they
-         are set to the current base clock. *)
-      match ty with
-      | Nir.Ty_boxed -> Nir.Ck_block_base (get_current_block env)
-      | _ -> translate_clock_type env p.p_info#pi_clock
-    in
+    let ck = translate_clock_type env p.p_info#pi_clock in
     let vd =
       {
         Nir.v_name = v;
@@ -256,7 +249,6 @@ let rec translate_eq_exp env x_l e =
               | Module "Pervasives", "unbox" -> Nir.Unbox
               | _ -> Nir.Node app.a_op
             );
-          Nir.a_clock_inst = app.a_info#ai_clock_inst;
           Nir.a_stream_inst = app.a_info#ai_stream_inst;
         }
       in

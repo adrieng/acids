@@ -182,8 +182,6 @@ rule token = parse
 
   | "'a"(posint as i) { STVAR (int_of_string i) }
   | "'a"              { STVAR 0 }
-  | "'b"(posint as i) { CTVAR (int_of_string i) }
-  | "'b"              { CTVAR 0 }
   | "'x"(posint as i) { TYVAR (int_of_string i) }
   | "'x"              { TYVAR 0 }
   | "'c"(posint as i) { CONSTVAR (int_of_string i) }

@@ -80,14 +80,13 @@ let close_env env = { env with current_eqs = []; }, env.current_eqs
 
 (** *)
 
-let make_app sn ct =
+let make_app sn st =
   {
     a_op = Names.(make_longname (Module "Pervasives") sn);
     a_loc = Loc.dummy;
     a_info =
       object
-        method ai_stream_inst = []
-        method ai_clock_inst = [ 0, ct; ]
+        method ai_stream_inst = [ 0, st ]
       end;
   }
 
@@ -108,11 +107,11 @@ let change_data_type_pat p ty =
     method pi_clock = p.p_info#pi_clock
   end
 
-(* We walk the data type of inputs and input argument and introduce boxes when
-   we see a type variable. *)
-let rec box_input env ty input =
+(* We walk the data type of the function input and its input argument and
+   introduce boxes when we see a type variable. *)
+let rec box_input env fun_ty input =
   let open Data_types in
-  match ty, input.e_desc with
+  match fun_ty, input.e_desc with
   | (Ty_scal _ | Ty_cond _ | Ty_boxed _), _ ->
     env, input
   | Ty_prod ty_l, E_tuple e_l ->
@@ -130,17 +129,18 @@ let rec box_input env ty input =
   | Ty_var _, _ ->
     let v = Ident.make_internal poly_var_prefix in
     let boxed_ty = Ty_boxed input.e_info#ei_data in
+    let boxed_st = Clock_types.st_of_synchronized_ct input.e_info#ei_clock in
     let boxing_eq =
       let body =
-        make_exp
+        make_exp_st
           boxed_ty
-          input.e_info#ei_clock
-          (E_app (make_box_app input.e_info#ei_clock, input))
+          boxed_st
+          (E_app (make_box_app boxed_st, input))
       in
       let pat =
         make_pat
           boxed_ty
-          input.e_info#ei_clock
+          (Clock_types.Ct_stream boxed_st)
           (P_var v)
       in
       {
@@ -157,9 +157,9 @@ let rec box_input env ty input =
     }
 
 (* Same technique for outputs *)
-let rec unbox_output env ty output =
+let rec unbox_output env fun_ty output =
   let open Data_types in
-  match ty, output.p_desc with
+  match fun_ty, output.p_desc with
   | (Ty_scal _ | Ty_cond _ | Ty_boxed _), _ ->
     env, output
   | Ty_prod ty_l, P_tuple p_l ->
@@ -177,18 +177,19 @@ let rec unbox_output env ty output =
   | Ty_var _, _ ->
     let v = Ident.make_internal poly_var_prefix in
     let boxed_ty = Ty_boxed output.p_info#pi_data in
+    let boxed_st = Clock_types.st_of_synchronized_ct output.p_info#pi_clock in
     let unboxing_eq =
       let body =
         let unbox_arg =
           make_exp
             boxed_ty
-            output.p_info#pi_clock
+            (Clock_types.Ct_stream boxed_st)
             (E_var v)
         in
         make_exp
           output.p_info#pi_data
           output.p_info#pi_clock
-          (E_app (make_unbox_app output.p_info#pi_clock, unbox_arg))
+          (E_app (make_unbox_app boxed_st, unbox_arg))
       in
       {
         eq_desc = Eq_plain (output, body);

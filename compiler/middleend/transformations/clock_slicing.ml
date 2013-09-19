@@ -34,28 +34,12 @@ open Nir
     base clock variable.
 *)
 
-type var =
-  | Stream of int
-  | Clock
+type var = Stream of int
 
-let print_var fmt v =
-  match v with
-  | Stream i -> Format.fprintf fmt "(stream %d)" i
-  | Clock -> Format.fprintf fmt "(clock)"
+let print_var fmt (Stream i) = Format.fprintf fmt "(stream %d)" i
 
-let var_compare v1 v2 =
-  let tag_to_int v =
-    match v with
-    | Stream _ -> 0
-    | Clock -> 1
-  in
-  match v1, v2 with
-  | Stream i1, Stream i2 ->
-    Utils.int_compare i1 i2
-  | Clock, Clock ->
-    0
-  | (Stream _ | Clock), _ ->
-    Utils.int_compare (tag_to_int v1) (tag_to_int v2)
+let var_compare (Stream i1) (Stream i2) =
+  Utils.int_compare i1 i2
 
 module VarEnv = Utils.MakeMap(struct type t = var let compare = var_compare end)
 
@@ -69,7 +53,7 @@ let rec base_var_of_stream_type st =
 
 let base_var_of_clock_type ck =
   match ck with
-  | Ck_var _ | Ck_block_base _ -> Clock
+  | Ck_block_base _ -> invalid_arg "base_var_of_clock_type"
   | Ck_stream st -> base_var_of_stream_type st
 
 (** {2 Environments} *)
@@ -139,10 +123,7 @@ let has_several_clock_variables env ln =
   let ct_sig = find_node_sig env ln in
   Clock_types.(VarKindSet.cardinal (base_sig_vars ct_sig) > 1)
 
-let sliced_short_name sn v =
-  match v with
-  | Stream i -> sn ^ "_st" ^ string_of_int i
-  | Clock -> sn ^ "_ck"
+let sliced_short_name sn (Stream i) = sn ^ "_st" ^ string_of_int i
 
 let sliced_node_name env op v =
   match op with
@@ -193,7 +174,7 @@ let equation env eq =
     let x_l_by_base_rev = gather_vars env.current_vars VarEnv.empty x_l in
     let y_l_by_base_rev = gather_vars env.current_vars VarEnv.empty y_l in
 
-    let make_call env orig_clock_var base_clock clock_inst stream_inst =
+    let make_call env orig_clock_var base_clock stream_inst =
       let base_clock_var = base_var_of_clock_type base_clock in
       let find map = List.rev (VarEnv.find base_clock_var map) in
       let x_l = find x_l_by_base_rev in
@@ -201,7 +182,6 @@ let equation env eq =
       let app =
         {
           a_op = sliced_node_name env app.a_op orig_clock_var;
-          a_clock_inst = clock_inst;
           a_stream_inst = stream_inst;
         }
       in
@@ -215,21 +195,10 @@ let equation env eq =
       add_eq_to_its_node env base_clock_var eq
     in
 
-    let make_call_ct env clock_inst =
-      if clock_inst <> []
-      then
-        (* TODO *)
-        let base_clock = Ck_block_base (Block_id 0) in
-        make_call env Clock base_clock clock_inst []
-      else
-        env
-    in
-
     let make_call_st env (st_i_var, st) =
-      make_call env (Stream st_i_var) (Ck_stream st) [] [st_i_var, st]
+      make_call env (Stream st_i_var) (Ck_stream st) [st_i_var, st]
     in
 
-    let env = make_call_ct env app.a_clock_inst in
     List.fold_left make_call_st env app.a_stream_inst
   | Var _ | Const _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->

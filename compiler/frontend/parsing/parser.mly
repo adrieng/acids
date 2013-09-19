@@ -279,7 +279,6 @@
 %token<string> PRAGMAKEY
 %token<string> OP
 %token<int> STVAR
-%token<int> CTVAR
 %token<int> CONSTVAR
 %token<int> TYVAR
 
@@ -657,7 +656,6 @@ stream_ty:
 
 clock_ty:
 | st = stream_ty { Clock_types.Ct_stream st }
-| ctv = CTVAR { Clock_types.Ct_var ctv }
 | ct_l = parens(separated_list(TIMES, clock_ty)) { Clock_types.Ct_prod ct_l }
 
 clock_ty_signature:

@@ -39,3 +39,28 @@ let node f () = (1, 2)
 let node g (x, y) = ((fst x, x), (snd x, y, 42))
 
 let node h () = g (f (), 33)
+
+$$
+
+let node f (x, y) = (x, y + 1)
+
+let node g () = f ((1, 2), 4)
+
+$$
+
+let node test (((x : 'x) :: 'a), ((y : 'x) :: 'a)) = x
+
+let node f (x, y) = (y, test (x, 24), y)
+
+$$
+
+let node f x = x
+
+let node g () = f (1, 2)
+
+$$
+
+let node f x = x
+
+let node g () = o2 where
+  rec (o1, o2) = f (true, 4)

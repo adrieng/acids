@@ -198,11 +198,10 @@ let rec unbox_output env fun_ty output =
       }
     in
     add_eq env unboxing_eq,
-    {
-      output with
-        p_desc = P_var v;
-        p_info = change_data_type_pat output boxed_ty;
-    }
+    make_pat
+      boxed_ty
+      (Clock_types.Ct_stream boxed_st)
+      (P_var v)
 
 (** {2 AST traversal} *)
 

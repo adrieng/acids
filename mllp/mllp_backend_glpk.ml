@@ -23,7 +23,7 @@ let make_command ~log ~problem ~outputs =
   match outputs with
   | [output; solution] ->
     Printf.sprintf
-      "glpsol --cpxlp --log %s -o %s -w %s %s >\\dev\\null"
+      "glpsol --cpxlp --log %s -o %s -w %s %s > /dev/null"
       log
       output
       solution

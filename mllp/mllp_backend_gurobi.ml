@@ -21,7 +21,7 @@ let make_command ~log ~problem ~outputs =
   match outputs with
   | [solution] ->
     Printf.sprintf
-      "gurobi_cl LogFile=%s ResultFile=%s %s >\\dev\\null"
+      "gurobi_cl LogFile=%s ResultFile=%s %s > /dev/null"
       log
       solution
       problem

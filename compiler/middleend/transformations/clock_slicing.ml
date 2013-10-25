@@ -36,6 +36,9 @@ open Nir
 
 type var = Stream of int
 
+let mk_var i = Stream i
+let unmk_var (Stream i) = i
+
 let print_var fmt (Stream i) = Format.fprintf fmt "(stream %d)" i
 
 let var_compare (Stream i1) (Stream i2) =
@@ -170,36 +173,64 @@ let gather_vars var_env ck_env v_l =
 
 let equation env eq =
   match eq.eq_desc with
-  | Call (x_l, app, y_l) ->
-    let x_l_by_base_rev = gather_vars env.current_vars VarEnv.empty x_l in
-    let y_l_by_base_rev = gather_vars env.current_vars VarEnv.empty y_l in
+  | Call (x_l, ({ a_op = Node ln; } as app), y_l) ->
+    (* For each clock variable 'a in signature instantiated with st, walk the
+       list of inputs and outputs and gather the ones that correspond to
+       parameters of base clock 'a. *)
+    let ty_sig = find_node_sig env ln in
 
-    let make_call env orig_clock_var base_clock stream_inst =
-      let base_clock_var = base_var_of_clock_type base_clock in
-      let find map = List.rev (VarEnv.find base_clock_var map) in
-      let x_l = find x_l_by_base_rev in
-      let y_l = find y_l_by_base_rev in
+    let input_st_list =
+      Clock_types.(flatten_clock_type [] ty_sig.ct_sig_input)
+    in
+    let output_st_list =
+      Clock_types.(flatten_clock_type [] ty_sig.ct_sig_output)
+    in
+
+    (* Format.eprintf "Call to %a@." *)
+    (*   Names.print_longname ln; *)
+    (* Format.eprintf "input_st_list: @[%a@]@." *)
+    (*   (Utils.print_list_r Clock_types.print_stream_type ",") input_st_list; *)
+    (* Format.eprintf "x_l: @[%a@]@." *)
+    (*   (Utils.print_list_r Ident.print ",") x_l; *)
+
+    assert (List.length input_st_list = List.length y_l);
+    assert (List.length output_st_list = List.length x_l);
+
+    let gather_vars_on_base base_st_var acc var var_st =
+      let var_st = Nir.Ck_stream var_st in
+      let base_input_st = base_var_of_clock_type var_st in
+      if 0 = var_compare base_st_var base_input_st then var :: acc else acc
+    in
+
+    let make_call_st
+        env
+        (base_st_var, base_st)
+        =
+      let base = mk_var base_st_var in
+      let relevant_x_l_rev =
+        List.fold_left2 (gather_vars_on_base base) [] y_l input_st_list in
+      let relevant_y_l_rev =
+        List.fold_left2 (gather_vars_on_base base) [] x_l output_st_list in
+
       let app =
         {
-          a_op = sliced_node_name env app.a_op orig_clock_var;
-          a_stream_inst = stream_inst;
+          a_op = sliced_node_name env app.a_op base;
+          a_stream_inst = [base_st_var, base_st];
         }
       in
       let eq =
         {
-          eq_desc = Call (x_l, app, y_l);
-          eq_base_clock = base_clock;
+          eq_desc =
+            Call (List.rev relevant_x_l_rev, app, List.rev relevant_y_l_rev);
+          eq_base_clock = Nir.Ck_stream base_st;
           eq_loc = eq.eq_loc;
         }
       in
-      add_eq_to_its_node env base_clock_var eq
+      add_eq_to_its_node env base eq
     in
-
-    let make_call_st env (st_i_var, st) =
-      make_call env (Stream st_i_var) (Ck_stream st) [st_i_var, st]
-    in
-
     List.fold_left make_call_st env app.a_stream_inst
+
+  | Call (_, { a_op = Box | Unbox; }, _)
   | Var _ | Const _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->
     let base_clock_var = base_clock_var_eq env eq in

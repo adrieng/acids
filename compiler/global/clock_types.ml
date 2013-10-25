@@ -506,13 +506,17 @@ let rec ct_compare ct1 ct2 =
   | (Ct_stream _ | Ct_prod _), _ ->
     Utils.int_compare (tag_to_int ct1) (tag_to_int ct2)
 
+let rec flatten_clock_type acc ct =
+  match ct with
+  | Ct_stream st -> st :: acc
+  | Ct_prod ct_l -> List.fold_left flatten_clock_type acc ct_l
+
 let map_stream_type_of_sig f ty_sig =
   let rec map_ty ty =
     match ty with
     | Ct_stream st -> Ct_stream (f st)
     | Ct_prod ty_l -> Ct_prod (List.map map_ty ty_l)
   in
-
   {
     ty_sig with
       ct_sig_input = map_ty ty_sig.ct_sig_input;
@@ -649,17 +653,15 @@ let buffer_size inp_st out_st =
   (* TODO check bst1 = bst2 *)
   Pword.buffer_size p1 p2
 
-let rec st_of_synchronized_ct ct =
-  match ct with
-  | Ct_stream st ->
-    st
-  | Ct_prod [] ->
+let st_of_synchronized_ct ct =
+  let st_l = flatten_clock_type [] ct in
+  match st_l with
+  | [] ->
     invalid_arg "clock_types_of_synchronized_ty: nullary product"
-  | Ct_prod ct_l ->
-    (* TODO: check that they are all equal *)
-    let ct = List.hd ct_l in
-    List.iter (fun ct' -> assert (0 = ct_compare ct ct')) (List.tl ct_l);
-    st_of_synchronized_ct ct
+  | st :: st_l ->
+    (* TODO: be smarter? *)
+    List.iter (fun st' -> assert (0 = st_compare st st')) st_l;
+    st
 
 (* Clock variable stuff *)
 

@@ -71,6 +71,20 @@ type env =
                      Ident.t Nir.eq list) VarEnv.t;
   }
 
+let print_env fmt env =
+  let print_node fmt (var_env, i, eqs) =
+    Format.fprintf fmt
+      "(@[var_env = @[%a@],@ blocks = %d,@ eqs = @[%a@]@])"
+      (Ident.Env.print (Nir_printer.print_var_dec None) ",") var_env
+      i
+      (Utils.print_list_r (Nir_printer.print_eq Ident.print) ",") eqs
+  in
+  Format.fprintf fmt "@[@[current_vars:@ %a@]@\n"
+    (Ident.Env.print (Nir_printer.print_var_dec None) ";")
+    env.current_vars;
+  Format.fprintf fmt "@[current_nodes:@ %a@]@]"
+    (VarEnv.print print_var print_node) env.current_nodes
+
 let initial_env file =
   let local_clock_sigs =
     let add local_clock_sigs nd =
@@ -106,7 +120,6 @@ let add_eq_to_its_node env v eq =
     Nir_utils.block_count_eq node_block_count eq,
     eq :: node_body
   in
-
   { env with current_nodes = VarEnv.add v node_info env.current_nodes; }
 
 let find_var_clock env x =
@@ -180,57 +193,62 @@ let equation env eq =
     let ty_sig = find_node_sig env ln in
 
     let input_st_list =
-      Clock_types.(flatten_clock_type [] ty_sig.ct_sig_input)
+      List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_input)
     in
     let output_st_list =
-      Clock_types.(flatten_clock_type [] ty_sig.ct_sig_output)
+      List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_output)
     in
-
-    (* Format.eprintf "Call to %a@." *)
-    (*   Names.print_longname ln; *)
-    (* Format.eprintf "input_st_list: @[%a@]@." *)
-    (*   (Utils.print_list_r Clock_types.print_stream_type ",") input_st_list; *)
-    (* Format.eprintf "x_l: @[%a@]@." *)
-    (*   (Utils.print_list_r Ident.print ",") x_l; *)
 
     assert (List.length input_st_list = List.length y_l);
     assert (List.length output_st_list = List.length x_l);
 
-    let gather_vars_on_base base_st_var acc var var_st =
-      let var_st = Nir.Ck_stream var_st in
-      let base_input_st = base_var_of_clock_type var_st in
+    let gather_vars_on_base base_st_var acc var param_st =
+      let base_input_st = base_var_of_clock_type (Nir.Ck_stream param_st) in
       if 0 = var_compare base_st_var base_input_st then var :: acc else acc
     in
 
     let make_call_st
         env
-        (base_st_var, base_st)
+        (base_sig_var, inst_st)
         =
-      let base = mk_var base_st_var in
-      let relevant_x_l_rev =
-        List.fold_left2 (gather_vars_on_base base) [] y_l input_st_list in
+      let base = mk_var base_sig_var in
       let relevant_y_l_rev =
-        List.fold_left2 (gather_vars_on_base base) [] x_l output_st_list in
+        List.fold_left2 (gather_vars_on_base base) [] y_l input_st_list
+      in
+      let relevant_x_l_rev =
+        List.fold_left2 (gather_vars_on_base base) [] x_l output_st_list
+      in
 
       let app =
         {
           a_op = sliced_node_name env app.a_op base;
-          a_stream_inst = [base_st_var, base_st];
+          a_stream_inst = [base_sig_var, inst_st];
         }
       in
       let eq =
         {
           eq_desc =
             Call (List.rev relevant_x_l_rev, app, List.rev relevant_y_l_rev);
-          eq_base_clock = Nir.Ck_stream base_st;
+          eq_base_clock = Nir.Ck_stream inst_st;
           eq_loc = eq.eq_loc;
         }
       in
-      add_eq_to_its_node env base eq
+      add_eq_to_its_node env (base_var_of_stream_type inst_st) eq
     in
     List.fold_left make_call_st env app.a_stream_inst
 
-  | Call (_, { a_op = Box | Unbox; }, _)
+  | Call (x_l, { a_op = Box; }, _) ->
+    (* Box expects a synchronized tuple as input *)
+    let x = Utils.assert1 x_l in
+    let base_clock_var = base_var_of_clock_type (find_var_clock env x) in
+    add_eq_to_its_node env base_clock_var eq
+
+  | Call (_, { a_op = Unbox; }, y_l) ->
+    (* Same for unbox's output *)
+    let y = Utils.assert1 y_l in
+    let base_clock_var = base_var_of_clock_type (find_var_clock env y) in
+    add_eq_to_its_node env base_clock_var eq
+
   | Var _ | Const _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->
     let base_clock_var = base_clock_var_eq env eq in

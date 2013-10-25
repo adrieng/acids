@@ -64,3 +64,19 @@ let node f x = x
 
 let node g () = o2 where
   rec (o1, o2) = f (true, 4)
+
+$$
+
+(* Regression *)
+
+let node f () = 1
+
+let node g () = (f (), 33)
+
+$$
+
+(* Regression *)
+
+let node g x = x
+
+let node h () = g ((1, 2), 33)

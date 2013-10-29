@@ -44,6 +44,7 @@ let if_var_prefix = "if_cnd"
   e1 fby e2
   ->
   merge true(false) (e1 when true(false)) (buffer e2)
+
 *)
 let fby_translation find_pword e1 e2 =
   let base_st = Clock_types.get_st e1.e_info#ei_clock in
@@ -83,7 +84,7 @@ let fby_translation find_pword e1 e2 =
       {
         bu_info =
           object
-            method bui_is_delay = e2.e_info#ei_relevant_deps
+            method bui_is_delay = not e2.e_info#ei_relevant_deps
             method bui_size = Int.one
           end;
       }

@@ -687,3 +687,18 @@ let base_sig_vars ty_sig =
   base_ty_var
     (base_ty_var VarKindSet.empty ty_sig.ct_sig_input)
     ty_sig.ct_sig_output
+
+let rec base_var_of_stream_type st =
+  match st with
+  | St_var i -> i
+  | St_on (st, _) -> base_var_of_stream_type st
+
+let slice_signature base_var cksig =
+  let is_on_base_var st =
+    let base_var_st = base_var_of_stream_type st in
+    0 = compare base_var_st base_var
+  in
+
+  let inputs = flatten_clock_type [] cksig.ct_sig_input in
+  let outputs = flatten_clock_type [] cksig.ct_sig_output in
+  List.(rev (filter is_on_base_var inputs), rev (filter is_on_base_var outputs))

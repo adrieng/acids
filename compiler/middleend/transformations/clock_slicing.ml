@@ -48,11 +48,7 @@ module VarEnv = Utils.MakeMap(struct type t = var let compare = var_compare end)
 
 (** {2 Utilities} *)
 
-let rec base_var_of_stream_type st =
-  let open Clock_types in
-  match st with
-  | St_var i -> Stream i
-  | St_on (st, _) -> base_var_of_stream_type st
+let base_var_of_stream_type st = Stream (Clock_types.base_var_of_stream_type st)
 
 let base_var_of_clock_type ck =
   match ck with

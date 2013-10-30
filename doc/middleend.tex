@@ -6,11 +6,14 @@ The middle-end of Acid Synchrone uses an intermediate language called \nir{}. It
 is a first-order data-flow language similar to Acid Synchrone, with the
 following differences:
 \begin{itemize}
-\item it is in three-address forms: an equation's subexpressions are only
-  variables;
+\item it is in three-address forms: subexpressions are only variables;
 \item there are no tuples and function calls are n-ary;
 \item it has a notion of scheduling-constrained equation lists called \textit{blocks}.
 \end{itemize}
+
+\paragraph{Block}
+
+A block is a list of equations that cannot be scheduled independently. TODO
 
 \section{Translation process}
 
@@ -21,22 +24,61 @@ has to deal with the following questions:
 \item How to sequentialize mutually recursive equations?
 \end{itemize}
 
-The middle-end applies the following mandatory transformations, in this order:
+The middle-end applies the following mandatory transformations to \nir{}, in this
+order:
 \begin{enumerate}
+\item slice the code so that each node has an unique base clock;
 \item put each equation in its own block;
-\item materialize clock variables as boolean variables;
+\item materialize clock variables as integer variables;
 \item put buffers on variable uses in nested blocks;
-\item schedule blocks hiearchically.
+\item schedule blocks hierarchically.
 \end{enumerate}
+
+\subsection{Clock Slicing}
+
+A node $f$ clock-polymorphic in two variables $\alpha$ and $\alpha'$ gets sliced
+into two nodes $f_\alpha$ and $f_\alpha'$. Equations are easy to slice since
+there are no tuples anymore, except for node calls. Calls to $f$ in some node
+$g$ get sliced into two calls. Example, applied to Acid Synchrone rather than
+NIR:
+\begin{verbatim}
+f :: ('a * 'a1) -> ('a * 'a1)
+
+let node g x = f (x, x)
+g :: 'a -> ('a * 'a)
+
+let node h x = f (x, 2)
+h :: 'a -> ('a * 'a1)
+\end{verbatim}
+gets translated to:
+\begin{verbatim}
+let node g_a x = (y, z) where
+  rec y = f_a x
+  and z = f_a1 x
+
+let node h_a x = y where
+  rec y = f_a0 x
+
+let node h_a1 () = y where
+  rec y = f_a1 2
+\end{verbatim}
+
+\subsection{Block formation}
+
+The goal of block formation is to put blocks around some equations. Depending on
+the equation's operation, it may:
+\begin{itemize}
+\item do nothing (var, buffer)
+\item WIP
+\end{itemize}
 
 \section{Optimizations}
 
-WIP
-
+I want to implement the following optimizations:
 \begin{itemize}
 \item Copy elimination
 \item Constant folding
-\item Minimization
+\item Data-flow minimization
 \item Buffer sharing
 \item Block transformations
   \begin{itemize}

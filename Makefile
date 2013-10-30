@@ -29,6 +29,9 @@ RELEASE_DIR=acids_release
 
 all: $(TARGETS) lib
 
+doc:
+	$(MAKE) -C doc
+
 $(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
                                -I compiler/frontend \
                                -I compiler/frontend/asts \

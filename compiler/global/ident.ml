@@ -70,7 +70,9 @@ let compare b1 b2 = b2.num - b1.num
 let make_source = make_ident Source
 let make_internal = make_ident Internal
 
-let make_concat b s = make_internal (b.name ^ s)
+let make_suffix b s = make_internal (b.name ^ s)
+
+let make_prefix s b = make_internal (s ^ b.name)
 
 let refresh id = make_ident id.kind id.name
 

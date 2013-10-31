@@ -31,7 +31,9 @@ val make_source : string -> t
 
 val make_internal : string -> t
 
-val make_concat : t -> string -> t
+val make_suffix : t -> string -> t
+
+val make_prefix : string -> t -> t
 
 val refresh : t -> t
 

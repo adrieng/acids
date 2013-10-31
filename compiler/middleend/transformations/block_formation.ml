@@ -46,6 +46,7 @@ type env =
     intf_env : Interface.env;
     local_clock_sigs : Clock_types.clock_sig Names.ShortEnv.t;
     mutable current_block_count : int;
+    mutable var_decs : unit var_dec Ident.Env.t;
   }
 
 let initial_env file =
@@ -59,6 +60,7 @@ let initial_env file =
     intf_env = file.f_info;
     local_clock_sigs = local_clock_sigs;
     current_block_count = 0;
+    var_decs = Ident.Env.empty;
   }
 
 let find_node_sig env ln =
@@ -70,24 +72,73 @@ let find_node_sig env ln =
     let intf = ShortEnv.find modn env.intf_env in
     Interface.(clock_signature_of_node_item (find_node intf ln.shortn))
 
-let set_current_block_count env cnt = env.current_block_count <- cnt
+let enter_node env nd =
+  env.var_decs <- nd.n_env;
+  env.current_block_count <- nd.n_block_count
 
 let get_current_block_count env = env.current_block_count
 
-let get_new_block_id env =
+let fresh_block_id env =
   let next = env.current_block_count in
   env.current_block_count <- env.current_block_count + 1;
-  next
+  Block_id next
+
+let get_var_decs env = env.var_decs
+
+let add_var_dec env vd =
+  env.var_decs <- Ident.Env.add vd.v_name vd env.var_decs
+
+let find_var_dec env id = Ident.Env.find id env.var_decs
 
 (** {2 AST traversal} *)
+
+let form_block env base_clock mk_desc x_l x_mk_ck_l y_l y_mk_ck_l =
+  let bid = fresh_block_id env in
+  let bck = Ck_block_base bid in
+
+  let refresh_variable eqs x mk_ck =
+    let x_vd = find_var_dec env x in
+    let x' = Ident.make_prefix "blk_" x in
+    let x'_ck = mk_ck bck in
+    let x'_vd = { x_vd with v_name = x'; v_clock = x'_ck; } in
+    add_var_dec env x'_vd;
+    Nir_utils.make_eq (Var (x', x)) bck :: eqs, x'
+  in
+
+  let eqs, x'_l = Utils.mapfold_left_2 refresh_variable [] x_l x_mk_ck_l in
+  let eqs, y'_l = Utils.mapfold_left_2 refresh_variable eqs y_l y_mk_ck_l in
+  let block =
+    {
+      b_id = bid;
+      b_body = Nir_utils.make_eq (mk_desc x'_l y'_l) bck :: eqs;
+      b_loc = Loc.dummy;
+    }
+  in
+  Nir_utils.make_eq (Block block) base_clock
 
 let equation env eq =
   match eq.eq_desc with
   | Var _ | Buffer _ ->
     (* TODO: optimize buffer *)
     eq
+
   | Const (x, c) ->
-    assert false
+    let mk_desc x_l _ =
+      let x = Utils.assert1 x_l in
+      Const (x, c)
+    in
+    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+
+  | Call _ ->
+    assert false (* TODO *)
+
+  | Merge (x, ce, c_l) ->
+    let ec_l, y_l = List.split c_l in
+    let mk_desc x_l y_l =
+      let x = Utils.assert1 x_l in
+      Merge (x, ce, List.combine ec_l y_l)
+    in
+    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] y_l (assert false)
 
   | _ ->
     assert false
@@ -99,12 +150,13 @@ let block env block =
 
 let node env nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
-  set_current_block_count env nd.n_block_count;
+  enter_node env nd;
   let block = block env nd.n_body in
   {
     nd with
       n_body = block;
       n_block_count = get_current_block_count env;
+      n_env = get_var_decs env;
   }
 
 let tr ctx file =

@@ -17,6 +17,15 @@
 
 open Nir
 
+(** Construction functions *)
+
+let make_eq desc ck =
+  {
+    eq_desc = desc;
+    eq_base_clock = ck;
+    eq_loc = Loc.dummy;
+  }
+
 (** Iterators *)
 
 (* Map *)

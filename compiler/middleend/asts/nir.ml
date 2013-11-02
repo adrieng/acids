@@ -29,9 +29,11 @@ type ty =
   | Ty_boxed
   | Ty_clock
 
-type clock =
-  | Ck_stream of Clock_types.stream_type
-  | Ck_block_base of block_id
+type clock_var =
+  | Cv_clock of clock_id
+  | Cv_block of block_id
+
+type clock = clock_var Clock_types.raw_stream_type
 
 (** {2 Clock expressions} *)
 

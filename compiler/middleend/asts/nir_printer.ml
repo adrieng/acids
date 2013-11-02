@@ -28,12 +28,12 @@ let print_ty fmt ty =
   | Ty_boxed -> Format.fprintf fmt "boxed"
   | Ty_clock -> Format.fprintf fmt "clock"
 
-let print_clock fmt ck =
-  match ck with
-  | Ck_stream st ->
-    Clock_types.print_stream_type fmt st
-  | Ck_block_base bid ->
-    Format.fprintf fmt "(B %a)" print_block_id bid
+let print_clock_var fmt cv =
+  match cv with
+  | Cv_clock v -> print_clock_id fmt v
+  | Cv_block v -> print_block_id fmt v
+
+let print_clock fmt ck = Clock_types.print_raw_stream_type print_clock_var fmt ck
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";

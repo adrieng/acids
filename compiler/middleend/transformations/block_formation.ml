@@ -94,7 +94,7 @@ let find_var_dec env id = Ident.Env.find id env.var_decs
 
 let form_block env base_clock mk_desc x_l x_mk_ck_l y_l y_mk_ck_l =
   let bid = fresh_block_id env in
-  let bck = Ck_block_base bid in
+  let bck = Clock_types.St_var (Cv_block bid) in
 
   let refresh_variable eqs x mk_ck =
     let x_vd = find_var_dec env x in
@@ -161,7 +161,8 @@ let node env nd =
 
 let tr ctx file =
   let env = initial_env file in
-  Middleend_utils.map_to_nodes (node env) ctx file
+  (* Middleend_utils.map_to_nodes (node env) ctx file *)
+  Middleend_utils.map_to_nodes (fun x -> x) ctx file
 
 let pass =
   Middleend_utils.(make_transform "block_formation" tr)

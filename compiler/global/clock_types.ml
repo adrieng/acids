@@ -27,9 +27,11 @@ and clock_exp_cond_var =
     mutable cecv_specs : Ast_misc.spec list;
   }
 
-type stream_type =
-  | St_var of int
-  | St_on of stream_type * clock_exp
+type 'a raw_stream_type =
+  | St_var of 'a
+  | St_on of 'a raw_stream_type * clock_exp
+
+type stream_type = int raw_stream_type
 
 type clock_type =
   | Ct_stream of stream_type
@@ -88,13 +90,19 @@ let rec print_clock_exp fmt ce =
       print_clock_exp ce
       Ast_misc.print_econstr ec
 
-let rec print_stream_type fmt st =
+let rec print_raw_stream_type p fmt st =
   match st with
-  | St_var i -> Format.fprintf fmt "'a%a" Utils.print_int_non_zero i
+  | St_var v -> p fmt v
   | St_on (st, ce) ->
     Format.fprintf fmt "@[%a@ on %a@]"
-      print_stream_type st
+      (print_raw_stream_type p) st
       print_clock_exp ce
+
+let print_stream_type fmt st =
+  let print_var fmt i =
+    Format.fprintf fmt "'a%a" Utils.print_int_non_zero i
+  in
+  print_raw_stream_type print_var fmt st
 
 let rec print_clock_type fmt ct =
   match ct with
@@ -511,6 +519,11 @@ let rec flatten_clock_type acc ct =
   | Ct_stream st -> st :: acc
   | Ct_prod ct_l -> List.fold_left flatten_clock_type acc ct_l
 
+let rec map_stream_type f st =
+  match st with
+  | St_var i -> St_var (f i)
+  | St_on (st, ce) -> St_on (map_stream_type f st, ce)
+
 let map_stream_type_of_sig f ty_sig =
   let rec map_ty ty =
     match ty with
@@ -693,10 +706,10 @@ let rec base_var_of_stream_type st =
   | St_var i -> i
   | St_on (st, _) -> base_var_of_stream_type st
 
-let slice_signature base_var cksig =
+let slice_signature ?(compare = (=)) base_var cksig =
   let is_on_base_var st =
     let base_var_st = base_var_of_stream_type st in
-    0 = compare base_var_st base_var
+    compare base_var_st base_var
   in
 
   let inputs = flatten_clock_type [] cksig.ct_sig_input in

@@ -33,6 +33,8 @@ let translate_const_exp_int se = Ast_misc.get_int (translate_const_exp se)
 let translate_const_pword pw =
   Tree_word.map_upword translate_const_exp translate_const_exp_int pw
 
+let block_base id = Clock_types.St_var (Nir.(Cv_block id))
+
 (** {2 Environments} *)
 
 type env =
@@ -89,13 +91,16 @@ let translate_data_type ty =
   | Ty_boxed _ -> Nir.Ty_boxed
   | Ty_prod _ -> invalid_arg "translate_data_type: product type"
 
-let translate_stream_type _ st =
-  Nir.Ck_stream st
+let rec translate_stream_type st =
+  let open Clock_types in
+  match st with
+  | St_var i -> St_var (Nir.(Cv_clock (Clock_id i)))
+  | St_on (st, ce) -> St_on (translate_stream_type st, ce)
 
-let translate_clock_type env ct =
+let translate_clock_type ct =
   let open Clock_types in
   match ct with
-  | Ct_stream st -> translate_stream_type env st
+  | Ct_stream st -> translate_stream_type st
   | Ct_prod _ -> invalid_arg "translate_clock_type: product clock"
 
 let rec translate_clock_exp env ce =
@@ -113,7 +118,7 @@ let rec translate_clock_exp env ce =
   {
     Nir.ce_desc = ced;
     Nir.ce_data = ce.ce_info#ci_data;
-    Nir.ce_clock = translate_stream_type env ce.ce_info#ci_clock;
+    Nir.ce_clock = translate_stream_type ce.ce_info#ci_clock;
     Nir.ce_bounds = ce.ce_info#ci_bounds;
     Nir.ce_loc = ce.ce_loc;
   }
@@ -140,13 +145,12 @@ let translate_clock_annot env cka =
   let rec walk cka =
     match cka with
     | Ca_var i ->
-      (* TODO is this reasonable? *)
-      Clock_types.St_var i
+      Clock_types.St_var (Nir.(Cv_clock (Clock_id i)))
     | Ca_on (cka, ce) ->
       let ce = translate_clock_exp env ce in
       Clock_types.St_on (walk cka, clock_clock_exp_of_clock_exp ce)
   in
-  Nir.Ck_stream (walk cka)
+  walk cka
 
 let translate_spec spec =
   match spec.s_desc with
@@ -186,7 +190,7 @@ let rec translate_pattern p (env, v_l) =
     in
     let v, annots = get_annots [] p in
     let ty = translate_data_type p.p_info#pi_data in
-    let ck = translate_clock_type env p.p_info#pi_clock in
+    let ck = translate_clock_type p.p_info#pi_clock in
     let vd =
       {
         Nir.v_name = v;
@@ -218,12 +222,12 @@ let rec translate_eq_exp env x_l e =
     match e.e_desc with
     | E_var y ->
       Nir.Var (Utils.get_single x_l, y),
-      translate_clock_type env e.e_info#ei_clock,
+      translate_clock_type e.e_info#ei_clock,
       env
 
     | E_const cst ->
       Nir.Const (Utils.get_single x_l, cst),
-      translate_clock_type env e.e_info#ei_clock,
+      translate_clock_type e.e_info#ei_clock,
       env
 
     | E_fst _ | E_snd _ ->
@@ -253,7 +257,7 @@ let rec translate_eq_exp env x_l e =
         }
       in
       Nir.Call (x_l, app, var_list_of_tuple e),
-      Nir.Ck_block_base (get_current_block env),
+      block_base (get_current_block env),
       env
 
     | E_where _ ->
@@ -280,7 +284,7 @@ let rec translate_eq_exp env x_l e =
         {
           v_name = v_unused;
           v_data = translate_data_type e.e_info#ei_data;
-          v_clock = Ck_stream st;
+          v_clock = translate_stream_type st;
           v_scope = Scope_internal (get_current_block env);
           v_info = ();
           v_annots = [];
@@ -333,7 +337,7 @@ let rec translate_eq_exp env x_l e =
     | E_dom (e, dom) ->
       let block, _, env = translate_block env e in
       Nir.Block block,
-      translate_stream_type env dom.d_info,
+      translate_stream_type dom.d_info,
       env
 
     | E_buffer (e', bu) ->
@@ -345,13 +349,13 @@ let rec translate_eq_exp env x_l e =
         }
       in
       Nir.Buffer (Utils.get_single x_l, bu, y),
-      Nir.Ck_block_base (get_current_block env),
+      block_base (get_current_block env),
       env
 
     (* For now we do nothing with the annotations. *)
     | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _) ->
       Nir.Var (Utils.get_single x_l, Utils.get_single (var_list_of_tuple e)),
-      translate_clock_type env e.e_info#ei_clock,
+      translate_clock_type e.e_info#ei_clock,
       env
   in
   env,

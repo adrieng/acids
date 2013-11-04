@@ -106,3 +106,22 @@ let rec block_count_eq count eq =
 
 and block_count_block count block =
   List.fold_left block_count_eq (succ count) block.b_body
+
+(** Misc functions *)
+
+let rec clock_type_exp_of_nir_clock_exp ce =
+  match ce.ce_desc with
+  | Ce_condvar v ->
+    let open Clock_types in
+    let cev =
+      {
+        cecv_name = v;
+        cecv_bounds = ce.ce_bounds;
+        cecv_specs = []
+      }
+    in
+    Ce_condvar cev
+  | Ce_pword pw ->
+    Clock_types.Ce_pword pw
+  | Ce_equal (ce, ec) ->
+    Clock_types.Ce_equal (clock_type_exp_of_nir_clock_exp ce, ec)

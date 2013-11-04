@@ -39,6 +39,11 @@ open Nir
     end
 *)
 
+(** {2 Utility functions} *)
+
+let mk_sampled_clock ce ec ck =
+  Clock_types.(St_on (ck, Ce_equal (ce, ec)))
+
 (** {2 Environments} *)
 
 type env =
@@ -93,6 +98,9 @@ let find_var_dec env id = Ident.Env.find id env.var_decs
 (** {2 AST traversal} *)
 
 let form_block env base_clock mk_desc x_l x_mk_ck_l y_l y_mk_ck_l =
+  assert (List.length x_l = List.length x_mk_ck_l);
+  assert (List.length y_l = List.length y_mk_ck_l);
+
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var (Cv_block bid) in
 
@@ -116,9 +124,9 @@ let form_block env base_clock mk_desc x_l x_mk_ck_l y_l y_mk_ck_l =
   in
   Nir_utils.make_eq (Block block) base_clock
 
-let equation env eq =
+let rec equation env eq =
   match eq.eq_desc with
-  | Var _ | Buffer _ ->
+  | Var _ | Buffer _ | Call (_, { a_op = Box | Unbox; }, _) | Delay _ ->
     (* TODO: optimize buffer *)
     eq
 
@@ -129,8 +137,8 @@ let equation env eq =
     in
     form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-  | Call _ ->
-    assert false (* TODO *)
+  | Call (_, { a_op = Node _; }, _) ->
+    assert false
 
   | Merge (x, ce, c_l) ->
     let ec_l, y_l = List.split c_l in
@@ -138,12 +146,30 @@ let equation env eq =
       let x = Utils.assert1 x_l in
       Merge (x, ce, List.combine ec_l y_l)
     in
-    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] y_l (assert false)
+    let ce = Nir_utils.clock_type_exp_of_nir_clock_exp ce in
+    form_block
+      env eq.eq_base_clock mk_desc
+      [x] [fun ck -> ck]
+      y_l (List.map (mk_sampled_clock ce) ec_l)
 
-  | _ ->
-    assert false
+  | Split (x_l, ce, y, ec_l) ->
+    let mk_desc x_l y_l =
+      let y = Utils.assert1 y_l in
+      Split (x_l, ce, y, ec_l)
+    in
+    let ce = Nir_utils.clock_type_exp_of_nir_clock_exp ce in
+    form_block
+      env eq.eq_base_clock mk_desc
+      x_l (List.map (mk_sampled_clock ce) ec_l)
+      [y] [fun ck -> ck]
 
-let block env block =
+  | Valof _ ->
+    assert false (* TODO *)
+
+  | Block blk ->
+    { eq with eq_desc = Block (block env blk); }
+
+and block env block =
   assert (let Block_id x = block.b_id in x < get_current_block_count env);
   let body = List.map (equation env) block.b_body in
   { block with b_body = body; }
@@ -161,8 +187,7 @@ let node env nd =
 
 let tr ctx file =
   let env = initial_env file in
-  (* Middleend_utils.map_to_nodes (node env) ctx file *)
-  Middleend_utils.map_to_nodes (fun x -> x) ctx file
+  Middleend_utils.map_to_nodes (node env) ctx file
 
 let pass =
   Middleend_utils.(make_transform "block_formation" tr)

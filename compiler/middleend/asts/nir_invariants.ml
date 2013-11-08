@@ -25,7 +25,10 @@ let node_invariant invar =
       let check_invar node =
         try invar node
         with Failure reason ->
-          failwith (Printf.sprintf "Node %s: %s" node.n_name reason)
+          failwith
+            (Printf.sprintf "Node %s: %s"
+               (Utils.print_to_string Nir_utils.print_sliced_name node.n_name)
+               reason)
       in
       try List.iter check_invar file.f_body; None
       with Failure msg -> Some msg)

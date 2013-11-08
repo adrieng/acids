@@ -251,7 +251,7 @@ let rec translate_eq_exp env x_l e =
               match app.a_op.modn, app.a_op.shortn with
               | Module "Pervasives", "box" -> Nir.Box
               | Module "Pervasives", "unbox" -> Nir.Unbox
-              | _ -> Nir.Node app.a_op
+              | _ -> Nir.Node (app.a_op, Nir_utils.greatest_invalid_clock_id)
             );
           Nir.a_stream_inst = app.a_info#ai_stream_inst;
         }
@@ -394,7 +394,7 @@ let translate_node_def env nd =
   let env, inputs = translate_pattern nd.n_input (env, []) in
   let block, outputs, env = translate_block env nd.n_body in
   {
-    Nir.n_name = nd.n_name;
+    Nir.n_name = nd.n_name, Nir_utils.greatest_invalid_clock_id;
     Nir.n_orig_info = nd.n_info;
     Nir.n_input = inputs;
     Nir.n_output = outputs;

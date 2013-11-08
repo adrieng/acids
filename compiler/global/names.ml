@@ -47,6 +47,8 @@ let print_longname fmt ln =
 
 let print_longname_short fmt ln = print_shortname fmt ln.shortn
 
+let string_of_longname ln = Utils.print_to_string print_longname ln
+
 let longname_compare (ln1 : longname) (ln2 : longname) =
   Pervasives.compare ln1 ln2
 

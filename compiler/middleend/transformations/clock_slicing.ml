@@ -89,7 +89,10 @@ let print_env fmt env =
 let initial_env file =
   let local_clock_sigs =
     let add local_clock_sigs nd =
-      Names.ShortEnv.add nd.n_name nd.n_orig_info#ni_clock local_clock_sigs
+      Names.ShortEnv.add
+        (fst nd.n_name)
+        nd.n_orig_info#ni_clock
+        local_clock_sigs
     in
     List.fold_left add Names.ShortEnv.empty file.f_body
   in
@@ -140,17 +143,11 @@ let has_several_clock_variables env ln =
   let ct_sig = find_node_sig env ln in
   Clock_types.(VarKindSet.cardinal (base_sig_vars ct_sig) > 1)
 
-let sliced_short_name sn (Clock_id i) = sn ^ "_st" ^ string_of_int i
-
 let sliced_node_name env op v =
   match op with
-  | Node nn ->
-    Node
-      (
-        if has_several_clock_variables env nn
-        then Names.({ nn with shortn = sliced_short_name nn.shortn v; })
-        else nn
-      )
+  | Node (nn, Clock_id id) ->
+    assert (id < 0);
+    Node (nn, v)
   | Box | Unbox ->
     op
 
@@ -187,7 +184,8 @@ let gather_vars var_env ck_env v_l =
 
 let equation env eq =
   match eq.eq_desc with
-  | Call (x_l, ({ a_op = Node ln; } as app), y_l) ->
+  | Call (x_l, ({ a_op = Node (ln, Clock_id dummy); } as app), y_l) ->
+    assert (dummy < 0);
     (* For each clock variable 'a in signature instantiated with st, walk the
        list of inputs and outputs and gather the ones that correspond to
        parameters of base clock 'a. *)
@@ -257,7 +255,8 @@ let equation env eq =
     add_eq_to_its_node env base_clock_var eq
 
 let node env nd_l nd =
-  if has_several_clock_variables env (Names.make_local nd.n_name)
+  let node_name, _ = nd.n_name in
+  if has_several_clock_variables env (Names.make_local node_name)
   then
     let env = set_current_var env nd.n_env in
     let env = List.fold_left equation env nd.n_body.b_body in
@@ -278,7 +277,7 @@ let node env nd_l nd =
 
       let nd =
         {
-          n_name = sliced_short_name nd.n_name base_clock_var;
+          n_name = node_name, base_clock_var;
           n_orig_info = nd.n_orig_info;
           n_input = inputs;
           n_output = outputs;

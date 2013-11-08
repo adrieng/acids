@@ -125,3 +125,15 @@ let rec clock_type_exp_of_nir_clock_exp ce =
     Clock_types.Ce_pword pw
   | Ce_equal (ce, ec) ->
     Clock_types.Ce_equal (clock_type_exp_of_nir_clock_exp ce, ec)
+
+let greatest_invalid_clock_id_int = -1
+
+let greatest_invalid_clock_id = Nir.Clock_id greatest_invalid_clock_id_int
+
+let print_sliced_name fmt (s, Clock_id i) =
+  if i < greatest_invalid_clock_id_int
+  then Format.fprintf fmt "%s" s
+  else Format.fprintf fmt "%s_st%d" s i
+
+let print_sliced_longname fmt ln id =
+  print_sliced_name fmt (Names.string_of_longname ln, id)

@@ -57,7 +57,9 @@ type env =
 let initial_env file =
   let local_clock_sigs =
     let add local_clock_sigs nd =
-      Names.ShortEnv.add nd.n_name nd.n_orig_info#ni_clock local_clock_sigs
+      Names.ShortEnv.add
+        (fst nd.n_name)
+        nd.n_orig_info#ni_clock local_clock_sigs
     in
     List.fold_left add Names.ShortEnv.empty file.f_body
   in
@@ -137,7 +139,9 @@ let rec equation env eq =
     in
     form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-  | Call (_, { a_op = Node _; }, _) ->
+
+  | Call (_, { a_op = Node (_, Clock_id id); }, _) ->
+    assert (id >= 0);
     assert false
 
   | Merge (x, ce, c_l) ->

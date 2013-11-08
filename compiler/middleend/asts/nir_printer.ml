@@ -33,7 +33,8 @@ let print_clock_var fmt cv =
   | Cv_clock v -> print_clock_id fmt v
   | Cv_block v -> print_block_id fmt v
 
-let print_clock fmt ck = Clock_types.print_raw_stream_type print_clock_var fmt ck
+let print_clock fmt ck =
+  Clock_types.print_raw_stream_type print_clock_var fmt ck
 
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
@@ -82,8 +83,7 @@ let print_buffer fmt b =
 
 let print_op fmt op =
   match op with
-  (* | Builtin n -> Format.fprintf fmt "(builtin %a)" Names.print_shortname n *)
-  | Node ln -> Names.print_longname fmt ln
+  | Node (ln, id) -> Nir_utils.print_sliced_longname fmt ln id
   | Box -> Format.fprintf fmt "box"
   | Unbox -> Format.fprintf fmt "unbox"
 
@@ -198,7 +198,7 @@ let print_node print_info fmt node =
   in
   Format.fprintf fmt
     "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a@ :block_count %d"
-    Names.print_shortname node.n_name
+    Nir_utils.print_sliced_name node.n_name
     (print_list Ident.print) node.n_input
     (print_list Ident.print) node.n_output
     print_env node.n_env

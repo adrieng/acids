@@ -60,8 +60,9 @@ type buffer_info =
   }
 
 type op =
-  (* | Builtin of Names.shortname *)
-  | Node of Names.longname
+  | Node of Names.longname * clock_id
+  (* node_name * base_clock_var_id, the latter being -1 if the call has not been
+     sliced yet *)
   | Box
   | Unbox
 
@@ -134,7 +135,7 @@ type 'i var_dec =
 
 type 'i node =
   {
-    n_name : Names.shortname;
+    n_name : Names.shortname * clock_id;
     n_orig_info : Acids_causal.Info.node_info;
 
     n_input : Ident.t list;

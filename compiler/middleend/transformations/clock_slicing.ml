@@ -65,7 +65,8 @@ let base_var_of_acids_stream_type st =
 type env =
   {
     intf_env : Interface.env;
-    local_clock_sigs : Clock_types.clock_sig Names.ShortEnv.t;
+    local_clock_sigs :
+      (Clock_types.clock_sig * Data_types.data_sig) Names.ShortEnv.t;
     current_vars : unit Nir.var_dec Ident.Env.t;
     current_nodes : (unit var_dec Ident.Env.t *
                      int *
@@ -91,7 +92,7 @@ let initial_env file =
     let add local_clock_sigs nd =
       Names.ShortEnv.add
         (fst nd.n_name)
-        nd.n_orig_info#ni_clock
+        (nd.n_orig_info#ni_clock, nd.n_orig_info#ni_data)
         local_clock_sigs
     in
     List.fold_left add Names.ShortEnv.empty file.f_body
@@ -136,11 +137,13 @@ let find_node_sig env ln =
   | LocalModule ->
     ShortEnv.find ln.shortn env.local_clock_sigs
   | Module modn ->
+    let open Interface in
     let intf = ShortEnv.find modn env.intf_env in
-    Interface.(clock_signature_of_node_item (find_node intf ln.shortn))
+    let ni = find_node intf ln.shortn in
+    clock_signature_of_node_item ni, data_signature_of_node_item ni
 
 let has_several_clock_variables env ln =
-  let ct_sig = find_node_sig env ln in
+  let ct_sig, _ = find_node_sig env ln in
   Clock_types.(VarKindSet.cardinal (base_sig_vars ct_sig) > 1)
 
 let sliced_node_name op v =
@@ -186,25 +189,15 @@ let equation env eq =
   match eq.eq_desc with
   | Call (x_l, ({ a_op = Node (ln, Clock_id dummy); } as app), y_l) ->
     assert (dummy <= Nir_utils.greatest_invalid_clock_id_int);
-    let ty_sig = find_node_sig env ln in
+    let ty_sig, data_sig = find_node_sig env ln in
 
     (* For each clock variable 'a in signature instantiated with st, walk the
        list of inputs and outputs and gather the ones that correspond to
        parameters of base clock 'a. *)
 
-    let input_st_list =
-      List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_input)
+    let input_st_list, output_st_list =
+      Nir_utils.signature_skeleton ty_sig data_sig
     in
-    let output_st_list =
-      List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_output)
-    in
-
-    Format.eprintf
-      "node: %a@\nsignature: %a@\nx_l: @[%a@]@\noutput_st_list: @[%a@]@."
-      Names.print_longname ln
-      Clock_types.print_sig ty_sig
-      (Utils.print_list_r Ident.print ",") x_l
-      (Utils.print_list_r Clock_types.print_stream_type ",") output_st_list;
 
     assert (List.length input_st_list = List.length y_l);
     assert (List.length output_st_list = List.length x_l);

@@ -49,7 +49,8 @@ let mk_sampled_clock ce ec ck =
 type env =
   {
     intf_env : Interface.env;
-    local_clock_sigs : Clock_types.clock_sig Names.ShortEnv.t;
+    local_clock_sigs :
+      (Data_types.data_sig * Clock_types.clock_sig) Names.ShortEnv.t;
     mutable current_block_count : int;
     mutable var_decs : unit var_dec Ident.Env.t;
   }
@@ -59,7 +60,8 @@ let initial_env file =
     let add local_clock_sigs nd =
       Names.ShortEnv.add
         (fst nd.n_name)
-        nd.n_orig_info#ni_clock local_clock_sigs
+        (nd.n_orig_info#ni_data, nd.n_orig_info#ni_clock)
+        local_clock_sigs
     in
     List.fold_left add Names.ShortEnv.empty file.f_body
   in
@@ -76,8 +78,10 @@ let find_node_sig env ln =
   | LocalModule ->
     ShortEnv.find ln.shortn env.local_clock_sigs
   | Module modn ->
+    let open Interface in
     let intf = ShortEnv.find modn env.intf_env in
-    Interface.(clock_signature_of_node_item (find_node intf ln.shortn))
+    let ni = find_node intf ln.shortn in
+    data_signature_of_node_item ni, clock_signature_of_node_item ni
 
 let enter_node env nd =
   env.var_decs <- nd.n_env;
@@ -157,19 +161,22 @@ let rec equation env eq =
 
   | Call (x_l, ({ a_op = Node (ln, Clock_id id); } as app), y_l) ->
     assert (id > Nir_utils.greatest_invalid_clock_id_int);
-    let ty_sig = find_node_sig env ln in
-    let inputs_st, outputs_st = Clock_types.slice_signature id ty_sig in
-    let inputs_st =
-      List.map Nir_utils.nir_stream_type_of_stream_type inputs_st
+    let data_sig, ct_sig = find_node_sig env ln in
+    let input_sts, output_sts = Nir_utils.signature_skeleton ct_sig data_sig in
+    let input_sts = List.filter (Nir_utils.is_on_id id) input_sts in
+    let output_sts = List.filter (Nir_utils.is_on_id id) output_sts in
+
+    let input_sts =
+      List.map Nir_utils.nir_stream_type_of_stream_type input_sts
     in
-    let outputs_st =
-      List.map Nir_utils.nir_stream_type_of_stream_type outputs_st
+    let output_sts =
+      List.map Nir_utils.nir_stream_type_of_stream_type output_sts
     in
     let mk_desc x_l y_l =
       Call (x_l, app, y_l)
     in
-    let x_l_mk_l = List.map Clock_types.reroot_stream_type inputs_st in
-    let y_l_mk_l = List.map Clock_types.reroot_stream_type outputs_st in
+    let x_l_mk_l = List.map Clock_types.reroot_stream_type input_sts in
+    let y_l_mk_l = List.map Clock_types.reroot_stream_type output_sts in
     form_block
       env
       eq.eq_base_clock

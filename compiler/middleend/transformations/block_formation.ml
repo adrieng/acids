@@ -166,6 +166,9 @@ let rec equation env eq =
     let input_sts = List.filter (Nir_utils.is_on_id id) input_sts in
     let output_sts = List.filter (Nir_utils.is_on_id id) output_sts in
 
+    assert (List.length input_sts = List.length y_l);
+    assert (List.length output_sts = List.length x_l);
+
     let input_sts =
       List.map Nir_utils.nir_stream_type_of_stream_type input_sts
     in
@@ -175,8 +178,8 @@ let rec equation env eq =
     let mk_desc x_l y_l =
       Call (x_l, app, y_l)
     in
-    let x_l_mk_l = List.map Clock_types.reroot_stream_type input_sts in
-    let y_l_mk_l = List.map Clock_types.reroot_stream_type output_sts in
+    let x_l_mk_l = List.map Clock_types.reroot_stream_type output_sts in
+    let y_l_mk_l = List.map Clock_types.reroot_stream_type input_sts in
     form_block
       env
       eq.eq_base_clock

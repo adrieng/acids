@@ -91,11 +91,7 @@ let translate_data_type ty =
   | Ty_boxed _ -> Nir.Ty_boxed
   | Ty_prod _ -> invalid_arg "translate_data_type: product type"
 
-let rec translate_stream_type st =
-  let open Clock_types in
-  match st with
-  | St_var i -> St_var (Nir.(Cv_clock (Clock_id i)))
-  | St_on (st, ce) -> St_on (translate_stream_type st, ce)
+let translate_stream_type = Nir_utils.nir_stream_type_of_stream_type
 
 let translate_clock_type ct =
   let open Clock_types in

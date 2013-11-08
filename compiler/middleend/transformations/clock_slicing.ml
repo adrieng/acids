@@ -143,7 +143,7 @@ let has_several_clock_variables env ln =
   let ct_sig = find_node_sig env ln in
   Clock_types.(VarKindSet.cardinal (base_sig_vars ct_sig) > 1)
 
-let sliced_node_name env op v =
+let sliced_node_name op v =
   match op with
   | Node (nn, Clock_id id) ->
     assert (id < 0);
@@ -185,11 +185,12 @@ let gather_vars var_env ck_env v_l =
 let equation env eq =
   match eq.eq_desc with
   | Call (x_l, ({ a_op = Node (ln, Clock_id dummy); } as app), y_l) ->
-    assert (dummy < 0);
+    assert (dummy <= Nir_utils.greatest_invalid_clock_id_int);
+    let ty_sig = find_node_sig env ln in
+
     (* For each clock variable 'a in signature instantiated with st, walk the
        list of inputs and outputs and gather the ones that correspond to
        parameters of base clock 'a. *)
-    let ty_sig = find_node_sig env ln in
 
     let input_st_list =
       List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_input)
@@ -197,6 +198,13 @@ let equation env eq =
     let output_st_list =
       List.rev Clock_types.(flatten_clock_type [] ty_sig.ct_sig_output)
     in
+
+    Format.eprintf
+      "node: %a@\nsignature: %a@\nx_l: @[%a@]@\noutput_st_list: @[%a@]@."
+      Names.print_longname ln
+      Clock_types.print_sig ty_sig
+      (Utils.print_list_r Ident.print ",") x_l
+      (Utils.print_list_r Clock_types.print_stream_type ",") output_st_list;
 
     assert (List.length input_st_list = List.length y_l);
     assert (List.length output_st_list = List.length x_l);
@@ -221,7 +229,7 @@ let equation env eq =
 
       let app =
         {
-          a_op = sliced_node_name env app.a_op base;
+          a_op = sliced_node_name app.a_op base;
           a_stream_inst = [];
         }
       in
@@ -255,43 +263,40 @@ let equation env eq =
     add_eq_to_its_node env base_clock_var eq
 
 let node env nd_l nd =
-  let node_name, _ = nd.n_name in
-  if has_several_clock_variables env (Names.make_local node_name)
-  then
-    let env = set_current_var env nd.n_env in
-    let env = List.fold_left equation env nd.n_body.b_body in
-    let inputs_by_base_rev =
-      gather_vars env.current_vars VarEnv.empty nd.n_input
-    in
-    let outputs_by_base_rev =
-      gather_vars env.current_vars VarEnv.empty nd.n_output
+  let node_name, Clock_id dummy = nd.n_name in
+  assert (dummy <= Nir_utils.greatest_invalid_clock_id_int);
+  let env = set_current_var env nd.n_env in
+  let env = List.fold_left equation env nd.n_body.b_body in
+  let inputs_by_base_rev =
+    gather_vars env.current_vars VarEnv.empty nd.n_input
+  in
+  let outputs_by_base_rev =
+    gather_vars env.current_vars VarEnv.empty nd.n_output
+  in
+
+  let make_node base_clock_var (var_env, block_count, body) nd_l =
+    let find_vars map =
+      try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
     in
 
-    let make_node base_clock_var (var_env, block_count, body) nd_l =
-      let find_vars map =
-        try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
-      in
+    let inputs = find_vars inputs_by_base_rev in
+    let outputs = find_vars outputs_by_base_rev in
 
-      let inputs = find_vars inputs_by_base_rev in
-      let outputs = find_vars outputs_by_base_rev in
-
-      let nd =
-        {
-          n_name = node_name, base_clock_var;
-          n_orig_info = nd.n_orig_info;
-          n_input = inputs;
-          n_output = outputs;
-          n_env = var_env;
-          n_block_count = succ block_count;
-          n_body = { nd.n_body with b_body = body; };
-          n_loc = nd.n_loc;
-        }
-      in
-      nd :: nd_l
+    let nd =
+      {
+        n_name = node_name, base_clock_var;
+        n_orig_info = nd.n_orig_info;
+        n_input = inputs;
+        n_output = outputs;
+        n_env = var_env;
+        n_block_count = succ block_count;
+        n_body = { nd.n_body with b_body = body; };
+        n_loc = nd.n_loc;
+      }
     in
-    VarEnv.fold make_node env.current_nodes nd_l
-  else
     nd :: nd_l
+  in
+  VarEnv.fold make_node env.current_nodes nd_l
 
 let file ctx file =
   let env = initial_env file in

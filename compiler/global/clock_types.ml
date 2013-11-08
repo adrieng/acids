@@ -706,6 +706,11 @@ let rec base_var_of_stream_type st =
   | St_var i -> i
   | St_on (st, _) -> base_var_of_stream_type st
 
+let rec reroot_stream_type st new_st =
+  match st with
+  | St_var _ -> st
+  | St_on (st, ce) -> St_on (reroot_stream_type st new_st, ce)
+
 let slice_signature ?(compare = (=)) base_var cksig =
   let is_on_base_var st =
     let base_var_st = base_var_of_stream_type st in

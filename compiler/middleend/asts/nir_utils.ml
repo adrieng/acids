@@ -109,6 +109,8 @@ and block_count_block count block =
 
 (** Misc functions *)
 
+(* Conversion between acids and nir *)
+
 let rec clock_type_exp_of_nir_clock_exp ce =
   match ce.ce_desc with
   | Ce_condvar v ->
@@ -126,12 +128,37 @@ let rec clock_type_exp_of_nir_clock_exp ce =
   | Ce_equal (ce, ec) ->
     Clock_types.Ce_equal (clock_type_exp_of_nir_clock_exp ce, ec)
 
+let rec nir_stream_type_of_stream_type (st : Clock_types.stream_type) =
+  let open Clock_types in
+  match st with
+  | St_var i -> St_var (Cv_clock (Clock_id i))
+  | St_on (st, ce) -> St_on (nir_stream_type_of_stream_type st, ce)
+
+(* Clock-exp manipulating functions *)
+
+let rec var_clock_exp ce =
+  match ce.ce_desc with
+  | Ce_condvar x -> Some x
+  | Ce_pword _ -> None
+  | Ce_equal (ce, _) -> var_clock_exp ce
+
+let rec reroot_clock_exp ce new_x =
+  let ced =
+    match ce.ce_desc with
+    | Ce_condvar _ -> Ce_condvar new_x
+    | Ce_pword _ -> ce.ce_desc
+    | Ce_equal (ce, ec) -> Ce_equal (reroot_clock_exp ce new_x, ec)
+  in
+  { ce with ce_desc = ced; }
+
+(* Sliced names-related functions *)
+
 let greatest_invalid_clock_id_int = -1
 
 let greatest_invalid_clock_id = Nir.Clock_id greatest_invalid_clock_id_int
 
 let print_sliced_name fmt (s, Clock_id i) =
-  if i < greatest_invalid_clock_id_int
+  if i <= greatest_invalid_clock_id_int
   then Format.fprintf fmt "%s" s
   else Format.fprintf fmt "%s_st%d" s i
 

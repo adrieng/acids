@@ -99,7 +99,23 @@ let find_var_dec env id = Ident.Env.find id env.var_decs
 
 (** {2 AST traversal} *)
 
-let form_block env base_clock mk_desc x_l x_mk_ck_l y_l y_mk_ck_l =
+let form_block
+    env
+    (* environment *)
+    base_clock
+    (* base_clock of the block to form *)
+    mk_desc
+    (* function creating the body of the expression *)
+    x_l
+    (* list of inputs *)
+    x_mk_ck_l
+    (* list of functions, one for each input, giving the corresponding input's
+       clock from the new base clock *)
+    y_l
+    (* list of outputs *)
+    y_mk_ck_l
+    (* y_mk_ck_l is to y_l what x_mk_ck_l is to x_l *)
+    =
   assert (List.length x_l = List.length x_mk_ck_l);
   assert (List.length y_l = List.length y_mk_ck_l);
 
@@ -139,10 +155,27 @@ let rec equation env eq =
     in
     form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-
-  | Call (_, { a_op = Node (_, Clock_id id); }, _) ->
-    assert (id >= 0);
-    assert false
+  | Call (x_l, ({ a_op = Node (ln, Clock_id id); } as app), y_l) ->
+    assert (id > Nir_utils.greatest_invalid_clock_id_int);
+    let ty_sig = find_node_sig env ln in
+    let inputs_st, outputs_st = Clock_types.slice_signature id ty_sig in
+    let inputs_st =
+      List.map Nir_utils.nir_stream_type_of_stream_type inputs_st
+    in
+    let outputs_st =
+      List.map Nir_utils.nir_stream_type_of_stream_type outputs_st
+    in
+    let mk_desc x_l y_l =
+      Call (x_l, app, y_l)
+    in
+    let x_l_mk_l = List.map Clock_types.reroot_stream_type inputs_st in
+    let y_l_mk_l = List.map Clock_types.reroot_stream_type outputs_st in
+    form_block
+      env
+      eq.eq_base_clock
+      mk_desc
+      x_l x_l_mk_l
+      y_l y_l_mk_l
 
   | Merge (x, ce, c_l) ->
     let ec_l, y_l = List.split c_l in
@@ -152,7 +185,9 @@ let rec equation env eq =
     in
     let ce = Nir_utils.clock_type_exp_of_nir_clock_exp ce in
     form_block
-      env eq.eq_base_clock mk_desc
+      env
+      eq.eq_base_clock
+      mk_desc
       [x] [fun ck -> ck]
       y_l (List.map (mk_sampled_clock ce) ec_l)
 
@@ -163,12 +198,33 @@ let rec equation env eq =
     in
     let ce = Nir_utils.clock_type_exp_of_nir_clock_exp ce in
     form_block
-      env eq.eq_base_clock mk_desc
+      env
+      eq.eq_base_clock
+      mk_desc
       x_l (List.map (mk_sampled_clock ce) ec_l)
       [y] [fun ck -> ck]
 
-  | Valof _ ->
-    assert false (* TODO *)
+  | Valof (x, ce) ->
+    let y_l, y_l_mk_l =
+      match Nir_utils.var_clock_exp ce with
+      | None -> [], []
+      | Some y -> [y], [fun ck -> ck]
+    in
+    let mk_desc x_l y_l =
+      let x = Utils.assert1 x_l in
+      Valof
+        (x,
+         match y_l with
+          | [] -> ce
+          | [y] -> Nir_utils.reroot_clock_exp ce y
+          | _ :: _ :: _ -> assert false)
+    in
+    form_block
+      env
+      eq.eq_base_clock
+      mk_desc
+      [x] [fun ck -> ck]
+      y_l y_l_mk_l
 
   | Block blk ->
     { eq with eq_desc = Block (block env blk); }

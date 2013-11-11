@@ -20,6 +20,16 @@ let df = function
       ["ocaml"; "compile" ]
       (S[A "-w"; A "Ae"; A "-warn-error"; A "PUF"; A "-w"; A "-9"]);
 
+    (* Disable annoying warnings *)
+    let disable = [ 41; 42; 44; 45 ] in
+    flag
+      ["ocaml"; "compile"]
+      (S
+         (List.fold_left
+            (fun cmd w -> A "-w" :: A ("-" ^ string_of_int w) :: cmd)
+            []
+            disable));
+
     (* Menhir generates a useless rec flag, disable warning for this file
        (I'm unhappy about this). *)
     flag

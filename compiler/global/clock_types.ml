@@ -485,20 +485,22 @@ let rec ce_compare ce1 ce2 =
   | (Ce_condvar _ | Ce_pword _ | Ce_equal _), _ ->
     Utils.int_compare (tag_to_int ce1) (tag_to_int ce2)
 
-let rec st_compare st1 st2 =
+let rec raw_st_compare compare_fun st1 st2 =
   let tag_to_int st =
     match st with
     | St_var _ -> 0
     | St_on _ -> 1
   in
   match st1, st2 with
-  | St_var v1, St_var v2 -> Utils.int_compare v1 v2
+  | St_var v1, St_var v2 -> compare_fun v1 v2
   | St_on (st1, ce1), St_on (st2, ce2) ->
     Utils.compare_both
       (ce_compare ce1 ce2)
-      (fun () -> st_compare st1 st2)
+      (fun () -> raw_st_compare compare_fun st1 st2)
   | (St_var _ | St_on _), _ ->
     Utils.int_compare (tag_to_int st1) (tag_to_int st2)
+
+let st_compare st1 st2 = raw_st_compare Utils.int_compare st1 st2
 
 let rec ct_compare ct1 ct2 =
   let tag_to_int ct =

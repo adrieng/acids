@@ -109,40 +109,6 @@ and block_count_block count block =
 
 (** Misc functions *)
 
-(* AST creation/walking *)
-
-type signature_env =
-  {
-    intf_env : Interface.env;
-    locals : (Clock_types.clock_sig * Data_types.data_sig) Names.ShortEnv.t;
-  }
-
-let signature_env_of_file file =
-  let locals =
-    let add locals nd =
-      Names.ShortEnv.add
-        (fst nd.n_name)
-        (nd.n_orig_info#ni_clock, nd.n_orig_info#ni_data)
-        locals
-    in
-    List.fold_left add Names.ShortEnv.empty file.f_body
-  in
-  {
-    intf_env = file.f_info;
-    locals = locals;
-  }
-
-let find_node_sig env ln =
-  let open Names in
-  match ln.modn with
-  | LocalModule ->
-    ShortEnv.find ln.shortn env.locals
-  | Module modn ->
-    let open Interface in
-    let intf = ShortEnv.find modn env.intf_env in
-    let ni = find_node intf ln.shortn in
-    clock_signature_of_node_item ni, data_signature_of_node_item ni
-
 (* Conversion between AcidS and Nir *)
 
 let rec clock_type_exp_of_nir_clock_exp ce =
@@ -257,3 +223,43 @@ let signature_skeleton ct_sig ty_sig =
   let open Clock_types in
   clock_type_skeleton ct_sig.ct_sig_input ty_sig.data_sig_input,
   clock_type_skeleton ct_sig.ct_sig_output ty_sig.data_sig_output
+
+(* Environment handling *)
+
+type signature_env =
+  {
+    intf_env : Interface.env;
+    locals : (Clock_types.clock_sig * Data_types.data_sig) Names.ShortEnv.t;
+  }
+
+let signature_env_of_file file =
+  let locals =
+    let add locals nd =
+      Names.ShortEnv.add
+        (fst nd.n_name)
+        (nd.n_orig_info#ni_clock, nd.n_orig_info#ni_data)
+        locals
+    in
+    List.fold_left add Names.ShortEnv.empty file.f_body
+  in
+  {
+    intf_env = file.f_info;
+    locals = locals;
+  }
+
+let find_node_sig env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    ShortEnv.find ln.shortn env.locals
+  | Module modn ->
+    let open Interface in
+    let intf = ShortEnv.find modn env.intf_env in
+    let ni = find_node intf ln.shortn in
+    clock_signature_of_node_item ni, data_signature_of_node_item ni
+
+let find_node_clock_sig_sliced env ln ck_id =
+  let ct_sig, data_sig = find_node_sig env ln in
+  let input_sts, output_sts = signature_skeleton ct_sig data_sig in
+  List.filter (is_on_id ck_id) input_sts,
+  List.filter (is_on_id ck_id) output_sts

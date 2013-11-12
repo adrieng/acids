@@ -140,10 +140,9 @@ let rec equation env eq =
 
   | Call (x_l, ({ a_op = Node (ln, Clock_id id); } as app), y_l) ->
     assert (id > Nir_utils.greatest_invalid_clock_id_int);
-    let ct_sig, data_sig = find_node_sig env ln in
-    let input_sts, output_sts = Nir_utils.signature_skeleton ct_sig data_sig in
-    let input_sts = List.filter (Nir_utils.is_on_id id) input_sts in
-    let output_sts = List.filter (Nir_utils.is_on_id id) output_sts in
+    let input_sts, output_sts =
+      Nir_utils.find_node_clock_sig_sliced env.senv ln id
+    in
 
     assert (List.length input_sts = List.length y_l);
     assert (List.length output_sts = List.length x_l);

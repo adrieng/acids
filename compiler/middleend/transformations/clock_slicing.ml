@@ -64,9 +64,7 @@ let base_var_of_acids_stream_type st =
 
 type env =
   {
-    intf_env : Interface.env;
-    local_clock_sigs :
-      (Clock_types.clock_sig * Data_types.data_sig) Names.ShortEnv.t;
+    senv : Nir_utils.signature_env;
     current_vars : unit Nir.var_dec Ident.Env.t;
     current_nodes : (unit var_dec Ident.Env.t *
                      int *
@@ -88,18 +86,8 @@ let print_env fmt env =
     (VarEnv.print print_var print_node) env.current_nodes
 
 let initial_env file =
-  let local_clock_sigs =
-    let add local_clock_sigs nd =
-      Names.ShortEnv.add
-        (fst nd.n_name)
-        (nd.n_orig_info#ni_clock, nd.n_orig_info#ni_data)
-        local_clock_sigs
-    in
-    List.fold_left add Names.ShortEnv.empty file.f_body
-  in
   {
-    intf_env = file.f_info;
-    local_clock_sigs = local_clock_sigs;
+    senv = Nir_utils.signature_env_of_file file;
     current_vars = Ident.Env.empty;
     current_nodes = VarEnv.empty;
   }
@@ -131,16 +119,7 @@ let find_var_clock env x =
   let x_vd = Ident.Env.find x env.current_vars in
   x_vd.v_clock
 
-let find_node_sig env ln =
-  let open Names in
-  match ln.modn with
-  | LocalModule ->
-    ShortEnv.find ln.shortn env.local_clock_sigs
-  | Module modn ->
-    let open Interface in
-    let intf = ShortEnv.find modn env.intf_env in
-    let ni = find_node intf ln.shortn in
-    clock_signature_of_node_item ni, data_signature_of_node_item ni
+let find_node_sig env ln = Nir_utils.find_node_sig env.senv ln
 
 let has_several_clock_variables env ln =
   let ct_sig, _ = find_node_sig env ln in

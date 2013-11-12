@@ -48,40 +48,19 @@ let mk_sampled_clock ce ec ck =
 
 type env =
   {
-    intf_env : Interface.env;
-    local_clock_sigs :
-      (Data_types.data_sig * Clock_types.clock_sig) Names.ShortEnv.t;
+    senv : Nir_utils.signature_env;
     mutable current_block_count : int;
     mutable var_decs : unit var_dec Ident.Env.t;
   }
 
 let initial_env file =
-  let local_clock_sigs =
-    let add local_clock_sigs nd =
-      Names.ShortEnv.add
-        (fst nd.n_name)
-        (nd.n_orig_info#ni_data, nd.n_orig_info#ni_clock)
-        local_clock_sigs
-    in
-    List.fold_left add Names.ShortEnv.empty file.f_body
-  in
   {
-    intf_env = file.f_info;
-    local_clock_sigs = local_clock_sigs;
+    senv = Nir_utils.signature_env_of_file file;
     current_block_count = 0;
     var_decs = Ident.Env.empty;
   }
 
-let find_node_sig env ln =
-  let open Names in
-  match ln.modn with
-  | LocalModule ->
-    ShortEnv.find ln.shortn env.local_clock_sigs
-  | Module modn ->
-    let open Interface in
-    let intf = ShortEnv.find modn env.intf_env in
-    let ni = find_node intf ln.shortn in
-    data_signature_of_node_item ni, clock_signature_of_node_item ni
+let find_node_sig env ln = Nir_utils.find_node_sig env.senv ln
 
 let enter_node env nd =
   env.var_decs <- nd.n_env;
@@ -161,7 +140,7 @@ let rec equation env eq =
 
   | Call (x_l, ({ a_op = Node (ln, Clock_id id); } as app), y_l) ->
     assert (id > Nir_utils.greatest_invalid_clock_id_int);
-    let data_sig, ct_sig = find_node_sig env ln in
+    let ct_sig, data_sig = find_node_sig env ln in
     let input_sts, output_sts = Nir_utils.signature_skeleton ct_sig data_sig in
     let input_sts = List.filter (Nir_utils.is_on_id id) input_sts in
     let output_sts = List.filter (Nir_utils.is_on_id id) output_sts in

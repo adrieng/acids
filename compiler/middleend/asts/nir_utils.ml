@@ -109,7 +109,41 @@ and block_count_block count block =
 
 (** Misc functions *)
 
-(* Conversion between acids and nir *)
+(* AST creation/walking *)
+
+type signature_env =
+  {
+    intf_env : Interface.env;
+    locals : (Clock_types.clock_sig * Data_types.data_sig) Names.ShortEnv.t;
+  }
+
+let signature_env_of_file file =
+  let locals =
+    let add locals nd =
+      Names.ShortEnv.add
+        (fst nd.n_name)
+        (nd.n_orig_info#ni_clock, nd.n_orig_info#ni_data)
+        locals
+    in
+    List.fold_left add Names.ShortEnv.empty file.f_body
+  in
+  {
+    intf_env = file.f_info;
+    locals = locals;
+  }
+
+let find_node_sig env ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule ->
+    ShortEnv.find ln.shortn env.locals
+  | Module modn ->
+    let open Interface in
+    let intf = ShortEnv.find modn env.intf_env in
+    let ni = find_node intf ln.shortn in
+    clock_signature_of_node_item ni, data_signature_of_node_item ni
+
+(* Conversion between AcidS and Nir *)
 
 let rec clock_type_exp_of_nir_clock_exp ce =
   match ce.ce_desc with

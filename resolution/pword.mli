@@ -34,6 +34,8 @@ val nbones : word -> Int.t
 val make_word_alap :
   max_burst:Int.t -> size:Int.t -> nbones:Int.t -> (Int.t * Int.t) list -> word
 
+val word_compare : word -> word -> int
+
 type pword =
   private
     {
@@ -102,3 +104,5 @@ type ones_cached
 val cache_ones : pword -> ones_cached
 
 val ones_cached : ones_cached -> Int.t -> Int.t
+
+val pword_compare : pword -> pword -> int

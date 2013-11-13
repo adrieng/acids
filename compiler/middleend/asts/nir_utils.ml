@@ -263,3 +263,22 @@ let find_node_clock_sig_sliced env ln ck_id =
   let input_sts, output_sts = signature_skeleton ct_sig data_sig in
   List.filter (is_on_id ck_id) input_sts,
   List.filter (is_on_id ck_id) output_sts
+
+(* Comparison functions *)
+
+let clock_id_compare id1 id2 =
+  let tag_to_int id =
+    match id with
+    | Cv_block _ -> 0
+    | Cv_clock _ -> 1
+  in
+  match id1, id2 with
+  | Cv_block (Block_id i1), Cv_block (Block_id i2) ->
+    Utils.int_compare i1 i2
+  | Cv_clock (Clock_id i1), Cv_clock (Clock_id i2) ->
+    Utils.int_compare i1 i2
+  | (Cv_block _ | Cv_clock _), _ ->
+    Utils.int_compare (tag_to_int id1) (tag_to_int id2)
+
+let clock_compare (ck1 : Nir.clock) ck2 =
+  Clock_types.raw_st_compare clock_id_compare ck1 ck2

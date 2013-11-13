@@ -268,7 +268,9 @@ let make_word_alap ~max_burst ~size ~nbones iof =
           let acc, remaining_nbones = fill_head acc additional_nbones in
 
           (* create the middle segment *)
-          let segment_nbones = min (segment_size * max_burst) remaining_nbones in
+          let segment_nbones =
+            min (segment_size * max_burst) remaining_nbones
+          in
           let acc = add_alap segment_size segment_nbones acc in
 
           (* put the I_w(j) = i one, filling in remaining nbones *)
@@ -316,6 +318,10 @@ let make_word_alap ~max_burst ~size ~nbones iof =
 let to_tree_word w =
   let open Tree_word in
   Concat (List.map (fun (i, k) -> Power (Leaf i, k)) w.desc)
+
+let word_compare w1 w2 =
+  let _ = Utils.int_compare w1.size w2.size in
+  assert false (* WIP *)
 
 (** {2 Low-level functions on pwords} *)
 
@@ -606,3 +612,8 @@ let ones_cached cache i =
     in
     nbones_start_period
     + ones_word_cached cache.v_cache cache.p.v (mod_b1 i cache.p.v.size)
+
+let pword_compare { u = u1; v = v1; } { u = u2; v = v2; } =
+  Utils.compare_both
+    (word_compare u1 u2)
+    (fun () -> word_compare v1 v2)

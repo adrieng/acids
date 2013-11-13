@@ -94,6 +94,7 @@ let flow =
   (* Middle-end *)
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
+  +>+ Pword_concretization.pass
 
 (*****************************************************************************)
 (* File handling *)

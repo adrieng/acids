@@ -662,11 +662,11 @@ let rec binary_clock_type ty =
   | Ct_prod ty_l -> List.fold_left (&&) true (List.map binary_clock_type ty_l)
   | Ct_stream st -> binary_stream_type st
 
-let buffer_size inp_st out_st =
+let buffer_size ?(consider_bypass = false) inp_st out_st =
   let _, p1 = decompose_pword inp_st in
   let _, p2 = decompose_pword out_st in
   (* TODO check bst1 = bst2 *)
-  Pword.buffer_size p1 p2
+  Pword.buffer_size ~consider_bypass p1 p2
 
 let st_of_synchronized_ct ct =
   let st_l = flatten_clock_type [] ct in

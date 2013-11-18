@@ -77,9 +77,10 @@ let print_list print fmt x_l =
 
 let print_buffer fmt b =
   Format.fprintf fmt
-    "(@[:delay %b@ :size %a@])"
+    "(@[:delay %b@ :size %a :real_size %a@])"
     b.b_delay
     Int.print b.b_size
+    Int.print b.b_real_size
 
 let print_op fmt op =
   match op with

@@ -56,6 +56,7 @@ and 'a clock_exp_desc =
 type buffer_info =
   {
     b_delay : bool;
+    b_real_size : Int.t; (* disrega*)
     b_size : Int.t;
   }
 

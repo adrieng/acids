@@ -343,7 +343,9 @@ struct
       let info =
         object
           method bui_is_delay = Clock_types.non_strict_adaptable in_st out_st
-          method bui_size = Clock_types.buffer_size in_st out_st
+          method bui_real_size = Clock_types.buffer_size in_st out_st
+          method bui_size =
+            Clock_types.buffer_size ~consider_bypass:true in_st out_st
         end
       in
       if !Compiler_options.print_buffer_info

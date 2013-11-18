@@ -341,6 +341,7 @@ let rec translate_eq_exp env x_l e =
       let bu =
         {
           Nir.b_delay = bu.bu_info#bui_is_delay;
+          Nir.b_real_size = bu.bu_info#bui_real_size;
           Nir.b_size = bu.bu_info#bui_size;
         }
       in

@@ -59,7 +59,7 @@ val ( = ) : t -> t -> bool
 
 val min : t -> t -> t
 
-val max : t -> t -> t
+(* val max : t -> t -> t *)
 
 val max : t -> t -> t
 
@@ -73,9 +73,9 @@ val succ : t -> t
 
 val pred : t -> t
 
-val min_int : t
+(* val min_int : t *)
 
-val max_int : t
+(* val max_int : t *)
 
 val neg : t -> t
 

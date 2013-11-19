@@ -513,6 +513,12 @@ let pull_prefix_in p =
   let u, v = shift_inside (rev p.u) (empty, rev p.v) in
   make u v
 
+let simplify p =
+  let p = pull_prefix_in p in
+  match p.v.desc with
+  | [x, _] -> make p.u (singleton x)
+  | _ -> p
+
 let buffer_size ?(consider_bypass = false) p1 p2 =
   let open Int in
 

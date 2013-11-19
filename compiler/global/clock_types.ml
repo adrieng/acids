@@ -603,7 +603,7 @@ let rec simplify_prefix_st st =
     | Ce_condvar _ -> ce
     | Ce_pword pw ->
       let p = pword_of_econstr_tree pw in
-      let p = Pword.pull_prefix_in p in
+      let p = Pword.simplify p in
       ce_pword_of_pword p
     | Ce_equal (ce, se) -> Ce_equal (simplify_prefix_ce ce, se)
   in

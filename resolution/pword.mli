@@ -71,7 +71,7 @@ val adapt : ?delay : Int.t -> pword -> pword -> bool
 
 val to_tree_pword : pword -> (Int.t, Int.t) Tree_word.t
 
-val pull_prefix_in : pword -> pword
+val simplify : pword -> pword
 
 (* When consider_bypass is true, buffer_size computes the size of a buffer with
    a true "bypass" mechanism, that is a buffer that at a given tick does not

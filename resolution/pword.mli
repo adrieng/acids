@@ -73,6 +73,8 @@ val to_tree_pword : pword -> (Int.t, Int.t) Tree_word.t
 
 val simplify : pword -> pword
 
+val bounds : pword -> Interval.t
+
 (* When consider_bypass is true, buffer_size computes the size of a buffer with
    a true "bypass" mechanism, that is a buffer that at a given tick does not
    need to store its whole input burst before producing its output burst.

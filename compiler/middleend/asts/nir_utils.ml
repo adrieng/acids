@@ -19,6 +19,17 @@ open Nir
 
 (** Construction functions *)
 
+let make_var ?(loc = Loc.dummy) x data_ty ck scope annots =
+  {
+    v_name = x;
+    v_data = data_ty;
+    v_clock = ck;
+    v_scope = scope;
+    v_annots = annots;
+    v_loc = loc;
+    v_info = ();
+  }
+
 let make_eq desc ck =
   {
     eq_desc = desc;

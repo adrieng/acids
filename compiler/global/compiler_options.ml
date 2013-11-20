@@ -56,6 +56,12 @@ let optimize = ref true
 
 let print_interface = ref false
 
+let pword_generator_list = ["plain"]
+
+let pword_generator = ref (List.hd pword_generator_list)
+
+let set_pword_generator s = pword_generator := s
+
 let search_path =
   ref
     [
@@ -165,6 +171,10 @@ let options =
           "-I",
           Arg.String (fun s -> search_path := s :: !search_path),
           " Add the given directory to search path";
+
+          "-pgen",
+          Arg.Symbol (pword_generator_list, set_pword_generator),
+          " Pword code generator";
         ]
     )
 

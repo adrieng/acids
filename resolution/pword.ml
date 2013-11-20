@@ -323,6 +323,12 @@ let word_compare w1 w2 =
   let _ = Utils.int_compare w1.size w2.size in
   assert false (* WIP *)
 
+let bounds_word w =
+  match w.desc with
+  | [] -> invalid_arg "bounds_word: empty word"
+  | (x, _) :: w ->
+    List.fold_left (fun (l, u) (x, _) -> Int.min x l, Int.max x u) (x, x) w
+
 (** {2 Low-level functions on pwords} *)
 
 (** {2 Exported functions on pwords} *)
@@ -518,6 +524,11 @@ let simplify p =
   match p.v.desc with
   | [x, _] -> make p.u (singleton x)
   | _ -> p
+
+let bounds p =
+  let u_low, u_up = bounds_word p.u in
+  let v_low, v_up = bounds_word p.v in
+  Interval.make (Int.min u_low v_low) (Int.max u_up v_up)
 
 let buffer_size ?(consider_bypass = false) p1 p2 =
   let open Int in

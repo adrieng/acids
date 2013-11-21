@@ -80,3 +80,8 @@ val unbox
   : 'x boxed -> 'x
   is 'c -> 'c
   :: 'a -> 'a
+
+val after
+  : int -> bool
+  is N -> N
+  :: 'a -> 'a

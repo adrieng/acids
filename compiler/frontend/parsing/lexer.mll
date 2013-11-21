@@ -130,7 +130,7 @@ let keyword =
   | "bool"
   | "int"
   | "float"
-  | "D"
+  | "N"
   | "S"
 
 let alpha = ['a'-'z' 'A'-'Z']

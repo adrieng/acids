@@ -321,7 +321,12 @@ let to_tree_word w =
 
 let word_compare w1 w2 =
   let _ = Utils.int_compare w1.size w2.size in
-  assert false (* WIP *)
+  let compare_bit (x1, n1) (x2, n2) =
+    Utils.compare_both (Int.compare x1 x2) (fun () -> Int.compare n1 n2)
+  in
+  Utils.compare_both
+    (Utils.int_compare w1.size w2.size)
+    (fun () -> Utils.list_compare compare_bit w1.desc w2.desc)
 
 let bounds_word w =
   match w.desc with

@@ -531,9 +531,12 @@ let simplify p =
   | _ -> p
 
 let bounds p =
-  let u_low, u_up = bounds_word p.u in
   let v_low, v_up = bounds_word p.v in
-  Interval.make (Int.min u_low v_low) (Int.max u_up v_up)
+  if p.u.size = Int.zero
+  then Interval.make v_low v_up
+  else
+    let u_low, u_up = bounds_word p.v in
+    Interval.make (Int.min u_low v_low) (Int.max u_up v_up)
 
 let buffer_size ?(consider_bypass = false) p1 p2 =
   let open Int in

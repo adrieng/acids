@@ -182,7 +182,7 @@ and walk_block env block =
   let local_env, body = Utils.mapfold_left walk local_env block.b_body in
   leave_block local_env env, { block with b_body = body; }
 
-let node env nd =
+let node orig_env nd =
   (* Walk the variable declarations, checking each variable to see if it has
      some pword spec annotation. If it does, add it to the environment. *)
   let env =
@@ -203,12 +203,19 @@ let node env nd =
       with Not_found ->
         env
     in
-    Ident.Env.fold add_annot nd.n_env env
+    Ident.Env.fold
+      add_annot
+      nd.n_env
+      { orig_env with current_vars = nd.n_env; }
   in
 
   let node_env, body = walk_block env nd.n_body in
-  assert (node_env.new_eqs = []);
-  { nd with n_body = body; }
+  let env = leave_block node_env orig_env in
+  {
+    nd with
+      n_body = { body with b_body = env.new_eqs @ body.b_body; };
+      n_env = env.current_vars;
+  }
 
 let tr ctx file =
   let env = initial_env file in

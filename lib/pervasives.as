@@ -83,5 +83,5 @@ val unbox
 
 val after
   : int -> bool
-  is N -> N
+  is C -> N
   :: 'a -> 'a

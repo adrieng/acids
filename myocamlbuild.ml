@@ -18,7 +18,14 @@ let df = function
        applications *)
     flag
       ["ocaml"; "compile" ]
-      (S[A "-w"; A "Ae"; A "-warn-error"; A "PUF"; A "-w"; A "-9"]);
+      (S
+         [
+           A "-w"; A "Ae";
+           A "-warn-error"; A "PUF";
+           A "-warn-error"; A "+40";
+           A "-w"; A "-9"
+         ]
+      );
 
     (* Disable annoying warnings *)
     let disable = [ 41; 42; 44; 45 ] in

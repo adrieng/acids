@@ -36,6 +36,8 @@ val make_word_alap :
 
 val word_compare : word -> word -> int
 
+val to_tree_word : word -> (Int.t, Int.t) Tree_word.power_tree
+
 type pword =
   private
     {

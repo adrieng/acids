@@ -131,7 +131,7 @@ let keyword =
   | "int"
   | "float"
   | "N"
-  | "S"
+  | "C"
 
 let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']

@@ -30,12 +30,68 @@ let make_var ?(loc = Loc.dummy) x data_ty ck scope annots =
     v_info = ();
   }
 
+let make_clock_exp ?bounds ?(loc = Loc.dummy) desc data clock =
+  let bounds =
+    match bounds with
+    | Some bounds -> bounds
+    | None ->
+      match data with
+      | Data_types.Tys_bool -> Interval.bool
+      | _ -> invalid_arg "make_clock_exp: could not infer bounds"
+  in
+  {
+    ce_desc = desc;
+    ce_bounds = bounds;
+    ce_data = data;
+    ce_clock = clock;
+    ce_loc = loc;
+  }
+
 let make_eq desc ck =
   {
     eq_desc = desc;
     eq_base_clock = ck;
     eq_loc = Loc.dummy;
   }
+
+let make_call op inst ck x_l y_l =
+  make_eq
+    (Call
+       (x_l,
+        { a_op = op; a_stream_inst = inst; },
+        y_l))
+    ck
+
+let make_block ?(loc = Loc.dummy) id body ck =
+  make_eq
+    (Block
+       {
+         b_id = id;
+         b_body = body;
+         b_loc = loc;
+       })
+    ck
+
+(** Node context to add equations / variables / blocks *)
+
+type ctx =
+  {
+    c_eqs : Ident.t eq list;
+    c_vars : unit var_dec Ident.Env.t;
+    c_first_free_block_id : int;
+  }
+
+let add_eq ctx eq = { ctx with c_eqs = eq :: ctx.c_eqs; }
+
+let add_var ctx vd =
+  {
+    ctx with
+      c_vars = Ident.Env.add vd.v_name vd ctx.c_vars;
+  }
+
+let get_fresh_block_id ctx =
+  Block_id ctx.c_first_free_block_id,
+  { ctx with c_first_free_block_id = ctx.c_first_free_block_id + 1; }
 
 (** Iterators *)
 

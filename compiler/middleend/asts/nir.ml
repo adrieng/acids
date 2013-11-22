@@ -135,6 +135,11 @@ type 'i var_dec =
     v_info : 'i;
   }
 
+(*
+  Some notes: we suppose that in a node, the n_body block is always of
+  id 0.
+*)
+
 type 'i node =
   {
     n_name : Names.shortname * clock_id;

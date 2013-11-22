@@ -55,6 +55,7 @@ type env =
     current_pwords : Ident.t PwordEnv.t;
     new_eqs : Ident.t eq list;
     current_scope : scope;
+    next_free_block_id : int;
   }
 
 let initial_env file =
@@ -64,6 +65,7 @@ let initial_env file =
     current_pwords = PwordEnv.empty;
     new_eqs = [];
     current_scope = Scope_internal (Block_id 0);
+    next_free_block_id = 0;
   }
 
 let add_pword env p ck x =
@@ -82,20 +84,26 @@ let find_or_add_pword env p ck =
         [Ann_spec (Ast_misc.Word (Pword.to_tree_pword p))]
     in
 
-    let new_eqs, current_vars =
+    let ctx =
       get_pword_generator
         ()
         env.current_scope
         p
         x
-        (env.new_eqs, Ident.Env.add x x_vd env.current_vars)
+        ck
+        {
+          Nir_utils.c_eqs = env.new_eqs;
+          Nir_utils.c_vars = Ident.Env.add x x_vd env.current_vars;
+          Nir_utils.c_first_free_block_id = env.next_free_block_id;
+        }
     in
 
     add_pword
       {
         env with
-          current_vars = current_vars;
-          new_eqs = new_eqs;
+          current_vars = ctx.Nir_utils.c_vars;
+          new_eqs = ctx.Nir_utils.c_eqs;
+          next_free_block_id = ctx.Nir_utils.c_first_free_block_id;
       }
       p
       ck
@@ -208,6 +216,8 @@ let node orig_env nd =
       nd.n_env
       { orig_env with current_vars = nd.n_env; }
   in
+  let env = { env with next_free_block_id = 0; } in
+
 
   let node_env, body = walk_block env nd.n_body in
   let env = leave_block node_env orig_env in

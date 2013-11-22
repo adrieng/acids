@@ -85,3 +85,8 @@ val after
   : int -> bool
   is C -> N
   :: 'a -> 'a
+
+val periodic
+  : int -> bool
+  is C -> N
+  :: 'a -> 'a

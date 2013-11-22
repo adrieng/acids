@@ -114,6 +114,21 @@ let flatten_power_tree_no_power pt =
 let flatten_upword_no_power { u = u; v = v; } =
   flatten_power_tree_no_power u @ flatten_power_tree_no_power v
 
+let flatten_word_int pt =
+  let rec walk acc k pt =
+    match pt with
+    | Leaf x -> k (x :: acc)
+    | Power (pt, n) ->
+      if n = Int.zero
+      then k acc
+      else walk acc (fun acc -> walk acc k (Power (pt, Int.pred n))) pt
+    | Concat [] ->
+      k acc
+    | Concat (pt :: pt_l) ->
+      walk acc (fun acc -> walk acc k (Concat pt_l)) pt
+  in
+  walk [] (fun acc -> List.rev acc) pt
+
 let rec size_tree pt =
   match pt with
   | Leaf _ -> 1

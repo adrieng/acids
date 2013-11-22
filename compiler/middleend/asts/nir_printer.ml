@@ -87,6 +87,7 @@ let print_op fmt op =
   | Node (ln, id) -> Nir_utils.print_sliced_longname fmt ln id
   | Box -> Format.fprintf fmt "box"
   | Unbox -> Format.fprintf fmt "unbox"
+  | Index -> Format.fprintf fmt "index"
 
 let print_app fmt app = print_op fmt app.a_op
 

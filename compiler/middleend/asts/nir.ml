@@ -66,6 +66,7 @@ type op =
      sliced yet *)
   | Box
   | Unbox
+  | Index (* static array indexing: first argument is index, rest is array *)
 
 type call =
   {

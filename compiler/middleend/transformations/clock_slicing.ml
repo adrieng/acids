@@ -130,7 +130,7 @@ let sliced_node_name op v =
   | Node (nn, Clock_id id) ->
     assert (id < 0);
     Node (nn, v)
-  | Box | Unbox ->
+  | Box | Unbox | Index ->
     op
 
 (** {2 AST traversal} *)
@@ -227,6 +227,12 @@ let equation env eq =
     (* Same for unbox's output *)
     let y = Utils.assert1 y_l in
     let base_clock_var = clock_var_of_stream_type (find_var_clock env y) in
+    add_eq_to_its_node env base_clock_var eq
+
+  | Call (x_l, { a_op = Index; }, _) ->
+    (* Index expects a synchronized tuple as input *)
+    let x = Utils.assert1 x_l in
+    let base_clock_var = clock_var_of_stream_type (find_var_clock env x) in
     add_eq_to_its_node env base_clock_var eq
 
   | Var _ | Const _ | Merge _ | Split _ | Valof _

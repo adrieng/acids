@@ -127,7 +127,10 @@ let form_block
 
 let rec equation env eq =
   match eq.eq_desc with
-  | Var _ | Buffer _ | Call (_, { a_op = Box | Unbox; }, _) | Delay _ ->
+  | Var _
+  | Buffer _
+  | Call (_, { a_op = Box | Unbox | Index; }, _)
+  | Delay _ ->
     (* TODO: optimize buffer *)
     eq
 

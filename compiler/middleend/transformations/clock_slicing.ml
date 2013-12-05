@@ -130,7 +130,7 @@ let sliced_node_name op v =
   | Node (nn, Clock_id id) ->
     assert (id < 0);
     Node (nn, v)
-  | Box | Unbox | Index ->
+  | Box | Unbox | Index | BufferAccess _ ->
     op
 
 (** {2 AST traversal} *)
@@ -234,6 +234,10 @@ let equation env eq =
     let x = Utils.assert1 x_l in
     let base_clock_var = clock_var_of_stream_type (find_var_clock env x) in
     add_eq_to_its_node env base_clock_var eq
+
+  | Call (_, { a_op = BufferAccess _; }, _) ->
+    (* Unhandled at this level *)
+    assert false
 
   | Var _ | Const _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->

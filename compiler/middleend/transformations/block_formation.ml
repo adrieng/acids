@@ -129,7 +129,7 @@ let rec equation env eq =
   match eq.eq_desc with
   | Var _
   | Buffer _
-  | Call (_, { a_op = Box | Unbox | Index; }, _)
+  | Call (_, { a_op = Box | Unbox | Index | BufferAccess _; }, _)
   | Delay _ ->
     (* TODO: optimize buffer *)
     eq

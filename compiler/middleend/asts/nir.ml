@@ -60,6 +60,10 @@ type buffer_info =
     b_size : Int.t;
   }
 
+type buffer_direction = Push | Pop
+
+type buffer_polarity = Strict | Lazy
+
 type op =
   | Node of Names.longname * clock_id
   (* node_name * base_clock_var_id, the latter being -1 if the call has not been
@@ -67,6 +71,7 @@ type op =
   | Box
   | Unbox
   | Index (* static array indexing: first argument is index, rest is array *)
+  | BufferAccess of buffer_direction * buffer_polarity
 
 type call =
   {

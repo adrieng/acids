@@ -82,12 +82,26 @@ let print_buffer fmt b =
     Int.print b.b_size
     Int.print b.b_real_size
 
+let print_buffer_direction fmt dir =
+  match dir with
+  | Push -> Format.fprintf fmt "push"
+  | Pop -> Format.fprintf fmt "pop"
+
+let print_buffer_polarity fmt pol =
+  match pol with
+  | Strict -> Format.fprintf fmt "strict"
+  | Lazy -> Format.fprintf fmt "lazy"
+
 let print_op fmt op =
   match op with
   | Node (ln, id) -> Nir_utils.print_sliced_longname fmt ln id
   | Box -> Format.fprintf fmt "box"
   | Unbox -> Format.fprintf fmt "unbox"
   | Index -> Format.fprintf fmt "index"
+  | BufferAccess (dir, pol) ->
+    Format.fprintf fmt "%a_%a"
+      print_buffer_direction dir
+      print_buffer_polarity pol
 
 let print_app fmt app = print_op fmt app.a_op
 

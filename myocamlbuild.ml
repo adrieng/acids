@@ -23,7 +23,8 @@ let df = function
            A "-w"; A "Ae";
            A "-warn-error"; A "PUF";
            A "-warn-error"; A "+40";
-           A "-w"; A "-9"
+           A "-w"; A "-9";
+           A "-w"; A "-23";
          ]
       );
 

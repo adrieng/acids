@@ -95,6 +95,7 @@ let flow =
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
   +>+ Pword_concretization.pass
+  +>+ Buffer_lowering.pass
 
 (*****************************************************************************)
 (* File handling *)

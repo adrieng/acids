@@ -333,19 +333,33 @@ let find_node_clock_sig_sliced env ln ck_id =
 
 (* Comparison functions *)
 
-let clock_id_compare id1 id2 =
+let block_id_compare (Block_id i1) (Block_id i2) = Utils.int_compare i1 i2
+
+let clock_id_compare (Clock_id i1) (Clock_id i2) = Utils.int_compare i1 i2
+
+let clock_var_compare cv1 cv2 =
   let tag_to_int id =
     match id with
     | Cv_block _ -> 0
     | Cv_clock _ -> 1
   in
-  match id1, id2 with
-  | Cv_block (Block_id i1), Cv_block (Block_id i2) ->
-    Utils.int_compare i1 i2
-  | Cv_clock (Clock_id i1), Cv_clock (Clock_id i2) ->
-    Utils.int_compare i1 i2
+  match cv1, cv2 with
+  | Cv_block id1, Cv_block id2 ->
+    block_id_compare id1 id2
+  | Cv_clock id1, Cv_clock id2 ->
+    clock_id_compare id1 id2
   | (Cv_block _ | Cv_clock _), _ ->
-    Utils.int_compare (tag_to_int id1) (tag_to_int id2)
+    Utils.int_compare (tag_to_int cv1) (tag_to_int cv2)
 
 let clock_compare (ck1 : Nir.clock) ck2 =
-  Clock_types.raw_st_compare clock_id_compare ck1 ck2
+  Clock_types.raw_st_compare clock_var_compare ck1 ck2
+
+(* Various kinds of environments *)
+
+module BlockEnv =
+  Utils.MakeMap(
+    struct
+      type t = block_id
+      let compare = block_id_compare
+    end
+  )

@@ -23,11 +23,14 @@ type clock_id = Clock_id of int
 
 (** {2 Simple data types} *)
 
+type buffer_polarity = Strict | Lazy
+
 type ty =
   | Ty_var of int
   | Ty_scal of Data_types.data_ty_scal
   | Ty_boxed
   | Ty_clock
+  | Ty_buffer of ty * Int.t * buffer_polarity (* data ty * size *)
 
 type clock_var =
   | Cv_clock of clock_id
@@ -56,13 +59,32 @@ and 'a clock_exp_desc =
 type buffer_info =
   {
     b_delay : bool;
-    b_real_size : Int.t; (* disrega*)
+    b_real_size : Int.t; (* disregard bypass *)
     b_size : Int.t;
   }
 
 type buffer_direction = Push | Pop
 
-type buffer_polarity = Strict | Lazy
+(*
+  (1 0 1) <: (0 1 1) strict (instdep at step 3),
+  (1 0) <: (0 1) lazy (no instdep)
+
+  //
+
+  Strictness: instdep at some point, therefore do push before pop
+  -> pop must depend on push
+
+  b = strict_push(y)
+  x = strict_pop(b)
+
+  //
+
+  Laziness: no instdep, therefore do pop before push
+  -> push must depend on pop
+
+  (x, b) = lazy_pop()
+  () = lazy_push(b, y)
+*)
 
 type op =
   | Node of Names.longname * clock_id

@@ -387,7 +387,11 @@ let print_to_string f x =
 let list_of_option o =
   match o with
   | None -> []
-  | Some l -> l
+  | Some l -> [l]
+
+let flatten_option_list l =
+  let add l o = list_of_option o @ l in
+  List.fold_left add [] l
 
 let assert1 l =
   match l with

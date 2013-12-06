@@ -21,12 +21,26 @@ let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
 
 let print_clock_id fmt (Clock_id id) = Format.fprintf fmt "'a%d" id
 
-let print_ty fmt ty =
+let print_buffer_polarity fmt pol =
+  match pol with
+  | Strict -> Format.fprintf fmt "strict"
+  | Lazy -> Format.fprintf fmt "lazy"
+
+let rec print_ty fmt ty =
   match ty with
-  | Ty_var i -> Data_types.(print_ty fmt (Ty_var i))
-  | Ty_scal tys -> Data_types.print_ty_scal fmt tys
-  | Ty_boxed -> Format.fprintf fmt "boxed"
-  | Ty_clock -> Format.fprintf fmt "clock"
+  | Ty_var i ->
+    Data_types.(print_ty fmt (Ty_var i))
+  | Ty_scal tys ->
+    Data_types.print_ty_scal fmt tys
+  | Ty_boxed ->
+    Format.fprintf fmt "boxed"
+  | Ty_clock ->
+    Format.fprintf fmt "clock"
+  | Ty_buffer (tys, size, pol) ->
+    Format.fprintf fmt "buffer (%a, %a, %a)"
+      print_ty tys
+      Int.print size
+      print_buffer_polarity pol
 
 let print_clock_var fmt cv =
   match cv with
@@ -86,11 +100,6 @@ let print_buffer_direction fmt dir =
   match dir with
   | Push -> Format.fprintf fmt "push"
   | Pop -> Format.fprintf fmt "pop"
-
-let print_buffer_polarity fmt pol =
-  match pol with
-  | Strict -> Format.fprintf fmt "strict"
-  | Lazy -> Format.fprintf fmt "lazy"
 
 let print_op fmt op =
   match op with

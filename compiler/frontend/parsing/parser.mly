@@ -302,6 +302,7 @@
 %left WHERE
 %left IF
 // %left SPLIT
+%nonassoc OP
 %right APP
 %left LE GE LT GT
 %left PLUS MINUS
@@ -311,7 +312,6 @@
 %nonassoc FST SND
 %right FBY
 %nonassoc IDENT
-%nonassoc OP
 
 /* Start of the grammar */
 

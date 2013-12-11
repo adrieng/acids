@@ -71,7 +71,7 @@ struct
         print_exp e2
         print_exp e3
     | E_app (app, e) ->
-      Format.fprintf fmt "%a %a"
+      Format.fprintf fmt "(%a %a)"
         print_app app
         print_exp e
     | E_where (e, bl) ->

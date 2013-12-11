@@ -252,6 +252,7 @@
 %token EQUAL
 %token LT GT LE GE
 %token PLUS MINUS TIMES DIV
+%token PLUSF MINUSF TIMESF DIVF
 
 /* Keywords */
 
@@ -305,8 +306,8 @@
 %nonassoc OP
 %right APP
 %left LE GE LT GT
-%left PLUS MINUS
-%left TIMES DIV
+%left PLUS MINUS PLUSF MINUSF
+%left TIMES DIV TIMESF DIVF
 %left WHEN
 %nonassoc BUFFER
 %nonassoc FST SND
@@ -366,15 +367,19 @@ signature(ty):
 
 op:
 | OP { $1 }
-| PLUS { "+" }
-| MINUS { "-" }
-| TIMES { "*" }
-| DIV { "/" }
-| LE { "<=" }
-| LT { "<" }
-| GE { ">=" }
-| GT { ">" }
-| EQUAL { "=" }
+| PLUS   { Parser_utils.plus   }
+| MINUS  { Parser_utils.minus  }
+| TIMES  { Parser_utils.times  }
+| DIV    { Parser_utils.div    }
+| PLUSF  { Parser_utils.plusf  }
+| MINUSF { Parser_utils.minusf }
+| TIMESF { Parser_utils.timesf }
+| DIVF   { Parser_utils.divf   }
+| LE     { Parser_utils.le     }
+| LT     { Parser_utils.lt     }
+| GE     { Parser_utils.ge     }
+| GT     { Parser_utils.gt     }
+| EQUAL  { Parser_utils.eq     }
 
 %inline nodename:
 | s = IDENT { s }
@@ -490,6 +495,14 @@ exp_desc:
             { make_bin_op $startpos $endpos Parser_utils.times e1 e2 }
 | e1 = exp DIV e2 = exp
             { make_bin_op $startpos $endpos Parser_utils.div e1 e2 }
+| e1 = exp PLUSF e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.plusf e1 e2 }
+| e1 = exp MINUSF e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.minusf e1 e2 }
+| e1 = exp TIMESF e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.timesf e1 e2 }
+| e1 = exp DIVF e2 = exp
+            { make_bin_op $startpos $endpos Parser_utils.divf e1 e2 }
 | e1 = exp LE e2 = exp
             { make_bin_op $startpos $endpos Parser_utils.le e1 e2 }
 | e1 = exp GE e2 = exp

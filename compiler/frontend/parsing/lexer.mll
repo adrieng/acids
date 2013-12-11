@@ -195,6 +195,11 @@ rule token = parse
   | "-" { MINUS }
   | "*" { TIMES }
   | "/" { DIV }
+  | "+." { PLUSF }
+  | "-." { MINUSF }
+  | "*." { TIMESF }
+  | "/." { DIVF }
+
 
   | op as s { OP s }
 

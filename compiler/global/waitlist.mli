@@ -23,10 +23,14 @@ val create : unit -> 'a t
 
 val print : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 
+(* Add a new item to given id *)
 val add_item : 'a t -> id -> 'a -> unit
 
+(* Merge the items of two ids *)
 val merge_items : 'a t -> id -> id -> unit
 
+(* Take the items of given id *)
 val take_items : 'a t -> id -> 'a list
 
+(* Take all the items of all ids *)
 val take_all : 'a t -> 'a list

@@ -62,35 +62,48 @@ let remove waitlist id =
   waitlist.class_constr <- Int_map.remove id waitlist.class_constr
 
 let merge_items waitlist id1 id2 =
-  (* remap the class of id2 to the class of id1 *)
   let cl1 = find_class waitlist id1 in
   let cl2 = find_class waitlist id2 in
   let class_id1 = Union_find.find cl1 in
   let class_id2 = Union_find.find cl2 in
-  if class_id1 <> class_id2 then Union_find.union cl1 cl2;
-  match
-    match find_items waitlist class_id1, find_items waitlist class_id2 with
-    | None, None -> None
-    | Some cl, None ->
-      remove waitlist class_id1;
-      Some cl
-    | None, Some cl ->
-      remove waitlist class_id2;
-      Some cl
-    | Some cl1, Some cl2 ->
-      remove waitlist class_id1;
-      remove waitlist class_id2;
-      Some (Node (cl1, cl2))
-  with
-  | None -> ()
-  | Some cl ->
-    waitlist.class_constr <- Int_map.add (Union_find.find cl1) cl waitlist.class_constr
+  (* merge the classes of id1 and id2 if they are different *)
+  if class_id1 <> class_id2
+  then
+    (
+      Union_find.union cl1 cl2;
+      let cl1_items = find_items waitlist class_id1 in
+      let cl2_items = find_items waitlist class_id2 in
+      let items =
+        match cl1_items, cl2_items with
+        | None, None ->
+          None
+        | Some cl, None ->
+          remove waitlist class_id1;
+          Some cl
+        | None, Some cl ->
+          remove waitlist class_id2;
+          Some cl
+        | Some cl1, Some cl2 ->
+          remove waitlist class_id1;
+          remove waitlist class_id2;
+          Some (Node (cl1, cl2))
+      in
+      match items with
+      | None -> ()
+      | Some cl ->
+        waitlist.class_constr <-
+          Int_map.add (Union_find.find cl1) cl waitlist.class_constr
+    )
 
 let take_items waitlist id =
   let class_id = Union_find.find (find_class waitlist id) in
   match find_items waitlist class_id with
   | None -> []
   | Some cl ->
+    (* TODO we should also remove the links to the other ids mapped
+       to class_id, except that it is impossible with the current
+       data structure. *)
+    waitlist.var_to_class <- Int_map.remove id waitlist.var_to_class;
     waitlist.class_constr <- Int_map.remove class_id waitlist.class_constr;
     fold_bin_tree_df (fun acc x -> x :: acc) [] cl
 

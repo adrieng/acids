@@ -207,6 +207,10 @@ let rec unalias ty =
 open PreTy
 open VarTy
 
+(* The current implementation of subtyping constraint resolution is very bad. It
+   should be implemented using techniques described in François Pottiers' PhD
+   thesis and old papers. *)
+
 type constr =
   {
     lhs : t;
@@ -269,7 +273,7 @@ let solve ?(unify_remaining = true) constraints =
           Waitlist.merge_items waitlist v1 v2;
           solve worklist
 
-        (* S <: D *)
+        (* C <: N, C <: C and N <: N are always satisfied *)
         | Psy_scal S_const, Psy_scal S_nonconst
         | Psy_scal S_const, Psy_scal S_const
         | Psy_scal S_nonconst, Psy_scal S_nonconst ->
@@ -278,14 +282,15 @@ let solve ?(unify_remaining = true) constraints =
         | Psy_scal S_nonconst, Psy_scal S_const ->
           unification_conflict c.loc lhs rhs
 
-        (* ty <: S -> ty = S, D <: ty -> ty = D *)
+        (* ty <: C -> ty = C,
+           N <: ty -> ty = N *)
         | Psy_var { v_id = v; }, Psy_scal S_const
         | Psy_scal S_nonconst, Psy_var { v_id = v; } ->
           let awakened_constraints = Waitlist.take_items waitlist v in
           unify c.loc lhs rhs;
           solve (awakened_constraints @ worklist)
 
-        (* S <: ty and ty <: D are always satisfied *)
+        (* C <: ty and ty <: N are always satisfied *)
         | Psy_var { v_id = _; }, Psy_scal S_nonconst
         | Psy_scal S_const, Psy_var { v_id = _; } ->
           solve worklist

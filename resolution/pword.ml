@@ -550,11 +550,11 @@ let buffer_size ?(consider_bypass = false) p1 p2 =
     if i > h then size
     else
       let x1, x2, n, w1, w2 = unfold_max_pword w1 w2 p1 p2 in
-      let o1 = o1 + x1 * n in
+      let o1' = o1 + x1 * n in
       let o2' = o2 + x2 * n in
-      assert (o1 >= o2); (* should be guaranteed by adaptability check *)
-      let size' = o1 - if consider_bypass then o2' else o2 in
-      walk w1 w2 o1 o2' (max size size') (i + n)
+      assert (o1' >= o2'); (* should be guaranteed by adaptability check *)
+      let size' = o1' - if consider_bypass then o2' else o2 in
+      walk w1 w2 o1' o2' (max size size') (i + n)
   in
 
   walk p1.u p2.u zero zero zero zero

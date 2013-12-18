@@ -86,7 +86,7 @@ let fby_translation find_pword e1 e2 =
           object
             method bui_is_delay = not e2.e_info#ei_relevant_deps
             method bui_size = Int.one
-            method bui_real_size = Int.one
+            method bui_real_size = Int.of_int 2
           end;
       }
     in

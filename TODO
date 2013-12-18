@@ -16,6 +16,7 @@ Compiler:
 - nir_of_acids: fix translation of free variables inside domains
 - tuple lowering is wrong, you have to box tuples when instantiating
 type variables.
+- rename "real size" of buffers to "nobypass size"
 
 Resolution:
 - Only compute causal solutions

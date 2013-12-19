@@ -19,7 +19,7 @@ let debug = ref false
 
 let check_transforms = ref false
 
-let print_full_info = ref false
+let print_all_info = ref false
 
 let print_data_info = ref false
 
@@ -35,7 +35,7 @@ let print_buffer_info = ref false
 
 let info_list =
   [
-    "full", print_full_info;
+    "all", print_all_info;
     "data", print_data_info;
     "const", print_const_info;
     "spec", print_spec_info;

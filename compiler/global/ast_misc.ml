@@ -166,7 +166,7 @@ let memoize_make_var make_var =
 (** Printing annotations *)
 
 let print_annot r prefix p fmt x =
-  if !Compiler_options.print_full_info || !r
+  if !Compiler_options.print_all_info || !r
   then Format.fprintf fmt "@ %s %a" prefix p x
   else ()
 

@@ -53,9 +53,9 @@ let print_clock fmt ck =
 let print_with_info print fmt ty ck x =
   Format.fprintf fmt "(@[";
   print fmt x;
-  if !Compiler_options.print_full_info || !Compiler_options.print_data_info
+  if !Compiler_options.print_all_info || !Compiler_options.print_data_info
   then Format.fprintf fmt "@ @[:type %a@]" print_ty ty;
-  if !Compiler_options.print_full_info || !Compiler_options.print_clock_info
+  if !Compiler_options.print_all_info || !Compiler_options.print_clock_info
   then Format.fprintf fmt "@ @[:clock %a@]" print_clock ck;
   Format.fprintf fmt "@])"
 
@@ -169,7 +169,7 @@ let rec print_eq_desc print_var fmt p =
 and print_eq print_var fmt eq =
   Format.fprintf fmt "@[(@[<v 2>";
   print_eq_desc print_var fmt eq.eq_desc;
-  if !Compiler_options.print_full_info || !Compiler_options.print_clock_info
+  if !Compiler_options.print_all_info || !Compiler_options.print_clock_info
   then
     Format.fprintf fmt "@ :base_clock %a" print_clock eq.eq_base_clock;
   Format.fprintf fmt "@]@,)@]"

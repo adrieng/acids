@@ -55,7 +55,7 @@ struct
 
   type app_info = { ai_is_const : bool; }
   let print_app_info fmt { ai_is_const = b; } =
-    if !Compiler_options.print_const_info || !Compiler_options.print_full_info
+    if !Compiler_options.print_const_info || !Compiler_options.print_all_info
     then Format.fprintf fmt " constity: %b" b
 
   type block_info = unit

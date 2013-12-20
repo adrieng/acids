@@ -25,6 +25,11 @@ let node f (x, y) = (x, y) when (true)
 let node g (x, y) = f (x when (true false), y when ({s})) where rec s = true
 
 $$
+
+let node nat_dom () =
+  (dom (o where rec o = 0 fby (o + 1)) :: 'a on (2))
+
+$$
 ${
 (*
         run_test:

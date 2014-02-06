@@ -1,4 +1,4 @@
-(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2013
+(* Copyright (C) Adrien Guatto <adrien.guatto@laposte.net> 2013-2014
  *
  * This file is part of Acid Synchrone.
  *

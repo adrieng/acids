@@ -166,6 +166,11 @@ let rec print_eq_desc print_var fmt p =
   | Block block ->
     print_block print_var fmt block
 
+  | Pword (x, p) ->
+    Format.fprintf fmt "%a = %a"
+      print_var x
+      Ast_misc.print_const_pword p
+
 and print_eq print_var fmt eq =
   Format.fprintf fmt "@[(@[<v 2>";
   print_eq_desc print_var fmt eq.eq_desc;

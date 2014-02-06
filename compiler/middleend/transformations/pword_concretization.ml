@@ -163,6 +163,7 @@ let rec walk env eq =
   match eq.eq_desc with
   | Var _
   | Const _
+  | Pword _ (* TODO handle *)
   | Call _
   | Buffer _
   | Delay _

@@ -139,6 +139,7 @@ let base_clock_var_eq env eq =
   match eq.eq_desc with
   | Var _
   | Const _
+  | Pword _
   | Merge _
   | Valof _
   | Delay _
@@ -239,7 +240,7 @@ let equation env eq =
     (* Unhandled at this level *)
     assert false
 
-  | Var _ | Const _ | Merge _ | Split _ | Valof _
+  | Var _ | Const _ | Pword _ | Merge _ | Split _ | Valof _
   | Buffer _ | Delay _ | Block _ ->
     let base_clock_var = base_clock_var_eq env eq in
     add_eq_to_its_node env base_clock_var eq

@@ -84,6 +84,7 @@ type 'a eq =
 and 'a eq_desc =
   | Var of 'a * 'a
   | Const of 'a * Ast_misc.const
+  | Pword of 'a * Ast_misc.const_pword
   | Call of 'a list * call * 'a list
   | Merge of 'a * 'a clock_exp * (Ast_misc.econstr * 'a) list
   | Split of 'a list * 'a clock_exp * 'a * Ast_misc.econstr list

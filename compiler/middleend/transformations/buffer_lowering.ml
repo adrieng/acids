@@ -90,7 +90,8 @@ let find_var_type env x =
 
 let rec eq env eq =
   match eq.eq_desc with
-  | Var _ | Const _ | Call _ | Merge _ | Split _ | Valof _ | Delay _ ->
+  | Var _ | Const _ | Pword _ | Call _ | Merge _ | Split _ | Valof _
+  | Delay _ ->
     env, Some eq
   | Block bl ->
     let env, bl = block env bl in

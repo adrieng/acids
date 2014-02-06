@@ -117,6 +117,8 @@ let rec map_eq_desc f proc =
     Delay (f x, f y)
   | Block block ->
     Block (map_block f block)
+  | Pword (x, p) ->
+    Pword (f x, p)
 
 and map_eq f eq = { eq with eq_desc = map_eq_desc f eq.eq_desc; }
 
@@ -131,7 +133,7 @@ let rec fold_eq_desc f proc acc =
     let acc = f y acc in
     let acc = f x acc in
     acc
-  | Const (x, _) ->
+  | Const (x, _) | Pword (x, _) ->
     f x acc
   | Call (x_l, _, y_l) ->
     let acc = List.fold_right f y_l acc in
@@ -165,7 +167,8 @@ let vars_block block = fold_block (fun v acc -> v :: acc) block []
 
 let rec block_count_eq count eq =
   match eq.eq_desc with
-  | Var _ | Const _ | Call _ | Merge _ | Split _ | Valof _ | Buffer _ | Delay _
+  | Var _ | Const _ | Pword _ | Call _ | Merge _ | Split _
+  | Valof _ | Buffer _ | Delay _
       ->
     count
   | Block block ->

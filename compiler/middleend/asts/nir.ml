@@ -117,6 +117,7 @@ type 'a eq =
 and 'a eq_desc =
   | Var of 'a * 'a (** x = y *)
   | Const of 'a * Ast_misc.const (** x = c *)
+  | Pword of 'a * Ast_misc.const_pword (** x = p *)
 
   | Call of 'a list * call * 'a list
   (** x_1, ..., x_n = OP(y_1, ..., y_m) *)

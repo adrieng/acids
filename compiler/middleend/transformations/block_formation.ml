@@ -141,6 +141,13 @@ let rec equation env eq =
     in
     form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
+  | Pword (x, p) ->
+    let mk_desc x_l _ =
+      let x = Utils.assert1 x_l in
+      Pword (x, p)
+    in
+    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+
   | Call (x_l, ({ a_op = Node (ln, Clock_id id); } as app), y_l) ->
     assert (id > Nir_utils.greatest_invalid_clock_id_int);
     let input_sts, output_sts =

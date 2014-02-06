@@ -42,59 +42,36 @@ type clock = clock_var Clock_types.raw_stream_type
 
 (** {3 Clock expressions} *)
 
-type 'a clock_exp =
+type clock_exp =
   {
-    ce_desc : 'a clock_exp_desc;
+    ce_desc : clock_exp_desc;
     ce_bounds : Interval.t;
     ce_data : Data_types.data_ty_scal;
     ce_clock : clock;
     ce_loc : Loc.t;
   }
 
-and 'a clock_exp_desc =
-  | Ce_condvar of 'a
+and clock_exp_desc =
+  | Ce_condvar of Ident.t
   | Ce_pword of Ast_misc.const_pword
-  | Ce_equal of 'a clock_exp * Ast_misc.econstr
+  | Ce_equal of clock_exp * Ast_misc.econstr
 
-(** {3 Equations} *)
+(** {2 Equations} *)
 
 type buffer_info =
   {
     b_delay : bool;
-    b_real_size : Int.t; (* disregard bypass *)
+    b_real_size : Int.t;
     b_size : Int.t;
   }
 
 type buffer_direction = Push | Pop
 
-(*
-  (1 0 1) <: (0 1 1) strict (instdep at step 3),
-  (1 0) <: (0 1) lazy (no instdep)
-
-  //
-
-  Strictness: instdep at some point, therefore do push before pop
-  -> pop must depend on push
-
-  b = strict_push(y)
-  x = strict_pop(b)
-
-  //
-
-  Laziness: no instdep, therefore do pop before push
-  -> push must depend on pop
-
-  (x, b) = lazy_pop()
-  () = lazy_push(b, y)
-*)
-
 type op =
   | Node of Names.longname * clock_id
-  (* node_name * base_clock_var_id, the latter being -1 if the call has not been
-     sliced yet *)
   | Box
   | Unbox
-  | Index (* static array indexing: first argument is index, rest is array *)
+  | Index
   | BufferAccess of buffer_direction * buffer_polarity
 
 type call =
@@ -103,47 +80,39 @@ type call =
     a_stream_inst : (int * Clock_types.stream_type) list;
   }
 
-type 'a merge_clause =
+type merge_clause =
   {
     c_sel : Ast_misc.econstr;
-    c_body : 'a;
+    c_body : Ident.t;
   }
 
-type 'a eq =
+type eq =
   {
-    eq_desc : 'a eq_desc;
+    eq_desc : eq_desc;
     eq_base_clock : clock;
     eq_loc : Loc.t;
   }
 
-and 'a eq_desc =
-  | Var of 'a * 'a (** x = y *)
-  | Const of 'a * Ast_misc.const (** x = c *)
-  | Pword of 'a * Ast_misc.const_pword (** x = p *)
+and eq_desc =
+  | Var of Ident.t * Ident.t
+  | Const of Ident.t * Ast_misc.const
+  | Pword of Ident.t * Ast_misc.const_pword
+  | Call of Ident.t list * call * Ident.t list
+  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
+  | Split of Ident.t list * clock_exp * Ident.t * Ast_misc.econstr list
+  | Valof of Ident.t * clock_exp
+  | Buffer of Ident.t * buffer_info * Ident.t
+  | Delay of Ident.t * Ident.t
+  | Block of block
 
-  | Call of 'a list * call * 'a list
-  (** x_1, ..., x_n = OP(y_1, ..., y_m) *)
-
-  | Merge of 'a * 'a clock_exp * (Ast_misc.econstr * 'a) list
-  (** x = merge ce (ec_1 -> y_1) ... (ec_n -> y_n) *)
-  | Split of 'a list * 'a clock_exp * 'a * Ast_misc.econstr list
-  (** x_1, ..., x_n = split y with ce by ec_1, ... ec_n *)
-
-  | Valof of 'a * 'a clock_exp (** x = valof ce *)
-
-  | Buffer of 'a * buffer_info * 'a (** x = buffer y *)
-  | Delay of 'a * 'a (** x = delay y *)
-
-  | Block of 'a block (** have to be scheduled together *)
-
-and 'a block =
+and block =
   {
     b_id : block_id;
-    b_body : 'a eq list;
+    b_body : eq list;
     b_loc : Loc.t;
   }
 
-(** {3 Nodes and files} *)
+(** {2 Nodes and files} *)
 
 type scope =
   | Scope_context
@@ -154,7 +123,7 @@ type annot =
   | Ann_clock of clock
   | Ann_spec of Ast_misc.spec
 
-type 'i var_dec =
+type var_dec =
   {
     v_name : Ident.t;
     v_data : ty;
@@ -162,26 +131,17 @@ type 'i var_dec =
     v_scope : scope;
     v_annots : annot list;
     v_loc : Loc.t;
-    v_info : 'i;
   }
 
-(*
-  Some notes: we suppose that in a node, the n_body block is always of
-  id 0.
-*)
-
-type 'i node =
+type node =
   {
     n_name : Names.shortname * clock_id;
     n_orig_info : Acids_causal.Info.node_info;
-
     n_input : Ident.t list;
     n_output : Ident.t list;
-
-    n_env : 'i var_dec Ident.Env.t;
+    n_env : var_dec Ident.Env.t;
     n_block_count : int;
-    n_body : Ident.t block;
-
+    n_body : block;
     n_loc : Loc.t;
   }
 
@@ -192,12 +152,12 @@ type type_def =
     ty_loc : Loc.t;
   }
 
-type ('var_info, 'file_info) file =
+type 'a file =
   {
     f_name : Names.shortname;
     f_type_defs : type_def list;
-    f_body : 'var_info node list;
-    f_info : 'file_info;
+    f_body : node list;
+    f_info : 'a;
   }
 
 (** {2 Creation/access function} *)
@@ -242,8 +202,7 @@ let make_var_dec
   name
   data
   clock
-  scope
-  info =
+  scope =
   {
     v_name = name;
     v_data = data;
@@ -251,5 +210,4 @@ let make_var_dec
     v_scope = scope;
     v_annots = annots;
     v_loc = loc;
-    v_info = info;
   }

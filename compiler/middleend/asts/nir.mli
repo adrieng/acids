@@ -38,19 +38,19 @@ type clock = clock_var Clock_types.raw_stream_type
 
 (** {3 Clock expressions} *)
 
-type 'a clock_exp =
+type clock_exp =
   {
-    ce_desc : 'a clock_exp_desc;
+    ce_desc : clock_exp_desc;
     ce_bounds : Interval.t;
     ce_data : Data_types.data_ty_scal;
     ce_clock : clock;
     ce_loc : Loc.t;
   }
 
-and 'a clock_exp_desc =
-  | Ce_condvar of 'a
+and clock_exp_desc =
+  | Ce_condvar of Ident.t
   | Ce_pword of Ast_misc.const_pword
-  | Ce_equal of 'a clock_exp * Ast_misc.econstr
+  | Ce_equal of clock_exp * Ast_misc.econstr
 
 (** {2 Equations} *)
 
@@ -76,37 +76,37 @@ type call =
     a_stream_inst : (int * Clock_types.stream_type) list;
   }
 
-type 'a merge_clause =
+type merge_clause =
   {
     c_sel : Ast_misc.econstr;
-    c_body : 'a;
+    c_body : Ident.t;
   }
 
-type 'a eq =
+type eq =
   private
     {
-      eq_desc : 'a eq_desc;
+      eq_desc : eq_desc;
       eq_base_clock : clock;
       eq_loc : Loc.t;
     }
 
-and 'a eq_desc =
-  | Var of 'a * 'a
-  | Const of 'a * Ast_misc.const
-  | Pword of 'a * Ast_misc.const_pword
-  | Call of 'a list * call * 'a list
-  | Merge of 'a * 'a clock_exp * (Ast_misc.econstr * 'a) list
-  | Split of 'a list * 'a clock_exp * 'a * Ast_misc.econstr list
-  | Valof of 'a * 'a clock_exp
-  | Buffer of 'a * buffer_info * 'a
-  | Delay of 'a * 'a
-  | Block of 'a block
+and eq_desc =
+  | Var of Ident.t * Ident.t
+  | Const of Ident.t * Ast_misc.const
+  | Pword of Ident.t * Ast_misc.const_pword
+  | Call of Ident.t list * call * Ident.t list
+  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
+  | Split of Ident.t list * clock_exp * Ident.t * Ast_misc.econstr list
+  | Valof of Ident.t * clock_exp
+  | Buffer of Ident.t * buffer_info * Ident.t
+  | Delay of Ident.t * Ident.t
+  | Block of block
 
-and 'a block =
+and block =
   private
     {
       b_id : block_id;
-      b_body : 'a eq list;
+      b_body : eq list;
       b_loc : Loc.t;
     }
 
@@ -121,7 +121,7 @@ type annot =
   | Ann_clock of clock
   | Ann_spec of Ast_misc.spec
 
-type 'i var_dec =
+type var_dec =
   private
     {
       v_name : Ident.t;
@@ -130,19 +130,18 @@ type 'i var_dec =
       v_scope : scope;
       v_annots : annot list;
       v_loc : Loc.t;
-      v_info : 'i;
     }
 
-type 'i node =
+type node =
   private
     {
       n_name : Names.shortname * clock_id;
       n_orig_info : Acids_causal.Info.node_info;
       n_input : Ident.t list;
       n_output : Ident.t list;
-      n_env : 'i var_dec Ident.Env.t;
+      n_env : var_dec Ident.Env.t;
       n_block_count : int;
-      n_body : Ident.t block;
+      n_body : block;
       n_loc : Loc.t;
     }
 
@@ -153,12 +152,12 @@ type type_def =
     ty_loc : Loc.t;
   }
 
-type ('var_info, 'file_info) file =
+type 'a file =
   {
     f_name : Names.shortname;
     f_type_defs : type_def list;
-    f_body : 'var_info node list;
-    f_info : 'file_info;
+    f_body : node list;
+    f_info : 'a;
   }
 
 (** {2 Creation/access function} *)
@@ -169,14 +168,14 @@ val make_node :
   Acids_causal.Info.node_info ->
   input:Ident.t list ->
   output:Ident.t list ->
-  env:'a var_dec Ident.Env.t ->
+  env:var_dec Ident.Env.t ->
   block_count:int ->
-  body : Ident.t block ->
-  'a node
+  body : block ->
+  node
 
-val make_block : ?loc:Loc.t -> block_id -> 'a eq list -> 'a block
+val make_block : ?loc:Loc.t -> block_id -> eq list -> block
 
-val make_eq : ?loc:Loc.t -> 'a eq_desc -> clock -> 'a eq
+val make_eq : ?loc:Loc.t -> eq_desc -> clock -> eq
 
 val make_var_dec :
   ?loc:Loc.t ->
@@ -185,5 +184,4 @@ val make_var_dec :
   ty ->
   clock ->
   scope ->
-  'a ->
-  'a var_dec
+  var_dec

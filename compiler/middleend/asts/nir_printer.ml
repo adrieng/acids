@@ -199,26 +199,22 @@ let print_annot fmt ann =
   | Ann_spec spec ->
     Format.fprintf fmt "(spec %a)" Ast_misc.print_spec spec
 
-let print_var_dec print_info fmt vd =
+let print_var_dec fmt vd =
   let print_plain fmt vd =
     Format.fprintf fmt "%a@ :scope %a@ :annots %a"
       Ident.print vd.v_name
       print_scope vd.v_scope
       (print_list print_annot) vd.v_annots
-    ;
-    match print_info with
-    | None -> ()
-    | Some print_info -> Format.fprintf fmt "@ :info %a" print_info vd.v_info
   in
   print_with_info print_plain fmt vd.v_data vd.v_clock vd
 
-let print_node print_info fmt node =
+let print_node fmt node =
   let print_env fmt env =
     let r = ref (Ident.Env.cardinal env) in
     let print_binding k v =
       Format.fprintf fmt "(%a %a)"
         Ident.print k
-        (print_var_dec print_info) v;
+        print_var_dec v;
       decr r;
       if !r > 0 then Format.fprintf fmt "@ "
     in
@@ -243,9 +239,9 @@ let print_type_def fmt td =
     Names.print_shortname td.ty_name
     (print_list Names.print_shortname) td.ty_body
 
-let print_file ?(print_info = None) fmt file =
+let print_file fmt file =
   Format.fprintf fmt
     "@[(@[<v 2>file@ :name %a@ :types %a@ :body %a@]@,)@]@\n"
     Names.print_shortname file.f_name
     (print_list print_type_def) file.f_type_defs
-    (print_list (print_node print_info)) file.f_body
+    (print_list print_node) file.f_body

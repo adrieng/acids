@@ -48,8 +48,8 @@ let make_call op inst ck x_l y_l =
 
 type ctx =
   {
-    c_eqs : Ident.t eq list;
-    c_vars : unit var_dec Ident.Env.t;
+    c_eqs : eq list;
+    c_vars : var_dec Ident.Env.t;
     c_first_free_block_id : int;
   }
 

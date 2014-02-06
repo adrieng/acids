@@ -42,7 +42,7 @@ type env =
     intf_env : Interface.env;
     local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
     current_block : int;
-    current_locals : unit Nir.var_dec Ident.Env.t;
+    current_locals : Nir.var_dec Ident.Env.t;
   }
 
 let initial_env intf_env =
@@ -195,7 +195,6 @@ let rec translate_pattern p (env, v_l) =
         ty
         ck
         (Nir.Scope_internal (get_current_block env))
-        ()
     in
     add_local env vd, v :: v_l
   | P_tuple p_l ->
@@ -281,7 +280,6 @@ let rec translate_eq_exp env x_l e =
           (translate_data_type e.e_info#ei_data)
           (translate_stream_type st)
           (Scope_internal (get_current_block env))
-          ()
       in
       Nir.Split ([x; v_unused],
                  nir_ce,
@@ -417,7 +415,7 @@ let file ctx (file : Acids_causal_utils.annotated_file) =
   let type_defs, node_defs, _ =
     List.fold_left translate_phrase ([], [], env) file.f_body
   in
-  let nir_file : (unit, Interface.env) Nir.file =
+  let nir_file : Interface.env Nir.file =
     {
       Nir.f_name = file.f_name;
       Nir.f_type_defs = List.rev type_defs;

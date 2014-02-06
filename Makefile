@@ -46,8 +46,6 @@ $(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
                                -I compiler/middleend/transformations \
                                -I compiler/backend
 
-$(SOLVER): OCAMLBUILDOPTS += -I mllp -I resolution
-
 %.conflicts: %.mly
 	ocamlbuild $(OCAMLBUILDOPTS) $@
 

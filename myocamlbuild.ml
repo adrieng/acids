@@ -2,7 +2,7 @@ open Ocamlbuild_plugin
 open Ocamlbuild_plugin.Options
 
 let make_menhir_options ocamlc_opts =
-  (S [A"--explain"; A"--table"])
+  (S [A "--explain"; A "--table"])
       (* A "--ocamlc"; Quote (S [!Options.ocamlc; (\* hack: use zarith *\) *)
       (*                         Sh "-package zarith"; *)
       (*                         S ocamlc_opts])]) *)

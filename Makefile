@@ -32,19 +32,23 @@ all: $(TARGETS) lib
 doc:
 	$(MAKE) -C doc
 
-$(COMPILER): OCAMLBUILDOPTS += -I compiler/global \
-                               -I compiler/frontend \
-                               -I compiler/frontend/asts \
-                               -I compiler/frontend/parsing \
-                               -I compiler/frontend/misc_passes \
-                               -I compiler/frontend/typing \
-                               -I compiler/frontend/lowering \
-                               -I compiler/frontend/utils \
-                               -I compiler/middleend \
-                               -I compiler/middleend/asts \
-                               -I compiler/middleend/utils \
-                               -I compiler/middleend/transformations \
-                               -I compiler/backend
+# In theory, the following options should only be passed to ocamlbuild
+# when building asc. In practice, giving different options when building
+# solve and asc causes systematic full rebuilds. To avoid this, I currently
+# add these directories to all commands (which is very unsatisfying).
+OCAMLBUILDOPTS += -I compiler/global \
+                  -I compiler/frontend \
+                  -I compiler/frontend/asts \
+                  -I compiler/frontend/parsing \
+                  -I compiler/frontend/misc_passes \
+                  -I compiler/frontend/typing \
+                  -I compiler/frontend/lowering \
+                  -I compiler/frontend/utils \
+                  -I compiler/middleend \
+                  -I compiler/middleend/asts \
+                  -I compiler/middleend/utils \
+                  -I compiler/middleend/transformations \
+                  -I compiler/backend
 
 %.conflicts: %.mly
 	ocamlbuild $(OCAMLBUILDOPTS) $@

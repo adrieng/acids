@@ -17,11 +17,13 @@
 
 (** {1 AST for the middle-end} *)
 
+(** {2 Type definitions} *)
+
 type block_id = Block_id of int
 
 type clock_id = Clock_id of int
 
-(** {2 Simple data types} *)
+(** {3 Simple data types} *)
 
 type buffer_polarity = Strict | Lazy
 
@@ -38,7 +40,7 @@ type clock_var =
 
 type clock = clock_var Clock_types.raw_stream_type
 
-(** {2 Clock expressions} *)
+(** {3 Clock expressions} *)
 
 type 'a clock_exp =
   {
@@ -54,7 +56,7 @@ and 'a clock_exp_desc =
   | Ce_pword of Ast_misc.const_pword
   | Ce_equal of 'a clock_exp * Ast_misc.econstr
 
-(** {2 Equations} *)
+(** {3 Equations} *)
 
 type buffer_info =
   {
@@ -141,7 +143,7 @@ and 'a block =
     b_loc : Loc.t;
   }
 
-(** {2 Nodes and files} *)
+(** {3 Nodes and files} *)
 
 type scope =
   | Scope_context
@@ -196,4 +198,58 @@ type ('var_info, 'file_info) file =
     f_type_defs : type_def list;
     f_body : 'var_info node list;
     f_info : 'file_info;
+  }
+
+(** {2 Creation/access function} *)
+
+let make_node
+    ?(loc = Loc.dummy)
+    name
+    orig_info
+    ~input
+    ~output
+    ~env
+    ~block_count
+    ~body =
+  {
+    n_name = name;
+    n_orig_info = orig_info;
+    n_input = input;
+    n_output = output;
+    n_env = env;
+    n_body = body;
+    n_block_count = block_count;
+    n_loc = loc;
+  }
+
+let make_block ?(loc = Loc.dummy) id body =
+  {
+    b_id = id;
+    b_body = body;
+    b_loc = loc;
+  }
+
+let make_eq ?(loc = Loc.dummy) body base_clock =
+  {
+    eq_desc = body;
+    eq_base_clock = base_clock;
+    eq_loc = loc;
+  }
+
+let make_var_dec
+  ?(loc = Loc.dummy)
+  ?(annots = [])
+  name
+  data
+  clock
+  scope
+  info =
+  {
+    v_name = name;
+    v_data = data;
+    v_clock = clock;
+    v_scope = scope;
+    v_annots = annots;
+    v_loc = loc;
+    v_info = info;
   }

@@ -188,15 +188,14 @@ let rec translate_pattern p (env, v_l) =
     let ty = translate_data_type p.p_info#pi_data in
     let ck = translate_clock_type p.p_info#pi_clock in
     let vd =
-      {
-        Nir.v_name = v;
-        Nir.v_data = ty;
-        Nir.v_clock = ck;
-        Nir.v_scope = Nir.Scope_internal (get_current_block env);
-        Nir.v_annots = annots;
-        Nir.v_loc = p.p_loc;
-        Nir.v_info = ();
-      }
+      Nir.make_var_dec
+        ~loc:p.p_loc
+        ~annots
+        v
+        ty
+        ck
+        (Nir.Scope_internal (get_current_block env))
+        ()
     in
     add_local env vd, v :: v_l
   | P_tuple p_l ->
@@ -277,15 +276,12 @@ let rec translate_eq_exp env x_l e =
           Clock_types.St_on (ce.ce_info#ci_clock,
                              clock_clock_exp_of_clock_exp nir_ce)
         in
-        {
-          v_name = v_unused;
-          v_data = translate_data_type e.e_info#ei_data;
-          v_clock = translate_stream_type st;
-          v_scope = Scope_internal (get_current_block env);
-          v_info = ();
-          v_annots = [];
-          v_loc = Loc.dummy;
-        }
+        Nir.make_var_dec
+          v_unused
+          (translate_data_type e.e_info#ei_data)
+          (translate_stream_type st)
+          (Scope_internal (get_current_block env))
+          ()
       in
       Nir.Split ([x; v_unused],
                  nir_ce,
@@ -356,11 +352,10 @@ let rec translate_eq_exp env x_l e =
       env
   in
   env,
-  {
-    Nir.eq_desc = eqd;
-    Nir.eq_base_clock = bck;
-    Nir.eq_loc = e.e_loc;
-  }
+  Nir.make_eq
+    ~loc:e.e_loc
+    eqd
+    bck
 
 and translate_eq env eq =
   match eq.eq_desc with
@@ -374,11 +369,10 @@ and translate_block env e =
   match e.e_desc with
   | E_where (out, block) ->
     let env, body = Utils.mapfold_left translate_eq env block.b_body in
-    {
-      Nir.b_id = get_current_block env;
-      Nir.b_body = body;
-      Nir.b_loc = e.e_loc;
-    },
+    Nir.make_block
+      ~loc:e.e_loc
+      (get_current_block env)
+      body,
     var_list_of_tuple out,
     env
   | _ ->
@@ -388,18 +382,17 @@ and translate_block env e =
 
 let translate_node_def env nd =
   Ident.set_current_ctx nd.n_info#ni_ctx;
-  let env, inputs = translate_pattern nd.n_input (env, []) in
-  let block, outputs, env = translate_block env nd.n_body in
-  {
-    Nir.n_name = nd.n_name, Nir_utils.greatest_invalid_clock_id;
-    Nir.n_orig_info = nd.n_info;
-    Nir.n_input = inputs;
-    Nir.n_output = outputs;
-    Nir.n_env = get_locals env;
-    Nir.n_block_count = get_current_block_count env;
-    Nir.n_body = block;
-    Nir.n_loc = nd.n_loc;
-  }
+  let env, input = translate_pattern nd.n_input (env, []) in
+  let block, output, env = translate_block env nd.n_body in
+  Nir.make_node
+    ~loc:nd.n_loc
+    (nd.n_name, Nir_utils.greatest_invalid_clock_id)
+    nd.n_info
+    ~input
+    ~output
+    ~env:(get_locals env)
+    ~block_count:(get_current_block_count env)
+    ~body:block
 
 let translate_type_def td =
   {

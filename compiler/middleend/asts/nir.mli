@@ -15,11 +15,15 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+(** {2 Type definitions} *)
+
 type block_id = Block_id of int
 
 type clock_id = Clock_id of int
 
 type buffer_polarity = Strict | Lazy
+
+(** {3 Simple data types} *)
 
 type ty =
   | Ty_var of int
@@ -31,6 +35,8 @@ type ty =
 type clock_var = Cv_clock of clock_id | Cv_block of block_id
 
 type clock = clock_var Clock_types.raw_stream_type
+
+(** {3 Clock expressions} *)
 
 type 'a clock_exp =
   {
@@ -45,6 +51,8 @@ and 'a clock_exp_desc =
   | Ce_condvar of 'a
   | Ce_pword of Ast_misc.const_pword
   | Ce_equal of 'a clock_exp * Ast_misc.econstr
+
+(** {2 Equations} *)
 
 type buffer_info =
   {
@@ -75,11 +83,12 @@ type 'a merge_clause =
   }
 
 type 'a eq =
-  {
-    eq_desc : 'a eq_desc;
-    eq_base_clock : clock;
-    eq_loc : Loc.t;
-  }
+  private
+    {
+      eq_desc : 'a eq_desc;
+      eq_base_clock : clock;
+      eq_loc : Loc.t;
+    }
 
 and 'a eq_desc =
   | Var of 'a * 'a
@@ -94,11 +103,14 @@ and 'a eq_desc =
   | Block of 'a block
 
 and 'a block =
-  {
-    b_id : block_id;
-    b_body : 'a eq list;
-    b_loc : Loc.t;
-  }
+  private
+    {
+      b_id : block_id;
+      b_body : 'a eq list;
+      b_loc : Loc.t;
+    }
+
+(** {2 Nodes and files} *)
 
 type scope =
   | Scope_context
@@ -110,27 +122,29 @@ type annot =
   | Ann_spec of Ast_misc.spec
 
 type 'i var_dec =
-  {
-    v_name : Ident.t;
-    v_data : ty;
-    v_clock : clock;
-    v_scope : scope;
-    v_annots : annot list;
-    v_loc : Loc.t;
-    v_info : 'i;
-  }
+  private
+    {
+      v_name : Ident.t;
+      v_data : ty;
+      v_clock : clock;
+      v_scope : scope;
+      v_annots : annot list;
+      v_loc : Loc.t;
+      v_info : 'i;
+    }
 
 type 'i node =
-  {
-    n_name : Names.shortname * clock_id;
-    n_orig_info : Acids_causal.Info.node_info;
-    n_input : Ident.t list;
-    n_output : Ident.t list;
-    n_env : 'i var_dec Ident.Env.t;
-    n_block_count : int;
-    n_body : Ident.t block;
-    n_loc : Loc.t;
-  }
+  private
+    {
+      n_name : Names.shortname * clock_id;
+      n_orig_info : Acids_causal.Info.node_info;
+      n_input : Ident.t list;
+      n_output : Ident.t list;
+      n_env : 'i var_dec Ident.Env.t;
+      n_block_count : int;
+      n_body : Ident.t block;
+      n_loc : Loc.t;
+    }
 
 type type_def =
   {
@@ -146,3 +160,30 @@ type ('var_info, 'file_info) file =
     f_body : 'var_info node list;
     f_info : 'file_info;
   }
+
+(** {2 Creation/access function} *)
+
+val make_node :
+  ?loc:Loc.t ->
+  Names.shortname * clock_id ->
+  Acids_causal.Info.node_info ->
+  input:Ident.t list ->
+  output:Ident.t list ->
+  env:'a var_dec Ident.Env.t ->
+  block_count:int ->
+  body : Ident.t block ->
+  'a node
+
+val make_block : ?loc:Loc.t -> block_id -> 'a eq list -> 'a block
+
+val make_eq : ?loc:Loc.t -> 'a eq_desc -> clock -> 'a eq
+
+val make_var_dec :
+  ?loc:Loc.t ->
+  ?annots:annot list ->
+  Ident.t ->
+  ty ->
+  clock ->
+  scope ->
+  'a ->
+  'a var_dec

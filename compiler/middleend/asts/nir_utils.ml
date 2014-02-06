@@ -19,17 +19,6 @@ open Nir
 
 (** Construction functions *)
 
-let make_var ?(loc = Loc.dummy) x data_ty ck scope annots =
-  {
-    v_name = x;
-    v_data = data_ty;
-    v_clock = ck;
-    v_scope = scope;
-    v_annots = annots;
-    v_loc = loc;
-    v_info = ();
-  }
-
 let make_clock_exp ?bounds ?(loc = Loc.dummy) desc data clock =
   let bounds =
     match bounds with
@@ -47,29 +36,12 @@ let make_clock_exp ?bounds ?(loc = Loc.dummy) desc data clock =
     ce_loc = loc;
   }
 
-let make_eq desc ck =
-  {
-    eq_desc = desc;
-    eq_base_clock = ck;
-    eq_loc = Loc.dummy;
-  }
-
 let make_call op inst ck x_l y_l =
   make_eq
     (Call
        (x_l,
         { a_op = op; a_stream_inst = inst; },
         y_l))
-    ck
-
-let make_block ?(loc = Loc.dummy) id body ck =
-  make_eq
-    (Block
-       {
-         b_id = id;
-         b_body = body;
-         b_loc = loc;
-       })
     ck
 
 (** Node context to add equations / variables / blocks *)
@@ -94,36 +66,6 @@ let get_fresh_block_id ctx =
   { ctx with c_first_free_block_id = ctx.c_first_free_block_id + 1; }
 
 (** Iterators *)
-
-(* Map *)
-
-let rec map_eq_desc f proc =
-  match proc with
-  | Var (x, y) ->
-    Var (f x, f y)
-  | Const (x, cst) ->
-    Const (f x, cst)
-  | Call (x_l, app, y_l) ->
-    Call (List.map f x_l, app, List.map f y_l)
-  | Merge (x, ce, c_l) ->
-    Merge (f x, ce, List.map (fun (ec, c) -> ec, f c) c_l)
-  | Split (x_l, ce, y, ec_l) ->
-    Split (List.map f x_l, ce, f y, ec_l)
-  | Valof (x, ce) ->
-    Valof (f x, ce)
-  | Buffer (x, bu, y) ->
-    Buffer (f x, bu, f y)
-  | Delay (x, y) ->
-    Delay (f x, f y)
-  | Block block ->
-    Block (map_block f block)
-  | Pword (x, p) ->
-    Pword (f x, p)
-
-and map_eq f eq = { eq with eq_desc = map_eq_desc f eq.eq_desc; }
-
-and map_block f block =
-  { block with b_body = List.map (map_eq f) block.b_body; }
 
 (* Fold *)
 

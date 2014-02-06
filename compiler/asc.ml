@@ -92,10 +92,10 @@ let flow =
   +>+ Lower.pass
   +>+ Nir_of_acids.pass
   (* Middle-end *)
-  +>+ Clock_slicing.pass
-  +>+ Block_formation.pass
-  +>+ Pword_concretization.pass
-  +>+ Buffer_lowering.pass
+  (* +>+ Clock_slicing.pass *)
+  (* +>+ Block_formation.pass *)
+  (* +>+ Pword_concretization.pass *)
+  (* +>+ Buffer_lowering.pass *)
 
 (*****************************************************************************)
 (* File handling *)

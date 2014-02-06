@@ -15,40 +15,43 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Nir
+module Make(A : Nir.A) =
+struct
+  open A
 
-(** {2 Utilities} *)
+  (** {2 Utilities} *)
 
-let node_invariant invar =
-  Pass_manager.prop
-    (fun _ file ->
-      let check_invar node =
-        try invar node
-        with Failure reason ->
-          failwith
-            (Printf.sprintf "Node %s: %s"
-               (Utils.print_to_string Nir_utils.print_sliced_name node.n_name)
-               reason)
-      in
-      try List.iter check_invar file.f_body; None
-      with Failure msg -> Some msg)
+  let node_invariant invar =
+    Pass_manager.prop
+      (fun _ file ->
+        let check_invar node =
+          try invar node
+          with Failure reason ->
+            failwith
+              (Printf.sprintf "Node %s: %s"
+                 (Utils.print_to_string I.print_node_name node.n_name)
+                 reason)
+        in
+        try List.iter check_invar file.f_body; None
+        with Failure msg -> Some msg)
 
-(** {2 Scoping} *)
+  (** {2 Scoping} *)
 
-let all_vars_well_def node =
-  let vars = Nir_utils.vars_block node.n_body in
-  let check v =
-    if not (Ident.Env.mem v node.n_env)
-    then failwith ("unknown variable " ^ Ident.to_string v)
-  in
-  List.iter check vars
+  (* let all_vars_well_def node = *)
+  (*   let vars = Nir_utils.vars_block node.n_body in *)
+  (*   let check v = *)
+  (*     if not (Ident.Env.mem v node.n_env) *)
+  (*     then failwith ("unknown variable " ^ Ident.to_string v) *)
+  (*   in *)
+  (*   List.iter check vars *)
 
-(** {2 Putting it all together} *)
+  (** {2 Putting it all together} *)
 
-let all : Interface.env Nir.file Pass_manager.prop =
-  let invars =
-    [
-      all_vars_well_def;
-    ]
-  in
-  Pass_manager.(Utils.fold_left_1 both (List.map node_invariant invars))
+  let all : Interface.env file Pass_manager.prop =
+    let invars =
+      [
+        (* all_vars_well_def; *)
+      ]
+    in
+    Pass_manager.(Utils.fold_left_1 both (List.map node_invariant invars))
+end

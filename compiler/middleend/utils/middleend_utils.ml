@@ -15,17 +15,21 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Nir
+module Make(A : Nir.A) =
+struct
+  open A
+  module P = Nir_printer.Make(A)
 
-let map_to_nodes f_node ctx (file : Interface.env Nir.file) =
-  ctx, { file with f_body = List.map f_node file.f_body; }
+  let map_to_nodes f_node ctx (file : Interface.env file) =
+    ctx, { file with f_body = List.map f_node file.f_body; }
 
-let make_transform name tr =
-  let open Pass_manager in
-  P_transform
-    (make_transform
-       ~ext:"nir"
-       ~print_out:Nir_printer.print_file
-       ~guarantee:Nir_invariants.all
-       name
-       tr)
+  let make_transform name tr =
+    let open Pass_manager in
+    P_transform
+      (make_transform
+         ~ext:"nir"
+         ~print_out:P.print_file
+         (* ~guarantee:Nir_invariants.all *)
+         name
+         tr)
+end

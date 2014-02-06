@@ -15,85 +15,92 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-(** {1 AST for the middle-end} *)
+module type S =
+sig
+  type node_name
+  val print_node_name : Format.formatter -> node_name -> unit
+end
 
-(** {2 Type definitions} *)
+module type A =
+sig
+  module I : S
 
-type block_id = Block_id of int
+  (** {2 Type definitions} *)
 
-type clock_id = Clock_id of int
+  type block_id = Block_id of int
 
-(** {3 Simple data types} *)
+  type clock_id = Clock_id of int
 
-type buffer_polarity = Strict | Lazy
+  type buffer_polarity = Strict | Lazy
 
-type ty =
+  (** {3 Simple data types} *)
+
+  type ty =
   | Ty_var of int
   | Ty_scal of Data_types.data_ty_scal
   | Ty_boxed
   | Ty_clock
-  | Ty_buffer of ty * Int.t * buffer_polarity (* data ty * size *)
+  | Ty_buffer of ty * Int.t * buffer_polarity
 
-type clock_var =
-  | Cv_clock of clock_id
-  | Cv_block of block_id
+  type clock_var = Cv_clock of clock_id | Cv_block of block_id
 
-type clock = clock_var Clock_types.raw_stream_type
+  type clock = clock_var Clock_types.raw_stream_type
 
-(** {3 Clock expressions} *)
+  (** {3 Clock expressions} *)
 
-type clock_exp =
-  {
-    ce_desc : clock_exp_desc;
-    ce_bounds : Interval.t;
-    ce_data : Data_types.data_ty_scal;
-    ce_clock : clock;
-    ce_loc : Loc.t;
-  }
+  type clock_exp =
+    {
+      ce_desc : clock_exp_desc;
+      ce_bounds : Interval.t;
+      ce_data : Data_types.data_ty_scal;
+      ce_clock : clock;
+      ce_loc : Loc.t;
+    }
 
-and clock_exp_desc =
+  and clock_exp_desc =
   | Ce_condvar of Ident.t
   | Ce_pword of Ast_misc.const_pword
   | Ce_equal of clock_exp * Ast_misc.econstr
 
-(** {2 Equations} *)
+  (** {2 Equations} *)
 
-type buffer_info =
-  {
-    b_delay : bool;
-    b_real_size : Int.t;
-    b_size : Int.t;
-  }
+  type buffer_info =
+    {
+      b_delay : bool;
+      b_real_size : Int.t;
+      b_size : Int.t;
+    }
 
-type buffer_direction = Push | Pop
+  type buffer_direction = Push | Pop
 
-type op =
-  | Node of Names.longname * clock_id
+  type op =
+  | Node of I.node_name
   | Box
   | Unbox
   | Index
   | BufferAccess of buffer_direction * buffer_polarity
 
-type call =
-  {
-    a_op : op;
-    a_stream_inst : (int * Clock_types.stream_type) list;
-  }
+  type call =
+    {
+      a_op : op;
+      a_stream_inst : (int * Clock_types.stream_type) list;
+    }
 
-type merge_clause =
-  {
-    c_sel : Ast_misc.econstr;
-    c_body : Ident.t;
-  }
+  type merge_clause =
+    {
+      c_sel : Ast_misc.econstr;
+      c_body : Ident.t;
+    }
 
-type eq =
-  {
-    eq_desc : eq_desc;
-    eq_base_clock : clock;
-    eq_loc : Loc.t;
-  }
+  type eq =
+    private
+      {
+        eq_desc : eq_desc;
+        eq_base_clock : clock;
+        eq_loc : Loc.t;
+      }
 
-and eq_desc =
+  and eq_desc =
   | Var of Ident.t * Ident.t
   | Const of Ident.t * Ast_misc.const
   | Pword of Ident.t * Ast_misc.const_pword
@@ -105,109 +112,289 @@ and eq_desc =
   | Delay of Ident.t * Ident.t
   | Block of block
 
-and block =
-  {
-    b_id : block_id;
-    b_body : eq list;
-    b_loc : Loc.t;
-  }
+  and block =
+    private
+      {
+        b_id : block_id;
+        b_body : eq list;
+        b_loc : Loc.t;
+      }
 
-(** {2 Nodes and files} *)
+  (** {2 Nodes and files} *)
 
-type scope =
+  type scope =
   | Scope_context
   | Scope_internal of block_id
 
-type annot =
+  type annot =
   | Ann_type of ty
   | Ann_clock of clock
   | Ann_spec of Ast_misc.spec
 
-type var_dec =
-  {
-    v_name : Ident.t;
-    v_data : ty;
-    v_clock : clock;
-    v_scope : scope;
-    v_annots : annot list;
-    v_loc : Loc.t;
-  }
+  type var_dec =
+    private
+      {
+        v_name : Ident.t;
+        v_data : ty;
+        v_clock : clock;
+        v_scope : scope;
+        v_annots : annot list;
+        v_loc : Loc.t;
+      }
 
-type node =
-  {
-    n_name : Names.shortname * clock_id;
-    n_orig_info : Acids_causal.Info.node_info;
-    n_input : Ident.t list;
-    n_output : Ident.t list;
-    n_env : var_dec Ident.Env.t;
-    n_block_count : int;
-    n_body : block;
-    n_loc : Loc.t;
-  }
+  type node =
+    private
+      {
+        n_name : I.node_name;
+        n_orig_info : Acids_causal.Info.node_info;
+        n_input : Ident.t list;
+        n_output : Ident.t list;
+        n_env : var_dec Ident.Env.t;
+        n_block_count : int;
+        n_body : block;
+        n_loc : Loc.t;
+      }
 
-type type_def =
-  {
-    ty_name : Names.shortname;
-    ty_body : Names.shortname list;
-    ty_loc : Loc.t;
-  }
+  type type_def =
+    {
+      ty_name : Names.shortname;
+      ty_body : Names.shortname list;
+      ty_loc : Loc.t;
+    }
 
-type 'a file =
-  {
-    f_name : Names.shortname;
-    f_type_defs : type_def list;
-    f_body : node list;
-    f_info : 'a;
-  }
+  type 'a file =
+    {
+      f_name : Names.shortname;
+      f_type_defs : type_def list;
+      f_body : node list;
+      f_info : 'a;
+    }
+
+  (** {2 Creation/access function} *)
+
+  val make_node :
+    ?loc:Loc.t ->
+    I.node_name ->
+    Acids_causal.Info.node_info ->
+    input:Ident.t list ->
+    output:Ident.t list ->
+    env:var_dec Ident.Env.t ->
+    block_count:int ->
+    body : block ->
+    node
+
+  val make_block : ?loc:Loc.t -> block_id -> eq list -> block
+
+  val make_eq : ?loc:Loc.t -> eq_desc -> clock -> eq
+
+  val make_var_dec :
+    ?loc:Loc.t ->
+    ?annots:annot list ->
+    Ident.t ->
+    ty ->
+    clock ->
+    scope ->
+    var_dec
+end
+
+module Make(S : S) =
+struct
+  module I = S
+
+(** {1 AST for the middle-end} *)
+
+(** {2 Type definitions} *)
+
+  type block_id = Block_id of int
+
+  type clock_id = Clock_id of int
+
+(** {3 Simple data types} *)
+
+  type buffer_polarity = Strict | Lazy
+
+  type ty =
+  | Ty_var of int
+  | Ty_scal of Data_types.data_ty_scal
+  | Ty_boxed
+  | Ty_clock
+  | Ty_buffer of ty * Int.t * buffer_polarity (* data ty * size *)
+
+  type clock_var =
+  | Cv_clock of clock_id
+  | Cv_block of block_id
+
+  type clock = clock_var Clock_types.raw_stream_type
+
+(** {3 Clock expressions} *)
+
+  type clock_exp =
+    {
+      ce_desc : clock_exp_desc;
+      ce_bounds : Interval.t;
+      ce_data : Data_types.data_ty_scal;
+      ce_clock : clock;
+      ce_loc : Loc.t;
+    }
+
+  and clock_exp_desc =
+  | Ce_condvar of Ident.t
+  | Ce_pword of Ast_misc.const_pword
+  | Ce_equal of clock_exp * Ast_misc.econstr
+
+(** {2 Equations} *)
+
+  type buffer_info =
+    {
+      b_delay : bool;
+      b_real_size : Int.t;
+      b_size : Int.t;
+    }
+
+  type buffer_direction = Push | Pop
+
+  type op =
+  | Node of I.node_name
+  | Box
+  | Unbox
+  | Index
+  | BufferAccess of buffer_direction * buffer_polarity
+
+  type call =
+    {
+      a_op : op;
+      a_stream_inst : (int * Clock_types.stream_type) list;
+    }
+
+  type merge_clause =
+    {
+      c_sel : Ast_misc.econstr;
+      c_body : Ident.t;
+    }
+
+  type eq =
+    {
+      eq_desc : eq_desc;
+      eq_base_clock : clock;
+      eq_loc : Loc.t;
+    }
+
+  and eq_desc =
+  | Var of Ident.t * Ident.t
+  | Const of Ident.t * Ast_misc.const
+  | Pword of Ident.t * Ast_misc.const_pword
+  | Call of Ident.t list * call * Ident.t list
+  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
+  | Split of Ident.t list * clock_exp * Ident.t * Ast_misc.econstr list
+  | Valof of Ident.t * clock_exp
+  | Buffer of Ident.t * buffer_info * Ident.t
+  | Delay of Ident.t * Ident.t
+  | Block of block
+
+  and block =
+    {
+      b_id : block_id;
+      b_body : eq list;
+      b_loc : Loc.t;
+    }
+
+(** {2 Nodes and files} *)
+
+  type scope =
+  | Scope_context
+  | Scope_internal of block_id
+
+  type annot =
+  | Ann_type of ty
+  | Ann_clock of clock
+  | Ann_spec of Ast_misc.spec
+
+  type var_dec =
+    {
+      v_name : Ident.t;
+      v_data : ty;
+      v_clock : clock;
+      v_scope : scope;
+      v_annots : annot list;
+      v_loc : Loc.t;
+    }
+
+  type node =
+    {
+      n_name : I.node_name;
+      n_orig_info : Acids_causal.Info.node_info;
+      n_input : Ident.t list;
+      n_output : Ident.t list;
+      n_env : var_dec Ident.Env.t;
+      n_block_count : int;
+      n_body : block;
+      n_loc : Loc.t;
+    }
+
+  type type_def =
+    {
+      ty_name : Names.shortname;
+      ty_body : Names.shortname list;
+      ty_loc : Loc.t;
+    }
+
+  type 'a file =
+    {
+      f_name : Names.shortname;
+      f_type_defs : type_def list;
+      f_body : node list;
+      f_info : 'a;
+    }
 
 (** {2 Creation/access function} *)
 
-let make_node
-    ?(loc = Loc.dummy)
-    name
-    orig_info
-    ~input
-    ~output
-    ~env
-    ~block_count
-    ~body =
-  {
-    n_name = name;
-    n_orig_info = orig_info;
-    n_input = input;
-    n_output = output;
-    n_env = env;
-    n_body = body;
-    n_block_count = block_count;
-    n_loc = loc;
-  }
+  let make_node
+      ?(loc = Loc.dummy)
+      name
+      orig_info
+      ~input
+      ~output
+      ~env
+      ~block_count
+      ~body =
+    {
+      n_name = name;
+      n_orig_info = orig_info;
+      n_input = input;
+      n_output = output;
+      n_env = env;
+      n_body = body;
+      n_block_count = block_count;
+      n_loc = loc;
+    }
 
-let make_block ?(loc = Loc.dummy) id body =
-  {
-    b_id = id;
-    b_body = body;
-    b_loc = loc;
-  }
+  let make_block ?(loc = Loc.dummy) id body =
+    {
+      b_id = id;
+      b_body = body;
+      b_loc = loc;
+    }
 
-let make_eq ?(loc = Loc.dummy) body base_clock =
-  {
-    eq_desc = body;
-    eq_base_clock = base_clock;
-    eq_loc = loc;
-  }
+  let make_eq ?(loc = Loc.dummy) body base_clock =
+    {
+      eq_desc = body;
+      eq_base_clock = base_clock;
+      eq_loc = loc;
+    }
 
-let make_var_dec
-  ?(loc = Loc.dummy)
-  ?(annots = [])
-  name
-  data
-  clock
-  scope =
-  {
-    v_name = name;
-    v_data = data;
-    v_clock = clock;
-    v_scope = scope;
-    v_annots = annots;
-    v_loc = loc;
-  }
+  let make_var_dec
+      ?(loc = Loc.dummy)
+      ?(annots = [])
+      name
+      data
+      clock
+      scope =
+    {
+      v_name = name;
+      v_data = data;
+      v_clock = clock;
+      v_scope = scope;
+      v_annots = annots;
+      v_loc = loc;
+    }
+end

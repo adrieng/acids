@@ -15,49 +15,48 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+(** {2 Stand-alone type definitions} *)
+
+type idents = Ident.t list
+
+type buffer_polarity = Strict | Lazy
+
+type block_id = Block_id of int
+
+type ty =
+| Ty_var of int
+| Ty_scal of Data_types.data_ty_scal
+| Ty_boxed
+| Ty_clock
+| Ty_buffer of ty * Int.t * buffer_polarity
+
+type buffer_info =
+  {
+    b_delay : bool;
+    b_real_size : Int.t;
+    b_size : Int.t;
+  }
+
+type buffer_direction = Push | Pop
+
+(** {2 NIR itself} *)
+
 module type S =
 sig
   type node_name
   val print_node_name : Format.formatter -> node_name -> unit
+
+  type clock_var
+  val print_clock_var : Format.formatter -> clock_var -> unit
 end
 
 module type A =
 sig
   module I : S
 
-  (** {2 Type definitions} *)
-
-  type idents = Ident.t list
-
-  type block_id = Block_id of int
-
-  type clock_id = Clock_id of int
-
-  type buffer_polarity = Strict | Lazy
-
-  (** {3 Simple data types} *)
-
-  type ty =
-  | Ty_var of int
-  | Ty_scal of Data_types.data_ty_scal
-  | Ty_boxed
-  | Ty_clock
-  | Ty_buffer of ty * Int.t * buffer_polarity
-
-  type clock_var = Cv_clock of clock_id | Cv_block of block_id
-
-  type clock = clock_var Clock_types.raw_stream_type
+  type clock = I.clock_var Clock_types.raw_stream_type
 
   (** {2 Equations} *)
-
-  type buffer_info =
-    {
-      b_delay : bool;
-      b_real_size : Int.t;
-      b_size : Int.t;
-    }
-
-  type buffer_direction = Push | Pop
 
   type op =
   | Node of I.node_name
@@ -184,43 +183,9 @@ module Make(S : S) =
 struct
   module I = S
 
-  (** {1 AST for the middle-end} *)
-
-  (** {2 Type definitions} *)
-
-  type idents = Ident.t list
-
-  type block_id = Block_id of int
-
-  type clock_id = Clock_id of int
-
-  type buffer_polarity = Strict | Lazy
-
-  (** {3 Simple data types} *)
-
-  type ty =
-  | Ty_var of int
-  | Ty_scal of Data_types.data_ty_scal
-  | Ty_boxed
-  | Ty_clock
-  | Ty_buffer of ty * Int.t * buffer_polarity (* data ty * size *)
-
-  type clock_var =
-  | Cv_clock of clock_id
-  | Cv_block of block_id
-
-  type clock = clock_var Clock_types.raw_stream_type
+  type clock = I.clock_var Clock_types.raw_stream_type
 
   (** {2 Equations} *)
-
-  type buffer_info =
-    {
-      b_delay : bool;
-      b_real_size : Int.t;
-      b_size : Int.t;
-    }
-
-  type buffer_direction = Push | Pop
 
   type op =
   | Node of I.node_name
@@ -266,7 +231,7 @@ struct
       b_loc : Loc.t;
     }
 
-(** {2 Nodes and files} *)
+  (** {2 Nodes and files} *)
 
   type scope =
   | Scope_context

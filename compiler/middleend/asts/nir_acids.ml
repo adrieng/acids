@@ -19,6 +19,14 @@ module Info =
 struct
   type node_name = Names.longname
   let print_node_name = Names.print_longname
+
+  type clock_var =
+  | Cv_base
+  | Cv_clock of int
+  let print_clock_var fmt cv =
+    match cv with
+    | Cv_base -> Format.fprintf fmt "base"
+    | Cv_clock i -> Format.fprintf fmt "'a%d" i
 end
 
 module M = Nir.Make(Info)

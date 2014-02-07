@@ -33,7 +33,8 @@ let int_of_const_exp se = Ast_misc.get_int (const_of_const_exp se)
 let translate_const_pword pw =
   Tree_word.map_upword const_of_const_exp int_of_const_exp pw
 
-let block_base id = Clock_types.St_var (Nir_acids.(Cv_block id))
+let st_base =
+  Clock_types.St_var Nir_acids.Info.Cv_base
 
 (** {2 Environments} *)
 
@@ -66,7 +67,7 @@ let find_pword env ln =
     let intf = ShortEnv.find modn env.intf_env in
     Interface.((find_pword intf ln.shortn).pi_value)
 
-let get_current_block env = Nir_acids.Block_id (env.current_block)
+let get_current_block env = Nir.Block_id (env.current_block)
 
 let get_current_scope env = Nir_acids.Scope_internal (get_current_block env)
 
@@ -89,15 +90,15 @@ let get_var_clock env x =
 let translate_data_type ty =
   let open Data_types in
   match ty with
-  | Ty_var i -> Nir_acids.Ty_var i
-  | Ty_scal tys | Ty_cond tys -> Nir_acids.Ty_scal tys
-  | Ty_boxed _ -> Nir_acids.Ty_boxed
+  | Ty_var i -> Nir.Ty_var i
+  | Ty_scal tys | Ty_cond tys -> Nir.Ty_scal tys
+  | Ty_boxed _ -> Nir.Ty_boxed
   | Ty_prod _ -> invalid_arg "translate_data_type: product type"
 
 let rec translate_stream_type (st : Clock_types.stream_type) =
   let open Clock_types in
   match st with
-  | St_var i -> St_var (Nir_acids.Cv_clock (Nir_acids.Clock_id i))
+  | St_var i -> St_var (Nir_acids.Info.Cv_clock i)
   | St_on (st, ce) -> St_on (translate_stream_type st, ce)
 
 let translate_clock_type ct =
@@ -112,7 +113,7 @@ let translate_const_exp env eql se =
     Nir_acids.make_var_dec
       ~loc:se.se_loc
       x
-      (Nir_acids.Ty_scal se.se_info#pwi_data)
+      (Nir.Ty_scal se.se_info#pwi_data)
       (translate_stream_type se.se_info#pwi_clock)
       (get_current_scope env)
   in
@@ -138,7 +139,7 @@ let rec translate_clock_exp env eql ce =
         ~loc:ce.ce_loc
         ~annots:[Nir_acids.Ann_spec (Ast_misc.Interval ce.ce_info#ci_bounds)]
         x
-        (Nir_acids.Ty_scal ce.ce_info#ci_data)
+        (Nir.Ty_scal ce.ce_info#ci_data)
         clock
         (get_current_scope env)
     in
@@ -196,7 +197,7 @@ let translate_clock_annot env cka =
   let rec walk cka =
     match cka with
     | Ca_var i ->
-      Clock_types.St_var (Nir_acids.(Cv_clock (Clock_id i)))
+      Clock_types.St_var (Nir_acids.Info.Cv_clock i)
     | Ca_on (cka, ce) ->
       Clock_types.St_on (walk cka, clock_clock_exp_of_clock_exp env ce)
   in
@@ -316,7 +317,7 @@ let rec translate_eq_exp (env, eql) x_l e =
           }
         in
         Nir_acids.Call (x_l, app, var_list_of_tuple e),
-        block_base (get_current_block env),
+        st_base,
         env,
         eql
 
@@ -406,13 +407,13 @@ let rec translate_eq_exp (env, eql) x_l e =
         let y = Utils.get_single (var_list_of_tuple e') in
         let bu =
           {
-            Nir_acids.b_delay = bu.bu_info#bui_is_delay;
-            Nir_acids.b_real_size = bu.bu_info#bui_real_size;
-            Nir_acids.b_size = bu.bu_info#bui_size;
+            Nir.b_delay = bu.bu_info#bui_is_delay;
+            Nir.b_real_size = bu.bu_info#bui_real_size;
+            Nir.b_size = bu.bu_info#bui_size;
           }
         in
         Nir_acids.Buffer (Utils.get_single x_l, bu, y),
-        block_base (get_current_block env),
+        st_base,
         env,
         eql
 

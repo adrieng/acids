@@ -15,42 +15,37 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Make(A : Nir.A) =
+open Nir
+
+let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
+
+let print_buffer_polarity fmt pol =
+  match pol with
+  | Strict -> Format.fprintf fmt "strict"
+  | Lazy -> Format.fprintf fmt "lazy"
+
+let rec print_ty fmt ty =
+  match ty with
+  | Ty_var i ->
+    Data_types.(print_ty fmt (Ty_var i))
+  | Ty_scal tys ->
+    Data_types.print_ty_scal fmt tys
+  | Ty_boxed ->
+    Format.fprintf fmt "boxed"
+  | Ty_clock ->
+    Format.fprintf fmt "clock"
+  | Ty_buffer (tys, size, pol) ->
+    Format.fprintf fmt "buffer (%a, %a, %a)"
+      print_ty tys
+      Int.print size
+      print_buffer_polarity pol
+
+module Make(A : A) =
 struct
   open A
 
-  let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
-
-  let print_clock_id fmt (Clock_id id) = Format.fprintf fmt "'a%d" id
-
-  let print_buffer_polarity fmt pol =
-    match pol with
-    | Strict -> Format.fprintf fmt "strict"
-    | Lazy -> Format.fprintf fmt "lazy"
-
-  let rec print_ty fmt ty =
-    match ty with
-    | Ty_var i ->
-      Data_types.(print_ty fmt (Ty_var i))
-    | Ty_scal tys ->
-      Data_types.print_ty_scal fmt tys
-    | Ty_boxed ->
-      Format.fprintf fmt "boxed"
-    | Ty_clock ->
-      Format.fprintf fmt "clock"
-    | Ty_buffer (tys, size, pol) ->
-      Format.fprintf fmt "buffer (%a, %a, %a)"
-        print_ty tys
-        Int.print size
-        print_buffer_polarity pol
-
-  let print_clock_var fmt cv =
-    match cv with
-    | Cv_clock v -> print_clock_id fmt v
-    | Cv_block v -> print_block_id fmt v
-
   let print_clock fmt ck =
-    Clock_types.print_raw_stream_type print_clock_var fmt ck
+    Clock_types.print_raw_stream_type I.print_clock_var fmt ck
 
   let print_with_info print fmt ty ck x =
     Format.fprintf fmt "(@[";

@@ -200,12 +200,11 @@ struct
       Format.fprintf fmt "@])"
     in
     Format.fprintf fmt
-      "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a@ :block_count %d"
+      "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a"
       I.print_node_name node.n_name
       (print_list Ident.print) node.n_input
       (print_list Ident.print) node.n_output
       print_env node.n_env
-      node.n_block_count
     ;
     Format.fprintf fmt "@ :body %a@]@,)@]"
       (print_block Ident.print) node.n_body

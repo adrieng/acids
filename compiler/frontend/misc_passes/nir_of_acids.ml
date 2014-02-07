@@ -68,8 +68,6 @@ let find_pword env ln =
 
 let get_current_block env = Nir_acids.Block_id (env.current_block)
 
-let get_current_block_count env = succ env.current_block
-
 let get_current_scope env = Nir_acids.Scope_internal (get_current_block env)
 
 let increment_current_block env =
@@ -467,7 +465,6 @@ let translate_node_def env nd =
     ~input
     ~output
     ~env:(get_locals env)
-    ~block_count:(get_current_block_count env)
     ~body:block
 
 let translate_type_def td =

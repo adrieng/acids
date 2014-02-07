@@ -139,7 +139,6 @@ sig
         n_input : idents;
         n_output : idents;
         n_env : var_dec Ident.Env.t;
-        n_block_count : int;
         n_body : block;
         n_loc : Loc.t;
       }
@@ -168,7 +167,6 @@ sig
     input:idents ->
     output:idents ->
     env:var_dec Ident.Env.t ->
-    block_count:int ->
     body : block ->
     node
 

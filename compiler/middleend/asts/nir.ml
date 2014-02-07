@@ -135,7 +135,6 @@ sig
         n_input : Ident.t list;
         n_output : Ident.t list;
         n_env : var_dec Ident.Env.t;
-        n_block_count : int;
         n_body : block;
         n_loc : Loc.t;
       }
@@ -164,7 +163,6 @@ sig
     input:Ident.t list ->
     output:Ident.t list ->
     env:var_dec Ident.Env.t ->
-    block_count:int ->
     body : block ->
     node
 
@@ -296,7 +294,6 @@ struct
       n_input : idents;
       n_output : idents;
       n_env : var_dec Ident.Env.t;
-      n_block_count : int;
       n_body : block;
       n_loc : Loc.t;
     }
@@ -325,7 +322,6 @@ struct
       ~input
       ~output
       ~env
-      ~block_count
       ~body =
     {
       n_name = name;
@@ -334,7 +330,6 @@ struct
       n_output = output;
       n_env = env;
       n_body = body;
-      n_block_count = block_count;
       n_loc = loc;
     }
 

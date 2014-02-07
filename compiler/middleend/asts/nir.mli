@@ -48,22 +48,6 @@ sig
 
   type clock = clock_var Clock_types.raw_stream_type
 
-  (** {3 Clock expressions} *)
-
-  type clock_exp =
-    {
-      ce_desc : clock_exp_desc;
-      ce_bounds : Interval.t;
-      ce_data : Data_types.data_ty_scal;
-      ce_clock : clock;
-      ce_loc : Loc.t;
-    }
-
-  and clock_exp_desc =
-  | Ce_condvar of Ident.t
-  | Ce_pword of Ast_misc.const_pword
-  | Ce_equal of clock_exp * Ast_misc.econstr
-
   (** {2 Equations} *)
 
   type buffer_info =
@@ -103,15 +87,18 @@ sig
       }
 
   and eq_desc =
-  | Var of Ident.t * Ident.t
-  | Const of Ident.t * Ast_misc.const
-  | Pword of Ident.t * Ast_misc.const_pword
-  | Call of idents * call * idents
-  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
-  | Split of idents * clock_exp * Ident.t * Ast_misc.econstr list
-  | Valof of Ident.t * clock_exp
+  | Var of Ident.t * Ident.t (** x = y *)
+  | Const of Ident.t * Ast_misc.const (** x = c *)
+  | Pword of Ident.t * Ast_misc.const_pword (** x = p *)
+  | Call of idents * call * idents (** x_l = f(y_l) *)
+  | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
+  (** x = merge y_ce (ec_i -> z_i)*)
+  | Split of idents * Ident.t * Ident.t * Ast_misc.econstr list
+  (** x_l = split y_ce z_ce ec_l  *)
   | Buffer of Ident.t * buffer_info * Ident.t
+  (** x = buffer y *)
   | Delay of Ident.t * Ident.t
+  (** x = delay y *)
   | Block of block
 
   and block =

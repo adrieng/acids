@@ -48,22 +48,6 @@ sig
 
   type clock = clock_var Clock_types.raw_stream_type
 
-  (** {3 Clock expressions} *)
-
-  type clock_exp =
-    {
-      ce_desc : clock_exp_desc;
-      ce_bounds : Interval.t;
-      ce_data : Data_types.data_ty_scal;
-      ce_clock : clock;
-      ce_loc : Loc.t;
-    }
-
-  and clock_exp_desc =
-  | Ce_condvar of Ident.t
-  | Ce_pword of Ast_misc.const_pword
-  | Ce_equal of clock_exp * Ast_misc.econstr
-
   (** {2 Equations} *)
 
   type buffer_info =
@@ -107,9 +91,8 @@ sig
   | Const of Ident.t * Ast_misc.const
   | Pword of Ident.t * Ast_misc.const_pword
   | Call of Ident.t list * call * Ident.t list
-  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
-  | Split of Ident.t list * clock_exp * Ident.t * Ast_misc.econstr list
-  | Valof of Ident.t * clock_exp
+  | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
+  | Split of Ident.t list * Ident.t * Ident.t * Ast_misc.econstr list
   | Buffer of Ident.t * buffer_info * Ident.t
   | Delay of Ident.t * Ident.t
   | Block of block
@@ -230,22 +213,6 @@ struct
 
   type clock = clock_var Clock_types.raw_stream_type
 
-  (** {3 Clock expressions} *)
-
-  type clock_exp =
-    {
-      ce_desc : clock_exp_desc;
-      ce_bounds : Interval.t;
-      ce_data : Data_types.data_ty_scal;
-      ce_clock : clock;
-      ce_loc : Loc.t;
-    }
-
-  and clock_exp_desc =
-  | Ce_condvar of Ident.t
-  | Ce_pword of Ast_misc.const_pword
-  | Ce_equal of clock_exp * Ast_misc.econstr
-
   (** {2 Equations} *)
 
   type buffer_info =
@@ -288,9 +255,8 @@ struct
   | Const of Ident.t * Ast_misc.const
   | Pword of Ident.t * Ast_misc.const_pword
   | Call of idents * call * idents
-  | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
-  | Split of idents * clock_exp * Ident.t * Ast_misc.econstr list
-  | Valof of Ident.t * clock_exp
+  | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
+  | Split of idents * Ident.t * Ident.t * Ast_misc.econstr list
   | Buffer of Ident.t * buffer_info * Ident.t
   | Delay of Ident.t * Ident.t
   | Block of block

@@ -26,12 +26,12 @@ open Acids_causal
 
 let non_lowered feat = Compiler.internal_error (feat ^ " was not lowered")
 
-let translate_const_exp se = se.se_desc
+let const_of_const_exp se = se.se_desc
 
-let translate_const_exp_int se = Ast_misc.get_int (translate_const_exp se)
+let int_of_const_exp se = Ast_misc.get_int (const_of_const_exp se)
 
 let translate_const_pword pw =
-  Tree_word.map_upword translate_const_exp translate_const_exp_int pw
+  Tree_word.map_upword const_of_const_exp int_of_const_exp pw
 
 let block_base id = Clock_types.St_var (Nir_acids.(Cv_block id))
 
@@ -70,6 +70,8 @@ let get_current_block env = Nir_acids.Block_id (env.current_block)
 
 let get_current_block_count env = succ env.current_block
 
+let get_current_scope env = Nir_acids.Scope_internal (get_current_block env)
+
 let increment_current_block env =
   { env with current_block = succ env.current_block; }
 
@@ -80,6 +82,9 @@ let add_local env vd =
   }
 
 let get_locals env = env.current_locals
+
+let get_var_clock env x =
+  (Ident.Env.find x env.current_locals).Nir_acids.v_clock
 
 (** {2 Translation of expressions} *)
 
@@ -103,43 +108,91 @@ let translate_clock_type ct =
   | Ct_stream st -> translate_stream_type st
   | Ct_prod _ -> invalid_arg "translate_clock_type: product clock"
 
-let rec translate_clock_exp env ce =
-  let ced =
-    match ce.ce_desc with
-    | Ce_condvar v ->
-      Nir_acids.Ce_condvar v
-    | Ce_pword (Pd_lit pw) ->
-      Nir_acids.Ce_pword (translate_const_pword pw)
-    | Ce_pword (Pd_global ln) ->
-      Nir_acids.Ce_pword (find_pword env ln)
-    | Ce_equal (ce, se) ->
-      Nir_acids.Ce_equal (translate_clock_exp env ce, translate_const_exp se)
+let translate_const_exp env eql se =
+  let x = Ident.make_internal "se" in
+  let vd =
+    Nir_acids.make_var_dec
+      ~loc:se.se_loc
+      x
+      (Nir_acids.Ty_scal se.se_info#pwi_data)
+      (translate_stream_type se.se_info#pwi_clock)
+      (get_current_scope env)
   in
-  {
-    Nir_acids.ce_desc = ced;
-    Nir_acids.ce_data = ce.ce_info#ci_data;
-    Nir_acids.ce_clock = translate_stream_type ce.ce_info#ci_clock;
-    Nir_acids.ce_bounds = ce.ce_info#ci_bounds;
-    Nir_acids.ce_loc = ce.ce_loc;
-  }
+  let eq =
+    Nir_acids.make_eq
+      ~loc:se.se_loc
+      (Nir_acids.Const (x, Ast_misc.Cconstr se.se_desc))
+      (translate_stream_type se.se_info#pwi_clock)
+  in
+  add_local env vd,
+  eq :: eql,
+  x
 
-(* Translates a Nir_acids.clock_exp to Clock_types.clock_exp *)
-let rec clock_clock_exp_of_clock_exp ce =
+let rec translate_clock_exp env eql ce =
+  match ce.ce_desc with
+  | Ce_condvar v ->
+    env, eql, v
+  | Ce_pword _ | Ce_equal _ ->
+    let x = Ident.make_internal "ce" in
+    let clock = translate_stream_type ce.ce_info#ci_clock in
+    let vd =
+      Nir_acids.make_var_dec
+        ~loc:ce.ce_loc
+        ~annots:[Nir_acids.Ann_spec (Ast_misc.Interval ce.ce_info#ci_bounds)]
+        x
+        (Nir_acids.Ty_scal ce.ce_info#ci_data)
+        clock
+        (get_current_scope env)
+    in
+    let env, eql, eq =
+      let env, eql, eqd =
+        match ce.ce_desc with
+        | Ce_condvar _ ->
+          assert false (* handled above *)
+        | Ce_pword (Pd_lit pw) ->
+          env, eql, Nir_acids.Pword (x, translate_const_pword pw)
+        | Ce_pword (Pd_global ln) ->
+          env, eql, Nir_acids.Pword (x, find_pword env ln)
+        | Ce_equal (ce, se) ->
+          let env, eql, x_ce = translate_clock_exp env eql ce in
+          let env, eql, x_se = translate_const_exp env eql se in
+          let call =
+            let open Nir_acids in
+            {
+              a_op = Node Names.(make_longname (Module "Pervasives") "=");
+              a_stream_inst = [0, ce.ce_info#ci_clock];
+            }
+          in
+          env, eql, Nir_acids.Call ([x], call, [x_ce; x_se])
+      in
+      env,
+      eql,
+      Nir_acids.make_eq
+        ~loc:ce.ce_loc
+        eqd
+        clock
+    in
+    add_local env vd, eq :: eql, x
+
+(* Translates a Acids_causal.clock_exp to Clock_types.clock_exp *)
+let rec clock_clock_exp_of_clock_exp env ce =
   let open Clock_types in
-  match ce.Nir_acids.ce_desc with
-  | Nir_acids.Ce_condvar id ->
+  match ce.ce_desc with
+  | Acids_causal.Ce_condvar id ->
     let cev =
       {
         cecv_name = id;
-        cecv_bounds = ce.Nir_acids.ce_bounds;
+        cecv_bounds = ce.Acids_causal.ce_info#ci_bounds;
         cecv_specs = []; (* TODO reconstruct from Eq_condvar *)
       }
     in
     Ce_condvar cev
-  | Nir_acids.Ce_pword p ->
-    Ce_pword p
-  | Nir_acids.Ce_equal (ce, ec) ->
-    Ce_equal (clock_clock_exp_of_clock_exp ce, ec)
+  | Acids_causal.Ce_pword (Acids_causal.Pd_lit pw) ->
+    Ce_pword (translate_const_pword pw)
+  | Acids_causal.Ce_pword (Acids_causal.Pd_global ln) ->
+    Ce_pword (find_pword env ln)
+  | Acids_causal.Ce_equal (ce, se) ->
+    Ce_equal (clock_clock_exp_of_clock_exp env ce, se.se_desc)
 
 let translate_clock_annot env cka =
   let rec walk cka =
@@ -147,8 +200,7 @@ let translate_clock_annot env cka =
     | Ca_var i ->
       Clock_types.St_var (Nir_acids.(Cv_clock (Clock_id i)))
     | Ca_on (cka, ce) ->
-      let ce = translate_clock_exp env ce in
-      Clock_types.St_on (walk cka, clock_clock_exp_of_clock_exp ce)
+      Clock_types.St_on (walk cka, clock_clock_exp_of_clock_exp env ce)
   in
   walk cka
 
@@ -158,12 +210,12 @@ let translate_spec spec =
     invalid_arg "translate_spec: Unspec"
   | Word pw ->
     let p =
-      Tree_word.map_upword translate_const_exp_int translate_const_exp_int pw
+      Tree_word.map_upword int_of_const_exp int_of_const_exp pw
     in
     Ast_misc.Word p
   | Interval (l, u) ->
-    let l = translate_const_exp_int l in
-    let u = translate_const_exp_int u in
+    let l = int_of_const_exp l in
+    let u = int_of_const_exp u in
     Ast_misc.Interval (Interval.make l u)
 
 let rec translate_pattern p (env, v_l) =
@@ -198,7 +250,7 @@ let rec translate_pattern p (env, v_l) =
         v
         ty
         ck
-        (Nir_acids.Scope_internal (get_current_block env))
+        (get_current_scope env)
     in
     add_local env vd, v :: v_l
   | P_tuple p_l ->
@@ -215,165 +267,184 @@ let var_list_of_tuple e =
   in
   walk e []
 
-let rec translate_eq_exp env x_l e =
-  let eqd, bck, env =
-    match e.e_desc with
-    | E_var y ->
-      Nir_acids.Var (Utils.get_single x_l, y),
-      translate_clock_type e.e_info#ei_clock,
-      env
+let rec translate_eq_exp (env, eql) x_l e =
+  match e.e_desc with
+  | E_valof ce ->
+    let env, eql, _ = translate_clock_exp env eql ce in
+    env,
+    eql
+  | _ ->
+    let eqd, bck, env, eql =
+      match e.e_desc with
+      | E_var y ->
+        Nir_acids.Var (Utils.get_single x_l, y),
+        translate_clock_type e.e_info#ei_clock,
+        env,
+        eql
 
-    | E_const cst ->
-      Nir_acids.Const (Utils.get_single x_l, cst),
-      translate_clock_type e.e_info#ei_clock,
-      env
+      | E_const cst ->
+        Nir_acids.Const (Utils.get_single x_l, cst),
+        translate_clock_type e.e_info#ei_clock,
+        env,
+        eql
 
-    | E_fst _ | E_snd _ ->
-      non_lowered "projection"
+      | E_fst _ | E_snd _ ->
+        non_lowered "projection"
 
-    | E_tuple _ ->
-      non_lowered "tuple"
+      | E_tuple _ ->
+        non_lowered "tuple"
 
-    | E_fby _ ->
-      non_lowered "fby"
+      | E_fby _ ->
+        non_lowered "fby"
 
-    | E_ifthenelse _ ->
-      non_lowered "ifthenelse"
+      | E_ifthenelse _ ->
+        non_lowered "ifthenelse"
 
-    | E_app (app, e) ->
-      let app =
-        {
-          Nir_acids.a_op =
-            (
-              let open Names in
-              match app.a_op.modn, app.a_op.shortn with
-              | Module "Pervasives", "box" ->
-                Nir_acids.Box
-              | Module "Pervasives", "unbox" ->
-                Nir_acids.Unbox
-              | _ ->
-                Nir_acids.Node app.a_op
-            );
-          Nir_acids.a_stream_inst = app.a_info#ai_stream_inst;
-        }
-      in
-      Nir_acids.Call (x_l, app, var_list_of_tuple e),
-      block_base (get_current_block env),
-      env
-
-    | E_where _ ->
-      non_lowered "where (subexps)"
-
-    | E_when (e, ce) ->
-      (*
-        x = y when ce
-        ->
-        (x, wh) = split y with ce by true, false
-
-        where "wh" is fresh in the node
-      *)
-      let x = Utils.get_single x_l in
-      let y = Utils.get_single (var_list_of_tuple e) in
-      let nir_ce = translate_clock_exp env ce in
-      let v_unused = Ident.make_internal "wh" in
-      let vd =
-        let st =
-          Clock_types.St_on (ce.ce_info#ci_clock,
-                             clock_clock_exp_of_clock_exp nir_ce)
+      | E_app (app, e) ->
+        let app =
+          {
+            Nir_acids.a_op =
+              (
+                let open Names in
+                match app.a_op.modn, app.a_op.shortn with
+                | Module "Pervasives", "box" ->
+                  Nir_acids.Box
+                | Module "Pervasives", "unbox" ->
+                  Nir_acids.Unbox
+                | _ ->
+                  Nir_acids.Node app.a_op
+              );
+            Nir_acids.a_stream_inst = app.a_info#ai_stream_inst;
+          }
         in
-        Nir_acids.make_var_dec
-          v_unused
-          (translate_data_type e.e_info#ei_data)
-          (translate_stream_type st)
-          (Nir_acids.Scope_internal (get_current_block env))
-      in
-      Nir_acids.Split ([x; v_unused],
-                 nir_ce,
-                 y,
-                 Ast_misc.([Ec_bool true; Ec_bool false])),
-      nir_ce.Nir_acids.ce_clock,
-      add_local env vd
+        Nir_acids.Call (x_l, app, var_list_of_tuple e),
+        block_base (get_current_block env),
+        env,
+        eql
 
-    | E_split (ce, e, ec_l) ->
-      let y = Utils.get_single (var_list_of_tuple e) in
-      let ce = translate_clock_exp env ce in
-      Nir_acids.Split (x_l, ce, y, ec_l),
-      ce.Nir_acids.ce_clock,
-      env
+      | E_where _ ->
+        non_lowered "where (subexps)"
 
-    | E_bmerge (ce, e1, e2) ->
-      let x = Utils.get_single x_l in
-      let y1 = Utils.get_single (var_list_of_tuple e1) in
-      let y2 = Utils.get_single (var_list_of_tuple e2) in
-      let ce = translate_clock_exp env ce in
-      Nir_acids.Merge (x,
-                 ce,
-                 [ Ast_misc.Ec_bool true, y1; Ast_misc.Ec_bool false, y2; ]),
-      ce.Nir_acids.ce_clock,
-      env
+      | E_when (e, ce) ->
+        (*
+          x = y when ce
+          ->
+          (x, wh) = split y with ce by true, false
 
-    | E_merge (ce, c_l) ->
-      let x = Utils.get_single x_l in
-      let translate_clause c =
-        c.c_sel, Utils.get_single (var_list_of_tuple c.c_body)
-      in
-      let ce = translate_clock_exp env ce in
-      Nir_acids.Merge (x,
-                 ce,
-                 List.map translate_clause c_l),
-      ce.Nir_acids.ce_clock,
-      env
+          where "wh" is fresh in the node
+        *)
+        let x = Utils.get_single x_l in
+        let y = Utils.get_single (var_list_of_tuple e) in
+        let env, eql, nir_ce = translate_clock_exp env eql ce in
+        let clock = get_var_clock env nir_ce in
+        let v_unused = Ident.make_internal "wh" in
+        let vd =
+          let st =
+            Clock_types.St_on (ce.ce_info#ci_clock,
+                               assert false (* TODO *))
+          in
+          Nir_acids.make_var_dec
+            v_unused
+            (translate_data_type e.e_info#ei_data)
+            (translate_stream_type st)
+            (get_current_scope env)
+        in
+        Nir_acids.Split ([x; v_unused],
+                         nir_ce,
+                         y,
+                         Ast_misc.([Ec_bool true; Ec_bool false])),
+        clock,
+        add_local env vd,
+        eql
 
-    | E_valof ce ->
-      let ce = translate_clock_exp env ce in
-      Nir_acids.Valof (Utils.get_single x_l, ce),
-      ce.Nir_acids.ce_clock,
-      env
+      | E_split (ce, e, ec_l) ->
+        let y = Utils.get_single (var_list_of_tuple e) in
+        let env, eql, ce = translate_clock_exp env eql ce in
+        Nir_acids.Split (x_l, ce, y, ec_l),
+        get_var_clock env ce,
+        env,
+        eql
 
-    | E_dom (e, dom) ->
-      let block, _, env = translate_block env e in
-      Nir_acids.Block block,
-      translate_stream_type dom.d_info,
-      env
+      | E_bmerge (ce, e1, e2) ->
+        let x = Utils.get_single x_l in
+        let y1 = Utils.get_single (var_list_of_tuple e1) in
+        let y2 = Utils.get_single (var_list_of_tuple e2) in
+        let env, eql, ce = translate_clock_exp env eql ce in
+        Nir_acids.Merge (x,
+                         ce,
+                         [
+                           Ast_misc.Ec_bool true, y1;
+                           Ast_misc.Ec_bool false, y2;
+                         ]),
+        get_var_clock env ce,
+        env,
+        eql
 
-    | E_buffer (e', bu) ->
-      let y = Utils.get_single (var_list_of_tuple e') in
-      let bu =
-        {
-          Nir_acids.b_delay = bu.bu_info#bui_is_delay;
-          Nir_acids.b_real_size = bu.bu_info#bui_real_size;
-          Nir_acids.b_size = bu.bu_info#bui_size;
-        }
-      in
-      Nir_acids.Buffer (Utils.get_single x_l, bu, y),
-      block_base (get_current_block env),
-      env
+      | E_merge (ce, c_l) ->
+        let x = Utils.get_single x_l in
+        let translate_clause c =
+          c.c_sel, Utils.get_single (var_list_of_tuple c.c_body)
+        in
+        let env, eql, ce = translate_clock_exp env eql ce in
+        Nir_acids.Merge (x,
+                         ce,
+                         List.map translate_clause c_l),
+        get_var_clock env ce,
+        env,
+        eql
 
-    (* For now we do nothing with the annotations. *)
-    | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _) ->
-      Nir_acids.Var (Utils.get_single x_l,
-                     Utils.get_single (var_list_of_tuple e)),
-      translate_clock_type e.e_info#ei_clock,
-      env
-  in
-  env,
-  Nir_acids.make_eq
-    ~loc:e.e_loc
-    eqd
-    bck
+      | E_valof _ ->
+        (* Handled above *)
+        assert false
 
-and translate_eq env eq =
+      | E_dom (e, dom) ->
+        let block, _, env = translate_block env e in
+        Nir_acids.Block block,
+        translate_stream_type dom.d_info,
+        env,
+        eql
+
+      | E_buffer (e', bu) ->
+        let y = Utils.get_single (var_list_of_tuple e') in
+        let bu =
+          {
+            Nir_acids.b_delay = bu.bu_info#bui_is_delay;
+            Nir_acids.b_real_size = bu.bu_info#bui_real_size;
+            Nir_acids.b_size = bu.bu_info#bui_size;
+          }
+        in
+        Nir_acids.Buffer (Utils.get_single x_l, bu, y),
+        block_base (get_current_block env),
+        env,
+        eql
+
+      (* For now we do nothing with the annotations. *)
+      | E_clock_annot (e, _) | E_type_annot (e, _) | E_spec_annot (e, _) ->
+        Nir_acids.Var (Utils.get_single x_l,
+                       Utils.get_single (var_list_of_tuple e)),
+        translate_clock_type e.e_info#ei_clock,
+        env,
+        eql
+    in
+    env,
+    Nir_acids.make_eq
+      ~loc:e.e_loc
+      eqd
+      bck
+    :: eql
+
+and translate_eq (env, eql) eq =
   match eq.eq_desc with
   | Eq_condvar _ ->
     failwith "unimplemented" (* TODO with cond var rework *)
   | Eq_plain (p, e) ->
     let env, v_l = translate_pattern p (env, []) in
-    translate_eq_exp env v_l e
+    translate_eq_exp (env, eql) v_l e
 
 and translate_block env e =
   match e.e_desc with
   | E_where (out, block) ->
-    let env, body = Utils.mapfold_left translate_eq env block.b_body in
+    let env, body = List.fold_left translate_eq (env, []) block.b_body in
     Nir_acids.make_block
       ~loc:e.e_loc
       (get_current_block env)

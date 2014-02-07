@@ -27,6 +27,8 @@ sig
 
   (** {2 Type definitions} *)
 
+  type idents = Ident.t list
+
   type block_id = Block_id of int
 
   type clock_id = Clock_id of int
@@ -201,17 +203,19 @@ module Make(S : S) =
 struct
   module I = S
 
-(** {1 AST for the middle-end} *)
+  (** {1 AST for the middle-end} *)
 
-(** {2 Type definitions} *)
+  (** {2 Type definitions} *)
+
+  type idents = Ident.t list
 
   type block_id = Block_id of int
 
   type clock_id = Clock_id of int
 
-(** {3 Simple data types} *)
-
   type buffer_polarity = Strict | Lazy
+
+  (** {3 Simple data types} *)
 
   type ty =
   | Ty_var of int
@@ -226,7 +230,7 @@ struct
 
   type clock = clock_var Clock_types.raw_stream_type
 
-(** {3 Clock expressions} *)
+  (** {3 Clock expressions} *)
 
   type clock_exp =
     {
@@ -242,7 +246,7 @@ struct
   | Ce_pword of Ast_misc.const_pword
   | Ce_equal of clock_exp * Ast_misc.econstr
 
-(** {2 Equations} *)
+  (** {2 Equations} *)
 
   type buffer_info =
     {
@@ -283,9 +287,9 @@ struct
   | Var of Ident.t * Ident.t
   | Const of Ident.t * Ast_misc.const
   | Pword of Ident.t * Ast_misc.const_pword
-  | Call of Ident.t list * call * Ident.t list
+  | Call of idents * call * idents
   | Merge of Ident.t * clock_exp * (Ast_misc.econstr * Ident.t) list
-  | Split of Ident.t list * clock_exp * Ident.t * Ast_misc.econstr list
+  | Split of idents * clock_exp * Ident.t * Ast_misc.econstr list
   | Valof of Ident.t * clock_exp
   | Buffer of Ident.t * buffer_info * Ident.t
   | Delay of Ident.t * Ident.t
@@ -323,8 +327,8 @@ struct
     {
       n_name : I.node_name;
       n_orig_info : Acids_causal.Info.node_info;
-      n_input : Ident.t list;
-      n_output : Ident.t list;
+      n_input : idents;
+      n_output : idents;
       n_env : var_dec Ident.Env.t;
       n_block_count : int;
       n_body : block;
@@ -346,7 +350,7 @@ struct
       f_info : 'a;
     }
 
-(** {2 Creation/access function} *)
+  (** {2 Creation/access function} *)
 
   let make_node
       ?(loc = Loc.dummy)

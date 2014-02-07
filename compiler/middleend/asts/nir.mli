@@ -45,6 +45,7 @@ module type S =
 sig
   type node_name
   val print_node_name : Format.formatter -> node_name -> unit
+  val original_name : node_name -> Names.longname
 
   type clock_var
   val print_clock_var : Format.formatter -> clock_var -> unit
@@ -62,19 +63,12 @@ sig
   | Node of I.node_name
   | Box
   | Unbox
-  | Index
   | BufferAccess of buffer_direction * buffer_polarity
 
   type call =
     {
       a_op : op;
       a_stream_inst : (int * Clock_types.stream_type) list;
-    }
-
-  type merge_clause =
-    {
-      c_sel : Ast_misc.econstr;
-      c_body : Ident.t;
     }
 
   type eq =

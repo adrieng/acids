@@ -40,6 +40,8 @@ let rec print_ty fmt ty =
       Int.print size
       print_buffer_polarity pol
 
+let print_idents = Utils.print_list Ident.print
+
 module Make(A : A) =
 struct
   open A
@@ -84,7 +86,6 @@ struct
     | Node nn -> I.print_node_name fmt nn
     | Box -> Format.fprintf fmt "box"
     | Unbox -> Format.fprintf fmt "unbox"
-    | Index -> Format.fprintf fmt "index"
     | BufferAccess (dir, pol) ->
       Format.fprintf fmt "%a_%a"
         print_buffer_direction dir
@@ -92,70 +93,69 @@ struct
 
   let print_app fmt app = print_op fmt app.a_op
 
-  let rec print_eq_desc print_var fmt p =
-    let print_var_tuple = print_list print_var in
+  let rec print_eq_desc fmt p =
     match p with
     | Var (x, y) ->
       Format.fprintf fmt "%a = %a"
-        print_var x
-        print_var y
+        Ident.print x
+        Ident.print y
 
     | Const (x, cst) ->
       Format.fprintf fmt "%a = %a"
-        print_var x
+        Ident.print x
         Ast_misc.print_const cst
 
     | Pword (x, p) ->
       Format.fprintf fmt "%a = %a"
-        print_var x
+        Ident.print x
         Ast_misc.print_const_pword p
 
     | Call (x_l, app, y_l) ->
       Format.fprintf fmt "%a = (@[%a@ %a@])"
-        print_var_tuple x_l
+        print_idents x_l
         print_app app
-        print_var_tuple y_l
+        print_idents y_l
 
     | Merge (x, ce, mc_l) ->
       Format.fprintf fmt "%a = (@[<v 2>merge %a@ %a@])"
-        print_var x
-        print_var ce
-        (Utils.print_list_r (print_merge_clause print_var) "") mc_l
+        Ident.print x
+        Ident.print ce
+        (Utils.print_list_r (print_merge_clause Ident.print) "") mc_l
 
     | Split (x_l, ce, y, ec_l) ->
       Format.fprintf fmt "%a = (@[<v 2>split@ %a@ %a@ %a@])"
-        print_var_tuple x_l
-        print_var ce
-        print_var y
+        print_idents x_l
+        Ident.print ce
+        Ident.print y
         (print_list Ast_misc.print_econstr) ec_l
 
     | Buffer (x, b, y) ->
       Format.fprintf fmt "%a = (@[<v 2>buffer@ %a@ %a@])"
-        print_var x
+        Ident.print x
         print_buffer b
-        print_var y
+        Ident.print y
 
     | Delay (x, y) ->
       Format.fprintf fmt "%a = (@[delay %a@])"
-        print_var x
-        print_var y
+        Ident.print x
+        Ident.print y
 
     | Block block ->
-      print_block print_var fmt block
+      print_block fmt block
 
-  and print_eq print_var fmt eq =
+  and print_eq fmt eq =
     Format.fprintf fmt "@[(@[<v 2>";
-    print_eq_desc print_var fmt eq.eq_desc;
+    print_eq_desc fmt eq.eq_desc;
     if !Compiler_options.print_all_info || !Compiler_options.print_clock_info
     then
       Format.fprintf fmt "@ :base_clock %a" print_clock eq.eq_base_clock;
     Format.fprintf fmt "@]@,)@]"
 
-  and print_block print_var fmt block =
+  and print_block fmt block =
     Format.fprintf fmt
       "@[(@[<v 2>block@ :id %a@ :body (@[<v 0>%a@])@]@,)@]"
       print_block_id block.b_id
-      (Utils.print_list_r (print_eq print_var) "") block.b_body
+      (Utils.print_list_r print_eq "") block.b_body
 
   let print_scope fmt s =
     match s with
@@ -202,7 +202,7 @@ struct
       print_env node.n_env
     ;
     Format.fprintf fmt "@ :body %a@]@,)@]"
-      (print_block Ident.print) node.n_body
+      print_block node.n_body
 
   let print_type_def fmt td =
     Format.fprintf fmt

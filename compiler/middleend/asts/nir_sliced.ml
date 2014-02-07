@@ -17,17 +17,15 @@
 
 module Info =
 struct
-  type node_name = Names.longname
-  let print_node_name = Names.print_longname
-  let original_name ln = ln
+  type node_name = Names.longname * int
+  let print_node_name fmt (ln, i) =
+    Format.fprintf fmt "%a_st%d"
+      Names.print_longname ln
+      i
+  let original_name (ln, _) = ln
 
-  type clock_var =
-  | Cv_base
-  | Cv_clock of int
-  let print_clock_var fmt cv =
-    match cv with
-    | Cv_base -> Format.fprintf fmt "base"
-    | Cv_clock i -> Format.fprintf fmt "'a%d" i
+  type clock_var = Cv_base
+  let print_clock_var fmt Cv_base = Format.fprintf fmt "base"
 end
 
 module M = Nir.Make(Info)

@@ -39,6 +39,13 @@ type buffer_info =
 
 type buffer_direction = Push | Pop
 
+type type_def =
+  {
+    ty_name : Names.shortname;
+    ty_body : Names.shortname list;
+    ty_loc : Loc.t;
+  }
+
 (** {2 NIR itself} *)
 
 module type S =
@@ -131,13 +138,6 @@ sig
         n_body : block;
         n_loc : Loc.t;
       }
-
-  type type_def =
-    {
-      ty_name : Names.shortname;
-      ty_body : Names.shortname list;
-      ty_loc : Loc.t;
-    }
 
   type 'a file =
     {
@@ -248,13 +248,6 @@ struct
       n_env : var_dec Ident.Env.t;
       n_body : block;
       n_loc : Loc.t;
-    }
-
-  type type_def =
-    {
-      ty_name : Names.shortname;
-      ty_body : Names.shortname list;
-      ty_loc : Loc.t;
     }
 
   type 'a file =

@@ -36,6 +36,7 @@ open Nir_acids
 
 let mk_var i =
   Info.Cv_clock i
+
 let unmk_var cv =
   match cv with
   | Info.Cv_base -> assert false
@@ -59,8 +60,10 @@ let var_compare cv1 cv2 =
 module VarEnv =
   Utils.MakeMap(
     struct
-      type t = Info.clock_var
-      let compare = var_compare
+      (* type t = Info.clock_var *)
+      (* let compare = var_compare *)
+      type t = int
+      let compare = Utils.int_compare
     end)
 
 (** {2 Utilities} *)
@@ -70,7 +73,7 @@ let clock_var_of_acids_stream_type st =
 
 let clock_var_of_nir_stream_type st =
   match Clock_types.base_var_of_stream_type st with
-  | Info.Cv_clock i -> Info.Cv_clock i
+  | Info.Cv_clock i -> i
   | Info.Cv_base -> invalid_arg "clock_var_of_stream_type"
 
 (** {2 Environments} *)
@@ -80,23 +83,21 @@ type env =
     senv : signature_env;
     current_vars : var_dec Ident.Env.t;
     current_nodes : (Nir_sliced.var_dec Ident.Env.t *
-                     int *
                      Nir_sliced.eq list) VarEnv.t;
   }
 
 let print_env fmt env =
-  let print_node fmt (var_env, i, eqs) =
+  let print_node fmt (var_env, eqs) =
     Format.fprintf fmt
-      "(@[var_env = @[%a@],@ blocks = %d,@ eqs = @[%a@]@])"
+      "(@[var_env = @[%a@],@ eqs = @[%a@]@])"
       (Ident.Env.print Nir_sliced.print_var_dec ",") var_env
-      i
       (Utils.print_list_r Nir_sliced.print_eq ",") eqs
   in
   Format.fprintf fmt "@[@[current_vars:@ %a@]@\n"
     (Ident.Env.print print_var_dec ";")
     env.current_vars;
   Format.fprintf fmt "@[current_nodes:@ %a@]@]"
-    (VarEnv.print Info.print_clock_var print_node)
+    (VarEnv.print Utils.print_int print_node)
     env.current_nodes
 
 let initial_env file =
@@ -135,9 +136,9 @@ let translate_var_dec vd =
     (translate_scope vd.v_scope)
 
 let add_eq_to_its_node env v (eq : Nir_sliced.eq) =
-  let node_var_env, node_block_count, node_body =
+  let node_var_env, node_body =
     try VarEnv.find v env.current_nodes
-    with Not_found -> Ident.Env.empty, 0, []
+    with Not_found -> Ident.Env.empty, []
   in
 
   let node_var_env =
@@ -149,11 +150,7 @@ let add_eq_to_its_node env v (eq : Nir_sliced.eq) =
     List.fold_left add node_var_env (Nir_sliced.eq_vars [] eq)
   in
 
-  let node_info =
-    node_var_env,
-    Nir_sliced.block_count_eq node_block_count eq,
-    eq :: node_body
-  in
+  let node_info = node_var_env, eq :: node_body in
   { env with current_nodes = VarEnv.add v node_info env.current_nodes; }
 
 let find_var_clock env x =
@@ -208,6 +205,73 @@ let gather_vars var_env ck_env v_l =
   in
   List.fold_left add_var ck_env v_l
 
+let translate_call_no_op op =
+  let op =
+    match op with
+    | Node _ -> invalid_arg "translate_call_no_op"
+    | Box -> Nir_sliced.Box
+    | Unbox -> Nir_sliced.Unbox
+    | BufferAccess (dir, pol) -> Nir_sliced.BufferAccess (dir, pol)
+  in
+  {
+    Nir_sliced.a_op = op;
+    Nir_sliced.a_stream_inst = [];
+  }
+
+let rec translate_eq env eq =
+  let find_var_clock = find_var_clock env in
+
+  let eqd, ck =
+    match eq.eq_desc with
+    | Call (_, { a_op = Node _; }, _)
+    | Call (_, { a_op = BufferAccess _; }, _) ->
+      assert false
+
+    | Call (x_l, { a_op = Box; }, y_l) ->
+      let x = Utils.assert1 x_l in
+      Nir_sliced.Call (x_l, translate_call_no_op Box, y_l), find_var_clock x
+
+    | Call (x_l, { a_op = Unbox; }, y_l) ->
+      let y = Utils.assert1 y_l in
+      Nir_sliced.Call (x_l, translate_call_no_op Unbox, y_l), find_var_clock y
+
+    | Var (x, y) ->
+      Nir_sliced.Var (x, y), eq.eq_base_clock
+
+    | Const (x, c) ->
+      Nir_sliced.Const (x, c), eq.eq_base_clock
+
+    | Pword (x, p) ->
+      Nir_sliced.Pword (x, p), eq.eq_base_clock
+
+    | Merge (x, y, z_l) ->
+      Nir_sliced.Merge (x, y, z_l), eq.eq_base_clock
+
+    | Split (x_l, y, z, ec_l) ->
+      Nir_sliced.Split (x_l, y, z, ec_l), eq.eq_base_clock
+
+    | Buffer (x, bu, y) ->
+      Nir_sliced.Buffer (x, bu, y), eq.eq_base_clock
+
+    | Delay (x, y) ->
+      Nir_sliced.Delay (x, y), eq.eq_base_clock
+
+    | Block block ->
+      Nir_sliced.Block (translate_block env block), eq.eq_base_clock
+  in
+  Nir_sliced.make_eq
+    ~loc:eq.eq_loc
+    eqd
+    (translate_clock ck),
+  (clock_var_of_nir_stream_type ck)
+
+and translate_block env block =
+  let body = List.map (translate_eq env) block.b_body in
+  Nir_sliced.make_block
+    ~loc:block.b_loc
+    block.b_id
+    (List.map fst body)
+
 let equation env eq =
   match eq.eq_desc with
   | Call (x_l, ({ a_op = Node ln; } as app), y_l) ->
@@ -261,30 +325,13 @@ let equation env eq =
     in
     List.fold_left make_call_st env app.a_stream_inst
 
-  | Call (x_l, { a_op = Box; }, _) ->
-    (* Box expects a synchronized tuple as input *)
-    let x = Utils.assert1 x_l in
-    let base_clock_var = clock_var_of_nir_stream_type (find_var_clock env x) in
-    add_eq_to_its_node env base_clock_var eq
-
-  | Call (_, { a_op = Unbox; }, y_l) ->
-    (* Same for unbox's output *)
-    let y = Utils.assert1 y_l in
-    let base_clock_var = clock_var_of_stream_type (find_var_clock env y) in
-    add_eq_to_its_node env base_clock_var eq
-
-  | Call (_, { a_op = BufferAccess _; }, _) ->
-    (* Unhandled at this level *)
-    assert false
-
+  | Call (_, { a_op = Box | Unbox | BufferAccess _; }, _)
   | Var _ | Const _ | Pword _ | Merge _ | Split _
   | Buffer _ | Delay _ | Block _ ->
-    let base_clock_var = base_clock_var_eq env eq in
-    add_eq_to_its_node env base_clock_var eq
+    let eq, cv = translate_eq env eq in
+    add_eq_to_its_node env cv eq
 
 let node env nd_l nd =
-  let node_name, Clock_id dummy = nd.n_name in
-  assert (dummy <= Nir_utils.greatest_invalid_clock_id_int);
   let env = set_current_var env nd.n_env in
   let env = List.fold_left equation env nd.n_body.b_body in
   let inputs_by_base_rev =
@@ -294,25 +341,26 @@ let node env nd_l nd =
     gather_vars env.current_vars VarEnv.empty nd.n_output
   in
 
-  let make_node base_clock_var (var_env, block_count, body) nd_l =
+  let make_node base_clock_var (env, body) nd_l =
     let find_vars map =
       try List.rev (VarEnv.find base_clock_var map) with Not_found -> []
     in
 
-    let inputs = find_vars inputs_by_base_rev in
-    let outputs = find_vars outputs_by_base_rev in
+    let input = find_vars inputs_by_base_rev in
+    let output = find_vars outputs_by_base_rev in
 
     let nd =
-      {
-        n_name = node_name, base_clock_var;
-        n_orig_info = nd.n_orig_info;
-        n_input = inputs;
-        n_output = outputs;
-        n_env = var_env;
-        n_block_count = succ block_count;
-        n_body = { nd.n_body with b_body = body; };
-        n_loc = nd.n_loc;
-      }
+      Nir_sliced.make_node
+        ~loc:nd.n_loc
+        ~input
+        ~output
+        ~env
+        ~body:(Nir_sliced.make_block
+                 ~loc:nd.n_body.b_loc
+                 nd.n_body.b_id
+                 body)
+        (nd.n_name, base_clock_var)
+        nd.n_orig_info
     in
     nd :: nd_l
   in
@@ -321,7 +369,14 @@ let node env nd_l nd =
 let file ctx file =
   let env = initial_env file in
   let nodes = List.fold_left (node env) [] file.f_body in
-  ctx, { file with f_body = List.rev nodes; }
+  ctx,
+  {
+    Nir_sliced.f_name = file.f_name;
+    Nir_sliced.f_type_defs = file.f_type_defs;
+    Nir_sliced.f_body = nodes;
+    Nir_sliced.f_info = file.f_info;
+  }
 
 let pass =
-  Middleend_utils.(make_transform "clock_slicing" file)
+  let module M = Middleend_utils.Make(Nir_acids)(Nir_sliced) in
+  M.(make_transform "clock_slicing" file)

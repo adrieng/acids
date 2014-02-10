@@ -186,11 +186,13 @@ struct
   and block_count_block count block =
     List.fold_left block_count_eq (succ count) block.b_body
 
+  let block_count_node node =
+    block_count_block 0 node.n_body
 end
 
-(* (\** Misc functions *\) *)
+(** Misc functions *)
 
-(* (\* Conversion between AcidS and Nir *\) *)
+(* Conversion between AcidS and Nir *)
 
 (* let rec clock_type_exp_of_nir_clock_exp ce = *)
 (*   match ce.ce_desc with *)

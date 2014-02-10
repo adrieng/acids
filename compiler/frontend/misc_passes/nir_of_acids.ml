@@ -470,9 +470,9 @@ let translate_node_def env nd =
 
 let translate_type_def td =
   {
-    Nir_acids.ty_name = td.ty_name;
-    Nir_acids.ty_body = td.ty_body;
-    Nir_acids.ty_loc = td.ty_loc;
+    Nir.ty_name = td.ty_name;
+    Nir.ty_body = td.ty_body;
+    Nir.ty_loc = td.ty_loc;
   }
 
 let translate_phrase (type_defs, node_defs, env) phr =
@@ -503,5 +503,5 @@ let file ctx (file : Acids_causal_utils.annotated_file) =
 
 (** {2 Putting it all together} *)
 
-module U = Middleend_utils.Make(Nir_acids)
+module U = Middleend_utils.Make(Nir_acids)(Nir_acids)
 let pass = U.make_transform "nir_of_acids" file

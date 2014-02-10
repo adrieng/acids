@@ -15,13 +15,18 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module Make(A : Nir.A) =
+module Make(A : Nir.A)(B : Nir.A) =
 struct
-  open A
-  module P = Nir_printer.Make(A)
+  module P = Nir_printer.Make(B)
 
-  let map_to_nodes f_node ctx (file : Interface.env file) =
-    ctx, { file with f_body = List.map f_node file.f_body; }
+  let map_to_nodes f_node ctx (file : Interface.env A.file) =
+    ctx,
+    {
+      B.f_name = file.A.f_name;
+      B.f_type_defs = file.A.f_type_defs;
+      B.f_body = List.map f_node file.A.f_body;
+      B.f_info = file.A.f_info;
+    }
 
   let make_transform name tr =
     let open Pass_manager in

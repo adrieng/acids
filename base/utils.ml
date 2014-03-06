@@ -398,6 +398,12 @@ let assert1 l =
   | [] -> invalid_arg "assert1: empty list"
   | x :: _ -> x
 
+let assert2 l =
+  match l with
+  | [] -> invalid_arg "assert2: empty list"
+  | [_] -> invalid_arg "assert2: list too short"
+  | x :: y :: _ -> x, y
+
 let add_overflow x y =
   let open Int in
   let xor = logxor x y in

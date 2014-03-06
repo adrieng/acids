@@ -710,22 +710,8 @@ let rec base_var_of_stream_type st =
 
 let rec reroot_stream_type v st =
   match st with
-  | St_var _ -> St_var v
+  | St_var _ -> v
   | St_on (st, ce) -> St_on (reroot_stream_type v st, ce)
-
-let find_factor base_st st =
-  let rec walk st =
-    if 0 = st_compare base_st st
-    then []
-    else
-      match st with
-      | St_var _ -> invalid_arg "find_factor: no factor"
-      | St_on (st, ce) ->
-        ce :: 
-
-    if st_compare base_st st = 0
-    then st, ce
-    else invalid_arg "find_factor: no factor"
 
 let slice_signature ?(compare = (=)) base_var cksig =
   let is_on_base_var st =

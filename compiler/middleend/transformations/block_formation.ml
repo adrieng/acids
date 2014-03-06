@@ -81,6 +81,40 @@ let add_var_dec env vd =
 
 let find_var_dec env id = Ident.Env.find id env.var_decs
 
+let find_var_specs env id =
+  let vd = find_var_dec env id in
+  let add_annot acc ann =
+    match ann with
+    | Ann_spec spec ->
+      spec :: acc
+    | Ann_type _ | Ann_clock _ ->
+      acc
+  in
+  List.fold_left add_annot [] vd.v_annots
+
+let find_var_bounds env id =
+  let vd = find_var_dec env id in
+  let rec search l =
+    match l with
+    | [] ->
+      invalid_arg
+        ("find_var_bounds: var " ^ Ident.to_string id ^ " has no bounds")
+    | Ann_spec (Ast_misc.Interval it) :: _ ->
+      it
+    | _ :: l -> search
+      l
+  in
+  search vd.v_annots
+
+let clock_exp_of_id env id =
+  let open Clock_types in
+  Ce_condvar
+    {
+      cecv_name = id;
+      cecv_bounds = find_var_bounds env id;
+      cecv_specs = find_var_specs env id;
+    }
+
 (** {2 AST traversal} *)
 
 let form_block
@@ -105,10 +139,11 @@ let form_block
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var Info.Cv_base in
 
-  let refresh_variable eqs x ck =
+  let refresh_variable eqs x mk_ck =
     let x_vd = find_var_dec env x in
     let x' = Ident.make_prefix "blk_" x in
-    let x'_ck = Clock_types.reroot_stream_type Info.Cv_base bck in
+    (* let x'_ck = Clock_types.reroot_stream_type Info.Cv_base bck in *)
+    let x'_ck = mk_ck bck in
     let x'_vd =
       make_var_dec
         ~loc:x_vd.v_loc
@@ -169,57 +204,66 @@ let rec equation env eq =
       env
       eq.eq_base_clock
       mk_desc
-      x_l output_sts
-      y_l input_sts
+      x_l (List.map (Utils.flip Clock_types.reroot_stream_type) output_sts)
+      y_l (List.map (Utils.flip Clock_types.reroot_stream_type) input_sts)
 
   | Merge (x, y, c_l) ->
     let ec_l, z_l = List.split c_l in
     let mk_desc x_l z_l =
-      let x, y = Utils.assert1 x_l in
-      Merge (x, y, List.combine ec_l y_l)
+      let x, y = Utils.assert2 x_l in
+      Merge (x, y, List.combine ec_l z_l)
     in
     form_block
       env
       eq.eq_base_clock
       mk_desc
-      [x; y] [eq.eq_base_clock; eq.eq_base_clock]
-      z_l (List.map (mk_sampled_clock ce) ec_l)
+      [x; y] [(fun ck -> ck); fun ck -> ck]
+      z_l (List.map (mk_sampled_clock (clock_exp_of_id env y)) ec_l)
 
-  | Split (x_l, ce, y, ec_l) ->
-    let mk_desc x_l y_l =
-      let y = Utils.assert1 y_l in
-      Split (x_l, ce, y, ec_l)
+  | Split (x_l, y, z, ec_l) ->
+    let mk_desc x_l z_l =
+      let y, z = Utils.assert2 z_l in
+      Split (x_l, y, z, ec_l)
     in
-    let ce = Nir_utils.clock_type_exp_of_nir_clock_exp ce in
     form_block
       env
       eq.eq_base_clock
       mk_desc
-      x_l (List.map (mk_sampled_clock ce) ec_l)
-      [y] [fun ck -> ck]
+      x_l (List.map (mk_sampled_clock (clock_exp_of_id env z)) ec_l)
+      [y; z] [(fun ck -> ck); fun ck -> ck]
 
   | Block blk ->
-    { eq with eq_desc = Block (block env blk); }
+    Nir_sliced.make_eq
+      ~loc:eq.eq_loc
+      (Block (block env blk))
+      eq.eq_base_clock
 
 and block env block =
   assert (let Block_id x = block.b_id in x < get_current_block_count env);
   let body = List.map (equation env) block.b_body in
-  { block with b_body = body; }
+  Nir_sliced.make_block
+    ~loc:block.b_loc
+    block.b_id
+    body
 
 let node env nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
   enter_node env nd;
   let block = block env nd.n_body in
-  {
-    nd with
-      n_body = block;
-      n_block_count = get_current_block_count env;
-      n_env = get_var_decs env;
-  }
+  Nir_sliced.make_node
+    ~loc:nd.n_loc
+    ~input:nd.n_input
+    ~output:nd.n_output
+    ~env:(get_var_decs env)
+    ~body:block
+    nd.n_name
+    nd.n_orig_info
+
+module U = Middleend_utils.Make(Nir_sliced)(Nir_sliced)
 
 let tr ctx file =
   let env = initial_env file in
-  Middleend_utils.map_to_nodes (node env) ctx file
+  U.map_to_nodes (node env) ctx file
 
 let pass =
-  Middleend_utils.(make_transform "block_formation" tr)
+  U.(make_transform "block_formation" tr)

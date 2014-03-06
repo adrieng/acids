@@ -215,6 +215,7 @@ struct
   type new_annot =
     | Exp of VarTy.t
     | ClockExp of VarTySt.t
+    | Domain of VarTySt.t * (VarTy.t * VarTy.t) Ident.Env.t
     | Node of Clock_types.clock_sig
     | App of (int * VarTySt.t) list
     | Buffer of Loc.t * VarTySt.t * VarTySt.t (* in st * out st *)
@@ -223,6 +224,15 @@ struct
     match na with
     | Exp ty -> VarTy.print fmt ty
     | ClockExp st -> VarTySt.print fmt st
+    | Domain (st, down) ->
+      let print_down fmt (ext, int) =
+        Format.fprintf fmt "%a -> %a"
+          VarTy.print ext
+          VarTy.print int
+      in
+      Format.fprintf fmt "@[base @[%a@],@ env @[%a@]@]"
+        VarTySt.print st
+        (Ident.Env.print print_down ";") down
     | Node csig ->
       Clock_types.print_sig fmt csig
     | App st_inst ->
@@ -245,6 +255,9 @@ let annotate_exp info ty =
 
 let annotate_clock_exp info st =
   ANN_INFO.annotate info (A.ClockExp st)
+
+let annotate_domain info st down =
+  ANN_INFO.annotate info (A.Domain (st, down))
 
 let annotate_node info csig =
   ANN_INFO.annotate info (A.Node csig)
@@ -275,7 +288,8 @@ struct
 
   let update_clock_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_clock_exp_info"
+    | Node _ | App _ | Exp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_clock_exp_info"
     | ClockExp pst ->
       (
         object
@@ -288,7 +302,8 @@ struct
 
   let update_const_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_const_exp_info"
+    | Node _ | App _ | Exp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_const_exp_info"
     | ClockExp pst ->
       (
         object
@@ -299,7 +314,8 @@ struct
 
   let update_exp_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ | ClockExp _ | Buffer _ -> invalid_arg "update_exp_info"
+    | Node _ | App _ | ClockExp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_exp_info"
     | Exp pty ->
       object
         method ei_data = info#ei_data
@@ -308,7 +324,8 @@ struct
 
   let update_app_info { new_annot = na; old_annot = (); } =
     match na with
-    | Exp _ | Node _ | ClockExp _ | Buffer _ -> invalid_arg "update_app_info"
+    | Exp _ | Node _ | ClockExp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_app_info"
     | App inst_st ->
       let trans_st (i, pst) = i, st_of_pre_st pst in
       object
@@ -319,7 +336,8 @@ struct
 
   let update_pat_info { new_annot = na; old_annot = info; } =
     match na with
-    | Node _ | App _ | ClockExp _ | Buffer _ -> invalid_arg "update_pat_info"
+    | Node _ | App _ | ClockExp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_pat_info"
     | Exp pty ->
       let ty = ty_of_pre_ty pty in
       object
@@ -331,12 +349,27 @@ struct
 
   let update_domain_info { new_annot = na; old_annot = (); } =
     match na with
-    | Node _ | App _ | Exp _ | Buffer _ -> invalid_arg "update_domain_info"
-    | ClockExp pst -> st_of_pre_st pst
+    | Node _ | App _ | Exp _ | Buffer _ | ClockExp _ ->
+      invalid_arg "update_domain_info"
+    | Domain (pst, down) ->
+      object
+        method di_activation_clock = st_of_pre_st pst
+        method di_downsampled =
+          Ident.Env.map
+            (fun (ext, int) ->
+              let open Acids_clocked in
+              {
+                external_clock = ty_of_pre_ty ext;
+                internal_clock = ty_of_pre_ty int;
+              }
+            )
+            down
+      end
 
   let update_buffer_info { new_annot = na; old_annot = (); } =
     match na with
-    | Node _ | App _ | Exp _ | ClockExp _ -> invalid_arg "update_buffer_info"
+    | Node _ | App _ | Exp _ | ClockExp _ | Domain _ ->
+      invalid_arg "update_buffer_info"
     | Buffer (loc, in_st, out_st) ->
       let in_st = st_of_pre_st in_st in
       let out_st = st_of_pre_st out_st in
@@ -360,7 +393,8 @@ struct
 
   let update_node_info  { new_annot = na; old_annot = info; } =
     match na with
-    | Exp _ | App _ | ClockExp _ | Buffer _ -> invalid_arg "update_node_info"
+    | Exp _ | App _ | ClockExp _ | Buffer _ | Domain _ ->
+      invalid_arg "update_node_info"
     | Node csig ->
       object
         method ni_ctx = info#ni_ctx
@@ -740,14 +774,14 @@ and clock_block env block acc =
 
 and clock_dom env loc dom e acc =
   (* Clocking domains:
-     1. Clock e in a fresh environment (ctx and constrs)
+     1. Clock e in a fresh environment (ctx and constraints)
      2. Solve clocking constraints
      3. Generate a fresh stream type bst
      4. If the domain is annotated with a base clock,
-     add a constraint between bst and the former
+     add an equality constraint between bst and the former
      5. For each x : st free in e, add a constraint relating st[alpha/bst]
-     and its type in the environment.
-     6. Remap the output type
+     and its type in the original environment.
+     6. If e has type ty, the resulting type has ty[alpha/bst].
   *)
 
   (* 1. Clock e in isolation *)
@@ -782,13 +816,15 @@ and clock_dom env loc dom e acc =
     let module F = Acids_utils.FREEVARS(M) in
     F.fv_exp Ident.Set.empty e
   in
-  let add_constraint v (ctx, cstrs) =
+  let add_constraint v (ctx, cstrs, down) =
     let out_ty, (ctx, cstrs) = clock_var v (ctx, cstrs) in
     let in_ty = Ident.Env.find v local_ctx in
     let c = { loc = loc; desc = Tc_equal (out_ty, reroot_ty bst in_ty); } in
-    (ctx, c :: cstrs)
+    (ctx, c :: cstrs, Ident.Env.add v (out_ty, in_ty) down)
   in
-  let (ctx, cstrs) = Ident.Set.fold add_constraint fv_e (ctx, cstrs) in
+  let (ctx, cstrs, down) =
+    Ident.Set.fold add_constraint fv_e (ctx, cstrs, Ident.Env.empty)
+  in
 
   let ty = reroot_ty bst ty in
 
@@ -796,7 +832,7 @@ and clock_dom env loc dom e acc =
     {
       M.d_base_clock = cka;
       M.d_par = dom.d_par;
-      M.d_info = annotate_clock_exp dom.d_info bst;
+      M.d_info = annotate_domain dom.d_info bst down;
     },
     e,
     ty),

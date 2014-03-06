@@ -399,7 +399,7 @@ let rec translate_eq_exp (env, eql) x_l e =
       | E_dom (e, dom) ->
         let block, _, env = translate_block env e in
         Nir_acids.Block block,
-        translate_stream_type dom.d_info,
+        translate_stream_type dom.d_info#di_activation_clock,
         env,
         eql
 

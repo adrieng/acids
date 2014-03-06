@@ -15,6 +15,12 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+type block_free_var_info =
+  {
+    external_clock : Clock_types.clock_type;
+    internal_clock : Clock_types.clock_type;
+  }
+
 module Info =
 struct
   type var = Ident.t
@@ -68,12 +74,11 @@ struct
         Clock_types.print_stream_type (St_var i)
         Clock_types.print_stream_type ty
     in
-
     Format.fprintf fmt " [%a]"
       (Utils.print_list_r print_stream_inst ",") ci#ai_stream_inst
 
   type block_info = unit
-  let print_block_info (_ : Format.formatter) _ = ()
+  let print_block_info (_ : Format.formatter) (_ : block_info) = ()
 
   type pat_info =
       <
@@ -87,9 +92,20 @@ struct
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
 
-  type domain_info = Clock_types.stream_type
-  let print_domain_info fmt st =
-    Clock_types.print_stream_type_ann fmt st
+  type domain_info =
+    <
+      di_activation_clock : Clock_types.stream_type;
+      di_downsampled : block_free_var_info Ident.Env.t;
+    >
+  let print_domain_info fmt (info : domain_info) =
+    let print_binding fmt { external_clock = ext; internal_clock = int; } =
+      Format.fprintf fmt "@[%a down %a = %a@]"
+        Clock_types.print_clock_type ext
+        Clock_types.print_stream_type info#di_activation_clock
+        Clock_types.print_clock_type int
+    in
+    Format.fprintf fmt "@[%a@]"
+      (Ident.Env.print print_binding ";") info#di_downsampled
 
   type buffer_info =
     <

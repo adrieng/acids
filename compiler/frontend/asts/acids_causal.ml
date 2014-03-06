@@ -64,9 +64,8 @@ struct
   type eq_info = unit
   let print_eq_info (_ : Format.formatter) _ = ()
 
-  type domain_info = Clock_types.stream_type
-  let print_domain_info fmt st =
-    Clock_types.print_stream_type_ann fmt st
+  type domain_info = Acids_clocked.Info.domain_info
+  let print_domain_info = Acids_clocked.Info.print_domain_info
 
   type buffer_info = Acids_clocked.Info.buffer_info
   let print_buffer_info = Acids_clocked.Info.print_buffer_info

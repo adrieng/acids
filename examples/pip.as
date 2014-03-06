@@ -5,7 +5,6 @@ let node convolution (p0, p1, p2) = (convo p0, convo p1, convo p2)
 (* horizontal filter *)
 let pword hf = ([true false]^2 false^2 true false^2)
 
-
 let node horizontal_filter p = o where
   rec p0 = p fby p1
   and p1 = p fby p2

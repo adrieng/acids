@@ -12,10 +12,10 @@ let node horizontal_filter (p :: 'a on (9)) = o where
   and p2 = p
   and o = (convolution (p0, p1, p2)) when hf
 
-let static sd_width = 720
-let static sd_height = 480
-let static hd_width = 1920
-let static hd_height = 1080
+let const sd_width = 720
+let const sd_height = 480
+let const hd_width = 1920
+let const hd_height = 1080
 
 (* vertical sliding window *)
 let pword first_sd_line = true^{sd_width}(false)

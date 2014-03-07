@@ -158,8 +158,8 @@ let rec translate_clock_exp env eql ce =
           let call =
             let open Nir_acids in
             {
-              a_op = Node Names.(make_longname (Module "Pervasives") "=");
-              a_stream_inst = [0, ce.ce_info#ci_clock];
+              c_op = Node Names.(make_longname (Module "Pervasives") "=");
+              c_stream_inst = [0, ce.ce_info#ci_clock];
             }
           in
           env, eql, Nir_acids.Call ([x], call, [x_ce; x_se])
@@ -300,9 +300,9 @@ let rec translate_eq_exp (env, eql) x_l e =
         non_lowered "ifthenelse"
 
       | E_app (app, e) ->
-        let app =
+        let call =
           {
-            Nir_acids.a_op =
+            Nir_acids.c_op =
               (
                 let open Names in
                 match app.a_op.modn, app.a_op.shortn with
@@ -313,10 +313,10 @@ let rec translate_eq_exp (env, eql) x_l e =
                 | _ ->
                   Nir_acids.Node app.a_op
               );
-            Nir_acids.a_stream_inst = app.a_info#ai_stream_inst;
+            Nir_acids.c_stream_inst = app.a_info#ai_stream_inst;
           }
         in
-        Nir_acids.Call (x_l, app, var_list_of_tuple e),
+        Nir_acids.Call (x_l, call, var_list_of_tuple e),
         st_base,
         env,
         eql

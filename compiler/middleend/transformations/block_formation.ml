@@ -170,7 +170,7 @@ let rec equation env eq =
   match eq.eq_desc with
   | Var _
   | Buffer _
-  | Call (_, { a_op = Box | Unbox | BufferAccess _; }, _)
+  | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
   | Delay _ ->
     (* TODO: optimize buffer *)
     eq
@@ -189,7 +189,7 @@ let rec equation env eq =
     in
     form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-  | Call (x_l, ({ a_op = Node (ln, id); } as app), y_l) ->
+  | Call (x_l, ({ c_op = Node (ln, id); } as call), y_l) ->
     let input_sts, output_sts =
       find_node_clock_sig_sliced env.senv ln id
     in
@@ -198,7 +198,7 @@ let rec equation env eq =
     assert (List.length output_sts = List.length x_l);
 
     let mk_desc x_l y_l =
-      Call (x_l, app, y_l)
+      Call (x_l, call, y_l)
     in
     form_block
       env

@@ -91,7 +91,7 @@ struct
         print_buffer_direction dir
         print_buffer_polarity pol
 
-  let print_app fmt app = print_op fmt app.a_op
+  let print_call fmt call = print_op fmt call.c_op
 
   let rec print_eq_desc fmt p =
     match p with
@@ -110,10 +110,10 @@ struct
         Ident.print x
         Ast_misc.print_const_pword p
 
-    | Call (x_l, app, y_l) ->
+    | Call (x_l, call, y_l) ->
       Format.fprintf fmt "%a = (@[%a@ %a@])"
         print_idents x_l
-        print_app app
+        print_call call
         print_idents y_l
 
     | Merge (x, ce, mc_l) ->

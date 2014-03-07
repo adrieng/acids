@@ -74,8 +74,8 @@ sig
 
   type call =
     {
-      a_op : op;
-      a_stream_inst : (int * Clock_types.stream_type) list;
+      c_op : op;
+      c_stream_inst : (int * Clock_types.stream_type) list;
     }
 
   type eq =

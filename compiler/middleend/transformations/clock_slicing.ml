@@ -213,25 +213,22 @@ let translate_call_no_op op =
     | Unbox -> Nir_sliced.Unbox
     | BufferAccess (dir, pol) -> Nir_sliced.BufferAccess (dir, pol)
   in
-  {
-    Nir_sliced.a_op = op;
-    Nir_sliced.a_stream_inst = [];
-  }
+  Nir_sliced.({ c_op = op; c_stream_inst = []; })
 
 let rec translate_eq env eq =
   let find_var_clock = find_var_clock env in
 
   let eqd, ck =
     match eq.eq_desc with
-    | Call (_, { a_op = Node _; }, _)
-    | Call (_, { a_op = BufferAccess _; }, _) ->
+    | Call (_, { c_op = Node _; }, _)
+    | Call (_, { c_op = BufferAccess _; }, _) ->
       assert false
 
-    | Call (x_l, { a_op = Box; }, y_l) ->
+    | Call (x_l, { c_op = Box; }, y_l) ->
       let x = Utils.assert1 x_l in
       Nir_sliced.Call (x_l, translate_call_no_op Box, y_l), find_var_clock x
 
-    | Call (x_l, { a_op = Unbox; }, y_l) ->
+    | Call (x_l, { c_op = Unbox; }, y_l) ->
       let y = Utils.assert1 y_l in
       Nir_sliced.Call (x_l, translate_call_no_op Unbox, y_l), find_var_clock y
 
@@ -274,7 +271,7 @@ and translate_block env block =
 
 let equation env eq =
   match eq.eq_desc with
-  | Call (x_l, ({ a_op = Node ln; } as app), y_l) ->
+  | Call (x_l, ({ c_op = Node ln; } as call), y_l) ->
     let ty_sig, data_sig = find_node_sig env ln in
 
     (* For each clock variable 'a in signature instantiated with st, walk the
@@ -306,10 +303,10 @@ let equation env eq =
         List.fold_left2 (gather_vars_on_base base) [] x_l output_st_list
       in
 
-      let app =
+      let call =
         {
-          Nir_sliced.a_op = sliced_node_name app.a_op base_sig_var;
-          Nir_sliced.a_stream_inst = [];
+          Nir_sliced.c_op = sliced_node_name call.c_op base_sig_var;
+          Nir_sliced.c_stream_inst = [];
         }
       in
       let call_eq =
@@ -317,15 +314,15 @@ let equation env eq =
           ~loc:eq.eq_loc
           (Nir_sliced.Call
              (List.rev relevant_x_l_rev,
-              app,
+              call,
               List.rev relevant_y_l_rev))
           (translate_clock inst_st)
       in
       add_eq_to_its_node env (clock_var_of_nir_stream_type inst_st) call_eq
     in
-    List.fold_left make_call_st env app.a_stream_inst
+    List.fold_left make_call_st env call.c_stream_inst
 
-  | Call (_, { a_op = Box | Unbox | BufferAccess _; }, _)
+  | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
   | Var _ | Const _ | Pword _ | Merge _ | Split _
   | Buffer _ | Delay _ | Block _ ->
     let eq, cv = translate_eq env eq in

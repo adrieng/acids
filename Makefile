@@ -95,7 +95,7 @@ release: clean_release
 	cp lib/*.as $(RELEASE_DIR)/lib/
 	mkdir $(RELEASE_DIR)/examples
 	cp examples/*.as $(RELEASE_DIR)/examples
-	tar cjf acids-`git rev-parse HEAD`.tar.bz2 $(RELEASE_DIR)/
-	scp acids-`git rev-parse HEAD`.tar.bz2 ludics:public_html
+	tar cjf "acids-`git rev-parse HEAD`_`date +%F-%Hh%M`.tar.bz2" $(RELEASE_DIR)/
+	scp "acids-`git rev-parse HEAD`_`date +%F-%Hh%M`.tar.bz2" ludics:public_html
 
 .FORCE:

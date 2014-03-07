@@ -78,6 +78,12 @@ sig
       c_stream_inst : (int * Clock_types.stream_type) list;
     }
 
+  type conv_var =
+    {
+      cv_external_clock : clock;
+      cv_internal_clock : clock;
+    }
+
   type eq =
     private
       {
@@ -102,6 +108,7 @@ sig
       {
         b_id : block_id;
         b_body : eq list;
+        b_conv : conv_var Ident.Env.t;
         b_loc : Loc.t;
       }
 
@@ -159,7 +166,12 @@ sig
     body : block ->
     node
 
-  val make_block : ?loc:Loc.t -> block_id -> eq list -> block
+  val make_block :
+    ?loc:Loc.t ->
+    ?conv:conv_var Ident.Env.t ->
+    block_id ->
+    eq list ->
+    block
 
   val make_eq : ?loc:Loc.t -> eq_desc -> clock -> eq
 
@@ -193,6 +205,12 @@ struct
       c_stream_inst : (int * Clock_types.stream_type) list;
     }
 
+  type conv_var =
+    {
+      cv_external_clock : clock;
+      cv_internal_clock : clock;
+    }
+
   type eq =
     {
       eq_desc : eq_desc;
@@ -215,6 +233,7 @@ struct
     {
       b_id : block_id;
       b_body : eq list;
+      b_conv : conv_var Ident.Env.t;
       b_loc : Loc.t;
     }
 
@@ -278,10 +297,11 @@ struct
       n_loc = loc;
     }
 
-  let make_block ?(loc = Loc.dummy) id body =
+  let make_block ?(loc = Loc.dummy) ?(conv = Ident.Env.empty) id body =
     {
       b_id = id;
       b_body = body;
+      b_conv = conv;
       b_loc = loc;
     }
 

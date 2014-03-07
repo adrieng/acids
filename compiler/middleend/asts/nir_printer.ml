@@ -93,6 +93,11 @@ struct
 
   let print_call fmt call = print_op fmt call.c_op
 
+  let print_conv_var fmt cv =
+    Format.fprintf fmt "(@[%a ->@ %a@])"
+      print_clock cv.cv_external_clock
+      print_clock cv.cv_internal_clock
+
   let rec print_eq_desc fmt p =
     match p with
     | Var (x, y) ->
@@ -153,8 +158,9 @@ struct
 
   and print_block fmt block =
     Format.fprintf fmt
-      "@[(@[<v 2>block@ :id %a@ :body (@[<v 0>%a@])@]@,)@]"
+      "@[(@[<v 2>block@ :id %a@ :conv (@[<v 0>%a@])@ :body (@[<v 0>%a@])@]@,)@]"
       print_block_id block.b_id
+      (Ident.Env.print print_conv_var ";") block.b_conv
       (Utils.print_list_r print_eq "") block.b_body
 
   let print_scope fmt s =

@@ -411,8 +411,26 @@ let rec translate_eq_exp (env, eql) x_l e =
           in
           Ident.Env.fold add dom.d_info#di_downsampled Ident.Env.empty
         in
-        let block, _, env = translate_block ~conv env e in
-        Nir_acids.Block block,
+        let block, y_l, env = translate_block ~conv env e in
+        (* Add a copy equation x = y inside block, and register converted
+           outputs inside block.b_conv. *)
+        let block =
+          let open Nir_acids in
+          let body, conv =
+            let add_copy (body, conv) x y =
+              let x_ck = get_var_clock env x in
+              let y_ck = get_var_clock env y in
+              let var_conv =
+                { cv_external_clock = x_ck; cv_internal_clock = y_ck; }
+              in
+              make_eq (Nir_acids.Var (x, y)) y_ck :: body,
+              Ident.Env.add x var_conv conv
+            in
+            List.fold_left2 add_copy (block.b_body, block.b_conv) x_l y_l
+          in
+          Block (make_block ~conv block.b_id body)
+        in
+        block,
         translate_stream_type dom.d_info#di_activation_clock,
         env,
         eql

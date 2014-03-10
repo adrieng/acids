@@ -135,6 +135,12 @@ let translate_var_dec vd =
     (translate_clock vd.v_clock)
     (translate_scope vd.v_scope)
 
+let translate_conv_var cv =
+  {
+    Nir_sliced.cv_external_clock = translate_clock cv.cv_external_clock;
+    Nir_sliced.cv_internal_clock = translate_clock cv.cv_internal_clock;
+  }
+
 let add_eq_to_its_node env v (eq : Nir_sliced.eq) =
   let node_var_env, node_body =
     try VarEnv.find v env.current_nodes
@@ -279,7 +285,9 @@ let rec translate_eq env eq =
 and translate_block env block =
   (* All equations inside a block should be on the same base clock. *)
   let body = List.map (translate_eq env) block.b_body in
+  let conv = Ident.Env.map translate_conv_var block.b_conv in
   Nir_sliced.make_block
+    ~conv
     ~loc:block.b_loc
     block.b_id
     (List.map fst body)

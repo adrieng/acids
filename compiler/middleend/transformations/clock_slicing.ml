@@ -208,7 +208,7 @@ let gather_vars var_env ck_env v_l =
 let translate_call_no_op op =
   let op =
     match op with
-    | Node _ -> invalid_arg "translate_call_no_op"
+    | Node _ -> assert false
     | Box -> Nir_sliced.Box
     | Unbox -> Nir_sliced.Unbox
     | BufferAccess (dir, pol) -> Nir_sliced.BufferAccess (dir, pol)
@@ -218,13 +218,23 @@ let translate_call_no_op op =
 let rec translate_eq env eq =
   let find_var_clock = find_var_clock env in
 
-  Format.eprintf "---> %a@." print_eq eq;
-
   let eqd, ck =
     match eq.eq_desc with
-    | Call (_, { c_op = Node _; }, _)
     | Call (_, { c_op = BufferAccess _; }, _) ->
       assert false
+
+    | Call (x_l, ({ c_op = Node _; } as call), y_l) ->
+      (* N.B. : for now we do not handle calls made from inside a block to nodes
+         having several polymorphic variables. *)
+      let base_sig_var, base_clock = Utils.assert1 call.c_stream_inst in
+      let call =
+        {
+          Nir_sliced.c_op = sliced_node_name call.c_op base_sig_var;
+          Nir_sliced.c_stream_inst = [];
+        }
+      in
+      Nir_sliced.Call (x_l, call, y_l),
+      Nir_of_acids.translate_stream_type base_clock
 
     | Call (x_l, { c_op = Box; }, y_l) ->
       let x = Utils.assert1 x_l in
@@ -267,6 +277,7 @@ let rec translate_eq env eq =
   (clock_var_of_nir_stream_type ck)
 
 and translate_block env block =
+  (* All equations inside a block should be on the same base clock. *)
   let body = List.map (translate_eq env) block.b_body in
   Nir_sliced.make_block
     ~loc:block.b_loc

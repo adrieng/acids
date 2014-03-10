@@ -40,7 +40,9 @@ let rec print_ty fmt ty =
       Int.print size
       print_buffer_polarity pol
 
-let print_idents = Utils.print_list Ident.print
+let print_idents fmt ids =
+  Format.fprintf fmt "@[%a@]"
+    (Utils.print_list_r Ident.print "") ids
 
 module Make(A : A) =
 struct
@@ -128,7 +130,7 @@ struct
         (Utils.print_list_r (print_merge_clause Ident.print) "") mc_l
 
     | Split (x_l, y, z, ec_l) ->
-      Format.fprintf fmt "%a = (@[<v 2>split@ %a@ (with %a)@ %a@])"
+      Format.fprintf fmt "%a = (@[<v 2>split@ %a@ :with %a@ %a@])"
         print_idents x_l
         Ident.print y
         Ident.print z

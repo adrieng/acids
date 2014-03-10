@@ -218,6 +218,8 @@ let translate_call_no_op op =
 let rec translate_eq env eq =
   let find_var_clock = find_var_clock env in
 
+  Format.eprintf "---> %a@." print_eq eq;
+
   let eqd, ck =
     match eq.eq_desc with
     | Call (_, { c_op = Node _; }, _)
@@ -249,7 +251,7 @@ let rec translate_eq env eq =
 
     | Buffer (x, bu, y) ->
       (* The buffer's base clock is base at this stage, so we have
-         to look for x's clock. *)
+         to look for x's clock ty. *)
       Nir_sliced.Buffer (x, bu, y), find_var_clock x
 
     | Delay (x, y) ->

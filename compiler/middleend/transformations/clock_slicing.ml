@@ -248,10 +248,12 @@ let rec translate_eq env eq =
       Nir_sliced.Split (x_l, y, z, ec_l), eq.eq_base_clock
 
     | Buffer (x, bu, y) ->
-      Nir_sliced.Buffer (x, bu, y), eq.eq_base_clock
+      (* The buffer's base clock is base at this stage, so we have
+         to look for x's clock. *)
+      Nir_sliced.Buffer (x, bu, y), find_var_clock x
 
     | Delay (x, y) ->
-      Nir_sliced.Delay (x, y), eq.eq_base_clock
+      Nir_sliced.Delay (x, y), find_var_clock x
 
     | Block block ->
       Nir_sliced.Block (translate_block env block), eq.eq_base_clock

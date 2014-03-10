@@ -397,7 +397,21 @@ let rec translate_eq_exp (env, eql) x_l e =
         assert false
 
       | E_dom (e, dom) ->
-        let block, _, env = translate_block env e in
+        let conv =
+          let add v info conv =
+            Ident.Env.add
+              v
+              {
+                Nir_acids.cv_external_clock =
+                  translate_clock_type info.Acids_clocked.external_clock;
+                Nir_acids.cv_internal_clock =
+                  translate_clock_type info.Acids_clocked.internal_clock;
+              }
+              conv
+          in
+          Ident.Env.fold add dom.d_info#di_downsampled Ident.Env.empty
+        in
+        let block, _, env = translate_block ~conv env e in
         Nir_acids.Block block,
         translate_stream_type dom.d_info#di_activation_clock,
         env,
@@ -440,11 +454,12 @@ and translate_eq (env, eql) eq =
     let env, v_l = translate_pattern p (env, []) in
     translate_eq_exp (env, eql) v_l e
 
-and translate_block env e =
+and translate_block ?(conv = Ident.Env.empty) env e =
   match e.e_desc with
   | E_where (out, block) ->
     let env, body = List.fold_left translate_eq (env, []) block.b_body in
     Nir_acids.make_block
+      ~conv
       ~loc:e.e_loc
       (get_current_block env)
       body,

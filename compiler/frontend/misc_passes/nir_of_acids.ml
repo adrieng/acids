@@ -334,8 +334,8 @@ let rec translate_eq_exp (env, eql) x_l e =
         *)
         let x = Utils.get_single x_l in
         let y = Utils.get_single (var_list_of_tuple e) in
-        let env, eql, nir_ce = translate_clock_exp env eql ce in
-        let clock = get_var_clock env nir_ce in
+        let env, eql, z = translate_clock_exp env eql ce in
+        let clock = get_var_clock env z in
         let v_unused = Ident.make_internal "wh" in
         let vd =
           let open Clock_types in
@@ -349,8 +349,8 @@ let rec translate_eq_exp (env, eql) x_l e =
             (get_current_scope env)
         in
         Nir_acids.Split ([x; v_unused],
-                         nir_ce,
                          y,
+                         z,
                          Ast_misc.([Ec_bool true; Ec_bool false])),
         clock,
         add_local env vd,
@@ -358,9 +358,9 @@ let rec translate_eq_exp (env, eql) x_l e =
 
       | E_split (ce, e, ec_l) ->
         let y = Utils.get_single (var_list_of_tuple e) in
-        let env, eql, ce = translate_clock_exp env eql ce in
-        Nir_acids.Split (x_l, ce, y, ec_l),
-        get_var_clock env ce,
+        let env, eql, z = translate_clock_exp env eql ce in
+        Nir_acids.Split (x_l, y, z, ec_l),
+        get_var_clock env z,
         env,
         eql
 

@@ -127,11 +127,11 @@ struct
         Ident.print ce
         (Utils.print_list_r (print_merge_clause Ident.print) "") mc_l
 
-    | Split (x_l, ce, y, ec_l) ->
-      Format.fprintf fmt "%a = (@[<v 2>split@ %a@ %a@ %a@])"
+    | Split (x_l, y, z, ec_l) ->
+      Format.fprintf fmt "%a = (@[<v 2>split@ %a@ (with %a)@ %a@])"
         print_idents x_l
-        Ident.print ce
         Ident.print y
+        Ident.print z
         (print_list Ast_misc.print_econstr) ec_l
 
     | Buffer (x, b, y) ->

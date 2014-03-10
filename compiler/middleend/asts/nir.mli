@@ -100,7 +100,7 @@ sig
   | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
   (** x = merge y_ce (ec_i -> z_i)*)
   | Split of idents * Ident.t * Ident.t * Ast_misc.econstr list
-  (** x_l = split y_ce z ec_l  *)
+  (** x_l = split y z_ce ec_l  *)
   | Buffer of Ident.t * buffer_info * Ident.t
   (** x = buffer y *)
   | Delay of Ident.t * Ident.t

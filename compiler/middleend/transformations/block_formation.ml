@@ -139,7 +139,7 @@ let form_block
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var Info.Cv_base in
 
-  let refresh_variable eqs x mk_ck =
+  let refresh_variable (conv, eqs) x mk_ck =
     let x_vd = find_var_dec env x in
     let x' = Ident.make_prefix "blk_" x in
     (* let x'_ck = Clock_types.reroot_stream_type Info.Cv_base bck in *)
@@ -153,14 +153,28 @@ let form_block
         x'_ck
         x_vd.v_scope
     in
+    let conv =
+      Ident.Env.add
+        x
+        {
+          cv_internal_clock = x_vd.v_clock;
+          cv_external_clock = x'_ck;
+        }
+        conv
+    in
     add_var_dec env x'_vd;
-    make_eq (Var (x', x)) bck :: eqs, x'
+    (conv, make_eq (Var (x', x)) bck :: eqs), x'
   in
 
-  let eqs, x'_l = Utils.mapfold_left_2 refresh_variable [] x_l x_ck_l in
-  let eqs, y'_l = Utils.mapfold_left_2 refresh_variable eqs y_l y_ck_l in
+  let (conv, eqs), x'_l =
+    Utils.mapfold_left_2 refresh_variable (Ident.Env.empty, []) x_l x_ck_l
+  in
+  let (conv, eqs), y'_l =
+    Utils.mapfold_left_2 refresh_variable (conv, eqs) y_l y_ck_l
+  in
   let block =
     make_block
+      ~conv
       bid
       (make_eq (mk_desc x'_l y'_l) bck :: eqs)
   in

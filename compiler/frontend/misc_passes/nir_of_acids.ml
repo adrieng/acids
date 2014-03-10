@@ -338,10 +338,10 @@ let rec translate_eq_exp (env, eql) x_l e =
         let clock = get_var_clock env nir_ce in
         let v_unused = Ident.make_internal "wh" in
         let vd =
-          let st =
-            Clock_types.St_on (ce.ce_info#ci_clock,
-                               assert false (* TODO *))
-          in
+          let open Clock_types in
+          let new_ce = clock_clock_exp_of_clock_exp env ce in
+          let ce_not = Clock_types.Ce_equal (new_ce, Ast_misc.Ec_bool false) in
+          let st = St_on (ce.ce_info#ci_clock, ce_not) in
           Nir_acids.make_var_dec
             v_unused
             (translate_data_type e.e_info#ei_data)

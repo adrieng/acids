@@ -94,6 +94,16 @@ let add_var env v e =
   in
   { env with prod_var_env = Ident.Env.add v e prod_var_env; }
 
+let find_replacing_vars env v =
+  let rec walk acc e =
+    match e.e_desc with
+    | E_var v -> v :: acc
+    | E_tuple e_l -> List.fold_left walk acc e_l
+    | _ -> assert false (* The expressions replacing vars of product type *)
+  in
+  let rev_res = walk [] (Ident.Env.find v env.prod_var_env) in
+  List.rev rev_res
+
 (** {2 Eliminate tuple variables} *)
 
 let rec make_scalar_pat_exp ty ct =
@@ -164,6 +174,29 @@ let decompose_tuple_block env block =
   let body = List.map (SUBST.subst_eq env.prod_var_env) body in
   env, { block with b_body = body; }
 
+let recompute_free_dom_variables env free =
+  let recompute_var v free_var new_free =
+    let open Clock_types in
+    let open Acids_clocked in
+    let vs = find_replacing_vars env v in
+    let ext_sts = flatten_clock_type [] free_var.external_clock in
+    let int_sts = flatten_clock_type [] free_var.internal_clock in
+    assert (List.length vs = List.length ext_sts);
+    assert (List.length ext_sts = List.length int_sts);
+    Utils.fold_left3
+      (fun new_free v ext int ->
+        Ident.Env.add
+          v
+          { external_clock = Ct_stream ext; internal_clock = Ct_stream int; }
+          new_free
+      )
+      new_free
+      vs
+      ext_sts
+      int_sts
+  in
+  Ident.Env.fold recompute_var Ident.Env.empty free
+
 let rec decompose_tuple_exp env e =
   let e =
     match e.e_desc with
@@ -171,6 +204,19 @@ let rec decompose_tuple_exp env e =
       let env, block = decompose_tuple_block env block in
       let e' = SUBST.subst_exp env.prod_var_env e' in
       { e with e_desc = E_where (e', block); }
+    | E_dom (e', dom) ->
+      let down = recompute_free_dom_variables env dom.d_info#di_downsampled in
+      let dom =
+        {
+          dom with
+            d_info =
+              object
+                method di_downsampled = down
+                method di_activation_clock = dom.d_info#di_activation_clock
+              end;
+        }
+      in
+      { e with e_desc = E_dom (e', dom); }
     | _ ->
       e
   in

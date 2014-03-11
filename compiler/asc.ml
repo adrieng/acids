@@ -33,6 +33,7 @@ let error_is_internal exn =
   | Clocking.Clocking_error _
   | Clocking_resolution.Resolution_error _
   | Causality.Causality_error _
+  | Scheduling.Scheduling_error _
     ->
     false
   | _
@@ -69,6 +70,8 @@ let print_error _ fmt exn =
     Clocking_resolution.print_error fmt err
   | Causality.Causality_error err ->
     Causality.print_error fmt err
+  | Scheduling.Scheduling_error err ->
+    Scheduling.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -95,6 +98,7 @@ let flow =
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
   +>+ Buffer_lowering.pass
+  +>+ Scheduling.pass
 
 (*****************************************************************************)
 (* File handling *)
@@ -127,7 +131,7 @@ let files = ref []
 let _ =
   try
     Arg.parse
-      Compiler_options.options
+      (Compiler_options.options ())
       (fun s -> files := s :: !files)
       Compiler_options.usage;
     files := List.rev !files;

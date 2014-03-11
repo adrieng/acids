@@ -60,6 +60,12 @@ let pword_generator_list = ["plain"]
 
 let pword_generator = ref (List.hd pword_generator_list)
 
+let scheduler_list = ref []
+
+let scheduler = ref ""
+
+let set_scheduler s = scheduler := s
+
 let set_pword_generator s = pword_generator := s
 
 let search_path =
@@ -136,7 +142,7 @@ let ctx_options =
     "i", Disabled print_interface, "Print signatures";
   ]
 
-let options =
+let options () =
   let make (id, def, msg) =
     let switch =
       match def with
@@ -175,6 +181,10 @@ let options =
           "-pgen",
           Arg.Symbol (pword_generator_list, set_pword_generator),
           " Pword code generator";
+
+          "-sched",
+          Arg.Symbol (!scheduler_list, set_scheduler),
+          " Intra-step scheduler";
         ]
     )
 
@@ -186,7 +196,9 @@ let has_something_to_print =
   fun () ->
     match !r with
     | None ->
-      let res = List.fold_left (||) false (List.map (fun (_, r) -> !r) info_list) in
+      let res =
+        List.fold_left (||) false (List.map (fun (_, r) -> !r) info_list)
+      in
       r := Some res;
       res
     | Some res ->

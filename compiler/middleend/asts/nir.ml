@@ -82,6 +82,7 @@ sig
     {
       cv_external_clock : clock;
       cv_internal_clock : clock;
+      cv_direction : buffer_direction;
     }
 
   type eq =
@@ -209,6 +210,11 @@ struct
     {
       cv_external_clock : clock;
       cv_internal_clock : clock;
+      cv_direction : buffer_direction;
+      (* the direction is given from the point of view of the block's
+         internals. More concretely, Nir.Push means that the push should be done
+         inside and pop outside (the variable is defined by the buffer) and
+         symmetrically for Nir.Pop. *)
     }
 
   type eq =

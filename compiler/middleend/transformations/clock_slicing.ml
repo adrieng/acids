@@ -139,6 +139,7 @@ let translate_conv_var cv =
   {
     Nir_sliced.cv_external_clock = translate_clock cv.cv_external_clock;
     Nir_sliced.cv_internal_clock = translate_clock cv.cv_internal_clock;
+    Nir_sliced.cv_direction = cv.cv_direction;
   }
 
 let add_eq_to_its_node env v (eq : Nir_sliced.eq) =

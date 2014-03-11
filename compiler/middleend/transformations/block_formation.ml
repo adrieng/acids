@@ -139,7 +139,7 @@ let form_block
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var Info.Cv_base in
 
-  let refresh_variable (conv, eqs) x mk_ck =
+  let refresh_variable dir (conv, eqs) x mk_ck =
     let x_vd = find_var_dec env x in
     let x' = Ident.make_prefix "blk_" x in
     (* let x'_ck = Clock_types.reroot_stream_type Info.Cv_base bck in *)
@@ -159,6 +159,7 @@ let form_block
         {
           cv_internal_clock = x_vd.v_clock;
           cv_external_clock = x'_ck;
+          cv_direction = dir;
         }
         conv
     in
@@ -167,10 +168,18 @@ let form_block
   in
 
   let (conv, eqs), x'_l =
-    Utils.mapfold_left_2 refresh_variable (Ident.Env.empty, []) x_l x_ck_l
+    Utils.mapfold_left_2
+      (refresh_variable Nir.Push)
+      (Ident.Env.empty, [])
+      x_l
+      x_ck_l
   in
   let (conv, eqs), y'_l =
-    Utils.mapfold_left_2 refresh_variable (conv, eqs) y_l y_ck_l
+    Utils.mapfold_left_2
+      (refresh_variable Nir.Pop)
+      (conv, eqs)
+      y_l
+      y_ck_l
   in
   let block =
     make_block

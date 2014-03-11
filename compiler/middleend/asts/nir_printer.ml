@@ -96,8 +96,9 @@ struct
   let print_call fmt call = print_op fmt call.c_op
 
   let print_conv_var fmt cv =
-    Format.fprintf fmt "(@[%a ->@ %a@])"
+    Format.fprintf fmt "(@[%a %s@ %a@])"
       print_clock cv.cv_external_clock
+      (if cv.cv_direction = Push then "->" else "<-")
       print_clock cv.cv_internal_clock
 
   let rec print_eq_desc fmt p =

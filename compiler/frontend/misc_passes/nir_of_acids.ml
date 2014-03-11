@@ -406,6 +406,8 @@ let rec translate_eq_exp (env, eql) x_l e =
                   translate_clock_type info.Acids_clocked.external_clock;
                 Nir_acids.cv_internal_clock =
                   translate_clock_type info.Acids_clocked.internal_clock;
+                Nir_acids.cv_direction =
+                  Nir.Pop;
               }
               conv
           in
@@ -421,7 +423,11 @@ let rec translate_eq_exp (env, eql) x_l e =
               let x_ck = get_var_clock env x in
               let y_ck = get_var_clock env y in
               let var_conv =
-                { cv_external_clock = x_ck; cv_internal_clock = y_ck; }
+                {
+                  cv_external_clock = x_ck;
+                  cv_internal_clock = y_ck;
+                  cv_direction = Nir.Push;
+                }
               in
               make_eq (Nir_acids.Var (x, y)) y_ck :: body,
               Ident.Env.add x var_conv conv

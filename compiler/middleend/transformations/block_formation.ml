@@ -266,6 +266,7 @@ and block env block =
   let body = List.map (equation env) block.b_body in
   Nir_sliced.make_block
     ~loc:block.b_loc
+    ~conv:block.b_conv
     block.b_id
     body
 

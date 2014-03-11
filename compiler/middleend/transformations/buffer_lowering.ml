@@ -16,7 +16,7 @@
  *)
 
 open Nir
-open Nir_utils
+open Nir_sliced
 
 (** {1 Buffer lowering}
 
@@ -28,74 +28,109 @@ open Nir_utils
 
 type env =
   {
-    new_eqs_per_block : Ident.t eq list BlockEnv.t;
-    local_vars : unit var_dec Ident.Env.t;
-    current_blocks : Nir.block_id list;
+    current_block : block_id;
+    replacements : Ident.t Ident.Env.t;
+    local_vars : var_dec Ident.Env.t;
+    eqs_for_current_block : eq list;
   }
 
 let initial_env_for_node node =
   {
-    new_eqs_per_block = BlockEnv.empty;
+    current_block = Block_id 0;
+    replacements = Ident.Env.empty;
     local_vars = node.n_env;
-    current_blocks = [];
+    eqs_for_current_block = [];
   }
 
-let current_block env =
-  match env.current_blocks with
-  | [] -> invalid_arg "current_block: no block entered"
-  | bid :: _ -> bid
+let get_parent_block env = env.current_block
 
-let add_new_eq_to_block env eq =
-  let new_eqs_per_block =
-    try BlockEnv.find (current_block env) env.new_eqs_per_block
-    with Not_found -> []
-  in
-  {
-    env with
-      new_eqs_per_block =
-      BlockEnv.add
-        (current_block env)
-        (eq :: new_eqs_per_block)
-        env.new_eqs_per_block;
-  }
+let get_locals env = env.local_vars
 
-let enter_block env block_id =
-  { env with current_blocks = block_id :: env.current_blocks; }
+let get_current_eqs env = env.eqs_for_current_block
 
-let leave_current_block env =
-  let block_id = current_block env in
-  {
-    env with
-      current_blocks = List.tl env.current_blocks;
-      new_eqs_per_block = BlockEnv.remove block_id env.new_eqs_per_block;
-  },
-  try BlockEnv.find block_id env.new_eqs_per_block
-  with Not_found -> []
+let enter_new_block env block =
+  { env with eqs_for_current_block = []; current_block = block.b_id; }
+
+let add_eq env eq =
+  { env with eqs_for_current_block = eq :: env.eqs_for_current_block; }
+
+let find_var env x =
+  Ident.Env.find x env.local_vars
+
+let find_var_type env x = (find_var env x).v_data
 
 let add_local_var env vd =
-  {
-    env with
-      local_vars = Ident.Env.add vd.v_name vd env.local_vars;
-  }
+  { env with local_vars = Ident.Env.add vd.v_name vd env.local_vars; }
 
-let local_vars env = env.local_vars
+let add_replacement env x y =
+  { env with replacements = Ident.Env.add x y env.replacements; }
 
-let find_var env x = Ident.Env.find x env.local_vars
+let add_copy env ck x =
+  let x_vd = find_var env x in
+  let y = Ident.make_suffix x "_blint" in
+  let y_vd =
+    make_var_dec
+      ~annots:x_vd.v_annots
+      y
+      x_vd.v_data
+      ck
+      (Scope_internal (get_parent_block env))
+  in
+  add_local_var
+    { env with replacements = Ident.Env.add x y env.replacements; }
+    y_vd,
+  y
 
-let find_var_type env x =
-  let vd = find_var env x in
-  vd.v_data
+let substitute env x = try Ident.Env.find x env.replacements with Not_found -> x
 
 (** {2 AST walking} *)
 
-let rec eq env eq =
+let mk_access_eq env b pol dir v =
+  let base_ck = (find_var env v).v_clock in
+  let op =
+    {
+      c_op = BufferAccess (dir, pol);
+      c_stream_inst = [];
+    }
+  in
+
+  let x_l, y_l =
+    match pol, dir with
+    | Strict, Push -> [], [v]
+    | Strict, Pop -> [v], []
+    | Lazy, Push -> [v; b], []
+    | Lazy, Pop -> [], [b; v]
+  in
+
+  make_eq
+    (Call (x_l, op, b :: y_l))
+    base_ck
+
+let make_buffer env ?(scope = Scope_context) ty size pol =
+  let b = Ident.make_internal "buff" in
+  let b_vd =
+    make_var_dec
+      b
+      (Ty_buffer (ty, size, pol))
+      (Clock_types.St_var (Info.Cv_base))
+      scope
+  in
+  add_local_var env b_vd, b
+
+let rec equation env eq =
   match eq.eq_desc with
-  | Var _ | Const _ | Pword _ | Call _ | Merge _ | Split _ | Valof _
+  | Var (x, y) ->
+    add_eq
+      env
+      (make_eq
+         ~loc:eq.eq_loc
+         (Var (substitute env x, substitute env y))
+         eq.eq_base_clock)
+
+  | Const _ | Pword _ | Call _ | Merge _ | Split _
   | Delay _ ->
-    env, Some eq
-  | Block bl ->
-    let env, bl = block env bl in
-    env, Some { eq with eq_desc = Block bl; }
+    add_eq env eq
+
   | Buffer (x, bu, y) ->
     let pol = if bu.b_delay then Lazy else Strict in
     (* Regarding buffer size, consider the following clocks.
@@ -119,57 +154,77 @@ let rec eq env eq =
       | Lazy -> bu.b_size
       | Strict -> bu.b_real_size
     in
-    let b = Ident.make_internal "buff" in
-    let b_vd =
-      make_var
-        b
-        (Ty_buffer (find_var_type env x, size, pol))
-        (Clock_types.St_var (Cv_block (Block_id 0)))
-        Scope_context
-        []
-    in
-    let env = add_local_var env b_vd in
+    let env, b = make_buffer env (find_var_type env x) size pol in
 
-    let mk_access_eq dir v =
-      let base_ck = (find_var env y).v_clock in
-      let op =
-        {
-          a_op = BufferAccess (dir, pol);
-          a_stream_inst = [];
-        }
-      in
+    let push_eq = mk_access_eq env b pol Push y in
+    let pop_eq = mk_access_eq env b pol Pop x in
 
-      let x_l, y_l =
-        match pol, dir with
-        | Strict, Push -> [], [v]
-        | Strict, Pop -> [v], []
-        | Lazy, Push -> [v; b], []
-        | Lazy, Pop -> [], [b; v]
-      in
+    add_eq (add_eq env push_eq) pop_eq
 
-      make_eq
-        (Call (x_l, op, b :: y_l))
-        base_ck
-    in
-
-    let push_eq = mk_access_eq Push y in
-    let pop_eq = mk_access_eq Pop x in
-
-    add_new_eq_to_block (add_new_eq_to_block env push_eq) pop_eq, None
+  | Block bl ->
+    let env, bl = block env bl in
+    add_eq
+      env
+      (make_eq ~loc:eq.eq_loc (Block bl) eq.eq_base_clock)
 
 and block env block =
-  let env = enter_block env block.b_id in
-  let env, body = Utils.mapfold_left eq env block.b_body in
-  let body = Utils.flatten_option_list body in
-  let env, new_eqs = leave_current_block env in
-  env, { block with b_body = new_eqs @ body; }
+  let env' = enter_new_block env block in
+
+  let add_push_and_pop_for_conv x cv (env, env') =
+    let size = Clock_types.max_burst_stream_type cv.cv_external_clock in
+
+    let env, b =
+      make_buffer
+        env
+        ~scope:(Scope_internal (get_parent_block env))
+        (find_var_type env x)
+        size
+        Strict
+    in
+
+    let env, y = add_copy env cv.cv_internal_clock x in
+
+    match cv.cv_direction with
+    | Push ->
+      (* x is being defined inside the block. *)
+      let push_eq = mk_access_eq env b Strict Push y in
+      let pop_eq = mk_access_eq env b Strict Pop x in
+      add_eq env pop_eq, add_eq env' push_eq
+
+    | Pop ->
+      (* x is being used inside the block. *)
+      let push_eq = mk_access_eq env b Strict Push x in
+      let pop_eq = mk_access_eq env b Strict Pop y in
+      add_eq env push_eq, add_eq env' pop_eq
+  in
+
+  let env, env' =
+    Ident.Env.fold add_push_and_pop_for_conv block.b_conv (env, env')
+  in
+
+  let block =
+    let env' = List.fold_left equation env' block.b_body in
+    make_block
+      ~loc:block.b_loc
+      ~conv:Ident.Env.empty
+      block.b_id
+      (get_current_eqs env')
+  in
+  env, block
 
 let node nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
   let env = initial_env_for_node nd in
   let env, body = block env nd.n_body in
-  { nd with n_body = body; n_env = local_vars env; }
+  make_node
+    ~loc:nd.n_loc
+    nd.n_name
+    nd.n_orig_info
+    ~input:nd.n_input
+    ~output:nd.n_output
+    ~env:(get_locals env)
+    ~body
 
-let pass =
-  let open Middleend_utils in
-  make_transform "buffer_lowering" (map_to_nodes node)
+module U = Middleend_utils.Make(Nir_sliced)(Nir_sliced)
+
+let pass = U.make_transform "buffer_lowering" (U.map_to_nodes node)

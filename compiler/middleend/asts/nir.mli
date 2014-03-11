@@ -82,7 +82,7 @@ sig
     {
       cv_external_clock : clock;
       cv_internal_clock : clock;
-      cv_direction : buffer_direction;
+      cv_direction : buffer_direction; (* Push = def, Pop = use *)
     }
 
   type eq =

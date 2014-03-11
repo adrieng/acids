@@ -94,7 +94,7 @@ let flow =
   (* Middle-end *)
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
-  (* +>+ Buffer_lowering.pass *)
+  +>+ Buffer_lowering.pass
 
 (*****************************************************************************)
 (* File handling *)

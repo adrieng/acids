@@ -70,7 +70,7 @@ sig
   | Node of I.node_name
   | Box
   | Unbox
-  | BufferAccess of buffer_direction * buffer_polarity
+  | BufferAccess of Ident.t * buffer_direction * buffer_polarity
 
   type call =
     {

@@ -88,10 +88,11 @@ struct
     | Node nn -> I.print_node_name fmt nn
     | Box -> Format.fprintf fmt "box"
     | Unbox -> Format.fprintf fmt "unbox"
-    | BufferAccess (dir, pol) ->
-      Format.fprintf fmt "%a_%a"
+    | BufferAccess (id, dir, pol) ->
+      Format.fprintf fmt "(%a_%a :buff %a)"
         print_buffer_direction dir
         print_buffer_polarity pol
+        Ident.print id
 
   let print_call fmt call = print_op fmt call.c_op
 

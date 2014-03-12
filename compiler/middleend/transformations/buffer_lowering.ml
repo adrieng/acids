@@ -89,7 +89,7 @@ let mk_access_eq env b pol dir v =
   let base_ck = (find_var env v).v_clock in
   let op =
     {
-      c_op = BufferAccess (dir, pol);
+      c_op = BufferAccess (b, dir, pol);
       c_stream_inst = [];
     }
   in
@@ -98,12 +98,12 @@ let mk_access_eq env b pol dir v =
     match pol, dir with
     | Strict, Push -> [], [v]
     | Strict, Pop -> [v], []
-    | Lazy, Push -> [v; b], []
-    | Lazy, Pop -> [], [b; v]
+    | Lazy, Push -> [v], []
+    | Lazy, Pop -> [], [v]
   in
 
   make_eq
-    (Call (x_l, op, b :: y_l))
+    (Call (x_l, op, y_l))
     base_ck
 
 let make_buffer env ?(scope = Scope_context) ty size pol =

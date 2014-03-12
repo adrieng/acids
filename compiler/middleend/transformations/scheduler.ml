@@ -42,14 +42,18 @@ struct
     (* At this point in the compiler all functions are strict *)
     let inputs = eq_input [] eq in
     let add_dependency already_done input =
-      let def_eq_id = Ident.Env.find input defs in
-      if Utils.Int_set.mem def_eq_id already_done
-      then already_done
+      if Ident.Env.mem input defs
+      then
+        let def_eq_id = Ident.Env.find input defs in
+        if Utils.Int_set.mem def_eq_id already_done
+        then already_done
+        else
+          (
+            S.add_dependency deps def_eq_id eq_id;
+            Utils.Int_set.add def_eq_id already_done
+          )
       else
-        (
-          S.add_dependency deps def_eq_id eq_id;
-          Utils.Int_set.add def_eq_id already_done
-        )
+        already_done
     in
     ignore (List.fold_left add_dependency Utils.Int_set.empty inputs);
     let eq =
@@ -91,6 +95,7 @@ struct
     in
     make_block
       ~loc:block.b_loc
+      ~conv:block.b_conv
       block.b_id
       (List.map snd body)
 

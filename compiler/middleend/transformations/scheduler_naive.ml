@@ -31,17 +31,19 @@ struct
       g = G.create ();
     }
 
-  let add_eq _ _ _ = ()
+  let find deps eq_id =
+    try Utils.Int_map.find eq_id deps.ids
+    with Not_found ->
+      let v = G.V.create eq_id in
+      G.add_vertex deps.g v;
+      deps.ids <- Utils.Int_map.add eq_id v deps.ids;
+      v
+
+  let add_eq deps eq_id _ =
+    ignore (find deps eq_id)
 
   let add_dependency deps eq_id1 eq_id2 =
-    let find eq_id =
-      try Utils.Int_map.find eq_id deps.ids
-      with Not_found ->
-        let v = G.V.create eq_id in
-        deps.ids <- Utils.Int_map.add eq_id v deps.ids;
-        v
-    in
-    G.add_edge deps.g (find eq_id1) (find eq_id2)
+    G.add_edge deps.g (find deps eq_id1) (find deps eq_id2)
 
   type schedule = int Utils.Int_map.t
 

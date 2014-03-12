@@ -178,8 +178,8 @@ let sliced_node_name op v =
     Nir_sliced.Box
   | Unbox ->
     Nir_sliced.Unbox
-  | BufferAccess (dir, pol) ->
-    Nir_sliced.BufferAccess (dir, pol)
+  | BufferAccess (id, dir, pol) ->
+    Nir_sliced.BufferAccess (id, dir, pol)
 
 (** {2 AST traversal} *)
 
@@ -218,7 +218,7 @@ let translate_call_no_op op =
     | Node _ -> assert false
     | Box -> Nir_sliced.Box
     | Unbox -> Nir_sliced.Unbox
-    | BufferAccess (dir, pol) -> Nir_sliced.BufferAccess (dir, pol)
+    | BufferAccess (id, dir, pol) -> Nir_sliced.BufferAccess (id, dir, pol)
   in
   Nir_sliced.({ c_op = op; c_stream_inst = []; })
 

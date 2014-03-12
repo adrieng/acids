@@ -190,76 +190,81 @@ let form_block
   make_eq (Block block) base_clock
 
 let rec equation env eq =
-  match eq.eq_desc with
-  | Var _
-  | Buffer _
-  | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
-  | Delay _ ->
-    (* TODO: optimize buffer *)
+  match eq.eq_base_clock with
+  | Clock_types.St_var _ ->
+    (* do not generate blocks for variables on base *)
     eq
+  | Clock_types.St_on _ ->
+    match eq.eq_desc with
+    | Var _
+    | Buffer _
+    | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
+    | Delay _ ->
+    (* TODO: optimize buffer *)
+      eq
 
-  | Const (x, c) ->
-    let mk_desc x_l _ =
-      let x = Utils.assert1 x_l in
-      Const (x, c)
-    in
-    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+    | Const (x, c) ->
+      let mk_desc x_l _ =
+        let x = Utils.assert1 x_l in
+        Const (x, c)
+      in
+      form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-  | Pword (x, p) ->
-    let mk_desc x_l _ =
-      let x = Utils.assert1 x_l in
-      Pword (x, p)
-    in
-    form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+    | Pword (x, p) ->
+      let mk_desc x_l _ =
+        let x = Utils.assert1 x_l in
+        Pword (x, p)
+      in
+      form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
 
-  | Call (x_l, ({ c_op = Node (ln, id); } as call), y_l) ->
-    let input_sts, output_sts =
-      find_node_clock_sig_sliced env.senv ln id
-    in
+    | Call (x_l, ({ c_op = Node (ln, id); } as call), y_l) ->
+      let input_sts, output_sts =
+        find_node_clock_sig_sliced env.senv ln id
+      in
 
-    assert (List.length input_sts = List.length y_l);
-    assert (List.length output_sts = List.length x_l);
+      assert (List.length input_sts = List.length y_l);
+      assert (List.length output_sts = List.length x_l);
 
-    let mk_desc x_l y_l =
-      Call (x_l, call, y_l)
-    in
-    form_block
-      env
-      eq.eq_base_clock
-      mk_desc
-      x_l (List.map (Utils.flip Clock_types.reroot_stream_type) output_sts)
-      y_l (List.map (Utils.flip Clock_types.reroot_stream_type) input_sts)
+      let mk_desc x_l y_l =
+        Call (x_l, call, y_l)
+      in
+      form_block
+        env
+        eq.eq_base_clock
+        mk_desc
+        x_l (List.map (Utils.flip Clock_types.reroot_stream_type) output_sts)
+        y_l (List.map (Utils.flip Clock_types.reroot_stream_type) input_sts)
 
-  | Merge (x, y, c_l) ->
-    let ec_l, z_l = List.split c_l in
-    let mk_desc x_l z_l =
-      let x, y = Utils.assert2 x_l in
-      Merge (x, y, List.combine ec_l z_l)
-    in
-    form_block
-      env
-      eq.eq_base_clock
-      mk_desc
-      [x; y] [(fun ck -> ck); fun ck -> ck]
-      z_l (List.map (mk_sampled_clock (clock_exp_of_id env y)) ec_l)
+    | Merge (x, y, c_l) ->
+      let ec_l, z_l = List.split c_l in
+      let mk_desc x_l z_l =
+        let x, y = Utils.assert2 x_l in
+        Merge (x, y, List.combine ec_l z_l)
+      in
+      form_block
+        env
+        eq.eq_base_clock
+        mk_desc
+        [x; y] [(fun ck -> ck); fun ck -> ck]
+        z_l (List.map (mk_sampled_clock (clock_exp_of_id env y)) ec_l)
 
-  | Split (x_l, y, z, ec_l) ->
-    let mk_desc x_l z_l =
-      let y, z = Utils.assert2 z_l in
-      Split (x_l, y, z, ec_l)
-    in
-    form_block
-      env
-      eq.eq_base_clock
-      mk_desc
-      x_l (List.map (mk_sampled_clock (clock_exp_of_id env z)) ec_l)
-      [y; z] [(fun ck -> ck); fun ck -> ck]
+    | Split (x_l, y, z, ec_l) ->
+      let mk_desc x_l z_l =
+        let y, z = Utils.assert2 z_l in
+        Split (x_l, y, z, ec_l)
+      in
+      form_block
+        env
+        eq.eq_base_clock
+        mk_desc
+        x_l (List.map (mk_sampled_clock (clock_exp_of_id env z)) ec_l)
+        [y; z] [(fun ck -> ck); fun ck -> ck]
 
-  | Block blk ->
-    Nir_sliced.make_eq
-      ~loc:eq.eq_loc
-      (Block (block env blk))
-      eq.eq_base_clock
+    | Block blk ->
+      Nir_sliced.make_eq
+        ~loc:eq.eq_loc
+        (Block (block env blk))
+        eq.eq_base_clock
 
 and block env block =
   assert (let Block_id x = block.b_id in x < get_current_block_count env);

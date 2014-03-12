@@ -19,7 +19,7 @@ module Make(A : Nir.A) =
 struct
   open A
 
-  let rec eq_output acc eq =
+  let eq_output acc eq =
     match eq.eq_desc with
     | Var (x, _) | Const (x, _) | Pword (x, _) ->
       x :: acc
@@ -34,12 +34,12 @@ struct
     | Delay (x, _) ->
       x :: acc
     | Block block ->
-      block_output acc block
+      Ident.Env.fold
+        (fun x cv acc -> if cv.cv_direction = Nir.Push then x :: acc else acc)
+        block.b_conv
+        acc
 
-  and block_output acc block =
-    List.fold_left eq_output acc block.b_body
-
-  let rec eq_input acc eq =
+  let eq_input acc eq =
     match eq.eq_desc with
     | Var (_, y) ->
       y :: acc
@@ -56,10 +56,10 @@ struct
     | Delay (_, y) ->
       y :: acc
     | Block block ->
-      block_input acc block
-
-  and block_input acc block =
-    List.fold_left eq_input acc block.b_body
+      Ident.Env.fold
+        (fun x cv acc -> if cv.cv_direction = Nir.Pop then x :: acc else acc)
+        block.b_conv
+        acc
 
   let rec eq_vars acc eq =
     match eq.eq_desc with

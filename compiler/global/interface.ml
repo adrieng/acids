@@ -222,6 +222,11 @@ let module_name_of_file_name filen =
 let interface_file_name_of_module_name modn =
   String.uncapitalize modn ^ ".aso"
 
+let qualify_shortname shortn =
+  let fn = Initial.get_current_file_name () in
+  let modn = module_name_of_file_name fn in
+  Initial.make_longname ~modn shortn
+
 let load_interface_from_module_name modn =
   let filen = String.uncapitalize modn ^ ".aso" in
   let rec try_dirs dirs =

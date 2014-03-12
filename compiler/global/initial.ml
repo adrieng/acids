@@ -30,6 +30,3 @@ let make_longname ?modn shortn =
   in
   assert (shortn <> "");
   Names.make_longname modn shortn
-
-let longname_of_shortname_current_module shortn =
-  make_longname ~modn:(get_current_file_name ()) shortn

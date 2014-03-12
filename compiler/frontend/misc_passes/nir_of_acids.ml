@@ -500,7 +500,7 @@ let translate_node_def env nd =
   let block, output, env = translate_block env nd.n_body in
   Nir_acids.make_node
     ~loc:nd.n_loc
-    (Initial.longname_of_shortname_current_module nd.n_name)
+    (Interface.qualify_shortname nd.n_name)
     nd.n_info
     ~input
     ~output

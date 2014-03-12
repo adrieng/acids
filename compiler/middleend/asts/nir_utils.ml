@@ -23,6 +23,10 @@ struct
     match eq.eq_desc with
     | Var (x, _) | Const (x, _) | Pword (x, _) ->
       x :: acc
+    | Call (x_l, { c_op = BufferAccess (b, Nir.Push, Nir.Strict); }, _)
+    | Call (x_l, { c_op = BufferAccess (b, Nir.Pop, Nir.Lazy); }, _)
+      ->
+      b :: x_l @ acc
     | Call (x_l, _, _) ->
       x_l @ acc
     | Merge (x, _, _) ->
@@ -45,6 +49,10 @@ struct
       y :: acc
     | Const _ | Pword _ ->
       acc
+    | Call (x_l, { c_op = BufferAccess (b, Nir.Push, Nir.Lazy); }, _)
+    | Call (x_l, { c_op = BufferAccess (b, Nir.Pop, Nir.Strict); }, _)
+      ->
+      b :: x_l @ acc
     | Call (_, _, y_l) ->
       y_l @ acc
     | Merge (_, y, z_l) ->

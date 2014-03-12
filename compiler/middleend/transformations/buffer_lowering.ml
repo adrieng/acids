@@ -95,11 +95,9 @@ let mk_access_eq env b pol dir v =
   in
 
   let x_l, y_l =
-    match pol, dir with
-    | Strict, Push -> [], [v]
-    | Strict, Pop -> [v], []
-    | Lazy, Push -> [v], []
-    | Lazy, Pop -> [], [v]
+    match dir with
+    | Push -> [], [v]
+    | Pop -> [v], []
   in
 
   make_eq

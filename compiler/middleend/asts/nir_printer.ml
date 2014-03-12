@@ -51,6 +51,9 @@ struct
   let print_clock fmt ck =
     Clock_types.print_raw_stream_type I.print_clock_var fmt ck
 
+  let print_additional_info f fmt x =
+    if !Compiler_options.print_nir_info then Format.fprintf fmt "%a@ " f x
+
   let print_with_info print fmt ty ck x =
     Format.fprintf fmt "(@[";
     print fmt x;
@@ -161,10 +164,16 @@ struct
     Format.fprintf fmt "@]@,)@]"
 
   and print_block fmt block =
-    Format.fprintf fmt
-      "@[(@[<v 2>block@ :id %a@ :conv (@[<v 0>%a@])@ :body (@[<v 0>%a@])@]@,)@]"
-      print_block_id block.b_id
-      (Ident.Env.print print_conv_var ";") block.b_conv
+    let print_id fmt b_id =
+      Format.fprintf fmt ":id %a" print_block_id b_id
+    in
+    let print_conv fmt conv =
+      Format.fprintf fmt ":conv (@[<v 0>%a@])"
+        (Ident.Env.print print_conv_var ";") conv
+    in
+    Format.fprintf fmt "@[(@[<v 2>block@ %a%a(@[<v 0>%a@])@]@,)@]"
+      (print_additional_info print_id) block.b_id
+      (print_additional_info print_conv) block.b_conv
       (Utils.print_list_r print_eq "") block.b_body
 
   let print_scope fmt s =
@@ -205,13 +214,13 @@ struct
       Format.fprintf fmt "@])"
     in
     Format.fprintf fmt
-      "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ :env %a"
+      "@[(@[<v 2>node@ :name %a@ :input %a@ :output %a@ %a"
       I.print_node_name node.n_name
       (print_list Ident.print) node.n_input
       (print_list Ident.print) node.n_output
-      print_env node.n_env
+      (print_additional_info print_env) node.n_env
     ;
-    Format.fprintf fmt "@ :body %a@]@,)@]"
+    Format.fprintf fmt ":body %a@]@,)@]"
       print_block node.n_body
 
   let print_type_def fmt td =

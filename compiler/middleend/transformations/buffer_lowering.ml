@@ -206,7 +206,7 @@ and block env block =
     let env' = List.fold_left equation env' block.b_body in
     make_block
       ~loc:block.b_loc
-      ~conv:Ident.Env.empty
+      ~conv:block.b_conv
       block.b_id
       (get_current_eqs env')
   in

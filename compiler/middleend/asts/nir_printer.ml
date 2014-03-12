@@ -122,8 +122,13 @@ struct
         Ident.print x
         Ast_misc.print_const_pword p
 
+    | Call ([], call, y_l) ->
+      Format.fprintf fmt "(@[%a@ (%a)@])"
+        print_call call
+        print_idents y_l
+
     | Call (x_l, call, y_l) ->
-      Format.fprintf fmt "%a = (@[%a@ %a@])"
+      Format.fprintf fmt "%a = (@[%a@ (%a)@])"
         print_idents x_l
         print_call call
         print_idents y_l

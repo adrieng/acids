@@ -99,6 +99,7 @@ let flow =
   +>+ Block_formation.pass
   +>+ Buffer_lowering.pass
   +>+ Scheduling.pass
+  +>+ Obc_of_nir.pass
 
 (*****************************************************************************)
 (* File handling *)

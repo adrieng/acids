@@ -18,10 +18,16 @@
 module Info =
 struct
   type node_name = Names.longname * int
-  let print_node_name fmt (ln, i) =
-    Format.fprintf fmt "%a_st%d"
-      Names.print_longname ln
-      i
+
+  let longname_of_sliced_name (ln, i) =
+    let open Names in
+    {
+      modn = ln.modn;
+      shortn = ln.shortn ^ "_st" ^ string_of_int i;
+    }
+
+  let print_node_name fmt nn =
+    Names.print_longname fmt (longname_of_sliced_name nn)
   let original_name (ln, _) = ln
 
   type clock_var = Cv_base

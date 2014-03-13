@@ -138,7 +138,7 @@ let print_type_def fmt td =
     (Utils.print_list_r Names.print_shortname "|") td.ty_body
 
 let print_file fmt file =
-  Format.fprintf fmt "@[(* File %a *)@\n%a@\n%a@]"
+  Format.fprintf fmt "@[(* File %a *)@\n%a@\n%a@\n@]"
     Names.print_shortname file.f_name
     (Utils.print_list_eol print_type_def) file.f_type_defs
     (Utils.print_list_eol print_machine) file.f_machines

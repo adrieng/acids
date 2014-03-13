@@ -675,14 +675,6 @@ let type_node_decl env nd =
   },
   add_local_node_signature env nd.decl_name nd.decl_const
 
-let type_type_def env td =
-  {
-    M.ty_name = td.ty_name;
-    M.ty_body = td.ty_body;
-    M.ty_loc = td.ty_loc;
-  },
-  env
-
 let type_const_def env sd =
   let body = expect_exp sd.sd_loc env const_ty sd.sd_body in
   {
@@ -710,7 +702,6 @@ let type_phrase env phr =
     let nd, env = type_node_decl env nd in
     env, M.Phr_node_decl nd
   | Phr_type_def td ->
-    let td, env = type_type_def env td in
     env, M.Phr_type_def td
   | Phr_const_def sd ->
     let sd, env = type_const_def env sd in

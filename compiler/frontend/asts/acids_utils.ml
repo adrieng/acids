@@ -280,13 +280,6 @@ struct
       OUT.decl_loc = nd.decl_loc;
     }
 
-  and extract_type_def td =
-    {
-      OUT.ty_name = td.ty_name;
-      OUT.ty_body = td.ty_body;
-      OUT.ty_loc = td.ty_loc;
-    }
-
   let extract_const_def sd =
     {
       OUT.sd_name = sd.sd_name;
@@ -309,7 +302,7 @@ struct
     match phr with
     | Phr_node_def nd -> OUT.Phr_node_def (extract_node_def nd)
     | Phr_node_decl nd -> OUT.Phr_node_decl (extract_node_decl nd)
-    | Phr_type_def td -> OUT.Phr_type_def (extract_type_def td)
+    | Phr_type_def td -> OUT.Phr_type_def td
     | Phr_const_def sd -> OUT.Phr_const_def (extract_const_def sd)
     | Phr_pword_def pd -> OUT.Phr_pword_def (extract_pword_def pd)
 

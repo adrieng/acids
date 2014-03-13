@@ -840,15 +840,11 @@ let scope_node_decl env decl =
   add_local_node env decl.decl_name
 
 let scope_type_def env tdef =
+  let open Ast_misc in
   check_type_name env tdef.ty_name tdef.ty_loc;
   let env = List.fold_left (check_type_constr tdef.ty_loc) env tdef.ty_body in
   let env = add_local_constrs_ranks env tdef.ty_body in
-  {
-    Acids_scoped.ty_name = tdef.ty_name;
-    Acids_scoped.ty_body = tdef.ty_body;
-    Acids_scoped.ty_loc = tdef.ty_loc;
-  },
-  env
+  tdef, env
 
 let scope_const_def env sd =
   check_const_name env sd.sd_name sd.sd_loc;

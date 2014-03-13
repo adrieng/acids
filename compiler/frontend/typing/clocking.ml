@@ -880,13 +880,6 @@ let clock_node_decl env ndecl =
     M.decl_loc = ndecl.decl_loc;
   }
 
-let clock_type_decl td =
-  {
-    M.ty_name = td.ty_name;
-    M.ty_body = td.ty_body;
-    M.ty_loc = td.ty_loc;
-  }
-
 let clock_const_def env sd =
   let c =
     match sd.sd_body.e_desc with
@@ -927,7 +920,7 @@ let clock_phrase env phr =
     let env, nd = clock_node_decl env nd in
     env, M.Phr_node_decl nd
   | Phr_type_def td ->
-    env, M.Phr_type_def (clock_type_decl td)
+    env, M.Phr_type_def td
   | Phr_const_def sd ->
     let sd, env = clock_const_def env sd in
     env, M.Phr_const_def sd

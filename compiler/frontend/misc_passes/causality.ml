@@ -292,13 +292,6 @@ let annot_node_decl nd =
     Acids_causal.decl_loc = nd.decl_loc;
   }
 
-let annot_type_def td =
-  {
-    Acids_causal.ty_name = td.ty_name;
-    Acids_causal.ty_body = td.ty_body;
-    Acids_causal.ty_loc = td.ty_loc;
-  }
-
 let annot_const_def sd =
   {
     Acids_causal.sd_name = sd.sd_name;
@@ -320,7 +313,7 @@ let annot_type_phrase phr =
   | Phr_node_decl nd ->
     Acids_causal.Phr_node_decl (annot_node_decl nd)
   | Phr_type_def td ->
-    Acids_causal.Phr_type_def (annot_type_def td)
+    Acids_causal.Phr_type_def td
   | Phr_const_def sd ->
     Acids_causal.Phr_const_def (annot_const_def sd)
   | Phr_pword_def pd ->

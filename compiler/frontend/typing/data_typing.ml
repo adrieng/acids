@@ -775,12 +775,8 @@ let type_node_decl env nd =
   add_node env nd.decl_name nd.decl_data
 
 let type_type_def env td =
-  {
-    M.ty_name = td.ty_name;
-    M.ty_body = td.ty_body;
-    M.ty_loc = td.ty_loc;
-  },
-  add_type_constrs env td.ty_name td.ty_body
+  td,
+  add_type_constrs env td.Ast_misc.ty_name td.Ast_misc.ty_body
 
 let type_const_def env sd =
   let body, ty = type_exp env sd.sd_body in

@@ -184,9 +184,9 @@
 
   let make_type_def ((n, c_l), loc) =
     {
-      Acids_parsetree.ty_name = n;
-      Acids_parsetree.ty_body = c_l;
-      Acids_parsetree.ty_loc = loc;
+      Ast_misc.ty_name = n;
+      Ast_misc.ty_body = c_l;
+      Ast_misc.ty_loc = loc;
     }
 
   let make_file imports body =

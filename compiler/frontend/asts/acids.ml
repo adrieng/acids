@@ -190,12 +190,6 @@ sig
     decl_loc : Loc.t;
   }
 
-  type type_def = {
-    ty_name : Names.shortname;
-    ty_body : Names.shortname list;
-    ty_loc : Loc.t;
-  }
-
   type const_def =
     {
       sd_name : Names.shortname;
@@ -213,7 +207,7 @@ sig
   type phrase =
   | Phr_node_def of node_def
   | Phr_node_decl of node_decl
-  | Phr_type_def of type_def
+  | Phr_type_def of Ast_misc.type_def
   | Phr_const_def of const_def
   | Phr_pword_def of pword_def
 
@@ -386,13 +380,6 @@ module Make = functor (S : S) ->
         decl_loc : Loc.t;
       }
 
-    type type_def =
-      {
-        ty_name : Names.shortname;
-        ty_body : Names.shortname list;
-        ty_loc : Loc.t;
-      }
-
     type const_def =
       {
         sd_name : Names.shortname;
@@ -410,7 +397,7 @@ module Make = functor (S : S) ->
     type phrase =
     | Phr_node_def of node_def
     | Phr_node_decl of node_decl
-    | Phr_type_def of type_def
+    | Phr_type_def of Ast_misc.type_def
     | Phr_const_def of const_def
     | Phr_pword_def of pword_def
 

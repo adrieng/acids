@@ -299,6 +299,7 @@ let interface_of_file file =
     | Phr_node_def _ | Phr_node_decl _ | Phr_const_def _ | Phr_pword_def _ ->
       type_env, constr_env
     | Phr_type_def td ->
+      let open Ast_misc in
       let constr_env =
         let add_constr constr_env c =
           Names.ShortEnv.add c td.ty_name constr_env

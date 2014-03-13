@@ -39,13 +39,6 @@ type buffer_info =
 
 type buffer_direction = Push | Pop
 
-type type_def =
-  {
-    ty_name : Names.shortname;
-    ty_body : Names.shortname list;
-    ty_loc : Loc.t;
-  }
-
 (** {2 NIR itself} *)
 
 module type S =
@@ -150,7 +143,7 @@ sig
   type 'a file =
     {
       f_name : Names.shortname;
-      f_type_defs : type_def list;
+      f_type_defs : Ast_misc.type_def list;
       f_body : node list;
       f_info : 'a;
     }
@@ -278,7 +271,7 @@ struct
   type 'a file =
     {
       f_name : Names.shortname;
-      f_type_defs : type_def list;
+      f_type_defs : Ast_misc.type_def list;
       f_body : node list;
       f_info : 'a;
     }

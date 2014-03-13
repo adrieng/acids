@@ -226,6 +226,7 @@ struct
       Const_types.print_sig decl.decl_const
 
   let print_type_def fmt tydef =
+    let open Ast_misc in
     Format.fprintf fmt "@[type %a =@ %a@]"
       Names.print_shortname tydef.ty_name
       (Utils.print_list_r Names.print_shortname "|") tydef.ty_body

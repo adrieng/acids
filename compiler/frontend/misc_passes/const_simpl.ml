@@ -457,13 +457,6 @@ let simpl_node_decl nd =
     Acids_prespec.decl_loc = nd.decl_loc;
   }
 
-let simpl_type_def td =
-  {
-    Acids_prespec.ty_name = td.ty_name;
-    Acids_prespec.ty_body = td.ty_body;
-    Acids_prespec.ty_loc = td.ty_loc;
-  }
-
 let simpl_const_def env sd =
   let open Const_eval in
   let c =
@@ -510,7 +503,7 @@ let simpl_phrase (body, env) phr =
     Acids_prespec.Phr_node_decl (simpl_node_decl nd) :: body, env
 
   | Phr_type_def td ->
-    Acids_prespec.Phr_type_def (simpl_type_def td) :: body, env
+    Acids_prespec.Phr_type_def td :: body, env
 
   | Phr_const_def sd ->
     let sd, env = simpl_const_def env sd in

@@ -507,13 +507,6 @@ let translate_node_def env nd =
     ~env:(get_locals env)
     ~body:block
 
-let translate_type_def td =
-  {
-    Nir.ty_name = td.ty_name;
-    Nir.ty_body = td.ty_body;
-    Nir.ty_loc = td.ty_loc;
-  }
-
 let translate_phrase (type_defs, node_defs, env) phr =
   match phr with
   | Phr_const_def _ | Phr_node_decl _ ->
@@ -523,7 +516,7 @@ let translate_phrase (type_defs, node_defs, env) phr =
   | Phr_node_def nd ->
     type_defs, translate_node_def env nd :: node_defs, env
   | Phr_type_def td ->
-    translate_type_def td :: type_defs, node_defs, env
+    td :: type_defs, node_defs, env
 
 let file ctx (file : Acids_causal_utils.annotated_file) =
   let env = initial_env file.f_info#interfaces in

@@ -91,6 +91,7 @@ let initial_env intf_env =
   }
 
 let add_type_def env td =
+  let open Ast_misc in
   { env with constrs = Names.ShortEnv.add td.ty_name td.ty_body env.constrs }
 
 let add_spec id specs env =
@@ -541,13 +542,6 @@ let annot_node_decl _ ndecl =
     Acids_spec.decl_loc = ndecl.decl_loc;
   }
 
-let annot_type_def _ tdef =
-  {
-    Acids_spec.ty_name = tdef.ty_name;
-    Acids_spec.ty_body = tdef.ty_body;
-    Acids_spec.ty_loc = tdef.ty_loc;
-  }
-
 let annot_const_def env sd =
   {
     Acids_spec.sd_name = sd.sd_name;
@@ -576,7 +570,7 @@ let annot_ty_phrase env phr =
   | Phr_node_decl nd ->
     env, Acids_spec.Phr_node_decl (annot_node_decl env nd)
   | Phr_type_def td ->
-    env, Acids_spec.Phr_type_def (annot_type_def env td)
+    env, Acids_spec.Phr_type_def td
   | Phr_const_def sd ->
     env, Acids_spec.Phr_const_def (annot_const_def env sd)
   | Phr_pword_def pd ->

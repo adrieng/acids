@@ -200,3 +200,9 @@ let bounds_of_int_pword p =
   in
   Tree_word.iter_upword check (fun _ -> ()) p;
   !l, !u
+
+type type_def = {
+  ty_name : Names.shortname;
+  ty_body : Names.shortname list;
+  ty_loc : Loc.t;
+}

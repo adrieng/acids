@@ -231,8 +231,8 @@ struct
   let print_type_def fmt td =
     Format.fprintf fmt
       "(@[<v 2>type@ :name %a@ :body %a@])"
-      Names.print_shortname td.ty_name
-      (print_list Names.print_shortname) td.ty_body
+      Names.print_shortname td.Ast_misc.ty_name
+      (print_list Names.print_shortname) td.Ast_misc.ty_body
 
   let print_file fmt file =
     Format.fprintf fmt

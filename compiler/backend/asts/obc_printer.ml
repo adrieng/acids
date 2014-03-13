@@ -130,3 +130,15 @@ let print_machine fmt m =
     Names.print_longname m.m_name
     (Utils.print_list_eol print_buff_dec) m.m_mem
     (Utils.print_list_eol print_methd) m.m_methods
+
+let print_type_def fmt td =
+  let open Ast_misc in
+  Format.fprintf fmt "@[<v 2>type %a =@ %a@]"
+    Names.print_shortname td.td_name
+    (Utils.print_list_r print_econstr "|") td.td_body
+
+let print_file fmt file =
+  Format.fprintf fmt "@[(* File %a *)@\n%a@\n%a@]"
+    Names.print_shortname file.f_name
+    (print_list_eol print_type_def) file.f_type_defs
+    (print_list_eol print_machine) file.f_machines

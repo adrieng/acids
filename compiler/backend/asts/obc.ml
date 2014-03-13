@@ -86,3 +86,10 @@ type machine =
     m_mem : buff_dec list;
     m_methods : methd list;
   }
+
+type file =
+  {
+    f_name : Names.shortname;
+    f_type_defs : Ast_misc.type_def_list;
+    f_machines : machine list;
+  }

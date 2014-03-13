@@ -19,6 +19,13 @@ module Make(A : Nir.A) =
 struct
   open A
 
+  let rec clock_input acc st =
+    let open Clock_types in
+    match st with
+    | St_var _ -> acc
+    | St_on (st, Ce_condvar { cecv_name = id; }) -> clock_input (id :: acc) st
+    | St_on (st, (Ce_pword _ | Ce_equal _)) -> clock_input acc st
+
   let eq_output acc eq =
     match eq.eq_desc with
     | Var (x, _) | Const (x, _) | Pword (x, _) ->
@@ -44,6 +51,7 @@ struct
         acc
 
   let eq_input acc eq =
+    let acc = clock_input acc eq.eq_base_clock in
     match eq.eq_desc with
     | Var (_, y) ->
       y :: acc

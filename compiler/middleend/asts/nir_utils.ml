@@ -49,10 +49,10 @@ struct
       y :: acc
     | Const _ | Pword _ ->
       acc
-    | Call (x_l, { c_op = BufferAccess (b, Nir.Push, Nir.Lazy); }, _)
-    | Call (x_l, { c_op = BufferAccess (b, Nir.Pop, Nir.Strict); }, _)
+    | Call (_, { c_op = BufferAccess (b, Nir.Push, Nir.Lazy); }, y_l)
+    | Call (_, { c_op = BufferAccess (b, Nir.Pop, Nir.Strict); }, y_l)
       ->
-      b :: x_l @ acc
+      b :: y_l @ acc
     | Call (_, _, y_l) ->
       y_l @ acc
     | Merge (_, y, z_l) ->

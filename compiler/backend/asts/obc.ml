@@ -90,6 +90,6 @@ type machine =
 type file =
   {
     f_name : Names.shortname;
-    f_type_defs : Ast_misc.type_def_list;
+    f_type_defs : Ast_misc.type_def list;
     f_machines : machine list;
   }

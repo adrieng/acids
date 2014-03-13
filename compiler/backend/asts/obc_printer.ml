@@ -134,11 +134,11 @@ let print_machine fmt m =
 let print_type_def fmt td =
   let open Ast_misc in
   Format.fprintf fmt "@[<v 2>type %a =@ %a@]"
-    Names.print_shortname td.td_name
-    (Utils.print_list_r print_econstr "|") td.td_body
+    Names.print_shortname td.ty_name
+    (Utils.print_list_r Names.print_shortname "|") td.ty_body
 
 let print_file fmt file =
   Format.fprintf fmt "@[(* File %a *)@\n%a@\n%a@]"
     Names.print_shortname file.f_name
-    (print_list_eol print_type_def) file.f_type_defs
-    (print_list_eol print_machine) file.f_machines
+    (Utils.print_list_eol print_type_def) file.f_type_defs
+    (Utils.print_list_eol print_machine) file.f_machines

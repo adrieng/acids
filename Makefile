@@ -48,7 +48,8 @@ OCAMLBUILDOPTS += -I compiler/global \
                   -I compiler/middleend/asts \
                   -I compiler/middleend/utils \
                   -I compiler/middleend/transformations \
-                  -I compiler/backend
+                  -I compiler/backend \
+                  -I compiler/backend/asts
 
 %.conflicts: %.mly
 	ocamlbuild $(OCAMLBUILDOPTS) $@

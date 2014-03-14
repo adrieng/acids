@@ -52,16 +52,17 @@ and exp =
 | Lvalue of lvalue
 | Pop of Ident.t * exp (* buffer * amount *)
 | Call of call_kind * exp list
+| Box of exp list
+| Unbox of exp
 
 type stm =
 | Skip
 | Affect of lvalue * exp
 | Push of Ident.t * exp * exp (* buffer * amount * data *)
 
-| Reinit of Ident.t
-| Box of Ident.t * Ident.t
-| Unbox of Ident.t * Ident.t
+| Reset of Ident.t
 
+| Switch of exp * (Ast_misc.econstr * stm) list
 | For of var_dec * exp * Int.t * stm
 (* index * number of iterations * bound * body *)
 | Block of block

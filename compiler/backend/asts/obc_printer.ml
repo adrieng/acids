@@ -76,6 +76,11 @@ and print_exp fmt e =
     Format.fprintf fmt "%a(@[%a])"
       print_call_kind kind
       (Utils.print_list_r print_exp ",") e_l
+  | Box e_l ->
+    Format.fprintf fmt "box(@[%a])"
+      (Utils.print_list_r print_exp ",") e_l
+  | Unbox e ->
+    Format.fprintf fmt "unbox(@[%a])" print_exp e
 
 let rec print_stm fmt stm =
   match stm with
@@ -90,16 +95,17 @@ let rec print_stm fmt stm =
       Ident.print id
       print_exp size
       print_exp data
-  | Reinit id ->
-    Format.fprintf fmt "reinit(%a)" Ident.print id
-  | Box (dst, src) ->
-    Format.fprintf fmt "%a := box(%a)"
-      Ident.print dst
-      Ident.print src
-  | Unbox (dst, src) ->
-    Format.fprintf fmt "%a := unbox(%a)"
-      Ident.print dst
-      Ident.print src
+  | Reset id ->
+    Format.fprintf fmt "reset(%a)" Ident.print id
+  | Switch (cond, cases) ->
+    let print_case fmt (ec, stm) =
+      Format.fprintf fmt "@[<v 2>case %a:@ %a@]"
+        Ast_misc.print_econstr ec
+        print_stm stm
+    in
+    Format.fprintf fmt "@[<v>@[<v 2>switch %a {@ %a@]@ }@]"
+      print_exp cond
+      (Utils.print_list_eol print_case) cases
   | For (v, count, bound, body) ->
     Format.fprintf fmt "@[<v 2>for %a = 0 to max(%a, %a)@ %a@]"
       print_var_dec v
@@ -122,7 +128,7 @@ let print_methd fmt m =
     "@[<v>method %a(@[%a%a@])@ %a@]"
     print_methd_kind m.m_kind
     (Utils.print_list_sep (print_prefix "in" print_var_dec) ",") m.m_inputs
-    (Utils.print_list_r (print_prefix "in" print_var_dec) ",") m.m_outputs
+    (Utils.print_list_r (print_prefix "out" print_var_dec) ",") m.m_outputs
     print_block m.m_body
 
 let print_machine fmt m =

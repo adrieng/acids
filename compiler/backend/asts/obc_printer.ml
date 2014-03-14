@@ -110,7 +110,7 @@ let rec print_stm fmt stm =
     print_block fmt block
 
 and print_block fmt block =
-  Format.fprintf fmt "@[{@[<v 2>@ %a%a@]@ }@]"
+  Format.fprintf fmt "@[<v>@[<v 2>{@ %a%a@]@ }@]"
     (Utils.print_list_sep print_var_dec ";") block.b_locals
     (Utils.print_list_r print_stm ";") block.b_body
 
@@ -119,7 +119,7 @@ let print_methd fmt m =
     Format.fprintf fmt "%s %a" pref f x
   in
   Format.fprintf fmt
-    "@[<v 2>method %a(@[%a%a@])@ %a@]"
+    "@[<v>method %a(@[%a%a@])@ %a@]"
     print_methd_kind m.m_kind
     (Utils.print_list_sep (print_prefix "in" print_var_dec) ",") m.m_inputs
     (Utils.print_list_r (print_prefix "in" print_var_dec) ",") m.m_outputs

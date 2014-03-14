@@ -20,10 +20,19 @@ open Nir_sliced
 
 (* {2 Environments} *)
 
+let longname_of_node_name (ln, id) =
+  let open Names in
+  match ln.modn with
+  | Module "Pervasives" ->
+    ln
+  | _ ->
+    Nir_sliced.Info.longname_of_sliced_name (ln, id)
+
 type env =
   {
     locals : var_dec Ident.Env.t;
     locals_per_block : var_dec list Utils.Int_map.t;
+    mutable insts : Obc.inst list;
   }
 
 let initial_env nd =
@@ -44,6 +53,7 @@ let initial_env nd =
   {
     locals = nd.n_env;
     locals_per_block = locals_per_block;
+    insts = [];
   }
 
 let find_var env id = Ident.Env.find id env.locals
@@ -51,6 +61,18 @@ let find_var env id = Ident.Env.find id env.locals
 let find_locals_per_block env (Block_id b_id) =
   try Utils.Int_map.find b_id env.locals_per_block
   with Not_found -> []
+
+let new_pword env pw =
+  let w = Ident.make_internal "w" in
+  env.insts <- { Obc.i_name = w; Obc.i_kind = Obc.Pword pw; } :: env.insts;
+  w
+
+let new_mach env ln =
+  let m = Ident.make_internal "m" in
+  env.insts <- { Obc.i_name = m; Obc.i_kind = Obc.Mach ln; } :: env.insts;
+  m
+
+let get_insts env = env.insts
 
 (* {2 Helper functions} *)
 
@@ -95,8 +117,14 @@ let rec equation env eq =
   | Const (x, c) ->
     Obc.Affect (Obc.Var x, Obc.Const c)
 
-  | Pword _ ->
-    Obc.Skip
+  | Pword (x, pw) ->
+    let w = new_pword env pw in
+    Obc.Call
+      {
+        Obc.c_kind = Obc.Pword w;
+        Obc.c_inputs = [];
+        Obc.c_outputs = [Obc.Var x];
+      }
 
   | Call ([x], { c_op = Box; }, y_l) ->
     let e_l = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l in
@@ -115,8 +143,25 @@ let rec equation env eq =
     let w = Obc.Const (Ast_misc.(Cconstr (Ec_int Int.one))) in
     Obc.Affect (Obc.Var x, Obc.Pop (b, w))
 
+  | Call (x_l, { c_op = Node (ln, i); }, y_l) ->
+    let kind =
+      let open Names in
+      match ln.modn with
+      | Module "Pervasives" ->
+        Obc.Builtin ln.shortn
+      | _ ->
+        let m = new_mach env (longname_of_node_name (ln, i)) in
+        Obc.Method (Obc.Step, m)
+    in
+    Obc.Call
+      {
+        Obc.c_kind = kind;
+        Obc.c_inputs = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l;
+        Obc.c_outputs = List.map (fun x -> Obc.Var x) x_l;
+      }
+
   | Call _ ->
-    Obc.Skip
+    invalid_arg "equation: bad call"
 
   | Merge (x, y, c_l) ->
     let case (ec, z) =
@@ -185,8 +230,9 @@ let node nd =
   in
 
   {
-    Obc.m_name = Nir_sliced.Info.longname_of_sliced_name nd.n_name;
+    Obc.m_name = longname_of_node_name nd.n_name;
     Obc.m_mem = mem;
+    Obc.m_insts = get_insts env;
     Obc.m_methods = [reset; step];
   }
 

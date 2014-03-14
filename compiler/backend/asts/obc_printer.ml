@@ -46,12 +46,20 @@ let print_methd_kind fmt meth =
 
 let print_call_kind fmt kind =
   match kind with
-  | Builtin ln ->
-    Names.print_longname fmt ln
+  | Builtin id ->
+    Names.print_shortname fmt id
   | Method (kind, id) ->
     Format.fprintf fmt "%a.%a"
       Ident.print id
       print_methd_kind kind
+  | Pword id ->
+    Format.fprintf fmt "%a.next"
+      Ident.print id
+
+let print_inst_kind fmt kind =
+  match kind with
+  | Mach ln -> Names.print_longname fmt ln
+  | Pword p -> Ast_misc.print_const_pword fmt p
 
 let rec print_lvalue fmt lv =
   match lv with
@@ -72,15 +80,17 @@ and print_exp fmt e =
     Format.fprintf fmt "pop(@[%a,@ %a@])"
       Ident.print id
       print_exp e
-  | Call (kind, e_l) ->
-    Format.fprintf fmt "%a(@[%a])"
-      print_call_kind kind
-      (Utils.print_list_r print_exp ",") e_l
   | Box e_l ->
     Format.fprintf fmt "box(@[%a])"
       (Utils.print_list_r print_exp ",") e_l
   | Unbox e ->
     Format.fprintf fmt "unbox(@[%a])" print_exp e
+
+let print_call fmt call =
+  Format.fprintf fmt "@[%a@,(@[%a@])@,(@[%a@])@]"
+    print_call_kind call.c_kind
+    (Utils.print_list_r print_exp ",") call.c_inputs
+    (Utils.print_list_r print_lvalue ",") call.c_outputs
 
 let rec print_stm fmt stm =
   match stm with
@@ -90,6 +100,8 @@ let rec print_stm fmt stm =
     Format.fprintf fmt "@[%a :=@ %a@]"
       print_lvalue lv
       print_exp e
+  | Call call ->
+    print_call fmt call
   | Push (id, size, data) ->
     Format.fprintf fmt "push(@[%a, %a, %a@])"
       Ident.print id
@@ -131,11 +143,17 @@ let print_methd fmt m =
     (Utils.print_list_r (print_prefix "out" print_var_dec) ",") m.m_outputs
     print_block m.m_body
 
+let print_inst fmt inst =
+  Format.fprintf fmt "inst %a: %a"
+    Ident.print inst.i_name
+    print_inst_kind inst.i_kind
+
 let print_machine fmt m =
   Format.fprintf fmt
-    "@[@[<v 2>machine %a {@\n%a@\n%a@]@\n}@]"
+    "@[@[<v 2>machine %a {@\n%a@\n%a%a@]@\n}@]"
     Names.print_longname m.m_name
     (Utils.print_list_eol print_buff_dec) m.m_mem
+    (Utils.print_list_eol print_inst) m.m_insts
     (Utils.print_list_eol print_methd) m.m_methods
 
 let print_type_def fmt td =

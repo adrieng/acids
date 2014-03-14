@@ -40,8 +40,13 @@ type methd_kind =
 | Reset
 
 type call_kind =
-| Builtin of Names.longname
+| Builtin of Names.shortname
 | Method of methd_kind * Ident.t
+| Pword of Ident.t
+
+type inst_kind =
+| Mach of Names.longname
+| Pword of Ast_misc.const_pword
 
 type lvalue =
 | Var of Ident.t
@@ -51,12 +56,19 @@ and exp =
 | Const of Ast_misc.const
 | Lvalue of lvalue
 | Pop of Ident.t * exp (* buffer * amount *)
-| Call of call_kind * exp list
 | Box of exp list
 | Unbox of exp
 
+type call =
+  {
+    c_kind : call_kind;
+    c_inputs : exp list;
+    c_outputs : lvalue list;
+  }
+
 type stm =
 | Skip
+| Call of call
 | Affect of lvalue * exp
 | Push of Ident.t * exp * exp (* buffer * amount * data *)
 
@@ -81,10 +93,17 @@ type methd =
     m_body : block;
   }
 
+type inst =
+  {
+    i_name : Ident.t;
+    i_kind : inst_kind;
+  }
+
 type machine =
   {
     m_name : Names.longname;
     m_mem : buff_dec list;
+    m_insts : inst list;
     m_methods : methd list;
   }
 

@@ -83,6 +83,9 @@ let add_copy env ck x =
 
 let substitute env x = try Ident.Env.find x env.replacements with Not_found -> x
 
+let fuse_local_vars env env' =
+  { env with local_vars = Ident.Env.union env.local_vars env'.local_vars; }
+
 (** {2 AST walking} *)
 
 let mk_access_eq env b pol dir v =
@@ -200,15 +203,17 @@ and block env block =
     Ident.Env.fold add_push_and_pop_for_conv block.b_conv (env, env')
   in
 
+  let env' = List.fold_left equation env' block.b_body in
   let block =
-    let env' = List.fold_left equation env' block.b_body in
     make_block
       ~loc:block.b_loc
       ~conv:block.b_conv
       block.b_id
       (get_current_eqs env')
   in
-  env, block
+  (* Fusing local vars is ugly, I should rewrite this pass in a cleaner
+     manner *)
+  fuse_local_vars env env', block
 
 let node nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;

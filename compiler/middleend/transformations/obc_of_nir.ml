@@ -78,11 +78,18 @@ let get_insts env = env.insts
 
 let obc_ty_of_nir_ty ty =
   match ty with
-  | Ty_var _ -> invalid_arg "obc_ty_of_nir_ty: variable type"
+  | Ty_var _ -> Obc.Ty_boxed (* unsure *)
   | Ty_scal tys -> Obc.Ty_scal tys
   | Ty_boxed -> Obc.Ty_boxed
   | Ty_clock -> invalid_arg "obc_ty_of_nir_ty: clock"
   | Ty_buffer _ -> invalid_arg "obc_ty_of_nir_ty: buffer"
+
+let make_var_dec ?(loc = Loc.dummy) name ty =
+  {
+    Obc.v_name = name;
+    Obc.v_type = ty;
+    Obc.v_loc = loc;
+  }
 
 let make_buffer name ty size loc =
   {
@@ -93,11 +100,7 @@ let make_buffer name ty size loc =
   }
 
 let obc_var_dec_of_nir_var_dec vd =
-  {
-    Obc.v_name = vd.v_name;
-    Obc.v_type = obc_ty_of_nir_ty vd.v_data;
-    Obc.v_loc = vd.v_loc;
-  }
+  make_var_dec ~loc:vd.v_loc vd.v_name (obc_ty_of_nir_ty vd.v_data)
 
 let var_dec_of_var env id =
   let vd = find_var env id in
@@ -107,41 +110,78 @@ let var_dec_of_var env id =
 let locals_per_block env b_id =
   List.map obc_var_dec_of_nir_var_dec (find_locals_per_block env b_id)
 
+let make_call kind ~inputs ~outputs =
+  Obc.Call
+    {
+      Obc.c_kind = kind;
+      Obc.c_inputs = inputs;
+      Obc.c_outputs = outputs;
+    }
+
 (* {2 AST traversal} *)
 
-let rec equation env eq =
+let pword env x pw =
+  let w = new_pword env pw in
+  make_call (Obc.Pword w) ~inputs:[] ~outputs:[Obc.Var x]
+
+let rec clock_exp env ck_e acc ce =
+  let open Clock_types in
+  match ce with
+  | Ce_condvar cecv ->
+    acc, cecv.cecv_name
+  | Ce_equal (ce, ec) ->
+    let r = Ident.make_internal "r_ce" in
+    let acc, x = clock_exp env ck_e acc ce in
+    make_call
+      (Obc.Builtin "=")
+      ~inputs:[ck_e; Obc.Lvalue (Obc.Var x); Obc.Const (Ast_misc.Cconstr ec)]
+      ~outputs:[Obc.Var r]
+    :: acc,
+    r
+  | Ce_pword pw ->
+    let x = Ident.make_internal "x_w" in
+    pword env x pw :: acc, x
+
+and clock_type env acc ck =
+  match ck with
+  | Clock_types.St_var _ ->
+    acc, Obc.Const (Ast_misc.(Cconstr (Ec_int Int.one)))
+  | Clock_types.St_on (ck, ce) ->
+    let acc, ck_e = clock_type env acc ck in
+    let acc, ce_x = clock_exp env ck_e acc ce in
+    let ck_x = Ident.make_internal "w" in
+    make_call
+      (Obc.Builtin "on")
+      ~inputs:[ck_e; Obc.Lvalue (Obc.Var ce_x)]
+      ~outputs:[Obc.Var ck_x]
+    :: acc,
+    Obc.Lvalue (Obc.Var ck_x)
+
+let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
-    Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var y))
+    Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var y)) :: acc
 
   | Const (x, c) ->
-    Obc.Affect (Obc.Var x, Obc.Const c)
+    Obc.Affect (Obc.Var x, Obc.Const c) :: acc
 
   | Pword (x, pw) ->
-    let w = new_pword env pw in
-    Obc.Call
-      {
-        Obc.c_kind = Obc.Pword w;
-        Obc.c_inputs = [];
-        Obc.c_outputs = [Obc.Var x];
-      }
+    pword env x pw :: acc
 
   | Call ([x], { c_op = Box; }, y_l) ->
     let e_l = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l in
-    Obc.Affect (Obc.Var x, Obc.Box e_l)
+    Obc.Affect (Obc.Var x, Obc.Box e_l) :: acc
 
   | Call ([x], { c_op = Unbox; }, [y]) ->
-    Obc.Affect (Obc.Var x, Obc.Unbox (Obc.Lvalue (Obc.Var y)))
+    Obc.Affect (Obc.Var x, Obc.Unbox (Obc.Lvalue (Obc.Var y))) :: acc
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->
-    (* TODO *)
-    let w = Obc.Const (Ast_misc.(Cconstr (Ec_int Int.one))) in
-    Obc.Push (b, w, Obc.Lvalue (Obc.Var y))
+    let acc, w = clock_type env acc eq.eq_base_clock in
+    Obc.Push (b, w, Obc.Lvalue (Obc.Var y)) :: acc
 
   | Call ([x], { c_op = BufferAccess (b, Pop, _); }, []) ->
-    (* TODO *)
-    let w = Obc.Const (Ast_misc.(Cconstr (Ec_int Int.one))) in
-    Obc.Affect (Obc.Var x, Obc.Pop (b, w))
+    let acc, w = clock_type env acc eq.eq_base_clock in
+    Obc.Affect (Obc.Var x, Obc.Pop (b, w)) :: acc
 
   | Call (x_l, { c_op = Node (ln, i); }, y_l) ->
     let kind =
@@ -153,12 +193,11 @@ let rec equation env eq =
         let m = new_mach env (longname_of_node_name (ln, i)) in
         Obc.Method (Obc.Step, m)
     in
-    Obc.Call
-      {
-        Obc.c_kind = kind;
-        Obc.c_inputs = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l;
-        Obc.c_outputs = List.map (fun x -> Obc.Var x) x_l;
-      }
+    make_call
+      kind
+      ~inputs:(List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l)
+      ~outputs:(List.map (fun x -> Obc.Var x) x_l)
+    :: acc
 
   | Call _ ->
     invalid_arg "equation: bad call"
@@ -167,27 +206,35 @@ let rec equation env eq =
     let case (ec, z) =
       ec, Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var z))
     in
-    Obc.Switch (Obc.Lvalue (Obc.Var y), List.map case c_l)
+    Obc.Switch (Obc.Lvalue (Obc.Var y), List.map case c_l) :: acc
 
   | Split (x_l, y, z, ec_l) ->
     let case x ec =
       ec, Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var y))
     in
-    Obc.Switch (Obc.Lvalue (Obc.Var z), List.map2 case x_l ec_l)
+    Obc.Switch (Obc.Lvalue (Obc.Var z), List.map2 case x_l ec_l) :: acc
 
   | Buffer _ ->
     invalid_arg "equation: buffer"
 
   | Delay _ ->
-    Obc.Skip
+    failwith "unimplemented: delay"
 
   | Block bl ->
-    Obc.Block (block env bl)
+    let acc, w = clock_type env acc eq.eq_base_clock in
+    let i = Ident.make_internal "i" in
+    Obc.For
+      (make_var_dec i (Obc.Ty_scal Data_types.Tys_int),
+       w,
+       Clock_types.max_burst_stream_type eq.eq_base_clock,
+       Obc.Block (block env bl))
+    :: acc
 
 and block env block =
+  let body = List.fold_left (equation env) [] block.b_body in
   {
     Obc.b_locals = locals_per_block env block.b_id;
-    Obc.b_body = List.map (equation env) block.b_body;
+    Obc.b_body = List.rev body;
   }
 
 let node nd =

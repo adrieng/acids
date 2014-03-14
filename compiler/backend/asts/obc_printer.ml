@@ -150,7 +150,7 @@ let print_inst fmt inst =
 
 let print_machine fmt m =
   Format.fprintf fmt
-    "@[@[<v 2>machine %a {@\n%a@\n%a%a@]@\n}@]"
+    "@[@[<v 2>machine %a {@\n%a@\n%a@\n%a@]@\n}@]"
     Names.print_longname m.m_name
     (Utils.print_list_eol print_buff_dec) m.m_mem
     (Utils.print_list_eol print_inst) m.m_insts

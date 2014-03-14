@@ -34,7 +34,8 @@ let print_var_dec fmt v =
     print_ty v.v_type
 
 let print_buff_dec fmt b =
-  Format.fprintf fmt "buffer<%a>(%a)"
+  Format.fprintf fmt "%a: buffer<%a>(%a)"
+    Ident.print b.b_name
     Int.print b.b_size
     print_ty b.b_type
 

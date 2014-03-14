@@ -17,7 +17,7 @@
 
 type ty =
 | Ty_scal of Data_types.data_ty_scal
-| Ty_arr of Data_types.data_ty_scal * Int.t
+| Ty_arr of ty * Int.t
 | Ty_boxed
 
 type var_dec =
@@ -81,7 +81,8 @@ type stm =
 
 and block =
   {
-    b_locals : var_dec list;
+    b_vars : var_dec list;
+    b_buffers : buff_dec list;
     b_body : stm list;
   }
 

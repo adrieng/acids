@@ -82,7 +82,7 @@ let obc_ty_of_nir_ty ty =
   | Ty_scal tys -> Obc.Ty_scal tys
   | Ty_boxed -> Obc.Ty_boxed
   | Ty_clock -> invalid_arg "obc_ty_of_nir_ty: clock"
-  | Ty_buffer _ -> invalid_arg "obc_ty_of_nir_ty: buffer"
+  | Ty_buffer _ -> invalid_arg "obc_ty_of_nir_ty: buffer type"
 
 let make_var_dec ?(loc = Loc.dummy) name ty =
   {
@@ -100,15 +100,31 @@ let make_buffer name ty size loc =
   }
 
 let obc_var_dec_of_nir_var_dec vd =
-  make_var_dec ~loc:vd.v_loc vd.v_name (obc_ty_of_nir_ty vd.v_data)
+  let ty = obc_ty_of_nir_ty vd.v_data in
+  let ty =
+    let mb = Clock_types.max_burst_stream_type vd.v_clock in
+    if mb = Int.one then ty else Obc.Ty_arr (ty, mb)
+  in
+  make_var_dec ~loc:vd.v_loc vd.v_name ty
 
 let var_dec_of_var env id =
   let vd = find_var env id in
   assert (id = vd.v_name);
   obc_var_dec_of_nir_var_dec vd
 
-let locals_per_block env b_id =
-  List.map obc_var_dec_of_nir_var_dec (find_locals_per_block env b_id)
+let vars_and_buffers_per_block env b_id =
+  let locals = find_locals_per_block env b_id in
+  let vars, buffers =
+    let add (vars, buffers) vd =
+      match vd.v_data with
+      | Ty_buffer _ ->
+        vars, buffers
+      | _ ->
+        obc_var_dec_of_nir_var_dec vd :: vars, buffers
+    in
+    List.fold_left add ([], []) locals
+  in
+  vars, buffers
 
 let make_call kind ~inputs ~outputs =
   Obc.Call
@@ -232,8 +248,10 @@ let rec equation env acc eq =
 
 and block env block =
   let body = List.fold_left (equation env) [] block.b_body in
+  let vars, buffers = vars_and_buffers_per_block env block.b_id in
   {
-    Obc.b_locals = locals_per_block env block.b_id;
+    Obc.b_vars = vars;
+    Obc.b_buffers = buffers;
     Obc.b_body = List.rev body;
   }
 
@@ -270,7 +288,8 @@ let node nd =
       Obc.m_outputs = [];
       Obc.m_body =
         {
-          Obc.b_locals = [];
+          Obc.b_vars = [];
+          Obc.b_buffers = [];
           Obc.b_body = List.map (fun vd -> Obc.Reset vd.Obc.b_name) mem
         }
     }

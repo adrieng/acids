@@ -17,13 +17,13 @@
 
 open Obc
 
-let print_ty fmt ty =
+let rec print_ty fmt ty =
   match ty with
   | Ty_scal tys ->
     Data_types.print_ty_scal fmt tys
-  | Ty_arr (tys, size) ->
+  | Ty_arr (ty, size) ->
     Format.fprintf fmt "%a^%a"
-      Data_types.print_ty_scal tys
+      print_ty ty
       Int.print size
   | Ty_boxed ->
     Format.fprintf fmt "boxed"
@@ -119,7 +119,7 @@ let rec print_stm fmt stm =
       print_exp cond
       (Utils.print_list_eol print_case) cases
   | For (v, count, bound, body) ->
-    Format.fprintf fmt "@[<v 2>for %a = 0 to max(%a, %a)@ %a@]"
+    Format.fprintf fmt "@[<v>for %a = 0 to max(%a, %a)@ %a@]"
       print_var_dec v
       print_exp count
       Int.print bound
@@ -128,8 +128,9 @@ let rec print_stm fmt stm =
     print_block fmt block
 
 and print_block fmt block =
-  Format.fprintf fmt "@[<v>@[<v 2>{@ %a%a@]@ }@]"
-    (Utils.print_list_sep print_var_dec ";") block.b_locals
+  Format.fprintf fmt "@[<v>@[<v 2>{@ %a%a%a@]@ }@]"
+    (Utils.print_list_sep print_var_dec ";") block.b_vars
+    (Utils.print_list_sep print_buff_dec ";") block.b_buffers
     (Utils.print_list_r print_stm ";") block.b_body
 
 let print_methd fmt m =

@@ -65,10 +65,23 @@ let node nd =
     Ident.Env.fold add nd.n_env []
   in
 
+  let reset =
+    {
+      Obc.m_kind = Obc.Reset;
+      Obc.m_inputs = [];
+      Obc.m_outputs = [];
+      Obc.m_body =
+        {
+          Obc.b_locals = [];
+          Obc.b_body = List.map (fun vd -> Obc.Reinit vd.Obc.b_name) mem
+        }
+    }
+  in
+
   {
     Obc.m_name = Nir_sliced.Info.longname_of_sliced_name nd.n_name;
     Obc.m_mem = mem;
-    Obc.m_methods = [];
+    Obc.m_methods = [reset];
   }
 
 (* {2 Putting it all together} *)

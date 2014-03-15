@@ -15,12 +15,20 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
+open Obc
+
 let name = "c"
 
-type t = unit
+type t = C.file
 
-let print _ _ = ()
+let print fmt file = C_printer.print_file fmt file
 
-let translate _ = ()
+let translate file =
+  {
+    C.f_name = file.f_name;
+    C.f_kind = C.Source;
+    C.f_includes = ["nir"];
+    C.f_body = [];
+  }
 
 let serialize _ = ()

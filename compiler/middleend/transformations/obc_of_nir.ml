@@ -117,8 +117,9 @@ let vars_and_buffers_per_block env b_id =
   let vars, buffers =
     let add (vars, buffers) vd =
       match vd.v_data with
-      | Ty_buffer _ ->
-        vars, buffers
+      | Ty_buffer (ty, size, _) ->
+        let bu = make_buffer vd.v_name ty size vd.v_loc in
+        vars, bu :: buffers
       | _ ->
         obc_var_dec_of_nir_var_dec vd :: vars, buffers
     in

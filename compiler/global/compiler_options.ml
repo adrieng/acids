@@ -69,6 +69,15 @@ let scheduler = ref ""
 
 let set_scheduler s = scheduler := s
 
+let target_list =
+  [
+    "c";
+  ]
+
+let target = ref (List.hd target_list)
+
+let set_target s = target := s
+
 let set_pword_generator s = pword_generator := s
 
 let search_path =
@@ -188,6 +197,10 @@ let options () =
           "-sched",
           Arg.Symbol (!scheduler_list, set_scheduler),
           " Intra-step scheduler";
+
+          "-tgt",
+          Arg.Symbol (target_list, set_target),
+          " Target code";
         ]
     )
 

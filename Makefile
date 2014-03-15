@@ -51,6 +51,7 @@ OCAMLBUILDOPTS += -I compiler/global \
                   -I compiler/backend \
                   -I compiler/backend/asts \
                   -I compiler/backend/utils \
+                  -I compiler/backend/targets \
                   -I compiler/backend/transformations
 
 %.conflicts: %.mly

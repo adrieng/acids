@@ -91,17 +91,15 @@ let flow =
   +>+ Clocking.pass
   +>+ Causality.pass
   +>+ Save_interface.pass
-  (* Translation to middle-end IR *)
   +>+ Lower.pass
-  +>+ Nir_of_acids.pass
   (* Middle-end *)
+  +>+ Nir_of_acids.pass
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
   +>+ Buffer_lowering.pass
   +>+ Scheduling.pass
-  (* Translation to back-end IR *)
-  +>+ Obc_of_nir.pass
   (* Back-end *)
+  +>+ Obc_of_nir.pass
 
 (*****************************************************************************)
 (* File handling *)

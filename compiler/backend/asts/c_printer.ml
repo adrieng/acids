@@ -36,11 +36,13 @@ let rec print_ty fmt ty =
     Format.fprintf fmt "%a[%a]"
       print_ty ty
       Int.print size
+  | Name id ->
+    print_ident fmt id
 
 let print_var_dec fmt vd =
   Format.fprintf fmt "%a %a"
-    print_ident vd.v_name
     print_ty vd.v_type
+    print_ident vd.v_name
 
 let rec print_lvalue fmt lv =
   match lv with
@@ -119,9 +121,9 @@ let print_fdef fmt fd =
     print_stm fd.f_body
 
 let print_sdef fmt sd =
-  Format.fprintf fmt "@[<v 2>struct %a {@ %a;@]@ }@]"
+  Format.fprintf fmt "@[<v 2>struct %a {@ %a@]@ }@]"
     print_ident sd.s_name
-    (Utils.print_list_r print_var_dec ";") sd.s_fields
+    (Utils.print_list_sep_r print_var_dec ";") sd.s_fields
 
 let print_edef fmt ed =
   Format.fprintf fmt "@[<v 2>enum %a {@ %a@]@ }@]"
@@ -149,8 +151,6 @@ let print_decl fmt decl =
     print_fdef fmt fd
   | Dc_struct id ->
     Format.fprintf fmt "struct %a;" print_ident id
-  | Dc_enum id ->
-    Format.fprintf fmt "enum %a;" print_ident id
 
 let print_phr fmt phr =
   match phr with
@@ -167,10 +167,17 @@ let print_file_kind fmt kind =
     Format.fprintf fmt "Header"
 
 let print_file fmt file =
-  Format.fprintf fmt "// %a File %s@\n"
+  Format.fprintf fmt "// %a file for AcidS module %s@\n"
     print_file_kind file.f_kind
     file.f_name;
+  let guard = String.uppercase file.f_name ^ "_H" in
+  if file.f_kind = Header
+  then Format.fprintf fmt "#ifndef %s@\n#define %s@\n@\n" guard guard;
   List.iter
     (fun s -> Format.fprintf fmt "#include \"%s.h\"@\n" s)
     file.f_includes;
-  Utils.print_list_eol print_phr fmt file.f_body
+  Format.fprintf fmt "@\n";
+  Utils.print_list_eol print_phr fmt file.f_body;
+  Format.fprintf fmt "@\n";
+  if file.f_kind = Header
+  then Format.fprintf fmt "#endif@\n"

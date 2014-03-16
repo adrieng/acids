@@ -329,6 +329,8 @@ let print_array p fmt arr =
   Array.iter (fun x -> Format.fprintf fmt "%a@ " p x) arr;
   Format.fprintf fmt "]@]"
 
+(* TODO clean up this mess *)
+
 let print_list p fmt l = List.iter (p fmt) l
 
 let rec print_list_eol p fmt l =
@@ -355,6 +357,14 @@ let rec print_list_sep p sep fmt l =
   | [] -> ()
   | h :: t ->
     fprintf fmt "%a%s@ %a" p h sep (print_list_sep p sep) t
+
+let rec print_list_sep_r p sep fmt l =
+  match l with
+  | [] -> ()
+  | [h] ->
+    fprintf fmt "%a%s" p h sep
+  | h :: t ->
+    fprintf fmt "%a%s@ %a" p h sep (print_list_sep_r p sep) t
 
 let print_list_r_ne p sep left right fmt l = match l with
   | [] -> ()

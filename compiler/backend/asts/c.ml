@@ -23,6 +23,7 @@ type ty =
 | Bool
 | Pointer of ty
 | Array of ty * Int.t
+| Name of string
 
 type var_dec =
   {
@@ -89,7 +90,6 @@ type fdecl =
 type decl =
 | Dc_function of fdecl
 | Dc_struct of ident
-| Dc_enum of ident
 
 type phr =
 | Def of def

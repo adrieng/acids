@@ -25,7 +25,7 @@ TARGETS=$(SOLVER) $(COMPILER)
 RELEASE_DIR=acids_release
 
 .PHONY: clean clean_release all toprun test unit_test doc lib release
-.SUFFIX:
+.SUFFIXES:
 
 all: $(TARGETS) lib
 

@@ -23,6 +23,10 @@ let set_current_file_name, get_current_file_name =
     then Compiler.internal_error "current file not set";
     !current_file_name)
 
+let get_current_file_directory () =
+  let filen = get_current_file_name () in
+  Filename.dirname filen
+
 let make_longname ?modn shortn =
   let modn = match modn with
     | None -> Names.LocalModule

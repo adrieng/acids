@@ -41,6 +41,9 @@ type t = C.file list
 let print fmt file =
   List.iter (C_printer.print_file fmt) file
 
+let ident id =
+  Ident.to_string id
+
 (* {2 Environments} *)
 
 type pword_info =
@@ -51,15 +54,28 @@ type pword_info =
     length_ident : Ident.t;
   }
 
+type buffer_info =
+  {
+    local : bool;
+    capacity : Int.t;
+    ty : C.ty;
+  }
+
 type env =
   {
+    mem : C.ident;
     pwords : pword_info Ident.Env.t;
+    buffers : buffer_info Ident.Env.t;
   }
 
 let initial_env _ =
   {
+    mem = "";
     pwords = Ident.Env.empty;
+    buffers = Ident.Env.empty;
   }
+
+let set_mem env mem = { env with mem = mem; }
 
 let add_pword env id pw pref ~data ~length =
   let pi =
@@ -74,6 +90,22 @@ let add_pword env id pw pref ~data ~length =
 
 let find_pword env id =
   Ident.Env.find id env.pwords
+
+let add_buffer env id local capacity ty =
+  let info =
+    {
+      local = local;
+      capacity = capacity;
+      ty = ty;
+    }
+  in
+  { env with buffers = Ident.Env.add id info env.buffers; }
+
+let find_buffer env id =
+  let info = Ident.Env.find id env.buffers in
+  C.(if info.local then Var (ident id) else Field (env.mem, ident id)),
+  info.capacity,
+  info.ty
 
 (* {2 Helpers} *)
 
@@ -126,7 +158,7 @@ let translate_pword env locals x_p pw =
   let make_static id mk body =
     {
       C.v_name = ident id;
-      C.v_type = C.Pointer c_int;
+      C.v_type = C.Pointer int_ty;
       C.v_init =
         let mk x = C.Const (Ast_misc.Cconstr (mk x)) in
         Some (C.Array_lit (List.map mk body));
@@ -138,24 +170,6 @@ let translate_pword env locals x_p pw =
 
   add_pword env x_p pw prefix_size ~data:x_p_dat ~length:x_p_len,
   p_dat :: p_len :: locals
-
-let translate_inst (env, defs) inst =
-  let env, defs, ty =
-    match inst.i_kind with
-    | Mach ln ->
-      env, defs, C.Name (mem_name ln)
-    | Pword pw ->
-      let env, defs = translate_pword env defs inst.i_name pw in
-      env, defs, C.Name pword_mem
-    | Buffer _ ->
-      env, defs, C.Name buffer_mem
-  in
-  (env, defs),
-  {
-    C.v_name = ident inst.i_name;
-    C.v_type = ty;
-    C.v_init = None;
-  }
 
 let rec translate_ty_local ty =
   match ty with
@@ -175,6 +189,25 @@ let rec translate_ty_output ty =
   | Ty_arr (ty, _) -> translate_ty_output ty
   | Ty_boxed -> C.Name boxed
 
+let translate_inst local (env, defs) inst =
+  let env, defs, ty =
+    match inst.i_kind with
+    | Mach ln ->
+      env, defs, C.Name (mem_name ln)
+    | Pword pw ->
+      let env, defs = translate_pword env defs inst.i_name pw in
+      env, defs, C.Name pword_mem
+    | Buffer (ty, capacity) ->
+      let ty = translate_ty_local ty in
+      let env = add_buffer env inst.i_name local capacity ty in
+      env, defs, C.Name buffer_mem
+  in
+  (env, defs),
+  {
+    C.v_name = ident inst.i_name;
+    C.v_type = ty;
+    C.v_init = None;
+  }
 
 let translate_var_dec ?(translate_ty = translate_ty_local) vd =
   {
@@ -183,61 +216,137 @@ let translate_var_dec ?(translate_ty = translate_ty_local) vd =
     C.v_init = None;
   }
 
-let rec translate_lvalue env lv =
+let rec translate_lvalue lv =
   match lv with
   | Var v ->
     C.Var (ident v)
   | Index (id, e) ->
-    C.Index (ident id, translate_exp env e)
+    C.Index (ident id, translate_exp e)
 
-and translate_exp env e =
+and translate_exp e =
   match e with
   | Const c ->
     C.(ConstExp (Const c))
   | Lvalue lv ->
-    C.Lvalue (translate_lvalue env lv)
+    C.Lvalue (translate_lvalue lv)
+
+let translate_op op =
+  match op with
+  | "(+)" | "(-)" | "(*)" | "(/)"
+  | "(<)" | "(<=)" | "(>)" | "(>=)" ->
+    Some (String.sub op 1 (String.length op - 2))
+  | "(+.)" | "(-.)" | "(*.)" | "(/.)" ->
+    Some (String.sub op 1 1)
+  | "(=)" ->
+    Some "=="
   | _ ->
-    assert false
-  (* | Pop (id, e) -> *)
-  (*   let open C in *)
-  (*   Call *)
-  (*     (pop, *)
-  (*      [ *)
-  (*      ] *)
+    None
+
+let is_op op = translate_op op <> None
 
 let rec translate_stm env acc stm =
   match stm with
   | Skip ->
     acc
+
+  | Call { c_kind = Builtin op; c_inputs = x_l; c_outputs = y_l; } ->
+    (
+      let open C in
+      match translate_op op with
+      | Some op ->
+        let y = Utils.assert1 y_l in
+        Affect
+          (
+            translate_lvalue y,
+            Op (op, List.map translate_exp x_l)
+          )
+        :: acc
+      | None ->
+        Exp
+          (
+            Call
+              (
+                op,
+                List.map translate_exp x_l
+                @ List.map (fun lv -> AddrOf (translate_lvalue lv)) y_l
+              )
+          )
+          :: acc
+    )
+
   | Call _ ->
     acc
+
   | Affect (lv, e) ->
-    C.Affect (translate_lvalue env lv, translate_exp env e) :: acc
-  | Pop _ ->
+    C.Affect (translate_lvalue lv, translate_exp e) :: acc
+
+  | Box _ ->
     acc
-  | Push _ ->
+  | Unbox _ ->
     acc
+
+  | Push (b, amount, x) ->
+    let open C in
+    let lv, capacity, ty = find_buffer env b in
+    Exp
+      (Call
+         (
+           push,
+           [
+             AddrOf lv;
+             C_utils.int capacity;
+             Op ("*", [translate_exp amount; Sizeof ty]);
+             Lvalue (Var (ident x));
+           ]
+         )
+      )
+    ::
+    acc
+
+  | Pop (b, amount, x) ->
+    let open C in
+    let lv, capacity, ty = find_buffer env b in
+    Exp
+      (Call
+         (
+           pop,
+           [
+             AddrOf lv;
+             C_utils.int capacity;
+             Op ("*", [translate_exp amount; Sizeof ty]);
+             AddrOf (Var (ident x));
+           ]
+         )
+      )
+    ::
+    acc
+
   | Reset _ ->
     acc
+
   | Switch _ ->
     acc
+
   | For _ ->
     acc
+
   | Block block ->
     C.Block (translate_block env block) :: acc
 
 and translate_block env block =
   let locals = List.map translate_var_dec block.b_vars in
-  let env, locals =
-    Utils.mapfold_left translate_inst (env, locals) block.b_insts
+  let (env, local_pwords), locals =
+    Utils.mapfold_left (translate_inst true) (env, locals) block.b_insts
   in
+  let body = List.fold_left (translate_stm env) [] block.b_body in
   {
-    C.b_locals = locals;
-    C.b_body = [];
+    C.b_locals = locals @ local_pwords;
+    C.b_body = List.rev body;
   }
 
 let translate_method env mach_name methd =
   let mem = ident (Ident.make_internal "mem") in
+  let env = set_mem env mem in
   let inputs =
     List.map
       (translate_var_dec ~translate_ty:translate_ty_input)
@@ -268,7 +377,7 @@ let translate_machine (source, header) mach =
   (* Create internal memory with buffers, nodes and pword instantiations *)
   let mem_name = mem_name mach.m_name in
   let (env, pword_vars), fields =
-    Utils.mapfold_left translate_inst (env, []) mach.m_insts
+    Utils.mapfold_left (translate_inst false) (env, []) mach.m_insts
   in
   let mem =
     {

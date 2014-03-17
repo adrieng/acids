@@ -17,13 +17,6 @@
 
 open C
 
-let fun_decl_of_fun_def (f : fdef) =
-  {
-    d_name = f.f_name;
-    d_output = f.f_output;
-    d_input = List.map (fun v -> v.v_type) f.f_input;
-  }
-
 let longname ln =
   let open Names in
   let modn =
@@ -35,4 +28,12 @@ let longname ln =
   in
   modn ^ "_" ^ ln.shortn
 
-let c_int = Scal Data_types.Tys_int
+let fun_decl_of_fun_def (f : fdef) =
+  {
+    d_name = f.f_name;
+    d_output = f.f_output;
+    d_input = List.map (fun v -> v.v_type) f.f_input;
+  }
+
+let int_ty = Scal Data_types.Tys_int
+let int i = ConstExp (Const Ast_misc.(Cconstr (Ec_int i)))

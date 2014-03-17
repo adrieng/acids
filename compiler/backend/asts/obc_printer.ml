@@ -81,15 +81,6 @@ and print_exp fmt e =
     Ast_misc.print_const fmt c
   | Lvalue lv ->
     print_lvalue fmt lv
-  | Pop (id, e) ->
-    Format.fprintf fmt "pop(@[%a,@ %a@])"
-      Ident.print id
-      print_exp e
-  | Box e_l ->
-    Format.fprintf fmt "box(@[%a])"
-      (Utils.print_list_r print_exp ",") e_l
-  | Unbox e ->
-    Format.fprintf fmt "unbox(@[%a])" print_exp e
 
 let print_call fmt call =
   Format.fprintf fmt "@[%a@,(@[%a@])@,(@[%a@])@]"
@@ -107,6 +98,17 @@ let rec print_stm fmt stm =
       print_exp e
   | Call call ->
     print_call fmt call
+
+  | Box (id, e_l) ->
+    Format.fprintf fmt "%a := box(@[%a])"
+      Ident.print id
+      (Utils.print_list_r print_exp ",") e_l
+
+  | Unbox (src, dst) ->
+    Format.fprintf fmt "%a = unbox(@[%a])"
+      Ident.print dst
+      Ident.print src
+
   | Pop (id, size, result) ->
     Format.fprintf fmt "push(@[%a, %a, %a@])"
       Ident.print id

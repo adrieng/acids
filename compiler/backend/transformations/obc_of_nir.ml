@@ -151,7 +151,7 @@ let rec clock_exp env ck_e acc ce =
     let r = Ident.make_internal "r_ce" in
     let acc, x = clock_exp env ck_e acc ce in
     make_call
-      (Obc.Builtin "=")
+      (Obc.Builtin "nir_eq_static")
       ~inputs:[ck_e; Obc.Lvalue (Obc.Var x); Obc.Const (Ast_misc.Cconstr ec)]
       ~outputs:[Obc.Var r]
     :: acc,
@@ -188,10 +188,10 @@ let rec equation env acc eq =
 
   | Call ([x], { c_op = Box; }, y_l) ->
     let e_l = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l in
-    Obc.Affect (Obc.Var x, Obc.Box e_l) :: acc
+    Obc.Box (x, e_l) :: acc
 
   | Call ([x], { c_op = Unbox; }, [y]) ->
-    Obc.Affect (Obc.Var x, Obc.Unbox (Obc.Lvalue (Obc.Var y))) :: acc
+    Obc.Unbox (x, y) :: acc
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
@@ -199,7 +199,7 @@ let rec equation env acc eq =
 
   | Call ([x], { c_op = BufferAccess (b, Pop, _); }, []) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
-    Obc.Affect (Obc.Var x, Obc.Pop (b, w)) :: acc
+    Obc.Pop (b, w, x) :: acc
 
   | Call (x_l, { c_op = Node (ln, i); }, y_l) ->
     let kind =

@@ -54,9 +54,6 @@ type lvalue =
 and exp =
 | Const of Ast_misc.const
 | Lvalue of lvalue
-| Pop of Ident.t * exp (* buffer * amount *)
-| Box of exp list
-| Unbox of exp
 
 type call =
   {
@@ -70,8 +67,11 @@ type stm =
 | Call of call
 | Affect of lvalue * exp
 
-| Pop of Ident.t * exp * Ident.t (* buffer * amount * result *)
+| Box of Ident.t * exp list (* box * stuff to box *)
+| Unbox of Ident.t * Ident.t (* box * where to unbox *)
+
 | Push of Ident.t * exp * Ident.t (* buffer * amount * data *)
+| Pop of Ident.t * exp * Ident.t (* buffer * amount * result *)
 
 | Reset of inst_kind * Ident.t
 

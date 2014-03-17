@@ -39,7 +39,7 @@ type lvalue =
 | Var of ident
 | Index of ident * exp
 | Field of ident * ident
-| Deref of ident
+| Deref of lvalue
 
 and exp =
 | ConstExp of const_exp
@@ -47,6 +47,7 @@ and exp =
 | Op of string * exp list
 | Call of string * exp list
 | AddrOf of lvalue
+| Sizeof of ty
 
 type stm =
 | Exp of exp

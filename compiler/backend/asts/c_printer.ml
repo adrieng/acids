@@ -80,9 +80,9 @@ let rec print_lvalue fmt lv =
     Format.fprintf fmt "%a.%a"
       print_ident s
       print_ident f
-  | Deref id ->
+  | Deref lv ->
     Format.fprintf fmt "*%a"
-      print_ident id
+      print_lvalue lv
 
 and print_exp fmt e =
   match e with
@@ -106,6 +106,9 @@ and print_exp fmt e =
   | AddrOf lv ->
     Format.fprintf fmt "&%a"
       print_lvalue lv
+  | Sizeof ty ->
+    Format.fprintf fmt "sizeof(%a)"
+      print_ty ty
 
 let rec print_stm fmt stm =
   match stm with
@@ -136,7 +139,7 @@ let rec print_stm fmt stm =
 
 and print_block fmt block =
   Format.fprintf fmt "@[@[<v 2>{@ %a%a@]@ }@]"
-    (Utils.print_list_sep_r print_var_dec ";") block.b_locals
+    (Utils.print_list_sep print_var_dec ";") block.b_locals
     (Utils.print_list_r print_stm "") block.b_body
 
 let print_ty_option fmt tyo =
@@ -152,7 +155,7 @@ let print_fdef fmt fd =
     print_block fd.f_body
 
 let print_sdef fmt sd =
-  Format.fprintf fmt "@[<v 2>struct %a {@ %a@]@ }@]"
+  Format.fprintf fmt "@[<v 2>struct %a {@ %a@]@ };@]"
     print_ident sd.s_name
     (Utils.print_list_sep_r print_var_dec ";") sd.s_fields
 

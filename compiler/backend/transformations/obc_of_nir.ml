@@ -195,7 +195,7 @@ let rec equation env acc eq =
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
-    Obc.Push (b, w, Obc.Lvalue (Obc.Var y)) :: acc
+    Obc.Push (b, w, y) :: acc
 
   | Call ([x], { c_op = BufferAccess (b, Pop, _); }, []) ->
     let acc, w = clock_type env acc eq.eq_base_clock in

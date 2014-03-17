@@ -21,14 +21,19 @@ let print_ident fmt id =
   (* TODO mangling *)
   Format.fprintf fmt "%s" id
 
+let print_longname fmt ln =
+  print_ident fmt (C_utils.longname ln)
+
 let rec print_ty fmt ty =
   match ty with
-  | Int ->
+  | Scal Data_types.Tys_int ->
     Format.fprintf fmt "int"
-  | Float ->
+  | Scal Data_types.Tys_float ->
     Format.fprintf fmt "float"
-  | Bool ->
+  | Scal Data_types.Tys_bool ->
     Format.fprintf fmt "bool"
+  | Scal (Data_types.Tys_user ln) ->
+    print_longname fmt ln
   | Pointer ty ->
     Format.fprintf fmt "%a*"
       print_ty ty
@@ -42,17 +47,26 @@ let rec print_ty fmt ty =
   | Name id ->
     print_ident fmt id
 
-let print_var_dec fmt vd =
-  Format.fprintf fmt "%a %a"
-    print_ty vd.v_type
-    print_ident vd.v_name
-
 let rec print_const_exp fmt ce =
   match ce with
   | Const c ->
     Ast_misc.print_const fmt c
   | Array_lit a ->
     Utils.print_list_r_ne print_const_exp "," "{" "}" fmt a
+
+let print_var_dec fmt vd =
+  Format.fprintf fmt "@[%a %a"
+    print_ty vd.v_type
+    print_ident vd.v_name;
+  (
+    match vd.v_init with
+    | None ->
+      ()
+    | Some ce ->
+      Format.fprintf fmt " =@ %a"
+        print_const_exp ce
+  );
+  Format.fprintf fmt "@]"
 
 let rec print_lvalue fmt lv =
   match lv with
@@ -122,7 +136,7 @@ let rec print_stm fmt stm =
 
 and print_block fmt block =
   Format.fprintf fmt "@[@[<v 2>{@ %a%a@]@ }@]"
-    (Utils.print_list_eol print_var_dec) block.b_locals
+    (Utils.print_list_sep_r print_var_dec ";") block.b_locals
     (Utils.print_list_r print_stm "") block.b_body
 
 let print_ty_option fmt tyo =
@@ -155,10 +169,9 @@ let print_def fmt def =
     print_sdef fmt sd
   | Df_enum ed ->
     print_edef fmt ed
-  | Df_static (vd, ce) ->
-    Format.fprintf fmt "@[static const %a =@ %a;@]"
+  | Df_static vd ->
+    Format.fprintf fmt "@[static %a;@]"
       print_var_dec vd
-      print_const_exp ce
 
 let print_fdecl fmt fd =
   Format.fprintf fmt "%a %a(@[%a@]);"

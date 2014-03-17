@@ -23,3 +23,16 @@ let fun_decl_of_fun_def (f : fdef) =
     d_output = f.f_output;
     d_input = List.map (fun v -> v.v_type) f.f_input;
   }
+
+let longname ln =
+  let open Names in
+  let modn =
+    match ln.modn with
+    | LocalModule ->
+      Interface.get_current_module_name ()
+    | Module modn ->
+      modn
+  in
+  modn ^ "_" ^ ln.shortn
+
+let c_int = Scal Data_types.Tys_int

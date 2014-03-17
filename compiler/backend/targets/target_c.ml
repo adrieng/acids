@@ -16,6 +16,23 @@
  *)
 
 open Obc
+open C_utils
+
+(*
+  Things to document:
+
+  * General structure of the code
+
+  * Calling convention
+
+  * Runtime system
+
+  push(&buffer_state, buffer_capacity, amount, data)
+
+  vs.
+
+  pop(&buffer_state, buffer_capacity, amount, result)
+*)
 
 let name = "c"
 
@@ -60,17 +77,6 @@ let find_pword env id =
 
 (* {2 Helpers} *)
 
-let longname ln =
-  let open Names in
-  let modn =
-    match ln.modn with
-    | LocalModule ->
-      Interface.get_current_module_name ()
-    | Module modn ->
-      modn
-  in
-  modn ^ "_" ^ ln.shortn
-
 let ident id =
   Ident.to_string id
 
@@ -84,21 +90,33 @@ let mem_name ln = mem (longname ln)
 let reset_name ln = reset (longname ln)
 let step_name ln = step (longname ln)
 
-let pword = "pword"
+let pword = "nir_pword"
 let pword_mem = mem pword
 let pword_reset = reset pword
 let pword_step = step pword
 
-let buffer = "buffer"
+let buffer = "nir_buffer"
 let buffer_mem = mem buffer
 let buffer_reset = reset buffer
 let buffer_step = step buffer
+
+let method_name ln kind =
+  let suff =
+    match kind with
+    | Step -> "_step"
+    | Reset -> "_reset"
+  in
+  longname ln ^ suff
+
+let boxed = "nir_boxed"
+let push = "nir_push"
+let pop = "nir_pop"
 
 (******************************************************************************)
 
 (* {2 AST walking} *)
 
-let translate_pword env defs x_p pw =
+let translate_pword env locals x_p pw =
   let x_p_dat = Ident.make_suffix x_p "_dat" in
   let x_p_len = Ident.make_suffix x_p "_len" in
 
@@ -106,22 +124,20 @@ let translate_pword env defs x_p pw =
   let p_dat, p_len = List.split p in
 
   let make_static id mk body =
-    C.Def
-      (
-        C.Df_static
-          (
-            { C.v_name = ident id; C.v_type = C.Pointer C.Int; },
-          let mk x = C.Const (Ast_misc.Cconstr (mk x)) in
-          C.Array_lit (List.map mk body)
-          )
-      )
+    {
+      C.v_name = ident id;
+      C.v_type = C.Pointer c_int;
+      C.v_init =
+        let mk x = C.Const (Ast_misc.Cconstr (mk x)) in
+        Some (C.Array_lit (List.map mk body));
+    }
   in
 
   let p_dat = make_static x_p_dat (fun x -> x) p_dat in
   let p_len = make_static x_p_len (fun x -> Ast_misc.Ec_int x) p_len in
 
   add_pword env x_p pw prefix_size ~data:x_p_dat ~length:x_p_len,
-  p_dat :: p_len :: defs
+  p_dat :: p_len :: locals
 
 let translate_inst (env, defs) inst =
   let env, defs, ty =
@@ -138,71 +154,112 @@ let translate_inst (env, defs) inst =
   {
     C.v_name = ident inst.i_name;
     C.v_type = ty;
+    C.v_init = None;
   }
 
-let make_step_function env mach =
-  let mem = ident (Ident.make_internal "mem") in
+let rec translate_ty_local ty =
+  match ty with
+  | Ty_scal tys -> C.Scal tys
+  | Ty_arr (ty, size) -> C.Array (translate_ty_local ty, size)
+  | Ty_boxed -> C.Name boxed
 
+let rec translate_ty_input ty =
+  match ty with
+  | Ty_scal tys -> C.Scal tys
+  | Ty_arr (ty, _) -> C.Pointer (translate_ty_input ty)
+  | Ty_boxed -> C.Name boxed
+
+let rec translate_ty_output ty =
+  match ty with
+  | Ty_scal tys -> C.Pointer (C.Scal tys)
+  | Ty_arr (ty, _) -> translate_ty_output ty
+  | Ty_boxed -> C.Name boxed
+
+
+let translate_var_dec ?(translate_ty = translate_ty_local) vd =
   {
-    C.f_name = step_name mach.m_name;
+    C.v_name = ident vd.v_name;
+    C.v_type = translate_ty vd.v_type;
+    C.v_init = None;
+  }
+
+let rec translate_lvalue env lv =
+  match lv with
+  | Var v ->
+    C.Var (ident v)
+  | Index (id, e) ->
+    C.Index (ident id, translate_exp env e)
+
+and translate_exp env e =
+  match e with
+  | Const c ->
+    C.(ConstExp (Const c))
+  | Lvalue lv ->
+    C.Lvalue (translate_lvalue env lv)
+  | _ ->
+    assert false
+  (* | Pop (id, e) -> *)
+  (*   let open C in *)
+  (*   Call *)
+  (*     (pop, *)
+  (*      [ *)
+  (*      ] *)
+
+let rec translate_stm env acc stm =
+  match stm with
+  | Skip ->
+    acc
+  | Call _ ->
+    acc
+  | Affect (lv, e) ->
+    C.Affect (translate_lvalue env lv, translate_exp env e) :: acc
+  | Pop _ ->
+    acc
+  | Push _ ->
+    acc
+  | Reset _ ->
+    acc
+  | Switch _ ->
+    acc
+  | For _ ->
+    acc
+  | Block block ->
+    C.Block (translate_block env block) :: acc
+
+and translate_block env block =
+  let locals = List.map translate_var_dec block.b_vars in
+  let env, locals =
+    Utils.mapfold_left translate_inst (env, locals) block.b_insts
+  in
+  {
+    C.b_locals = locals;
+    C.b_body = [];
+  }
+
+let translate_method env mach_name methd =
+  let mem = ident (Ident.make_internal "mem") in
+  let inputs =
+    List.map
+      (translate_var_dec ~translate_ty:translate_ty_input)
+      methd.m_inputs
+  in
+  let outputs =
+    List.map
+      (translate_var_dec ~translate_ty:translate_ty_output)
+      methd.m_outputs
+  in
+  {
+    C.f_name = method_name mach_name methd.m_kind;
     C.f_output = None;
     C.f_input =
-      [
-        {
-          C.v_name = mem;
-          C.v_type = C.Pointer (C.Struct (mem_name mach.m_name));
-        }
-      ];
-    C.f_body =
       {
-        C.b_locals = [];
-        C.b_body = [];
+        C.v_name = mem;
+        C.v_type = C.Pointer (C.Struct (mem_name mach_name));
+        C.v_init = None;
       }
+    :: inputs @ outputs;
+    C.f_body = translate_block env methd.m_body;
   }
-
-(* let make_reset_function mach = *)
-(*   let reset = reset_name mach.m_name in *)
-(*   let mem_n = mem_name mach.m_name in *)
-(*   let mem = ident (Ident.make_internal "mem") in *)
-
-(*   let reset_inst inst = *)
-(*     let call = *)
-(*       match inst.i_kind with *)
-(*       | Mach ln -> *)
-(*         reset_name ln *)
-(*       | Pword _ -> *)
-(*         pword_reset *)
-(*     in *)
-
-(*     C.Exp *)
-(*       ( *)
-(*         C.Call *)
-(*           ( *)
-(*             call, *)
-(*             [ *)
-(*               C.AddrOf (C.Field (mem, ident inst.i_name)); *)
-(*             ] *)
-(*           ) *)
-(*       ) *)
-(*   in *)
-(*   let body = List.map reset_inst mach.m_insts in *)
-
-(*   { *)
-(*     C.f_name = reset; *)
-(*     C.f_output = None; *)
-(*     C.f_input = *)
-(*       [ *)
-(*         { *)
-(*           C.v_name = mem; *)
-(*           C.v_type = C.Pointer (C.Struct mem_n); *)
-(*         } *)
-(*       ]; *)
-(*     C.f_body = *)
-(*       { *)
-(*         C.b_locals = []; *)
-(*         C.b_body = body; *)
-(*       } *)
-(*   } *)
 
 let translate_machine (source, header) mach =
   Ident.set_current_ctx mach.m_ctx;
@@ -210,7 +267,7 @@ let translate_machine (source, header) mach =
 
   (* Create internal memory with buffers, nodes and pword instantiations *)
   let mem_name = mem_name mach.m_name in
-  let (env, defs), fields =
+  let (env, pword_vars), fields =
     Utils.mapfold_left translate_inst (env, []) mach.m_insts
   in
   let mem =
@@ -220,26 +277,19 @@ let translate_machine (source, header) mach =
     }
   in
 
-  (* (\* Create reset function *\) *)
-  (* let reset_def = make_reset_function mach in *)
-  (* let reset_decl = C_utils.fun_decl_of_fun_def reset_def in *)
-
-  (* (\* Create step function *\) *)
-  (* let step_def = make_step_function env mach in *)
-  (* let step_decl = C_utils.fun_decl_of_fun_def step_def in *)
+  let fun_defs = List.map (translate_method env mach.m_name) mach.m_methods in
+  let fun_decls = List.map fun_decl_of_fun_def fun_defs in
 
   let source =
-    (* C.Def (C.Df_function step_def) *)
-    (* :: C.Def (C.Df_function reset_def) *)
-    (* ::  *)C.Def (C.Df_struct mem)
-    :: defs
+    List.rev_map (fun d -> C.(Def (Df_function d))) fun_defs
+    @ [C.Def (C.Df_struct mem)]
+    @ List.map (fun d -> C.(Def (Df_static d))) pword_vars
     @ source
   in
   let header =
-    (* C.Decl (C.Dc_function step_decl) *)
-    (* :: C.Decl (C.Dc_function reset_decl) *)
-    (* ::  *)C.Decl (C.Dc_struct mem_name)
-    :: header
+    List.rev_map (fun d -> C.(Decl (Dc_function d))) fun_decls
+    @ [C.Decl (C.Dc_struct mem_name)]
+    @ header
   in
   source, header
 

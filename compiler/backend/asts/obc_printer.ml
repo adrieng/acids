@@ -107,11 +107,16 @@ let rec print_stm fmt stm =
       print_exp e
   | Call call ->
     print_call fmt call
+  | Pop (id, size, result) ->
+    Format.fprintf fmt "push(@[%a, %a, %a@])"
+      Ident.print id
+      print_exp size
+      Ident.print result
   | Push (id, size, data) ->
     Format.fprintf fmt "push(@[%a, %a, %a@])"
       Ident.print id
       print_exp size
-      print_exp data
+      Ident.print data
   | Reset (kind, id)  ->
     Format.fprintf fmt "%a.reset(%a)"
       print_inst_kind kind

@@ -69,7 +69,9 @@ type stm =
 | Skip
 | Call of call
 | Affect of lvalue * exp
-| Push of Ident.t * exp * exp (* buffer * amount * data *)
+
+| Pop of Ident.t * exp * Ident.t (* buffer * amount * result *)
+| Push of Ident.t * exp * Ident.t (* buffer * amount * data *)
 
 | Reset of inst_kind * Ident.t
 

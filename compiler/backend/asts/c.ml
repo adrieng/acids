@@ -18,23 +18,22 @@
 type ident = string
 
 type ty =
-| Int
-| Float
-| Bool
+| Scal of Data_types.data_ty_scal
 | Pointer of ty
 | Array of ty * Int.t
 | Struct of string
 | Name of string
 
+type const_exp =
+| Const of Ast_misc.const
+| Array_lit of const_exp list
+
 type var_dec =
   {
     v_name : ident;
     v_type : ty;
+    v_init : const_exp option;
   }
-
-type const_exp =
-| Const of Ast_misc.const
-| Array_lit of const_exp list
 
 type lvalue =
 | Var of ident
@@ -86,7 +85,7 @@ type def =
 | Df_function of fdef
 | Df_struct of sdef
 | Df_enum of edef
-| Df_static of var_dec * const_exp
+| Df_static of var_dec
 
 type fdecl =
   {

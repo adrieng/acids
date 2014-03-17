@@ -129,6 +129,20 @@ let flatten_word_int pt =
   in
   walk [] (fun acc -> List.rev acc) pt
 
+let pair_list_of_word_int acc pt =
+  let rec walk n acc pt =
+    match pt with
+    | Leaf x -> (x, n) :: acc
+    | Power (pt, m) -> walk Int.(n * m) acc pt
+    | Concat pt_l -> List.fold_left (walk n) acc pt_l
+  in
+  walk Int.one acc pt
+
+let pair_list_of_pword_int pw =
+  let acc_u = pair_list_of_word_int [] pw.u in
+  let acc = pair_list_of_word_int acc_u pw.v in
+  Int.of_int (List.length acc_u), List.rev acc
+
 let rec size_tree pt =
   match pt with
   | Leaf _ -> 1

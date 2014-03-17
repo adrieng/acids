@@ -23,6 +23,7 @@ type ty =
 | Bool
 | Pointer of ty
 | Array of ty * Int.t
+| Struct of string
 | Name of string
 
 type var_dec =
@@ -31,16 +32,22 @@ type var_dec =
     v_type : ty;
   }
 
+type const_exp =
+| Const of Ast_misc.const
+| Array_lit of const_exp list
+
 type lvalue =
 | Var of ident
 | Index of ident * exp
+| Field of ident * ident
 | Deref of ident
 
 and exp =
-| Const of Ast_misc.const
+| ConstExp of const_exp
 | Lvalue of lvalue
 | Op of string * exp list
 | Call of string * exp list
+| AddrOf of lvalue
 
 type stm =
 | Exp of exp
@@ -60,7 +67,7 @@ type fdef =
     f_name : ident;
     f_output : ty option;
     f_input : var_dec list;
-    f_body : stm;
+    f_body : block;
   }
 
 type sdef =
@@ -79,6 +86,7 @@ type def =
 | Df_function of fdef
 | Df_struct of sdef
 | Df_enum of edef
+| Df_static of var_dec * const_exp
 
 type fdecl =
   {

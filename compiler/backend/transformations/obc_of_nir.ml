@@ -298,6 +298,7 @@ let node nd =
 
   {
     Obc.m_name = longname_of_node_name nd.n_name;
+    Obc.m_ctx = nd.n_orig_info#ni_ctx;
     Obc.m_mem = mem;
     Obc.m_insts = get_insts env;
     Obc.m_methods = [reset; step];

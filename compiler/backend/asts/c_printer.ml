@@ -30,12 +30,15 @@ let rec print_ty fmt ty =
   | Bool ->
     Format.fprintf fmt "bool"
   | Pointer ty ->
-    Format.fprintf fmt "*%a"
+    Format.fprintf fmt "%a*"
       print_ty ty
   | Array (ty, size) ->
     Format.fprintf fmt "%a[%a]"
       print_ty ty
       Int.print size
+  | Struct id ->
+    Format.fprintf fmt "struct %a"
+      print_ident id
   | Name id ->
     print_ident fmt id
 
@@ -43,6 +46,13 @@ let print_var_dec fmt vd =
   Format.fprintf fmt "%a %a"
     print_ty vd.v_type
     print_ident vd.v_name
+
+let rec print_const_exp fmt ce =
+  match ce with
+  | Const c ->
+    Ast_misc.print_const fmt c
+  | Array_lit a ->
+    Utils.print_list_r_ne print_const_exp "," "{" "}" fmt a
 
 let rec print_lvalue fmt lv =
   match lv with
@@ -52,14 +62,18 @@ let rec print_lvalue fmt lv =
     Format.fprintf fmt "%a[%a]"
       print_ident id
       print_exp e
+  | Field (s, f) ->
+    Format.fprintf fmt "%a.%a"
+      print_ident s
+      print_ident f
   | Deref id ->
     Format.fprintf fmt "*%a"
       print_ident id
 
 and print_exp fmt e =
   match e with
-  | Const c ->
-    Ast_misc.print_const fmt c
+  | ConstExp ce ->
+    print_const_exp fmt ce
   | Lvalue lv ->
     print_lvalue fmt lv
   | Op (s, [e1; e2]) ->
@@ -75,6 +89,9 @@ and print_exp fmt e =
     Format.fprintf fmt "%a(@[%a@])"
       print_ident fn
       (Utils.print_list_r print_exp ",") e_l
+  | AddrOf lv ->
+    Format.fprintf fmt "&%a"
+      print_lvalue lv
 
 let rec print_stm fmt stm =
   match stm with
@@ -106,7 +123,7 @@ let rec print_stm fmt stm =
 and print_block fmt block =
   Format.fprintf fmt "@[@[<v 2>{@ %a%a@]@ }@]"
     (Utils.print_list_eol print_var_dec) block.b_locals
-    (Utils.print_list print_stm) block.b_body
+    (Utils.print_list_r print_stm "") block.b_body
 
 let print_ty_option fmt tyo =
   match tyo with
@@ -114,11 +131,11 @@ let print_ty_option fmt tyo =
   | Some ty -> print_ty fmt ty
 
 let print_fdef fmt fd =
-  Format.fprintf fmt "@[@[<v 2>%a %a(@[%a@]) {@ %a@]@ }@]"
+  Format.fprintf fmt "@[%a %a(@[%a@])@ %a@]"
     print_ty_option fd.f_output
     print_ident fd.f_name
     (Utils.print_list_r print_var_dec ",") fd.f_input
-    print_stm fd.f_body
+    print_block fd.f_body
 
 let print_sdef fmt sd =
   Format.fprintf fmt "@[<v 2>struct %a {@ %a@]@ }@]"
@@ -138,8 +155,12 @@ let print_def fmt def =
     print_sdef fmt sd
   | Df_enum ed ->
     print_edef fmt ed
+  | Df_static (vd, ce) ->
+    Format.fprintf fmt "@[static const %a =@ %a;@]"
+      print_var_dec vd
+      print_const_exp ce
 
-let print_fdef fmt fd =
+let print_fdecl fmt fd =
   Format.fprintf fmt "%a %a(@[%a@]);"
     print_ty_option fd.d_output
     print_ident fd.d_name
@@ -148,7 +169,7 @@ let print_fdef fmt fd =
 let print_decl fmt decl =
   match decl with
   | Dc_function fd ->
-    print_fdef fmt fd
+    print_fdecl fmt fd
   | Dc_struct id ->
     Format.fprintf fmt "struct %a;" print_ident id
 

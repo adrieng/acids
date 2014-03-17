@@ -103,6 +103,7 @@ type inst =
 type machine =
   {
     m_name : Names.longname;
+    m_ctx : Ident.ctx;
     m_mem : buff_dec list;
     m_insts : inst list;
     m_methods : methd list;

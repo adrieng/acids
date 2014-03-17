@@ -28,16 +28,26 @@ let rec print_ty fmt ty =
   | Ty_boxed ->
     Format.fprintf fmt "boxed"
 
+let print_inst_kind fmt kind =
+  match kind with
+  | Mach ln ->
+    Names.print_longname fmt ln
+  | Pword p ->
+    Ast_misc.print_const_pword fmt p
+  | Buffer (ty, size) ->
+    Format.fprintf fmt "buffer<%a>(%a)"
+      Int.print size
+      print_ty ty
+
+let print_inst fmt inst =
+  Format.fprintf fmt "inst %a: %a"
+    Ident.print inst.i_name
+    print_inst_kind inst.i_kind
+
 let print_var_dec fmt v =
   Format.fprintf fmt "%a : %a"
     Ident.print v.v_name
     print_ty v.v_type
-
-let print_buff_dec fmt b =
-  Format.fprintf fmt "%a: buffer<%a>(%a)"
-    Ident.print b.b_name
-    Int.print b.b_size
-    print_ty b.b_type
 
 let print_methd_kind fmt meth =
   match meth with
@@ -55,11 +65,6 @@ let print_call_kind fmt kind =
   | Pword id ->
     Format.fprintf fmt "%a.next"
       Ident.print id
-
-let print_inst_kind fmt kind =
-  match kind with
-  | Mach ln -> Names.print_longname fmt ln
-  | Pword p -> Ast_misc.print_const_pword fmt p
 
 let rec print_lvalue fmt lv =
   match lv with
@@ -107,8 +112,10 @@ let rec print_stm fmt stm =
       Ident.print id
       print_exp size
       print_exp data
-  | Reset id ->
-    Format.fprintf fmt "reset(%a)" Ident.print id
+  | Reset (kind, id)  ->
+    Format.fprintf fmt "%a.reset(%a)"
+      print_inst_kind kind
+      Ident.print id
   | Switch (cond, cases) ->
     let print_case fmt (ec, stm) =
       Format.fprintf fmt "@[<v 2>case %a:@ %a@]"
@@ -130,7 +137,7 @@ let rec print_stm fmt stm =
 and print_block fmt block =
   Format.fprintf fmt "@[<v>@[<v 2>{@ %a%a%a@]@ }@]"
     (Utils.print_list_sep print_var_dec ";") block.b_vars
-    (Utils.print_list_sep print_buff_dec ";") block.b_buffers
+    (Utils.print_list_sep print_inst ";") block.b_insts
     (Utils.print_list_r print_stm ";") block.b_body
 
 let print_methd fmt m =
@@ -144,16 +151,10 @@ let print_methd fmt m =
     (Utils.print_list_r (print_prefix "out" print_var_dec) ",") m.m_outputs
     print_block m.m_body
 
-let print_inst fmt inst =
-  Format.fprintf fmt "inst %a: %a"
-    Ident.print inst.i_name
-    print_inst_kind inst.i_kind
-
 let print_machine fmt m =
   Format.fprintf fmt
-    "@[@[<v 2>machine %a {@\n%a@\n%a@\n%a@]@\n}@]"
+    "@[@[<v 2>machine %a {@\n%a@\n%a@]@\n}@]"
     Names.print_longname m.m_name
-    (Utils.print_list_eol print_buff_dec) m.m_mem
     (Utils.print_list_eol print_inst) m.m_insts
     (Utils.print_list_eol print_methd) m.m_methods
 

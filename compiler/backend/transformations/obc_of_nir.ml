@@ -91,13 +91,14 @@ let make_var_dec ?(loc = Loc.dummy) name ty =
     Obc.v_loc = loc;
   }
 
-let make_buffer name ty size loc =
+let make_buffer name ty size =
+  let kind = Obc.Buffer (obc_ty_of_nir_ty ty, size) in
   {
-    Obc.b_name = name;
-    Obc.b_type = obc_ty_of_nir_ty ty;
-    Obc.b_size = size;
-    Obc.b_loc = loc;
+    Obc.i_name = name;
+    Obc.i_kind = kind;
   }
+
+let reset inst = Obc.Reset (inst.Obc.i_kind, inst.Obc.i_name)
 
 let obc_var_dec_of_nir_var_dec vd =
   let ty = obc_ty_of_nir_ty vd.v_data in
@@ -118,7 +119,7 @@ let vars_and_buffers_per_block env b_id =
     let add (vars, buffers) vd =
       match vd.v_data with
       | Ty_buffer (ty, size, _) ->
-        let bu = make_buffer vd.v_name ty size vd.v_loc in
+        let bu = make_buffer vd.v_name ty size in
         vars, bu :: buffers
       | _ ->
         obc_var_dec_of_nir_var_dec vd :: vars, buffers
@@ -249,11 +250,11 @@ let rec equation env acc eq =
 
 and block env block =
   let body = List.fold_left (equation env) [] block.b_body in
-  let vars, buffers = vars_and_buffers_per_block env block.b_id in
+  let vars, insts = vars_and_buffers_per_block env block.b_id in
   {
     Obc.b_vars = vars;
-    Obc.b_buffers = buffers;
-    Obc.b_body = List.rev body;
+    Obc.b_insts = insts;
+    Obc.b_body = List.map reset insts @ List.rev body;
   }
 
 let node nd =
@@ -261,14 +262,14 @@ let node nd =
   let env = initial_env nd in
 
   (* Gather buffers *)
-  let mem =
-    let add name vd mem =
+  let buffers =
+    let add name vd buffers =
       assert (Ident.equal name vd.v_name);
       match vd.v_data, vd.v_scope with
       | Ty_buffer (ty, size, _), Scope_context ->
-        make_buffer name ty size vd.v_loc :: mem
+        make_buffer name ty size :: buffers
       | _ ->
-        mem
+        buffers
     in
     Ident.Env.fold add nd.n_env []
   in
@@ -282,6 +283,8 @@ let node nd =
     }
   in
 
+  let insts = buffers @ get_insts env in
+
   let reset =
     {
       Obc.m_kind = Obc.Reset;
@@ -290,8 +293,8 @@ let node nd =
       Obc.m_body =
         {
           Obc.b_vars = [];
-          Obc.b_buffers = [];
-          Obc.b_body = List.map (fun vd -> Obc.Reset vd.Obc.b_name) mem
+          Obc.b_insts = [];
+          Obc.b_body = List.map reset insts;
         }
     }
   in
@@ -299,8 +302,7 @@ let node nd =
   {
     Obc.m_name = longname_of_node_name nd.n_name;
     Obc.m_ctx = nd.n_orig_info#ni_ctx;
-    Obc.m_mem = mem;
-    Obc.m_insts = get_insts env;
+    Obc.m_insts = insts;
     Obc.m_methods = [reset; step];
   }
 

@@ -89,6 +89,11 @@ let pword_mem = mem pword
 let pword_reset = reset pword
 let pword_step = step pword
 
+let buffer = "buffer"
+let buffer_mem = mem buffer
+let buffer_reset = reset buffer
+let buffer_step = step buffer
+
 (******************************************************************************)
 
 (* {2 AST walking} *)
@@ -118,12 +123,6 @@ let translate_pword env defs x_p pw =
   add_pword env x_p pw prefix_size ~data:x_p_dat ~length:x_p_len,
   p_dat :: p_len :: defs
 
-let translate_buff_dec bd =
-  {
-    C.v_name = ident bd.b_name;
-    C.v_type = C.Name "buffer";
-  }
-
 let translate_inst (env, defs) inst =
   let env, defs, ty =
     match inst.i_kind with
@@ -132,6 +131,8 @@ let translate_inst (env, defs) inst =
     | Pword pw ->
       let env, defs = translate_pword env defs inst.i_name pw in
       env, defs, C.Name pword_mem
+    | Buffer _ ->
+      env, defs, C.Name buffer_mem
   in
   (env, defs),
   {
@@ -159,49 +160,49 @@ let make_step_function env mach =
       }
   }
 
-let make_reset_function mach =
-  let reset = reset_name mach.m_name in
-  let mem_n = mem_name mach.m_name in
-  let mem = ident (Ident.make_internal "mem") in
+(* let make_reset_function mach = *)
+(*   let reset = reset_name mach.m_name in *)
+(*   let mem_n = mem_name mach.m_name in *)
+(*   let mem = ident (Ident.make_internal "mem") in *)
 
-  let reset_inst inst =
-    let call =
-      match inst.i_kind with
-      | Mach ln ->
-        reset_name ln
-      | Pword _ ->
-        pword_reset
-    in
+(*   let reset_inst inst = *)
+(*     let call = *)
+(*       match inst.i_kind with *)
+(*       | Mach ln -> *)
+(*         reset_name ln *)
+(*       | Pword _ -> *)
+(*         pword_reset *)
+(*     in *)
 
-    C.Exp
-      (
-        C.Call
-          (
-            call,
-            [
-              C.AddrOf (C.Field (mem, ident inst.i_name));
-            ]
-          )
-      )
-  in
-  let body = List.map reset_inst mach.m_insts in
+(*     C.Exp *)
+(*       ( *)
+(*         C.Call *)
+(*           ( *)
+(*             call, *)
+(*             [ *)
+(*               C.AddrOf (C.Field (mem, ident inst.i_name)); *)
+(*             ] *)
+(*           ) *)
+(*       ) *)
+(*   in *)
+(*   let body = List.map reset_inst mach.m_insts in *)
 
-  {
-    C.f_name = reset;
-    C.f_output = None;
-    C.f_input =
-      [
-        {
-          C.v_name = mem;
-          C.v_type = C.Pointer (C.Struct mem_n);
-        }
-      ];
-    C.f_body =
-      {
-        C.b_locals = [];
-        C.b_body = body;
-      }
-  }
+(*   { *)
+(*     C.f_name = reset; *)
+(*     C.f_output = None; *)
+(*     C.f_input = *)
+(*       [ *)
+(*         { *)
+(*           C.v_name = mem; *)
+(*           C.v_type = C.Pointer (C.Struct mem_n); *)
+(*         } *)
+(*       ]; *)
+(*     C.f_body = *)
+(*       { *)
+(*         C.b_locals = []; *)
+(*         C.b_body = body; *)
+(*       } *)
+(*   } *)
 
 let translate_machine (source, header) mach =
   Ident.set_current_ctx mach.m_ctx;
@@ -215,31 +216,29 @@ let translate_machine (source, header) mach =
   let mem =
     {
       C.s_name = mem_name;
-      C.s_fields =
-        List.map translate_buff_dec mach.m_mem
-      @ fields;
+      C.s_fields = fields;
     }
   in
 
-  (* Create reset function *)
-  let reset_def = make_reset_function mach in
-  let reset_decl = C_utils.fun_decl_of_fun_def reset_def in
+  (* (\* Create reset function *\) *)
+  (* let reset_def = make_reset_function mach in *)
+  (* let reset_decl = C_utils.fun_decl_of_fun_def reset_def in *)
 
-  (* Create step function *)
-  let step_def = make_step_function env mach in
-  let step_decl = C_utils.fun_decl_of_fun_def step_def in
+  (* (\* Create step function *\) *)
+  (* let step_def = make_step_function env mach in *)
+  (* let step_decl = C_utils.fun_decl_of_fun_def step_def in *)
 
   let source =
-    C.Def (C.Df_function step_def)
-    :: C.Def (C.Df_function reset_def)
-    :: C.Def (C.Df_struct mem)
+    (* C.Def (C.Df_function step_def) *)
+    (* :: C.Def (C.Df_function reset_def) *)
+    (* ::  *)C.Def (C.Df_struct mem)
     :: defs
     @ source
   in
   let header =
-    C.Decl (C.Dc_function step_decl)
-    :: C.Decl (C.Dc_function reset_decl)
-    :: C.Decl (C.Dc_struct mem_name)
+    (* C.Decl (C.Dc_function step_decl) *)
+    (* :: C.Decl (C.Dc_function reset_decl) *)
+    (* ::  *)C.Decl (C.Dc_struct mem_name)
     :: header
   in
   source, header

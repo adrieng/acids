@@ -20,19 +20,22 @@ type ty =
 | Ty_arr of ty * Int.t
 | Ty_boxed
 
+type inst_kind =
+| Mach of Names.longname
+| Pword of Ast_misc.const_pword
+| Buffer of ty * Int.t
+
+type inst =
+  {
+    i_name : Ident.t;
+    i_kind : inst_kind;
+  }
+
 type var_dec =
   {
     v_name : Ident.t;
     v_type : ty;
     v_loc : Loc.t;
-  }
-
-type buff_dec =
-  {
-    b_name : Ident.t;
-    b_type : ty;
-    b_size : Int.t;
-    b_loc : Loc.t;
   }
 
 type methd_kind =
@@ -43,10 +46,6 @@ type call_kind =
 | Builtin of Names.shortname
 | Method of methd_kind * Ident.t
 | Pword of Ident.t
-
-type inst_kind =
-| Mach of Names.longname
-| Pword of Ast_misc.const_pword
 
 type lvalue =
 | Var of Ident.t
@@ -72,7 +71,7 @@ type stm =
 | Affect of lvalue * exp
 | Push of Ident.t * exp * exp (* buffer * amount * data *)
 
-| Reset of Ident.t
+| Reset of inst_kind * Ident.t
 
 | Switch of exp * (Ast_misc.econstr * stm) list
 | For of var_dec * exp * Int.t * stm
@@ -82,7 +81,7 @@ type stm =
 and block =
   {
     b_vars : var_dec list;
-    b_buffers : buff_dec list;
+    b_insts : inst list;
     b_body : stm list;
   }
 
@@ -94,17 +93,10 @@ type methd =
     m_body : block;
   }
 
-type inst =
-  {
-    i_name : Ident.t;
-    i_kind : inst_kind;
-  }
-
 type machine =
   {
     m_name : Names.longname;
     m_ctx : Ident.ctx;
-    m_mem : buff_dec list;
     m_insts : inst list;
     m_methods : methd list;
   }

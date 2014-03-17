@@ -15,8 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-type ident = string
-
 type ty =
 | Scal of Data_types.data_ty_scal
 | Pointer of ty
@@ -30,15 +28,15 @@ type const_exp =
 
 type var_dec =
   {
-    v_name : ident;
+    v_name : Ident.t;
     v_type : ty;
     v_init : const_exp option;
   }
 
 type lvalue =
-| Var of ident
-| Index of ident * exp
-| Field of ident * ident
+| Var of Ident.t
+| Index of Ident.t * exp
+| Field of Ident.t * Ident.t
 | Deref of lvalue
 
 and exp =
@@ -64,7 +62,7 @@ and block =
 
 type fdef =
   {
-    f_name : ident;
+    f_name : Names.shortname;
     f_output : ty option;
     f_input : var_dec list;
     f_body : block;
@@ -72,14 +70,14 @@ type fdef =
 
 type sdef =
   {
-    s_name : ident;
+    s_name : Names.shortname;
     s_fields : var_dec list;
   }
 
 type edef =
   {
-    e_name : ident;
-    e_tags : ident list;
+    e_name : Names.shortname;
+    e_tags : Names.shortname list;
   }
 
 type def =
@@ -90,14 +88,14 @@ type def =
 
 type fdecl =
   {
-    d_name : ident;
+    d_name : Names.shortname;
     d_output : ty option;
     d_input : ty list;
   }
 
 type decl =
 | Dc_function of fdecl
-| Dc_struct of ident
+| Dc_struct of Names.shortname
 
 type phr =
 | Def of def
@@ -109,7 +107,7 @@ type file_kind =
 
 type file =
   {
-    f_name : ident;
+    f_name : Names.shortname;
     f_kind : file_kind;
     f_includes : string list;
     f_body : phr list;

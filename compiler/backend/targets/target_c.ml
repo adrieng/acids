@@ -63,14 +63,14 @@ type buffer_info =
 
 type env =
   {
-    mem : C.ident;
+    mem : Ident.t;
     pwords : pword_info Ident.Env.t;
     buffers : buffer_info Ident.Env.t;
   }
 
 let initial_env _ =
   {
-    mem = "";
+    mem = Ident.make_internal "";
     pwords = Ident.Env.empty;
     buffers = Ident.Env.empty;
   }
@@ -103,16 +103,12 @@ let add_buffer env id local capacity ty =
 
 let find_buffer env id =
   let info = Ident.Env.find id env.buffers in
-  C.(if info.local then Var (ident id) else Field (env.mem, ident id)),
+  C.(if info.local then Var id else Field (env.mem, id)),
   info.capacity,
   info.ty
 
-(* {2 Helpers} *)
-
-let ident id =
-  Ident.to_string id
-
 (******************************************************************************)
+(* {2 Helpers} *)
 
 let mem s = s ^ "_mem"
 let reset s = s ^ "_reset"
@@ -157,7 +153,7 @@ let translate_pword env locals x_p pw =
 
   let make_static id mk body =
     {
-      C.v_name = ident id;
+      C.v_name = id;
       C.v_type = C.Pointer int_ty;
       C.v_init =
         let mk x = C.Const (Ast_misc.Cconstr (mk x)) in
@@ -204,14 +200,14 @@ let translate_inst local (env, defs) inst =
   in
   (env, defs),
   {
-    C.v_name = ident inst.i_name;
+    C.v_name = inst.i_name;
     C.v_type = ty;
     C.v_init = None;
   }
 
 let translate_var_dec ?(translate_ty = translate_ty_local) vd =
   {
-    C.v_name = ident vd.v_name;
+    C.v_name = vd.v_name;
     C.v_type = translate_ty vd.v_type;
     C.v_init = None;
   }
@@ -219,9 +215,9 @@ let translate_var_dec ?(translate_ty = translate_ty_local) vd =
 let rec translate_lvalue lv =
   match lv with
   | Var v ->
-    C.Var (ident v)
+    C.Var v
   | Index (id, e) ->
-    C.Index (ident id, translate_exp e)
+    C.Index (id, translate_exp e)
 
 and translate_exp e =
   match e with
@@ -296,7 +292,7 @@ let rec translate_stm env acc stm =
              AddrOf lv;
              C_utils.int capacity;
              Op ("*", [translate_exp amount; Sizeof ty]);
-             Lvalue (Var (ident x));
+             Lvalue (Var x);
            ]
          )
       )
@@ -314,7 +310,7 @@ let rec translate_stm env acc stm =
              AddrOf lv;
              C_utils.int capacity;
              Op ("*", [translate_exp amount; Sizeof ty]);
-             AddrOf (Var (ident x));
+             AddrOf (Var x);
            ]
          )
       )
@@ -345,7 +341,7 @@ and translate_block env block =
   }
 
 let translate_method env mach_name methd =
-  let mem = ident (Ident.make_internal "mem") in
+  let mem = Ident.make_internal "mem" in
   let env = set_mem env mem in
   let inputs =
     List.map

@@ -17,12 +17,15 @@
 
 open C
 
-let print_ident fmt id =
+let print_name fmt id =
   (* TODO mangling *)
   Format.fprintf fmt "%s" id
 
+let print_ident fmt id =
+  print_name fmt (Ident.to_string id)
+
 let print_longname fmt ln =
-  print_ident fmt (C_utils.longname ln)
+  print_name fmt (C_utils.longname ln)
 
 let rec print_ty fmt ty =
   match ty with
@@ -41,11 +44,11 @@ let rec print_ty fmt ty =
     Format.fprintf fmt "%a[%a]"
       print_ty ty
       Int.print size
-  | Struct id ->
+  | Struct n ->
     Format.fprintf fmt "struct %a"
-      print_ident id
-  | Name id ->
-    print_ident fmt id
+      print_name n
+  | Name n ->
+    print_name fmt n
 
 let rec print_const_exp fmt ce =
   match ce with
@@ -99,9 +102,9 @@ and print_exp fmt e =
     Format.fprintf fmt "%s(@[%a@])"
       s
       (Utils.print_list_r print_exp ",") e_l
-  | Call (fn, e_l) ->
+  | Call (n, e_l) ->
     Format.fprintf fmt "%a(@[%a@])"
-      print_ident fn
+      print_name n
       (Utils.print_list_r print_exp ",") e_l
   | AddrOf lv ->
     Format.fprintf fmt "&%a"
@@ -150,19 +153,19 @@ let print_ty_option fmt tyo =
 let print_fdef fmt fd =
   Format.fprintf fmt "@[%a %a(@[%a@])@ %a@]"
     print_ty_option fd.f_output
-    print_ident fd.f_name
+    print_name fd.f_name
     (Utils.print_list_r print_var_dec ",") fd.f_input
     print_block fd.f_body
 
 let print_sdef fmt sd =
   Format.fprintf fmt "@[<v 2>struct %a {@ %a@]@ };@]"
-    print_ident sd.s_name
+    print_name sd.s_name
     (Utils.print_list_sep_r print_var_dec ";") sd.s_fields
 
 let print_edef fmt ed =
   Format.fprintf fmt "@[<v 2>enum %a {@ %a@]@ }@]"
-    print_ident ed.e_name
-    (Utils.print_list_r print_ident ",") ed.e_tags
+    print_name ed.e_name
+    (Utils.print_list_r print_name ",") ed.e_tags
 
 let print_def fmt def =
   match def with
@@ -179,7 +182,7 @@ let print_def fmt def =
 let print_fdecl fmt fd =
   Format.fprintf fmt "%a %a(@[%a@]);"
     print_ty_option fd.d_output
-    print_ident fd.d_name
+    print_name fd.d_name
     (Utils.print_list_r print_ty ",") fd.d_input
 
 let print_decl fmt decl =
@@ -187,7 +190,7 @@ let print_decl fmt decl =
   | Dc_function fd ->
     print_fdecl fmt fd
   | Dc_struct id ->
-    Format.fprintf fmt "struct %a;" print_ident id
+    Format.fprintf fmt "struct %a;" print_name id
 
 let print_phr fmt phr =
   match phr with

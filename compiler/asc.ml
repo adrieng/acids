@@ -100,7 +100,7 @@ let flow =
   +>+ Scheduling.pass
   (* Back-end *)
   +>+ Obc_of_nir.pass
-  +>+ Output.pass
+  (* +>+ Output.pass *)
 
 (*****************************************************************************)
 (* File handling *)

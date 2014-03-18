@@ -394,7 +394,7 @@ let file ctx file =
   {
     Nir_sliced.f_name = file.f_name;
     Nir_sliced.f_type_defs = file.f_type_defs;
-    Nir_sliced.f_body = nodes;
+    Nir_sliced.f_body = List.rev nodes;
     Nir_sliced.f_info = file.f_info;
   }
 

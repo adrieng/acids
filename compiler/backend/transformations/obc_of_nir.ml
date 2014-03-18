@@ -18,6 +18,106 @@
 open Nir
 open Nir_sliced
 
+(*
+  TODO: document runtime system
+
+  pword : prefix_size * total_size * data * lengthes
+
+*)
+
+let mk_const ec = Obc.C_scal (Ast_misc.(Cconstr ec))
+
+let mk_int (* TODO factor in Ast_misc *) i = mk_const (Ast_misc.Ec_int i)
+
+(******************************************************************************)
+(* {2 Runtime stuff} *)
+
+(* Runtime module name *)
+let runtime_name = "Rt"
+
+(* Built-in machines *)
+let builtin_name = "builtin"
+let pword_name = "pword"
+let buffer_name = "buffer"
+let boxed_name = "boxed"
+
+(* Method names *)
+let reset_name = "reset"
+let step_name = "step"
+let box_name = "box"
+let unbox_name = "unbox"
+let push_name = "push"
+let pop_name = "pop"
+let ceq_name = "ceq"
+
+let runtime sn = Names.(make_longname (Module runtime_name) sn)
+
+let builtin_machine_ty =
+  {
+    Obc.mt_name = runtime builtin_name;
+    Obc.mt_cparams = [];
+  }
+
+let pword_machine_ty pw =
+  let prefix_size, p = Tree_word.pair_list_of_pword_int pw in
+  let p_dat, p_len = List.split p in
+  {
+    Obc.mt_name = runtime pword_name;
+    Obc.mt_cparams =
+      [
+        mk_int prefix_size;
+        mk_int (Int.of_int (List.length p_len));
+        Obc.C_array (List.map mk_const p_dat);
+        Obc.C_array (List.map mk_int p_len);
+      ];
+  }
+
+let buffer_machine_ty ty capacity =
+  {
+    Obc.mt_name = runtime buffer_name;
+    Obc.mt_cparams =
+      [
+        Obc.C_sizeof ty;
+        mk_int capacity;
+      ];
+  }
+
+let boxed_machine_ty =
+  {
+    Obc.mt_name = runtime boxed_name;
+    Obc.mt_cparams = [];
+  }
+
+(******************************************************************************)
+
+let rec translate_ty ty =
+  match ty with
+  | Ty_var _ | Ty_boxed ->
+    Obc.Ty_mach boxed_machine_ty
+  | Ty_scal tys ->
+    Obc.Ty_scal tys
+  | Ty_clock ->
+    invalid_arg "obc_ty_of_nir_ty: clock"
+  | Ty_buffer (ty, capacity, _) ->
+    Obc.Ty_mach (buffer_machine_ty (translate_ty ty) capacity)
+
+let translate_var_dec vd =
+  let ty = translate_ty vd.v_data in
+  let ty =
+    match ty with
+    | Obc.Ty_scal _ ->
+      let mb = Clock_types.max_burst_stream_type vd.v_clock in
+      if mb = Int.one then ty else Obc.Ty_arr (ty, mb)
+    | _ ->
+      ty
+  in
+  {
+    Obc.v_name = vd.v_name;
+    Obc.v_type = ty;
+    Obc.v_loc = vd.v_loc;
+  }
+
+(******************************************************************************)
 (* {2 Environments} *)
 
 let longname_of_node_name (ln, id) =
@@ -28,119 +128,212 @@ let longname_of_node_name (ln, id) =
   | _ ->
     Nir_sliced.Info.longname_of_sliced_name (ln, id)
 
+(* Environment used to translate a given node *)
 type env =
   {
-    locals : var_dec Ident.Env.t;
-    locals_per_block : var_dec list Utils.Int_map.t;
-    mutable insts : Obc.inst list;
+    mutable current_blocks : block_id list;
+
+    mutable all : Obc.var_dec Ident.Env.t;
+    mutable fields : Obc.var_dec Ident.Env.t;
+    mutable locals_per_block : Obc.var_dec list Utils.Int_map.t;
+
+    node_inputs : Ident.Set.t;
+    node_outputs : Ident.Set.t;
   }
+
+let debug_env ?(msg = "") env =
+  Format.eprintf "%s@\n  fields: @[%a@]@."
+    msg
+    (Ident.Env.print Obc_printer.print_var_dec ",") env.fields
+
+let push_new_block env b_id =
+  env.current_blocks <- b_id :: env.current_blocks
+
+let pop_block env =
+  env.current_blocks <- List.tl env.current_blocks
+
+let current_block env = List.hd env.current_blocks
+
+let add_field env vd =
+  env.all <- Ident.Env.add vd.Obc.v_name vd env.all;
+  env.fields <- Ident.Env.add vd.Obc.v_name vd env.fields
+
+let add_local_for_block env (Block_id b_id) vd =
+  let id = vd.Obc.v_name in
+  env.all <- Ident.Env.add id vd env.all;
+  let locals_for_block =
+    try Utils.Int_map.find b_id env.locals_per_block with Not_found -> []
+  in
+  env.locals_per_block <-
+    Utils.Int_map.add b_id (vd :: locals_for_block) env.locals_per_block
 
 let initial_env nd =
-  let locals_per_block =
-    let add _ vd locals_per_block =
-      match vd.v_scope with
-      | Scope_context ->
-        locals_per_block
-      | Scope_internal (Block_id b_id) ->
-        let locals_for_block =
-          try Utils.Int_map.find b_id locals_per_block
-          with Not_found -> []
-        in
-        Utils.Int_map.add b_id (vd :: locals_for_block) locals_per_block
-    in
-    Ident.Env.fold add nd.n_env Utils.Int_map.empty
+  let set_of_list = List.fold_left (Utils.flip Ident.Set.add) Ident.Set.empty in
+  let env =
+    {
+      current_blocks = [];
+
+      all = Ident.Env.empty;
+      fields = Ident.Env.empty;
+      locals_per_block = Utils.Int_map.empty;
+
+      node_inputs = set_of_list nd.n_input;
+      node_outputs = set_of_list nd.n_output;
+    }
   in
-  {
-    locals = nd.n_env;
-    locals_per_block = locals_per_block;
-    insts = [];
-  }
 
-let find_var env id = Ident.Env.find id env.locals
+  let add _ vd =
+    let obc_vd = translate_var_dec vd in
+    match vd.v_scope with
+    | Scope_context ->
+      add_field env obc_vd
+    | Scope_internal b_id ->
+      add_local_for_block env b_id obc_vd
+  in
+  Ident.Env.iter add nd.n_env;
 
-let find_locals_per_block env (Block_id b_id) =
+  env
+
+let add_local_for_current_block env id ty =
+  let vd =
+    {
+      Obc.v_name = id;
+      Obc.v_type = ty;
+      Obc.v_loc = Loc.dummy;
+    }
+  in
+  env.all <- Ident.Env.add id vd env.all;
+  add_local_for_block env (current_block env) vd
+
+let add_local_for_current_block_int env id =
+  add_local_for_current_block env id (Obc.Ty_scal Data_types.Tys_int)
+
+let locals_per_block env (Block_id b_id) =
   try Utils.Int_map.find b_id env.locals_per_block
   with Not_found -> []
 
+let find_var env id = Ident.Env.find id env.all
+
+let machine_type_of env x =
+  let vd = find_var env x in
+  match vd.Obc.v_type with
+  | Obc.Ty_mach mty ->
+    mty
+  | _ ->
+    invalid_arg ("machine_type_of: " ^ Ident.to_string x ^ " is not a machine")
+
 let new_pword env pw =
   let w = Ident.make_internal "w" in
-  env.insts <- { Obc.i_name = w; Obc.i_kind = Obc.Pword pw; } :: env.insts;
+  let vd =
+    {
+      Obc.v_name = w;
+      Obc.v_type = Obc.Ty_mach (pword_machine_ty pw);
+      Obc.v_loc = Loc.dummy;
+    }
+  in
+  add_field env vd;
   w
 
-let new_mach env ln =
+let new_node env ln =
   let m = Ident.make_internal "m" in
-  env.insts <- { Obc.i_name = m; Obc.i_kind = Obc.Mach ln; } :: env.insts;
+  let vd =
+    {
+      Obc.v_name = m;
+      Obc.v_type =
+        Obc.Ty_mach
+          {
+            Obc.mt_name = ln;
+            Obc.mt_cparams = [];
+          };
+      Obc.v_loc = Loc.dummy;
+    }
+  in
+  add_field env vd;
   m
 
-let get_insts env = env.insts
+let get_fields env =
+  Ident.Env.fold (fun _ vd acc -> vd :: acc) env.fields []
 
+let var env id =
+  let kind =
+    if Ident.Set.mem id env.node_inputs
+    then Obc.K_input
+    else if Ident.Set.mem id env.node_outputs
+    then Obc.K_output
+    else if Ident.Env.mem id env.fields
+    then Obc.K_field
+    else Obc.K_local
+  in
+  Obc.L_var (kind, id)
+
+let exp_var env id = Obc.E_lval (var env id)
+
+(******************************************************************************)
 (* {2 Helper functions} *)
 
-let obc_ty_of_nir_ty ty =
-  match ty with
-  | Ty_var _ -> Obc.Ty_boxed (* unsure *)
-  | Ty_scal tys -> Obc.Ty_scal tys
-  | Ty_boxed -> Obc.Ty_boxed
-  | Ty_clock -> invalid_arg "obc_ty_of_nir_ty: clock"
-  | Ty_buffer _ -> invalid_arg "obc_ty_of_nir_ty: buffer type"
-
-let make_var_dec ?(loc = Loc.dummy) name ty =
-  {
-    Obc.v_name = name;
-    Obc.v_type = ty;
-    Obc.v_loc = loc;
-  }
-
-let make_buffer name ty size =
-  let kind = Obc.Buffer (obc_ty_of_nir_ty ty, size) in
-  {
-    Obc.i_name = name;
-    Obc.i_kind = kind;
-  }
-
-let reset inst = Obc.Reset (inst.Obc.i_kind, inst.Obc.i_name)
-
-let obc_var_dec_of_nir_var_dec vd =
-  let ty = obc_ty_of_nir_ty vd.v_data in
-  let ty =
-    let mb = Clock_types.max_burst_stream_type vd.v_clock in
-    if mb = Int.one then ty else Obc.Ty_arr (ty, mb)
-  in
-  make_var_dec ~loc:vd.v_loc vd.v_name ty
-
-let var_dec_of_var env id =
-  let vd = find_var env id in
-  assert (id = vd.v_name);
-  obc_var_dec_of_nir_var_dec vd
-
-let vars_and_buffers_per_block env b_id =
-  let locals = find_locals_per_block env b_id in
-  let vars, buffers =
-    let add (vars, buffers) vd =
-      match vd.v_data with
-      | Ty_buffer (ty, size, _) ->
-        let bu = make_buffer vd.v_name ty size in
-        vars, bu :: buffers
-      | _ ->
-        obc_var_dec_of_nir_var_dec vd :: vars, buffers
-    in
-    List.fold_left add ([], []) locals
-  in
-  vars, buffers
-
-let make_call kind ~inputs ~outputs =
-  Obc.Call
+let builtin_op_stm op inputs output =
+  Obc.S_call
     {
-      Obc.c_kind = kind;
+      Obc.c_inst = None;
+      Obc.c_mach = builtin_machine_ty;
+      Obc.c_method = op;
+      Obc.c_inputs = inputs;
+      Obc.c_outputs = output;
+    }
+
+let method_call env inst ?(inputs = []) ?(outputs = []) op  =
+  let mty = machine_type_of env inst in
+  Obc.S_call
+    {
+      Obc.c_inst = Some inst;
+      Obc.c_mach = mty;
+      Obc.c_method = op;
       Obc.c_inputs = inputs;
       Obc.c_outputs = outputs;
     }
 
-(* {2 AST traversal} *)
+let reset_stm inst mty =
+  Obc.S_call
+    {
+      Obc.c_inst = Some inst;
+      Obc.c_mach = mty;
+      Obc.c_method = reset_name;
+      Obc.c_inputs = [];
+      Obc.c_outputs = [];
+    }
 
-let pword env x pw =
+let step_stm env inst ~inputs ~outputs =
+  method_call env inst ~inputs ~outputs step_name
+
+let pword_step_stm env inst out =
+  method_call env inst ~outputs:[out] step_name
+
+let buffer_push_stm env inst ~amount ~data =
+  method_call env inst ~inputs:[amount; data] push_name
+
+let buffer_pop_stm env inst amount out =
+  method_call env inst ~inputs:[amount] ~outputs:[out] pop_name
+
+let reset_if_machine acc vd =
+  let open Obc in
+  match vd.v_type with
+  | Ty_mach mty ->
+    reset_stm vd.v_name mty :: acc
+  | _ ->
+    acc
+
+let reset_if_machines vd_l =
+  List.fold_left reset_if_machine [] vd_l
+
+let create_pword env pw out =
   let w = new_pword env pw in
-  make_call (Obc.Pword w) ~inputs:[] ~outputs:[Obc.Var x]
+  pword_step_stm env w out
+
+let create_node env ln ~inputs ~outputs =
+  let m = new_node env ln in
+  step_stm env m ~inputs ~outputs
+
+(* {2 AST traversal} *)
 
 let rec clock_exp env ck_e acc ce =
   let open Clock_types in
@@ -149,72 +342,79 @@ let rec clock_exp env ck_e acc ce =
     acc, cecv.cecv_name
   | Ce_equal (ce, ec) ->
     let r = Ident.make_internal "r_ce" in
+    add_local_for_current_block_int env r;
     let acc, x = clock_exp env ck_e acc ce in
-    make_call
-      (Obc.Builtin "nir_eq_static")
-      ~inputs:[ck_e; Obc.Lvalue (Obc.Var x); Obc.Const (Ast_misc.Cconstr ec)]
-      ~outputs:[Obc.Var r]
+    let open Obc in
+    builtin_op_stm ceq_name
+      [ck_e; exp_var env x; E_const (mk_const ec)]
+      [var env r]
     :: acc,
     r
   | Ce_pword pw ->
     let x = Ident.make_internal "x_w" in
-    pword env x pw :: acc, x
+    create_pword env pw (var env x) :: acc, x
 
 and clock_type env acc ck =
   match ck with
   | Clock_types.St_var _ ->
-    acc, Obc.Const (Ast_misc.(Cconstr (Ec_int Int.one)))
+    acc, Obc.E_const (mk_int Int.one)
   | Clock_types.St_on (ck, ce) ->
     let acc, ck_e = clock_type env acc ck in
     let acc, ce_x = clock_exp env ck_e acc ce in
     let ck_x = Ident.make_internal "w" in
-    make_call
-      (Obc.Builtin "on")
-      ~inputs:[ck_e; Obc.Lvalue (Obc.Var ce_x)]
-      ~outputs:[Obc.Var ck_x]
+    add_local_for_current_block_int env ck_x;
+    let ce_e = exp_var env ce_x in
+    builtin_op_stm
+      "on"
+      [ck_e; ce_e]
+      [var env ck_x]
     :: acc,
-    Obc.Lvalue (Obc.Var ck_x)
+    ce_e
 
 let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
-    Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var y)) :: acc
+    Obc.S_affect (var env x, exp_var env y) :: acc
 
   | Const (x, c) ->
-    Obc.Affect (Obc.Var x, Obc.Const c) :: acc
+    Obc.S_affect (var env x, Obc.E_const (Obc.C_scal c)) :: acc
 
   | Pword (x, pw) ->
-    pword env x pw :: acc
+    create_pword env pw (var env x) :: acc
 
   | Call ([x], { c_op = Box; }, y_l) ->
-    let e_l = List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l in
-    Obc.Box (x, e_l) :: acc
+    builtin_op_stm
+      box_name
+      (List.map (exp_var env) y_l)
+      [var env x]
+    :: acc
 
   | Call ([x], { c_op = Unbox; }, [y]) ->
-    Obc.Unbox (x, y) :: acc
+    builtin_op_stm
+      unbox_name
+      [exp_var env y]
+      [var env x]
+    :: acc
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
-    Obc.Push (b, w, y) :: acc
+    buffer_push_stm env b ~amount:w ~data:(exp_var env y) :: acc
 
   | Call ([x], { c_op = BufferAccess (b, Pop, _); }, []) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
-    Obc.Pop (b, w, x) :: acc
+    buffer_pop_stm env b w (var env x) :: acc
 
   | Call (x_l, { c_op = Node (ln, i); }, y_l) ->
-    let kind =
-      let open Names in
+    let x_l = List.map (var env) x_l in
+    let y_l = List.map (exp_var env) y_l in
+    let open Names in
+    (
       match ln.modn with
       | Module "Pervasives" ->
-        Obc.Builtin ln.shortn
+        builtin_op_stm ln.shortn y_l x_l
       | _ ->
-        let m = new_mach env (longname_of_node_name (ln, i)) in
-        Obc.Method (Obc.Step, m)
-    in
-    make_call
-      kind
-      ~inputs:(List.map (fun y -> Obc.Lvalue (Obc.Var y)) y_l)
-      ~outputs:(List.map (fun x -> Obc.Var x) x_l)
+        create_node env (longname_of_node_name (ln, i)) ~outputs:x_l ~inputs:y_l
+    )
     :: acc
 
   | Call _ ->
@@ -222,15 +422,15 @@ let rec equation env acc eq =
 
   | Merge (x, y, c_l) ->
     let case (ec, z) =
-      ec, Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var z))
+      ec, Obc.(S_affect (var env x, exp_var env z))
     in
-    Obc.Switch (Obc.Lvalue (Obc.Var y), List.map case c_l) :: acc
+    Obc.(S_switch (exp_var env y, List.map case c_l)) :: acc
 
   | Split (x_l, y, z, ec_l) ->
     let case x ec =
-      ec, Obc.Affect (Obc.Var x, Obc.Lvalue (Obc.Var y))
+      ec, Obc.(S_affect (var env x, exp_var env y))
     in
-    Obc.Switch (Obc.Lvalue (Obc.Var z), List.map2 case x_l ec_l) :: acc
+    Obc.S_switch (exp_var env z, List.map2 case x_l ec_l) :: acc
 
   | Buffer _ ->
     invalid_arg "equation: buffer"
@@ -241,69 +441,57 @@ let rec equation env acc eq =
   | Block bl ->
     let acc, w = clock_type env acc eq.eq_base_clock in
     let i = Ident.make_internal "i" in
-    Obc.For
-      (make_var_dec i (Obc.Ty_scal Data_types.Tys_int),
+    add_local_for_current_block_int env i;
+    Obc.S_loop
+      (find_var env i,
        w,
        Clock_types.max_burst_stream_type eq.eq_base_clock,
-       Obc.Block (block env bl))
+       Obc.S_block (block env bl))
     :: acc
 
 and block env block =
+  push_new_block env block.b_id;
   let body = List.fold_left (equation env) [] block.b_body in
-  let vars, insts = vars_and_buffers_per_block env block.b_id in
+  let locals = locals_per_block env block.b_id in
+  pop_block env;
   {
-    Obc.b_vars = vars;
-    Obc.b_insts = insts;
-    Obc.b_body = List.map reset insts @ List.rev body;
+    Obc.b_locals = locals;
+    Obc.b_body = reset_if_machines locals @ List.rev body;
   }
 
 let node nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
   let env = initial_env nd in
 
-  (* Gather buffers *)
-  let buffers =
-    let add name vd buffers =
-      assert (Ident.equal name vd.v_name);
-      match vd.v_data, vd.v_scope with
-      | Ty_buffer (ty, size, _), Scope_context ->
-        make_buffer name ty size :: buffers
-      | _ ->
-        buffers
-    in
-    Ident.Env.fold add nd.n_env []
-  in
-
   let step =
     {
-      Obc.m_kind = Obc.Step;
-      Obc.m_inputs = List.map (var_dec_of_var env) nd.n_input;
-      Obc.m_outputs = List.map (var_dec_of_var env) nd.n_output;
+      Obc.m_name = step_name;
+      Obc.m_inputs = List.map (find_var env) nd.n_input;
+      Obc.m_outputs = List.map (find_var env) nd.n_output;
       Obc.m_body = block env nd.n_body;
     }
   in
 
-  let insts = buffers @ get_insts env in
+  let fields = get_fields env in
 
   let reset =
     {
-      Obc.m_kind = Obc.Reset;
+      Obc.m_name = reset_name;
       Obc.m_inputs = [];
       Obc.m_outputs = [];
       Obc.m_body =
         {
-          Obc.b_vars = [];
-          Obc.b_insts = [];
-          Obc.b_body = List.map reset insts;
+          Obc.b_locals = [];
+          Obc.b_body = reset_if_machines fields;
         }
     }
   in
 
   {
-    Obc.m_name = longname_of_node_name nd.n_name;
-    Obc.m_ctx = nd.n_orig_info#ni_ctx;
-    Obc.m_insts = insts;
-    Obc.m_methods = [reset; step];
+    Obc.ma_name = longname_of_node_name nd.n_name;
+    Obc.ma_ctx = nd.n_orig_info#ni_ctx;
+    Obc.ma_fields = fields;
+    Obc.ma_methods = [reset; step];
   }
 
 (* {2 Putting it all together} *)

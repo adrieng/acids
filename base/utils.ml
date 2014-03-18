@@ -369,7 +369,7 @@ let rec print_list_sep_r p sep fmt l =
 let print_list_r_ne p sep left right fmt l = match l with
   | [] -> ()
   | _ ->
-    fprintf fmt "%s%a%s"
+    fprintf fmt "%s@[%a@]%s"
       left
       (print_list_r p sep) l
       right
@@ -377,7 +377,7 @@ let print_list_r_ne p sep left right fmt l = match l with
 let print_list_l_ne p sep left right fmt l = match l with
   | [] -> ()
   | _ ->
-    fprintf fmt "%s%a%s"
+    fprintf fmt "%s@[%a@]%s"
       left
       (print_list_l p sep) l
       right

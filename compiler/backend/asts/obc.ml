@@ -16,20 +16,20 @@
  *)
 
 type ty =
+| Ty_mach of machine_ty
 | Ty_scal of Data_types.data_ty_scal
 | Ty_arr of ty * Int.t
-| Ty_boxed
 
-type inst_kind =
-| Mach of Names.longname
-| Pword of Ast_misc.const_pword
-| Buffer of ty * Int.t
-
-type inst =
+and machine_ty =
   {
-    i_name : Ident.t;
-    i_kind : inst_kind;
+    mt_name : Names.longname;
+    mt_cparams : const list;
   }
+
+and const =
+| C_scal of Ast_misc.const
+| C_array of const list
+| C_sizeof of ty
 
 type var_dec =
   {
@@ -38,58 +38,45 @@ type var_dec =
     v_loc : Loc.t;
   }
 
-type methd_kind =
-| Step
-| Reset
-
-type call_kind =
-| Builtin of Names.shortname
-| Method of methd_kind * Ident.t
-| Pword of Ident.t
+type var_kind =
+| K_input
+| K_output
+| K_local
+| K_field
 
 type lvalue =
-| Var of Ident.t
-| Index of Ident.t * exp
+| L_var of var_kind * Ident.t
+| L_arrindex of lvalue * exp
 
 and exp =
-| Const of Ast_misc.const
-| Lvalue of lvalue
+| E_lval of lvalue
+| E_const of const
 
 type call =
   {
-    c_kind : call_kind;
+    c_inst : Ident.t option;
+    c_mach : machine_ty;
+    c_method : Names.shortname;
     c_inputs : exp list;
     c_outputs : lvalue list;
   }
 
 type stm =
-| Skip
-| Call of call
-| Affect of lvalue * exp
-
-| Box of Ident.t * exp list (* box * stuff to box *)
-| Unbox of Ident.t * Ident.t (* box * where to unbox *)
-
-| Push of Ident.t * exp * Ident.t (* buffer * amount * data *)
-| Pop of Ident.t * exp * Ident.t (* buffer * amount * result *)
-
-| Reset of inst_kind * Ident.t
-
-| Switch of exp * (Ast_misc.econstr * stm) list
-| For of var_dec * exp * Int.t * stm
-(* index * number of iterations * bound * body *)
-| Block of block
+| S_affect of lvalue * exp
+| S_call of call
+| S_loop of var_dec * exp * Int.t * stm (* for v = 0 to max(exp, n) do body *)
+| S_switch of exp * (Ast_misc.econstr * stm) list
+| S_block of block
 
 and block =
   {
-    b_vars : var_dec list;
-    b_insts : inst list;
+    b_locals : var_dec list;
     b_body : stm list;
   }
 
 type methd =
   {
-    m_kind : methd_kind;
+    m_name : Names.shortname;
     m_inputs : var_dec list;
     m_outputs : var_dec list;
     m_body : block;
@@ -97,10 +84,10 @@ type methd =
 
 type machine =
   {
-    m_name : Names.longname;
-    m_ctx : Ident.ctx;
-    m_insts : inst list;
-    m_methods : methd list;
+    ma_name : Names.longname;
+    ma_ctx : Ident.ctx;
+    ma_fields : var_dec list;
+    ma_methods : methd list;
   }
 
 type file =

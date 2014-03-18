@@ -31,7 +31,7 @@ let rec print_ty fmt ty =
   | Ty_scal tys ->
     Data_types.print_ty_scal fmt tys
   | Ty_boxed ->
-    Format.fprintf fmt "boxed"
+    Format.fprintf fmt "box"
   | Ty_clock ->
     Format.fprintf fmt "clock"
   | Ty_buffer (tys, size, pol) ->

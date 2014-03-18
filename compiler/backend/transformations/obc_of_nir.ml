@@ -387,11 +387,11 @@ let rec equation env acc eq =
       [var env x]
     :: acc
 
-  | Call ([x], { c_op = Unbox; }, [y]) ->
+  | Call (x_l, { c_op = Unbox; }, [y]) ->
     builtin_op_stm
       unbox_name
       [exp_var env y]
-      [var env x]
+      (List.map (var env) x_l)
     :: acc
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->

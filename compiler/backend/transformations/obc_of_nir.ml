@@ -92,7 +92,7 @@ let boxed_machine_ty =
 
 let rec translate_ty ty =
   match ty with
-  | Ty_var _ | Ty_boxed ->
+  | Ty_boxed ->
     Obc.Ty_mach boxed_machine_ty
   | Ty_scal tys ->
     Obc.Ty_scal tys

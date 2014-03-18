@@ -90,9 +90,8 @@ let get_var_clock env x =
 let translate_data_type ty =
   let open Data_types in
   match ty with
-  | Ty_var i -> Nir.Ty_var i
   | Ty_scal tys | Ty_cond tys -> Nir.Ty_scal tys
-  | Ty_boxed _ -> Nir.Ty_boxed
+  | Ty_var _ | Ty_boxed _ -> Nir.Ty_boxed
   | Ty_prod _ -> invalid_arg "translate_data_type: product type"
 
 let rec translate_stream_type (st : Clock_types.stream_type) =

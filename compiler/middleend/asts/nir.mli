@@ -24,7 +24,6 @@ type buffer_polarity = Strict | Lazy
 type block_id = Block_id of int
 
 type ty =
-| Ty_var of int
 | Ty_scal of Data_types.data_ty_scal
 | Ty_boxed
 | Ty_buffer of ty * Int.t * buffer_polarity

@@ -26,12 +26,10 @@ let print_buffer_polarity fmt pol =
 
 let rec print_ty fmt ty =
   match ty with
-  | Ty_var i ->
-    Data_types.(print_ty fmt (Ty_var i))
   | Ty_scal tys ->
     Data_types.print_ty_scal fmt tys
   | Ty_boxed ->
-    Format.fprintf fmt "box"
+    Format.fprintf fmt "boxed"
   | Ty_buffer (tys, size, pol) ->
     Format.fprintf fmt "buffer (%a, %a, %a)"
       print_ty tys

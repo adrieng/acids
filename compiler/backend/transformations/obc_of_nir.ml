@@ -140,8 +140,9 @@ type env =
   }
 
 let debug_env ?(msg = "") env =
-  Format.eprintf "%s@\n  fields: @[%a@]@."
+  Format.eprintf "@[Env [%s],@ all: {@[%a@]}@ fields: {@[%a@]}@."
     msg
+    (Ident.Env.print Obc_printer.print_var_dec ",") env.all
     (Ident.Env.print Obc_printer.print_var_dec ",") env.fields
 
 let push_new_block env b_id =

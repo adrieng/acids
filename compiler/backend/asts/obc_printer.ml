@@ -90,12 +90,12 @@ let print_call fmt call =
     Format.fprintf fmt "%a :@ "
       Ident.print inst
   in
-  Format.fprintf fmt "@[(@[%a%a@])@,.%a%a%a@]"
+  Format.fprintf fmt "@[(@[%a%a@])@,.%a(@[%a@])(@[%a@])@]"
     (Utils.print_opt print_inst) call.c_inst
     print_machine_ty call.c_mach
     Names.print_shortname call.c_method
-    (Utils.print_list_r_ne print_exp "," "(" ")") call.c_inputs
-    (Utils.print_list_r_ne print_lvalue "," "(" ")") call.c_outputs
+    (Utils.print_list_r print_exp ",") call.c_inputs
+    (Utils.print_list_r print_lvalue ",") call.c_outputs
 
 let rec print_stm fmt stm =
   match stm with
@@ -130,10 +130,10 @@ and print_block fmt block =
 
 let print_methd fmt m =
   Format.fprintf fmt
-    "@[<v 2>method %a@ inputs:(%a)@ outputs:(%a)@ %a@]"
+    "@[<v 2>method %a@ inputs:(@[%a@])@ outputs:(@[%a@])@ %a@]"
     Names.print_shortname m.m_name
-    (Utils.print_list_r print_var_dec "*") m.m_inputs
-    (Utils.print_list_r print_var_dec "*") m.m_outputs
+    (Utils.print_list_r print_var_dec " *") m.m_inputs
+    (Utils.print_list_r print_var_dec " *") m.m_outputs
     print_block m.m_body
 
 let print_machine fmt m =

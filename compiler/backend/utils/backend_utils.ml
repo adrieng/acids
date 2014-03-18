@@ -33,3 +33,29 @@ let make_transform name tr =
        ~print_out:Obc_printer.print_file
        name
        tr)
+
+
+(******************************************************************************)
+(* {2 Runtime stuff} *)
+
+(* Runtime module name *)
+let runtime_name = "Rt"
+
+(* Built-in machines *)
+let builtin_name = "builtin"
+let pword_name = "pword"
+let buffer_name = "buffer"
+let boxed_name = "boxed"
+
+(* Method names *)
+let reset_name = "reset"
+let step_name = "step"
+let box_name = "box"
+let unbox_name = "unbox"
+let push_name = "push"
+let pop_name = "pop"
+let ceq_name = "ceq"
+
+let runtime sn = Names.(make_longname (Module runtime_name) sn)
+
+(******************************************************************************)

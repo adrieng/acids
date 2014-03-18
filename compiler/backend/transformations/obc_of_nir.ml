@@ -17,6 +17,7 @@
 
 open Nir
 open Nir_sliced
+open Backend_utils
 
 (*
   TODO: document runtime system
@@ -28,29 +29,6 @@ open Nir_sliced
 let mk_const ec = Obc.C_scal (Ast_misc.(Cconstr ec))
 
 let mk_int (* TODO factor in Ast_misc *) i = mk_const (Ast_misc.Ec_int i)
-
-(******************************************************************************)
-(* {2 Runtime stuff} *)
-
-(* Runtime module name *)
-let runtime_name = "Rt"
-
-(* Built-in machines *)
-let builtin_name = "builtin"
-let pword_name = "pword"
-let buffer_name = "buffer"
-let boxed_name = "boxed"
-
-(* Method names *)
-let reset_name = "reset"
-let step_name = "step"
-let box_name = "box"
-let unbox_name = "unbox"
-let push_name = "push"
-let pop_name = "pop"
-let ceq_name = "ceq"
-
-let runtime sn = Names.(make_longname (Module runtime_name) sn)
 
 let builtin_machine_ty =
   {
@@ -87,8 +65,6 @@ let boxed_machine_ty =
     Obc.mt_name = runtime boxed_name;
     Obc.mt_cparams = [];
   }
-
-(******************************************************************************)
 
 let rec translate_ty ty =
   match ty with

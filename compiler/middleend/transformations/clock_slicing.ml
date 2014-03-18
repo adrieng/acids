@@ -370,6 +370,18 @@ let node env nd_l nd =
     let input = find_vars inputs_by_base_rev in
     let output = find_vars outputs_by_base_rev in
 
+    (* We may have missed inputs that were unused in the body. *)
+    let env =
+      List.fold_left
+        (fun env id ->
+          Ident.Env.add
+            id
+            (translate_var_dec (Ident.Env.find id nd.n_env))
+            env)
+        env
+        input
+    in
+
     let nd =
       Nir_sliced.make_node
         ~loc:nd.n_loc

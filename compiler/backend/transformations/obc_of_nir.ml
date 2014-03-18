@@ -96,8 +96,6 @@ let rec translate_ty ty =
     Obc.Ty_mach boxed_machine_ty
   | Ty_scal tys ->
     Obc.Ty_scal tys
-  | Ty_clock ->
-    invalid_arg "obc_ty_of_nir_ty: clock"
   | Ty_buffer (ty, capacity, _) ->
     Obc.Ty_mach (buffer_machine_ty (translate_ty ty) capacity)
 

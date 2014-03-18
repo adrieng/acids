@@ -27,7 +27,6 @@ type ty =
 | Ty_var of int
 | Ty_scal of Data_types.data_ty_scal
 | Ty_boxed
-| Ty_clock
 | Ty_buffer of ty * Int.t * buffer_polarity
 
 type buffer_info =

@@ -25,6 +25,7 @@ type ty =
 type const_exp =
 | Const of Ast_misc.const
 | Array_lit of const_exp list
+| Sizeof of ty
 
 type var_dec =
   {
@@ -45,7 +46,6 @@ and exp =
 | Op of string * exp list
 | Call of string * exp list
 | AddrOf of lvalue
-| Sizeof of ty
 
 type stm =
 | Exp of exp

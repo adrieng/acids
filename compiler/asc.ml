@@ -34,6 +34,7 @@ let error_is_internal exn =
   | Clocking_resolution.Resolution_error _
   | Causality.Causality_error _
   | Scheduling.Scheduling_error _
+  | Output.Output_error _
     ->
     false
   | _
@@ -72,6 +73,8 @@ let print_error _ fmt exn =
     Causality.print_error fmt err
   | Scheduling.Scheduling_error err ->
     Scheduling.print_error fmt err
+  | Output.Output_error err ->
+    Output.print_error fmt err
   | exn ->
     Format.fprintf fmt "Unknown error (%s)" (Printexc.to_string exn)
 
@@ -100,7 +103,7 @@ let flow =
   +>+ Scheduling.pass
   (* Back-end *)
   +>+ Obc_of_nir.pass
-  (* +>+ Output.pass *)
+  +>+ Output.pass
 
 (*****************************************************************************)
 (* File handling *)

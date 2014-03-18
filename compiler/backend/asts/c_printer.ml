@@ -56,6 +56,9 @@ let rec print_const_exp fmt ce =
     Ast_misc.print_const fmt c
   | Array_lit a ->
     Utils.print_list_r_ne print_const_exp "," "{" "}" fmt a
+  | Sizeof ty ->
+    Format.fprintf fmt "sizeof(%a)"
+      print_ty ty
 
 let print_var_dec fmt vd =
   Format.fprintf fmt "@[%a %a"
@@ -109,9 +112,6 @@ and print_exp fmt e =
   | AddrOf lv ->
     Format.fprintf fmt "&%a"
       print_lvalue lv
-  | Sizeof ty ->
-    Format.fprintf fmt "sizeof(%a)"
-      print_ty ty
 
 let rec print_stm fmt stm =
   match stm with

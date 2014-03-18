@@ -69,12 +69,9 @@ let scheduler = ref ""
 
 let set_scheduler s = scheduler := s
 
-let target_list =
-  [
-    "c";
-  ]
+let target_list = ref []
 
-let target = ref (List.hd target_list)
+let target = ref ""
 
 let set_target s = target := s
 
@@ -199,7 +196,7 @@ let options () =
           " Intra-step scheduler";
 
           "-tgt",
-          Arg.Symbol (target_list, set_target),
+          Arg.Symbol (!target_list, set_target),
           " Target code";
         ]
     )

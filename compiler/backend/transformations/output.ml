@@ -15,8 +15,6 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-open Target
-
 (* {2 Errors} *)
 
 type error =
@@ -34,18 +32,23 @@ let unknown_target name =
 
 (* {2 Table} *)
 
-let targets : (module TARGET) list =
+let targets =
   [
-    (module Target_c);
+    "c", Target_c.pass;
   ]
 
-let select_output _ =
-  let target = !Compiler_options.target in
-  let target =
-    try List.find (fun (module T : TARGET) -> T.name = target) targets
-    with Not_found -> unknown_target target
-  in
-  let module T = Target.Make((val target)) in
-  T.pass
+let select_pass _ =
+  let target_name = !Compiler_options.target in
+  try List.assoc target_name targets
+  with Not_found -> unknown_target target_name
 
-let pass = Pass_manager.P_sel select_output
+let output_code ctx (code : Target.target_code) =
+  ctx, code#serialize ()
+
+let pass =
+  let open Pass_manager in
+  P_sel select_pass +>+ P_transform (make_transform "output" output_code)
+
+let _ =
+  Compiler_options.target_list := List.map fst targets;
+  Compiler_options.target := fst (List.hd targets)

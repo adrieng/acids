@@ -58,4 +58,8 @@ let ceq_name = "ceq"
 
 let runtime sn = Names.(make_longname (Module runtime_name) sn)
 
+let mem_name ln =
+  let open Names in
+  { ln with shortn = ln.shortn ^ "_mem"; }
+
 (******************************************************************************)

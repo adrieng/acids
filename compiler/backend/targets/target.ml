@@ -15,30 +15,11 @@
  * nsched. If not, see <http://www.gnu.org/licenses/>.
  *)
 
-module type TARGET =
-sig
-  val name : string
+type target_code =
+  <
+    print : Format.formatter -> unit;
+    serialize : unit -> unit;
+  >
 
-  type t
-  val print : Format.formatter -> t -> unit
-
-  val translate : Obc.file -> t
-  val serialize : t -> unit
-end
-
-module Make(T : TARGET) =
-struct
-  include T
-
-  let file ctx file =
-    let s = T.translate file in
-    T.serialize s;
-    ctx, ()
-
-  let pass =
-    let open Pass_manager in
-    P_transform
-      (make_transform
-         name
-         file)
-end
+let print_target_code fmt (code : target_code) =
+  code#print fmt

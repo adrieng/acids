@@ -121,11 +121,6 @@ let translate_annot ann =
   | Ann_clock ck -> Nir_sliced.Ann_clock (translate_clock ck)
   | Ann_spec spec -> Nir_sliced.Ann_spec spec
 
-let translate_scope scope =
-  match scope with
-  | Scope_context -> Nir_sliced.Scope_context
-  | Scope_internal bid -> Nir_sliced.Scope_internal bid
-
 let translate_var_dec vd =
   Nir_sliced.make_var_dec
     ~loc:vd.v_loc
@@ -133,7 +128,7 @@ let translate_var_dec vd =
     vd.v_name
     vd.v_data
     (translate_clock vd.v_clock)
-    (translate_scope vd.v_scope)
+    vd.v_scope
 
 let translate_conv_var cv =
   {

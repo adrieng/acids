@@ -23,6 +23,12 @@ type buffer_polarity = Strict | Lazy
 
 type block_id = Block_id of int
 
+type scope =
+| Scope_context
+| Scope_input
+| Scope_output
+| Scope_internal of block_id
+
 type ty =
 | Ty_scal of Data_types.data_ty_scal
 | Ty_boxed
@@ -109,10 +115,6 @@ sig
       }
 
   (** {2 Nodes and files} *)
-
-  type scope =
-  | Scope_context
-  | Scope_internal of block_id
 
   type annot =
   | Ann_type of ty

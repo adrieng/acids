@@ -69,7 +69,7 @@ let find_pword env ln =
 
 let get_current_block env = Nir.Block_id (env.current_block)
 
-let get_current_scope env = Nir_acids.Scope_internal (get_current_block env)
+let get_current_scope env = Nir.Scope_internal (get_current_block env)
 
 let increment_current_block env =
   { env with current_block = succ env.current_block; }
@@ -497,13 +497,35 @@ let translate_node_def env nd =
   Ident.set_current_ctx nd.n_info#ni_ctx;
   let env, input = translate_pattern nd.n_input (env, []) in
   let block, output, env = translate_block env nd.n_body in
+
+  (* Set proper scopes for inputs and outputs *)
+  let locals =
+    let set scope x_l locals =
+      let change locals x =
+        let vd = Ident.Env.find x locals in
+        let vd =
+          Nir_acids.make_var_dec
+            ~loc:vd.Nir_acids.v_loc
+            ~annots:vd.Nir_acids.v_annots
+            vd.Nir_acids.v_name
+            vd.Nir_acids.v_data
+            vd.Nir_acids.v_clock
+            scope
+        in
+        Ident.Env.add x vd locals
+      in
+      List.fold_left change locals x_l
+    in
+    set Nir.Scope_input input (set Nir.Scope_output output (get_locals env))
+  in
+
   Nir_acids.make_node
     ~loc:nd.n_loc
     (Interface.qualify_shortname nd.n_name)
     nd.n_info
     ~input
     ~output
-    ~env:(get_locals env)
+    ~env:locals
     ~body:block
 
 let translate_phrase (type_defs, node_defs, env) phr =

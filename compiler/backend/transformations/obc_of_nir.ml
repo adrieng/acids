@@ -153,13 +153,15 @@ let pop_block env =
 
 let current_block env = List.hd env.current_blocks
 
+let add_all env vd =
+  env.all <- Ident.Env.add vd.Obc.v_name vd env.all
+
 let add_field env vd =
-  env.all <- Ident.Env.add vd.Obc.v_name vd env.all;
+  add_all env vd;
   env.fields <- Ident.Env.add vd.Obc.v_name vd env.fields
 
 let add_local_for_block env (Block_id b_id) vd =
-  let id = vd.Obc.v_name in
-  env.all <- Ident.Env.add id vd env.all;
+  add_all env vd;
   let locals_for_block =
     try Utils.Int_map.find b_id env.locals_per_block with Not_found -> []
   in
@@ -186,6 +188,8 @@ let initial_env nd =
     match vd.v_scope with
     | Scope_context ->
       add_field env obc_vd
+    | Scope_input | Scope_output ->
+      add_all env obc_vd
     | Scope_internal b_id ->
       add_local_for_block env b_id obc_vd
   in

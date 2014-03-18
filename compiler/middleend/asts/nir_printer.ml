@@ -19,6 +19,13 @@ open Nir
 
 let print_block_id fmt (Block_id id) = Format.fprintf fmt "'blk%d" id
 
+let print_scope fmt s =
+  match s with
+  | Scope_context -> Format.fprintf fmt "(context)"
+  | Scope_input -> Format.fprintf fmt "(input)"
+  | Scope_output -> Format.fprintf fmt "(output)"
+  | Scope_internal id -> Format.fprintf fmt "(internal %a)" print_block_id id
+
 let print_buffer_polarity fmt pol =
   match pol with
   | Strict -> Format.fprintf fmt "strict"
@@ -176,11 +183,6 @@ struct
       (print_additional_info print_id) block.b_id
       (print_additional_info print_conv) block.b_conv
       (Utils.print_list_r print_eq "") block.b_body
-
-  let print_scope fmt s =
-    match s with
-    | Scope_context -> Format.fprintf fmt "(context)"
-    | Scope_internal id -> Format.fprintf fmt "(internal %a)" print_block_id id
 
   let print_annot fmt ann =
     match ann with

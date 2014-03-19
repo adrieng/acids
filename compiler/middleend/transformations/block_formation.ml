@@ -120,10 +120,8 @@ let clock_exp_of_id env id =
 let form_block
     env
     (* environment *)
-    base_clock
-    (* base_clock of the block to form *)
-    mk_desc
-    (* function creating the body of the expression *)
+    eq
+    (* original equation *)
     x_l
     (* list of inputs *)
     x_ck_l
@@ -135,6 +133,8 @@ let form_block
     =
   assert (List.length x_l = List.length x_ck_l);
   assert (List.length y_l = List.length y_ck_l);
+
+  let base_clock = eq.eq_base_clock in
 
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var Info.Cv_base in
@@ -151,11 +151,11 @@ let form_block
         x'
         x_vd.v_data
         x'_ck
-        x_vd.v_scope
+        (Scope_internal (Block_id 0)) (* TODO improve *)
     in
     let conv =
       Ident.Env.add
-        x
+        x'
         {
           cv_internal_clock = x_vd.v_clock;
           cv_external_clock = x'_ck;
@@ -185,7 +185,7 @@ let form_block
     make_block
       ~conv
       bid
-      (make_eq (mk_desc x'_l y'_l) bck :: eqs)
+      (make_eq ~loc:eq.eq_loc eq.eq_desc bck :: eqs)
   in
   make_eq (Block block) base_clock
 
@@ -204,18 +204,10 @@ let rec equation env eq =
       eq
 
     | Const (x, c) ->
-      let mk_desc x_l _ =
-        let x = Utils.assert1 x_l in
-        Const (x, c)
-      in
-      form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+      form_block env eq [x] [fun ck -> ck] [] []
 
     | Pword (x, p) ->
-      let mk_desc x_l _ =
-        let x = Utils.assert1 x_l in
-        Pword (x, p)
-      in
-      form_block env eq.eq_base_clock mk_desc [x] [fun ck -> ck] [] []
+      form_block env eq [x] [fun ck -> ck] [] []
 
     | Call (x_l, ({ c_op = Node (ln, id); } as call), y_l) ->
       let input_sts, output_sts =
@@ -225,26 +217,17 @@ let rec equation env eq =
       assert (List.length input_sts = List.length y_l);
       assert (List.length output_sts = List.length x_l);
 
-      let mk_desc x_l y_l =
-        Call (x_l, call, y_l)
-      in
       form_block
         env
-        eq.eq_base_clock
-        mk_desc
+        eq
         x_l (List.map (Utils.flip Clock_types.reroot_stream_type) output_sts)
         y_l (List.map (Utils.flip Clock_types.reroot_stream_type) input_sts)
 
     | Merge (x, y, c_l) ->
       let ec_l, z_l = List.split c_l in
-      let mk_desc x_l z_l =
-        let x, y = Utils.assert2 x_l in
-        Merge (x, y, List.combine ec_l z_l)
-      in
       form_block
         env
-        eq.eq_base_clock
-        mk_desc
+        eq
         [x; y] [(fun ck -> ck); fun ck -> ck]
         z_l (List.map (mk_sampled_clock (clock_exp_of_id env y)) ec_l)
 
@@ -255,8 +238,7 @@ let rec equation env eq =
       in
       form_block
         env
-        eq.eq_base_clock
-        mk_desc
+        eq
         x_l (List.map (mk_sampled_clock (clock_exp_of_id env z)) ec_l)
         [y; z] [(fun ck -> ck); fun ck -> ck]
 

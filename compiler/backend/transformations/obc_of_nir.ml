@@ -361,6 +361,7 @@ and clock_type env acc ck =
 let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
+    Format.eprintf "%a = %a@." Ident.print x Ident.print y;
     let size = find_var_size env y in
     assert (Int.equal size (find_var_size env x));
     (

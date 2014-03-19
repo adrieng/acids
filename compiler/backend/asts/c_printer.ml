@@ -111,7 +111,7 @@ and print_exp fmt e =
       print_name n
       (Utils.print_list_r print_exp ",") e_l
   | AddrOf lv ->
-    Format.fprintf fmt "&%a"
+    Format.fprintf fmt "&(%a)"
       print_lvalue lv
 
 let rec print_stm fmt stm =

@@ -203,13 +203,13 @@ let translate_machine (source, header) mach =
 
   let mem_decl = C.Decl (C.Dc_struct (mem_struct_name mach.ma_name)) in
 
-  let fun_defs = List.map (translate_methd mach.ma_name) mach.ma_methods in
+  let fun_defs = List.rev_map (translate_methd mach.ma_name) mach.ma_methods in
   let fun_decls = List.map fun_decl_of_fun_def fun_defs in
   let fun_defs = List.map (fun f -> C.(Def (Df_function f))) fun_defs in
   let fun_decls = List.map (fun f -> C.(Decl (Dc_function f))) fun_decls in
 
-  mem_def :: fun_defs @ source,
-  mem_decl :: fun_decls @ header
+  fun_defs @ mem_def :: source,
+  fun_decls @ mem_decl :: header
 
 let translate_type_def td =
   C.Def
@@ -231,7 +231,7 @@ let translate file =
       C.f_name = file.f_name;
       C.f_kind = C.Header;
       C.f_includes = ["nir"];
-      C.f_body = enums @ header;
+      C.f_body = enums @ List.rev header;
     }
   in
   let source =
@@ -239,7 +239,7 @@ let translate file =
       C.f_name = file.f_name;
       C.f_kind = C.Source;
       C.f_includes = ["nir"; String.lowercase file.f_name];
-      C.f_body = source;
+      C.f_body = List.rev source;
     }
   in
   [header; source]

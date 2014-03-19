@@ -29,6 +29,7 @@ open Backend_utils
 let mk_const ec = Obc.C_scal (Ast_misc.(Cconstr ec))
 
 let mk_int (* TODO factor in Ast_misc *) i = mk_const (Ast_misc.Ec_int i)
+let mk_int_e i = Obc.E_const (mk_int i)
 
 let builtin_machine_ty =
   {
@@ -193,6 +194,13 @@ let locals_per_block env (Block_id b_id) =
 
 let find_var env id = Ident.Env.find id env.all
 
+let find_var_size env id =
+  let vd = find_var env id in
+  match vd.Obc.v_type with
+  | Obc.Ty_scal _ -> Int.one
+  | Obc.Ty_arr (_, size) -> size
+  | Obc.Ty_mach _ -> invalid_arg "find_var_size: machine type"
+
 let machine_type_of env x =
   let vd = find_var env x in
   match vd.Obc.v_type with
@@ -250,14 +258,14 @@ let exp_var env id = Obc.E_lval (var env id)
 (******************************************************************************)
 (* {2 Helper functions} *)
 
-let builtin_op_stm op inputs output =
+let builtin_op_stm op inputs outputs =
   Obc.S_call
     {
       Obc.c_inst = None;
       Obc.c_mach = builtin_machine_ty;
       Obc.c_method = Backend_utils.op_name op;
       Obc.c_inputs = inputs;
-      Obc.c_outputs = output;
+      Obc.c_outputs = outputs;
     }
 
 let method_call env inst ?(inputs = []) ?(outputs = []) op  =
@@ -353,7 +361,18 @@ and clock_type env acc ck =
 let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
-    Obc.S_affect (var env x, exp_var env y) :: acc
+    let size = find_var_size env y in
+    assert (size = find_var_size env x);
+    (
+      if size = Int.one
+      then Obc.S_affect (var env x, exp_var env y)
+      else
+        builtin_op_stm
+          Backend_utils.copy_name
+          [mk_int_e size; exp_var env y]
+          [var env x]
+    )
+    :: acc
 
   | Const (x, c) ->
     Obc.S_affect (var env x, Obc.E_const (Obc.C_scal c)) :: acc

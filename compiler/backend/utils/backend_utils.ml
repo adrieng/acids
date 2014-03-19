@@ -54,6 +54,7 @@ let unbox_name = "unbox"
 let push_name = "push"
 let pop_name = "pop"
 let ceq_name = "ceq"
+let copy_name = "copy"
 
 let op_name name =
   let table =

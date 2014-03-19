@@ -35,9 +35,12 @@ let lit_int_e i = C.ConstExp (lit_int i)
 
 let longname ln =
   let open Names in
-  match ln.modn with
-  | LocalModule -> ln.shortn
-  | Module modn -> modn ^ "_" ^ ln.shortn
+  let modn =
+    match ln.modn with
+    | LocalModule -> Interface.get_current_module_name ()
+    | Module modn -> modn
+  in
+  modn ^ "_" ^ ln.shortn
 
 let mem_struct_name ln = Backend_utils.mem_name (longname ln)
 let method_name ln methd = longname ln ^ "_" ^ methd

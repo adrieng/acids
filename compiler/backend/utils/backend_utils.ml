@@ -55,6 +55,22 @@ let push_name = "push"
 let pop_name = "pop"
 let ceq_name = "ceq"
 
+let op_name name =
+  let table =
+    [
+      "(+)", "add";
+      "(-)", "sub";
+      "(*)", "mult";
+      "(/)", "div";
+      "(+.)", "fadd";
+      "(-.)", "fsub";
+      "(*.)", "fmult";
+      "(/.)", "fdiv";
+      "(=)", "eq";
+    ]
+  in
+  try List.assoc name table with Not_found -> name
+
 let runtime sn = Names.(make_longname (Module runtime_name) sn)
 
 let mem_name sn = sn ^ "_mem"

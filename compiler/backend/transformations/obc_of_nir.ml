@@ -255,7 +255,7 @@ let builtin_op_stm op inputs output =
     {
       Obc.c_inst = None;
       Obc.c_mach = builtin_machine_ty;
-      Obc.c_method = op;
+      Obc.c_method = Backend_utils.op_name op;
       Obc.c_inputs = inputs;
       Obc.c_outputs = output;
     }
@@ -264,17 +264,17 @@ let method_call env inst ?(inputs = []) ?(outputs = []) op  =
   let mty = machine_type_of env inst in
   Obc.S_call
     {
-      Obc.c_inst = Some inst;
+      Obc.c_inst = Some (var env inst);
       Obc.c_mach = mty;
       Obc.c_method = op;
       Obc.c_inputs = inputs;
       Obc.c_outputs = outputs;
     }
 
-let reset_stm inst mty =
+let reset_stm env inst mty =
   Obc.S_call
     {
-      Obc.c_inst = Some inst;
+      Obc.c_inst = Some (var env inst);
       Obc.c_mach = mty;
       Obc.c_method = reset_name;
       Obc.c_inputs = [];
@@ -293,16 +293,16 @@ let buffer_push_stm env inst ~amount ~data =
 let buffer_pop_stm env inst amount out =
   method_call env inst ~inputs:[amount] ~outputs:[out] pop_name
 
-let reset_if_machine acc vd =
+let reset_if_machine env acc vd =
   let open Obc in
   match vd.v_type with
   | Ty_mach mty ->
-    reset_stm vd.v_name mty :: acc
+    reset_stm env vd.v_name mty :: acc
   | _ ->
     acc
 
-let reset_if_machines vd_l =
-  List.fold_left reset_if_machine [] vd_l
+let reset_if_machines env vd_l =
+  List.fold_left (reset_if_machine env) [] vd_l
 
 let create_pword env pw out =
   let w = new_pword env pw in
@@ -435,7 +435,7 @@ and block env block =
   pop_block env;
   {
     Obc.b_locals = locals;
-    Obc.b_body = reset_if_machines locals @ List.rev body;
+    Obc.b_body = reset_if_machines env locals @ List.rev body;
   }
 
 let node nd =
@@ -461,7 +461,7 @@ let node nd =
       Obc.m_body =
         {
           Obc.b_locals = [];
-          Obc.b_body = reset_if_machines fields;
+          Obc.b_body = reset_if_machines env fields;
         }
     }
   in

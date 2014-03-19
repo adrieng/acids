@@ -54,7 +54,7 @@ and exp =
 
 type call =
   {
-    c_inst : Ident.t option;
+    c_inst : lvalue option;
     c_mach : machine_ty;
     c_method : Names.shortname;
     c_inputs : exp list;

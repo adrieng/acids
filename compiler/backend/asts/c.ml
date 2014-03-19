@@ -36,8 +36,8 @@ type var_dec =
 
 type lvalue =
 | Var of Ident.t
-| Index of Ident.t * exp
-| Field of Ident.t * Ident.t
+| Index of lvalue * exp
+| Field of lvalue * Ident.t
 | Deref of lvalue
 
 and exp =
@@ -51,7 +51,8 @@ type stm =
 | Exp of exp
 | Affect of lvalue * exp
 | Switch of exp * (Ast_misc.econstr * stm) list
-| For of stm * exp * stm * stm
+| For of var_dec * exp * exp * stm * stm
+(* vd * init * test * incr * body *)
 | Block of block
 
 and block =

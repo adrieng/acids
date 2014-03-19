@@ -88,7 +88,7 @@ and print_exp fmt e =
 let print_call fmt call =
   let print_inst fmt inst =
     Format.fprintf fmt "%a :@ "
-      Ident.print inst
+      print_lvalue inst
   in
   Format.fprintf fmt "@[(@[%a%a@])@,.%a(@[%a@])(@[%a@])@]"
     (Utils.print_opt print_inst) call.c_inst

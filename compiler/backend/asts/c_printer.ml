@@ -55,7 +55,8 @@ let rec print_const_exp fmt ce =
   | Const c ->
     Ast_misc.print_const fmt c
   | Array_lit a ->
-    Utils.print_list_r_ne print_const_exp "," "{" "}" fmt a
+    Format.fprintf fmt "((const int[]){@[%a@]})"
+      (Utils.print_list_r print_const_exp ",") a
   | Sizeof ty ->
     Format.fprintf fmt "sizeof(%a)"
       print_ty ty
@@ -78,16 +79,16 @@ let rec print_lvalue fmt lv =
   match lv with
   | Var id ->
     print_ident fmt id
-  | Index (id, e) ->
+  | Index (lv, e) ->
     Format.fprintf fmt "%a[%a]"
-      print_ident id
+      print_lvalue lv
       print_exp e
-  | Field (s, f) ->
+  | Field (lv, f) ->
     Format.fprintf fmt "%a.%a"
-      print_ident s
+      print_lvalue lv
       print_ident f
   | Deref lv ->
-    Format.fprintf fmt "*%a"
+    Format.fprintf fmt "(*%a)"
       print_lvalue lv
 
 and print_exp fmt e =
@@ -128,12 +129,13 @@ let rec print_stm fmt stm =
         Ast_misc.print_econstr ec
         print_stm stm
     in
-    Format.fprintf fmt "@[@[<v>switch (%a) {@ %a@]@ }@]"
+    Format.fprintf fmt "@[<v>@[<v>switch (%a) {@ %a@]@ }@]"
       print_exp e
-      (Utils.print_list print_case) c_l
-  | For (init, test, step, body) ->
-    Format.fprintf fmt "@[@[<v>for (%a; %a; %a) {@ %a@]@ }@]"
-      print_stm init
+      (Utils.print_list_r print_case "") c_l
+  | For (vd, init, test, step, body) ->
+    Format.fprintf fmt "@[@[<v>for (%a = %a; %a; %a) {@ %a@]@ }@]"
+      print_var_dec vd
+      print_exp init
       print_exp test
       print_stm step
       print_stm body
@@ -193,11 +195,14 @@ let print_decl fmt decl =
     Format.fprintf fmt "struct %a;" print_name id
 
 let print_phr fmt phr =
-  match phr with
-  | Def def ->
-    print_def fmt def
-  | Decl decl ->
-    print_decl fmt decl
+  (
+    match phr with
+    | Def def ->
+      print_def fmt def
+    | Decl decl ->
+      print_decl fmt decl
+  );
+  Format.fprintf fmt "@\n"
 
 let print_file_kind fmt kind =
   match kind with
@@ -218,6 +223,5 @@ let print_file fmt file =
     file.f_includes;
   Format.fprintf fmt "@\n";
   Utils.print_list_eol print_phr fmt file.f_body;
-  Format.fprintf fmt "@\n";
   if file.f_kind = Header
   then Format.fprintf fmt "#endif@\n"

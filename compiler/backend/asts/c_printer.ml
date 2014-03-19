@@ -68,22 +68,6 @@ let rec print_const_exp fmt ce =
     Format.fprintf fmt "sizeof(%a)"
       print_ty ty
 
-let print_var_dec fmt vd =
-  Format.fprintf fmt "@[%a"
-    (print_ty_kont
-       (fun fmt () -> Format.fprintf fmt " %a" Ident.print vd.v_name))
-    vd.v_type
-  ;
-  (
-    match vd.v_init with
-    | None ->
-      ()
-    | Some ce ->
-      Format.fprintf fmt " =@ %a"
-        print_const_exp ce
-  );
-  Format.fprintf fmt "@]"
-
 let rec print_lvalue fmt lv =
   match lv with
   | Var id ->
@@ -122,6 +106,22 @@ and print_exp fmt e =
   | AddrOf lv ->
     Format.fprintf fmt "&(%a)"
       print_lvalue lv
+
+let print_var_dec fmt vd =
+  Format.fprintf fmt "@[%a"
+    (print_ty_kont
+       (fun fmt () -> Format.fprintf fmt " %a" Ident.print vd.v_name))
+    vd.v_type
+  ;
+  (
+    match vd.v_init with
+    | None ->
+      ()
+    | Some ce ->
+      Format.fprintf fmt " =@ %a"
+        print_exp ce
+  );
+  Format.fprintf fmt "@]"
 
 let rec print_stm fmt stm =
   match stm with

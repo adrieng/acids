@@ -27,13 +27,6 @@ type const_exp =
 | Array_lit of const_exp list
 | Sizeof of ty
 
-type var_dec =
-  {
-    v_name : Ident.t;
-    v_type : ty;
-    v_init : const_exp option;
-  }
-
 type lvalue =
 | Var of Ident.t
 | Index of lvalue * exp
@@ -46,6 +39,13 @@ and exp =
 | Op of string * exp list
 | Call of string * exp list
 | AddrOf of lvalue
+
+type var_dec =
+  {
+    v_name : Ident.t;
+    v_type : ty;
+    v_init : exp option;
+  }
 
 type stm =
 | Exp of exp

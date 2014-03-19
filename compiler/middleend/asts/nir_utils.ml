@@ -204,95 +204,50 @@ struct
 
   let block_count_node node =
     block_count_block 0 node.n_body
+
+  (** Substitution *)
+  let subst_var subst v = try Ident.Env.find v subst with Not_found -> v
+
+  let rec subst_eq subst eq =
+    let var = subst_var subst in
+    let vars = List.map var in
+    let eqd =
+      match eq.eq_desc with
+      | Var (x, y) ->
+        Var (var x, var y)
+      | Const (x, c) ->
+        Const (var x, c)
+      | Pword (x, pw) ->
+        Pword (var x, pw)
+      | Call (x_l, c, y_l) ->
+        Call (vars x_l, c, vars y_l)
+      | Merge (x, y, c_l) ->
+        Merge (var x, var y, List.map (fun (ec, z) -> ec, var z) c_l)
+      | Split (x_l, y, z, ec_l) ->
+        Split (vars x_l, var y, var z, ec_l)
+      | Buffer (x, bu, y) ->
+        Buffer (var x, bu, var y)
+      | Delay (x, y) ->
+        Delay (var x, var y)
+      | Block block ->
+        Block (subst_block subst block)
+    in
+    make_eq
+      ~loc:eq.eq_loc
+      eqd
+      eq.eq_base_clock
+
+  and subst_block subst block =
+    let conv =
+      let update name conv_var conv =
+        let name = subst_var subst name in
+        Ident.Env.add name conv_var conv
+      in
+      Ident.Env.fold update block.b_conv Ident.Env.empty
+    in
+    make_block
+      ~loc:block.b_loc
+      ~conv
+      block.b_id
+      (List.map (subst_eq subst) block.b_body)
 end
-
-(** Misc functions *)
-
-(* Conversion between AcidS and Nir *)
-
-(* let rec clock_type_exp_of_nir_clock_exp ce = *)
-(*   match ce.ce_desc with *)
-(*   | Ce_condvar v -> *)
-(*     let open Clock_types in *)
-(*     let cev = *)
-(*       { *)
-(*         cecv_name = v; *)
-(*         cecv_bounds = ce.ce_bounds; *)
-(*         cecv_specs = [] *)
-(*       } *)
-(*     in *)
-(*     Ce_condvar cev *)
-(*   | Ce_pword pw -> *)
-(*     Clock_types.Ce_pword pw *)
-(*   | Ce_equal (ce, ec) -> *)
-(*     Clock_types.Ce_equal (clock_type_exp_of_nir_clock_exp ce, ec) *)
-
-(* let rec nir_stream_type_of_stream_type (st : Clock_types.stream_type) = *)
-(*   let open Clock_types in *)
-(*   match st with *)
-(*   | St_var i -> St_var (Cv_clock (Clock_id i)) *)
-(*   | St_on (st, ce) -> St_on (nir_stream_type_of_stream_type st, ce) *)
-
-(* (\* Clock-exp manipulating functions *\) *)
-
-(* let rec var_clock_exp ce = *)
-(*   match ce.ce_desc with *)
-(*   | Ce_condvar x -> Some x *)
-(*   | Ce_pword _ -> None *)
-(*   | Ce_equal (ce, _) -> var_clock_exp ce *)
-
-(* let rec reroot_clock_exp ce new_x = *)
-(*   let ced = *)
-(*     match ce.ce_desc with *)
-(*     | Ce_condvar _ -> Ce_condvar new_x *)
-(*     | Ce_pword _ -> ce.ce_desc *)
-(*     | Ce_equal (ce, ec) -> Ce_equal (reroot_clock_exp ce new_x, ec) *)
-(*   in *)
-(*   { ce with ce_desc = ced; } *)
-
-(* (\* Sliced names-related functions *\) *)
-
-(* let greatest_invalid_clock_id_int = -1 *)
-
-(* let greatest_invalid_clock_id = Nir.Clock_id greatest_invalid_clock_id_int *)
-
-(* let print_sliced_name fmt (s, Clock_id i) = *)
-(*   if i <= greatest_invalid_clock_id_int *)
-(*   then Format.fprintf fmt "%s" s *)
-(*   else Format.fprintf fmt "%s_st%d" s i *)
-
-(* let print_sliced_longname fmt ln id = *)
-(*   print_sliced_name fmt (Names.string_of_longname ln, id) *)
-
-(* (\* Comparison functions *\) *)
-
-(* let block_id_compare (Block_id i1) (Block_id i2) = Utils.int_compare i1 i2 *)
-
-(* let clock_id_compare (Clock_id i1) (Clock_id i2) = Utils.int_compare i1 i2 *)
-
-(* let clock_var_compare cv1 cv2 = *)
-(*   let tag_to_int id = *)
-(*     match id with *)
-(*     | Cv_block _ -> 0 *)
-(*     | Cv_clock _ -> 1 *)
-(*   in *)
-(*   match cv1, cv2 with *)
-(*   | Cv_block id1, Cv_block id2 -> *)
-(*     block_id_compare id1 id2 *)
-(*   | Cv_clock id1, Cv_clock id2 -> *)
-(*     clock_id_compare id1 id2 *)
-(*   | (Cv_block _ | Cv_clock _), _ -> *)
-(*     Utils.int_compare (tag_to_int cv1) (tag_to_int cv2) *)
-
-(* let clock_compare (ck1 : Nir.clock) ck2 = *)
-(*   Clock_types.raw_st_compare clock_var_compare ck1 ck2 *)
-
-(* (\* Various kinds of environments *\) *)
-
-(* module BlockEnv = *)
-(*   Utils.MakeMap( *)
-(*     struct *)
-(*       type t = block_id *)
-(*       let compare = block_id_compare *)
-(*     end *)
-(*   ) *)

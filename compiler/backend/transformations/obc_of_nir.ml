@@ -362,7 +362,7 @@ let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
     let size = find_var_size env y in
-    assert (size = find_var_size env x);
+    assert (Int.equal size (find_var_size env x));
     (
       if size = Int.one
       then Obc.S_affect (var env x, exp_var env y)

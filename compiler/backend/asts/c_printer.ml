@@ -27,7 +27,7 @@ let print_ident fmt id =
 let print_longname fmt ln =
   print_name fmt (C_utils.longname ln)
 
-let rec print_var_ty k fmt ty =
+let rec print_ty_kont k fmt ty =
   match ty with
   | Scal Data_types.Tys_int ->
     Format.fprintf fmt "int%a" k ()
@@ -40,9 +40,9 @@ let rec print_var_ty k fmt ty =
       print_longname ln
       k ()
   | Pointer ty ->
-    print_var_ty (fun fmt () -> Format.fprintf fmt "*%a" k ()) fmt ty
+    print_ty_kont (fun fmt () -> Format.fprintf fmt "*%a" k ()) fmt ty
   | Array (ty, size) ->
-    print_var_ty
+    print_ty_kont
       (fun fmt () -> Format.fprintf fmt "%a[%a]" k () Int.print size)
       fmt
       ty
@@ -55,28 +55,7 @@ let rec print_var_ty k fmt ty =
       print_name n
       k ()
 
-let rec print_ty fmt ty =
-  match ty with
-  | Scal Data_types.Tys_int ->
-    Format.fprintf fmt "int"
-  | Scal Data_types.Tys_float ->
-    Format.fprintf fmt "float"
-  | Scal Data_types.Tys_bool ->
-    Format.fprintf fmt "bool"
-  | Scal (Data_types.Tys_user ln) ->
-    print_longname fmt ln
-  | Pointer ty ->
-    Format.fprintf fmt "%a*"
-      print_ty ty
-  | Array (ty, size) ->
-    Format.fprintf fmt "%a[%a]"
-      print_ty ty
-      Int.print size
-  | Struct n ->
-    Format.fprintf fmt "struct %a"
-      print_name n
-  | Name n ->
-    print_name fmt n
+let print_ty fmt ty = print_ty_kont (fun _ () -> ()) fmt ty
 
 let rec print_const_exp fmt ce =
   match ce with
@@ -91,7 +70,7 @@ let rec print_const_exp fmt ce =
 
 let print_var_dec fmt vd =
   Format.fprintf fmt "@[%a"
-    (print_var_ty
+    (print_ty_kont
        (fun fmt () -> Format.fprintf fmt " %a" Ident.print vd.v_name))
     vd.v_type
   ;

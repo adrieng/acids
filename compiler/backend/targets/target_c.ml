@@ -39,11 +39,17 @@ open Obc
 (******************************************************************************)
 (* {2 AST walking} *)
 
-let rec translate_ty_local ty =
+let longname ln =
+  let open Names in
+  match ln.modn with
+  | LocalModule -> ln.shortn
+  | Module modn -> modn ^ "_" ^ ln.shortn
+
+let rec translate_ty ty =
   match ty with
   | Ty_scal tys -> C.Scal tys
-  | Ty_arr (ty, size) -> C.Array (translate_ty_local ty, size)
-  | Ty_mach mty -> C.Struct (Backend_utils.mem_name mty.mt_name)
+  | Ty_arr (ty, size) -> C.Array (translate_ty ty, size)
+  | Ty_mach mty -> C.Struct (Backend_utils.mem_name (longname mty.mt_name))
 
 let rec translate_const cst =
   match cst with

@@ -39,7 +39,8 @@ let print_shortname fmt s = Format.fprintf fmt "%s" s
 
 let print_longname fmt ln =
   match ln.modn with
-  | LocalModule -> print_shortname fmt ln.shortn
+  | LocalModule ->
+    print_shortname fmt ln.shortn
   | Module modn ->
     Format.fprintf fmt "%a.%a"
       print_modname modn

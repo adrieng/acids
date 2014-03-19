@@ -51,6 +51,7 @@ type stm =
 | Exp of exp
 | Affect of lvalue * exp
 | Switch of exp * (Ast_misc.econstr * stm) list
+| If of exp * stm * stm
 | For of var_dec * exp * exp * stm * stm
 (* vd * init * test * incr * body *)
 | Block of block

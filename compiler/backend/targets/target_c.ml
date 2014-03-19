@@ -157,6 +157,8 @@ let translate_methd mach_name methd =
           translate_exp e,
           List.map (fun (ec, stm) -> ec, translate_stm stm) cases
         )
+    | S_if (c, t, e) ->
+      C.If (translate_exp c, translate_stm t, translate_stm e)
     | S_block block ->
       C.Block (translate_block block)
 

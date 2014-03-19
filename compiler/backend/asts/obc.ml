@@ -66,6 +66,7 @@ type stm =
 | S_call of call
 | S_loop of var_dec * exp * Int.t * stm (* for v = 0 to max(exp, n) do body *)
 | S_switch of exp * (Ast_misc.econstr * stm) list
+| S_if of exp * stm * stm
 | S_block of block
 
 and block =

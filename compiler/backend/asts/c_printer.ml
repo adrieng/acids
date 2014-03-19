@@ -141,6 +141,11 @@ let rec print_stm fmt stm =
     Format.fprintf fmt "@[<v>@[<v>switch (%a) {@ %a@]@ }@]"
       print_exp e
       (Utils.print_list_r print_case "") c_l
+  | If (c, t, e) ->
+    Format.fprintf fmt "@[<v>@[<v 2>if (%a)@ %a@]@ @[<v 2>else@ %a@]@]"
+      print_exp c
+      print_stm t
+      print_stm e
   | For (vd, init, test, step, body) ->
     Format.fprintf fmt "@[@[<v>for (%a = %a; %a; %a) {@ %a@]@ }@]"
       print_var_dec vd

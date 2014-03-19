@@ -120,6 +120,11 @@ let rec print_stm fmt stm =
     Format.fprintf fmt "@[<v>@[<v 2>switch %a {@ %a@]@ }@]"
       print_exp cond
       (Utils.print_list_eol print_case) cases
+  | S_if (c, t, e) ->
+    Format.fprintf fmt "@[<v>@[<v 2>if (%a)@ %a@]@ @[<v 2>else@ %a@]@]"
+      print_exp c
+      print_stm t
+      print_stm e
   | S_block block ->
     print_block fmt block
 

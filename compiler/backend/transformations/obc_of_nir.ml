@@ -321,6 +321,15 @@ let create_node env ln ~inputs ~outputs =
   let m = new_node env ln in
   step_stm env m ~inputs ~outputs
 
+let make_cond env x cases =
+  let vd = find_var env x in
+  match vd.Obc.v_type with
+  | Obc.Ty_scal Data_types.Tys_bool ->
+    let c1, c2 = Utils.assert2 cases in
+    Obc.S_if (exp_var env x, snd c1, snd c2)
+  | _ ->
+    Obc.S_switch (exp_var env x, cases)
+
 (* {2 AST traversal} *)
 
 let rec clock_exp env ck_e acc ce =
@@ -423,13 +432,13 @@ let rec equation env acc eq =
     let case (ec, z) =
       ec, Obc.(S_affect (var env x, exp_var env z))
     in
-    Obc.(S_switch (exp_var env y, List.map case c_l)) :: acc
+    make_cond env y (List.map case c_l) :: acc
 
   | Split (x_l, y, z, ec_l) ->
     let case x ec =
       ec, Obc.(S_affect (var env x, exp_var env y))
     in
-    Obc.S_switch (exp_var env z, List.map2 case x_l ec_l) :: acc
+    make_cond env z (List.map2 case x_l ec_l) :: acc
 
   | Buffer _ ->
     invalid_arg "equation: buffer"

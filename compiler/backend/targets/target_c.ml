@@ -59,6 +59,7 @@ let fun_decl_of_fun_def (fdef : C.fdef) =
 
 let rec translate_ty ty =
   match ty with
+  | Ty_scal Data_types.Tys_bool -> C.Scal Data_types.Tys_int
   | Ty_scal tys -> C.Scal tys
   | Ty_arr (ty, size) -> C.Array (translate_ty ty, size)
   | Ty_mach mty -> C.Struct (mem_struct_name mty.mt_name)

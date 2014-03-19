@@ -340,6 +340,7 @@ let rec clock_exp env ck_e acc ce =
     r
   | Ce_pword pw ->
     let x = Ident.make_internal "x_w" in
+    add_local_for_current_block_int env x;
     create_pword env pw (var env x) :: acc, x
 
 and clock_type env acc ck =

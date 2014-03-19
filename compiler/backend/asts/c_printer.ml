@@ -27,6 +27,34 @@ let print_ident fmt id =
 let print_longname fmt ln =
   print_name fmt (C_utils.longname ln)
 
+let rec print_var_ty k fmt ty =
+  match ty with
+  | Scal Data_types.Tys_int ->
+    Format.fprintf fmt "int%a" k ()
+  | Scal Data_types.Tys_float ->
+    Format.fprintf fmt "float%a" k ()
+  | Scal Data_types.Tys_bool ->
+    Format.fprintf fmt "bool%a" k ()
+  | Scal (Data_types.Tys_user ln) ->
+    Format.fprintf fmt "%a%a"
+      print_longname ln
+      k ()
+  | Pointer ty ->
+    print_var_ty (fun fmt () -> Format.fprintf fmt "*%a" k ()) fmt ty
+  | Array (ty, size) ->
+    print_var_ty
+      (fun fmt () -> Format.fprintf fmt "%a[%a]" k () Int.print size)
+      fmt
+      ty
+  | Struct n ->
+    Format.fprintf fmt "struct %a%a"
+      print_name n
+      k ()
+  | Name n ->
+    Format.fprintf fmt "%a%a"
+      print_name n
+      k ()
+
 let rec print_ty fmt ty =
   match ty with
   | Scal Data_types.Tys_int ->
@@ -62,9 +90,11 @@ let rec print_const_exp fmt ce =
       print_ty ty
 
 let print_var_dec fmt vd =
-  Format.fprintf fmt "@[%a %a"
-    print_ty vd.v_type
-    print_ident vd.v_name;
+  Format.fprintf fmt "@[%a"
+    (print_var_ty
+       (fun fmt () -> Format.fprintf fmt " %a" Ident.print vd.v_name))
+    vd.v_type
+  ;
   (
     match vd.v_init with
     | None ->

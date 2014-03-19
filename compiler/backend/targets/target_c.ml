@@ -167,6 +167,15 @@ let translate_methd mach_name methd =
     }
   in
 
+  let mem_input =
+    let open C in
+    {
+      v_name = mem;
+      v_type = Pointer (Struct (mem_struct_name mach_name));
+      v_init = None;
+    }
+  in
+
   let inputs =
     let add_deref vd = C.({ vd with v_type = Pointer vd.v_type; }) in
     List.map translate_var_dec methd.m_inputs
@@ -176,7 +185,7 @@ let translate_methd mach_name methd =
   {
     C.f_name = method_name mach_name methd.m_name;
     C.f_output = None;
-    C.f_input = inputs;
+    C.f_input = mem_input :: inputs;
     C.f_body = translate_block methd.m_body;
   }
 

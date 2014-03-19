@@ -210,7 +210,7 @@ let machine_type_of env x =
     invalid_arg ("machine_type_of: " ^ Ident.to_string x ^ " is not a machine")
 
 let new_pword env pw =
-  let w = Ident.make_internal "w" in
+  let w = Ident.make_internal "w_m" in
   let vd =
     {
       Obc.v_name = w;
@@ -242,6 +242,7 @@ let get_fields env =
   Ident.Env.fold (fun _ vd acc -> vd :: acc) env.fields []
 
 let var env id =
+  assert (Ident.Env.mem id env.all);
   let kind =
     if Ident.Set.mem id env.node_inputs
     then Obc.K_input

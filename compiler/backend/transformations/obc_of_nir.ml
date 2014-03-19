@@ -297,10 +297,10 @@ let pword_step_stm env inst out =
   method_call env inst ~outputs:[out] step_name
 
 let buffer_push_stm env inst ~amount ~data =
-  method_call env inst ~inputs:[amount; data] push_name
+  method_call env inst ~inputs:[amount] ~outputs:[data] push_name
 
-let buffer_pop_stm env inst amount out =
-  method_call env inst ~inputs:[amount] ~outputs:[out] pop_name
+let buffer_pop_stm env inst amount data =
+  method_call env inst ~inputs:[amount] ~outputs:[data] pop_name
 
 let reset_if_machine env acc vd =
   let open Obc in
@@ -334,8 +334,8 @@ let rec clock_exp env ck_e acc ce =
     let acc, x = clock_exp env ck_e acc ce in
     let open Obc in
     builtin_op_stm ceq_name
-      [ck_e; exp_var env x; E_const (mk_const ec)]
-      [var env r]
+      [ck_e; E_const (mk_const ec)]
+      [var env x; var env r]
     :: acc,
     r
   | Ce_pword pw ->
@@ -351,13 +351,12 @@ and clock_type env acc ck =
     let acc, ce_x = clock_exp env ck_e acc ce in
     let ck_x = Ident.make_internal "w" in
     add_local_for_current_block_int env ck_x;
-    let ce_e = exp_var env ce_x in
     builtin_op_stm
       "on"
-      [ck_e; ce_e]
-      [var env ck_x]
+      [ck_e]
+      [var env ce_x; var env ck_x]
     :: acc,
-    ce_e
+    exp_var env ce_x
 
 let rec equation env acc eq =
   match eq.eq_desc with
@@ -398,7 +397,7 @@ let rec equation env acc eq =
 
   | Call ([], { c_op = BufferAccess (b, Push, _); }, [y]) ->
     let acc, w = clock_type env acc eq.eq_base_clock in
-    buffer_push_stm env b ~amount:w ~data:(exp_var env y) :: acc
+    buffer_push_stm env b ~amount:w ~data:(var env y) :: acc
 
   | Call ([x], { c_op = BufferAccess (b, Pop, _); }, []) ->
     let acc, w = clock_type env acc eq.eq_base_clock in

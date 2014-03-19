@@ -17,15 +17,101 @@
 #ifndef NIR_H
 #define NIR_H
 
+#include <stddef.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 
 struct Rt_buffer_mem {
-        unsigned int rpos;
-        unsigned int wpos;
+    size_t front;               /* consumer position  */
+    size_t back;                /* producer position */
+    char *data;                 /* internal data */
 };
 
 struct Rt_pword_mem {
-        unsigned int pos;
+    unsigned int wpos;          /* position in the word */
+    unsigned int dpos;          /* position in a datum */
 };
+
+inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
+                            size_t elem_size,
+                            size_t capacity) {
+    mem->front = 0;
+    mem->back = 0;
+    mem->data = malloc(elem_size * capacity);
+}
+
+inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
+                           size_t elem_size,
+                           size_t capacity,
+                           size_t amount,
+                           void *data) {
+    memcpy(mem->data + mem->back * elem_size,
+           data,
+           elem_size * amount);
+    mem->back += amount;
+    if (mem->back > capacity)
+        mem->back = 0;
+}
+
+inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
+                          size_t elem_size,
+                          size_t capacity,
+                          size_t amount,
+                          void *data) {
+    memcpy(data,
+           mem->data + mem->front * elem_size,
+           elem_size * amount);
+    mem->front += amount;
+    if (mem->front > capacity)
+        mem->front = 0;
+}
+
+inline void Rt_pword_reset(struct Rt_pword_mem *mem,
+                           unsigned int size_pref,
+                           unsigned int size_word,
+                           const int *word_data,
+                           const int *word_exps) {
+    mem->wpos = 0;
+    mem->dpos = 0;
+}
+
+inline void Rt_pword_step(struct Rt_pword_mem *mem,
+                          unsigned int size_pref,
+                          unsigned int size_word,
+                          const int *word_data,
+                          const int *word_exps,
+
+                          int *step) {
+    *step = word_data[mem->wpos];
+    mem->dpos++;
+    if (mem->dpos >= word_exps[mem->wpos]) {
+        mem->dpos = 0;
+        mem->wpos++;
+        if (mem->wpos >= size_word)
+            mem->wpos = size_pref;
+    }
+}
+
+inline void Rt_builtin_add(int x, int y, int *r) {
+  *r = x + y;
+}
+
+inline void Rt_builtin_ceq(size_t n,
+                           int cst,
+                           const int *x,
+                           int *res)
+{
+    for (size_t i = 0; i < n; i++)
+        res[i] = x[i] == cst;
+}
+
+inline void Rt_builtin_on(size_t n,
+                          const int *x,
+                          int *res) {
+    *res = 0;
+    for (size_t i = 0; i < n; i++)
+        *res += x[i];
+}
 
 #endif // NIR_H

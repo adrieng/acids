@@ -330,6 +330,19 @@ let make_cond env x cases =
   | _ ->
     Obc.S_switch (exp_var env x, cases)
 
+let make_assign env x y =
+  let size = find_var_size env y in
+  assert (Int.equal size (find_var_size env x));
+  (
+    if size = Int.one
+    then Obc.S_affect (var env x, exp_var env y)
+    else
+      builtin_op_stm
+        Backend_utils.copy_name
+        [mk_int_e size; exp_var env y]
+        [var env x]
+  )
+
 (* {2 AST traversal} *)
 
 let rec clock_exp env ck_e acc ce =
@@ -371,18 +384,7 @@ and clock_type env acc ck =
 let rec equation env acc eq =
   match eq.eq_desc with
   | Var (x, y) ->
-    let size = find_var_size env y in
-    assert (Int.equal size (find_var_size env x));
-    (
-      if size = Int.one
-      then Obc.S_affect (var env x, exp_var env y)
-      else
-        builtin_op_stm
-          Backend_utils.copy_name
-          [mk_int_e size; exp_var env y]
-          [var env x]
-    )
-    :: acc
+    make_assign env x y :: acc
 
   | Const (x, c) ->
     Obc.S_affect (var env x, Obc.E_const (Obc.C_scal c)) :: acc
@@ -429,15 +431,11 @@ let rec equation env acc eq =
     invalid_arg "equation: bad call"
 
   | Merge (x, y, c_l) ->
-    let case (ec, z) =
-      ec, Obc.(S_affect (var env x, exp_var env z))
-    in
+    let case (ec, z) = ec, make_assign env x z in
     make_cond env y (List.map case c_l) :: acc
 
   | Split (x_l, y, z, ec_l) ->
-    let case x ec =
-      ec, Obc.(S_affect (var env x, exp_var env y))
-    in
+    let case x ec = ec, make_assign env x y in
     make_cond env z (List.map2 case x_l ec_l) :: acc
 
   | Buffer _ ->

@@ -112,13 +112,13 @@ let translate_methd mach_name methd =
 
     let args = inputs @ outputs in
     let args =
+      List.map (fun c -> C.ConstExp (translate_const c)) call.c_mach.mt_cparams
+      @ args
+    in
+    let args =
       match call.c_inst with
       | None -> args
       | Some lv -> C.(AddrOf (translate_lvalue lv)) :: args
-    in
-    let args =
-      List.map (fun c -> C.ConstExp (translate_const c)) call.c_mach.mt_cparams
-      @ args
     in
 
     C.Exp (C.Call (fun_n, args))

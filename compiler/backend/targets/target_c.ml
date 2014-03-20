@@ -134,25 +134,20 @@ let rec translate_stm mem stm =
     C.Affect (translate_lvalue lv, translate_exp e)
   | S_call call ->
     translate_call mem call
-  | S_loop (vd, stop, bound, body) ->
+  | S_loop (v, stop, bound, body) ->
     let open C in
-    let incr =
-        (* x = x + 1 *)
-      Affect (Var vd.v_name,
-              Op (op_add, [Lvalue (Var vd.v_name); lit_int_e Int.one]))
-    in
 
     let stop =
-      Op (op_lt, [Lvalue (Var vd.v_name);
+      Op (op_lt, [Lvalue (Var v);
                   Call(max_name, [translate_exp stop; lit_int_e bound])])
     in
 
     For
       (
-        translate_var_dec vd,
+        v,
         lit_int_e Int.zero,
         stop,
-        incr,
+        lit_int_e Int.one,
         translate_stm body
       )
   | S_switch (e, cases) ->

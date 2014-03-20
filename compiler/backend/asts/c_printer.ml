@@ -126,10 +126,10 @@ let print_var_dec fmt vd =
 let rec print_stm fmt stm =
   match stm with
   | Exp e ->
-    Format.fprintf fmt "%a"
+    Format.fprintf fmt "%a;"
       print_exp e
   | Affect (lv, e) ->
-    Format.fprintf fmt "%a = %a"
+    Format.fprintf fmt "%a = %a;"
       print_lvalue lv
       print_exp e
   | Switch (e, c_l) ->
@@ -146,15 +146,18 @@ let rec print_stm fmt stm =
       print_exp c
       print_stm t
       print_stm e
-  | For (vd, init, test, step, body) ->
-    Format.fprintf fmt "@[@[<v>for (%a = %a; %a; %a) {@ %a@]@ }@]"
-      print_var_dec vd
+  | For (v, init, test, step, body) ->
+    Format.fprintf fmt
+      "@[<v>for (unsigned int %a = %a; %a; %a = %a + %a)@ %a@]"
+      Ident.print v
       print_exp init
       print_exp test
-      print_stm step
+      Ident.print v
+      Ident.print v
+      print_exp step
       print_stm body
   | Return e ->
-    Format.fprintf fmt "return %a"
+    Format.fprintf fmt "return %a;"
       print_exp e
   | Block block ->
     print_block fmt block
@@ -162,7 +165,7 @@ let rec print_stm fmt stm =
 and print_block fmt block =
   Format.fprintf fmt "@[@[<v 2>{@ %a%a@]@ }@]"
     (Utils.print_list_sep print_var_dec ";") block.b_locals
-    (Utils.print_list_sep print_stm ";") block.b_body
+    (Utils.print_list_r print_stm "") block.b_body
 
 let print_ty_option fmt tyo =
   match tyo with

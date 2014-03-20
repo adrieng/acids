@@ -462,9 +462,8 @@ let rec equation env acc eq =
   | Block bl ->
     let acc, w = clock_type env acc eq.eq_base_clock in
     let i = Ident.make_internal "i" in
-    add_local_for_current_block_int env i;
     Obc.S_loop
-      (find_var env i,
+      (i,
        w,
        Clock_types.max_burst_stream_type eq.eq_base_clock,
        Obc.S_block (block env bl))

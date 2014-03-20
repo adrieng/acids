@@ -115,7 +115,7 @@ let rec print_stm fmt stm =
       print_exp e
   | S_loop (i, stop, max, body) ->
     Format.fprintf fmt "@[<v>for %a = 0 to max(%a, %a)@ %a@]"
-      print_var_dec i
+      Ident.print i
       print_exp stop
       Int.print max
       print_stm body

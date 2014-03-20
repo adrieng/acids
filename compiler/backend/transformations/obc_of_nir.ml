@@ -255,7 +255,7 @@ let var env id =
     then Obc.K_field
     else Obc.K_local
   in
-  Obc.L_var (kind, id)
+  Obc.L_var (find_var_ty env id, kind, id)
 
 let exp_var env id = Obc.E_lval (var env id)
 

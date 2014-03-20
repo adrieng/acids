@@ -80,12 +80,12 @@ let translate_var_dec vd =
 
 let rec translate_lvalue mem lv =
   match lv with
-  | L_var ((K_local | K_input), id) ->
-    C.Var id
-  | L_var (K_output, id) ->
-    C.Deref (C.Var id)
-  | L_var (K_field, id) ->
-    C.Field (C.Deref (C.Var mem), id)
+  | L_var (ty, (K_local | K_input), id) ->
+    C.Var (translate_ty ty, id)
+  | L_var (ty, K_output, id) ->
+    C.Deref (C.Var (translate_ty ty, id))
+  | L_var (ty, K_field, id) ->
+    C.Field (C.Deref (C.Var (translate_ty ty, mem)), id)
   | L_arrindex (lv, e) ->
     C.Index (translate_lvalue mem lv, translate_exp mem e)
 
@@ -138,7 +138,7 @@ let rec translate_stm mem stm =
     let open C in
 
     let stop =
-      Op (op_lt, [Lvalue (Var v);
+      Op (op_lt, [Lvalue (Var (C_utils.int_ty, v));
                   Call(max_name, [translate_exp stop; lit_int_e bound])])
     in
 
@@ -222,14 +222,14 @@ let translate_machine (source, header) mach =
           b_locals = [{ v_name = mem; v_type = mpty; v_init = Some init; }];
           b_body =
             List.map (translate_stm mem) mach.ma_constructor
-            @ [Return (Lvalue (Var mem))];
+            @ [Return (Lvalue (Var (mpty, mem)))];
         }
     }
   in
 
   let destructor =
     let open C in
-    let free = Exp (Call (Backend_utils.free, [Lvalue (Var mem)])) in
+    let free = Exp (Call (Backend_utils.free, [Lvalue (Var (mpty, mem))])) in
     {
       f_name = destroy_name mach.ma_name;
       f_output = None;

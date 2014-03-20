@@ -60,19 +60,24 @@ let print_var_dec fmt v =
     Ident.print v.v_name
     print_ty v.v_type
 
+let print_var_kind fmt kind =
+  match kind with
+  | K_input ->
+    Format.fprintf fmt "input."
+  | K_output ->
+    Format.fprintf fmt "output."
+  | K_local ->
+    ()
+  | K_field ->
+    Format.fprintf fmt "field."
+
 let rec print_lvalue fmt lv =
   match lv with
-  | L_var (K_input, x) ->
-    Format.fprintf fmt "input.%a"
+  | L_var (ty, kind, x) ->
+    Format.fprintf fmt "(%a%a : %a)"
+      print_var_kind kind
       Ident.print x
-  | L_var (K_output, x) ->
-    Format.fprintf fmt "input.%a"
-      Ident.print x
-  | L_var (K_local, x) ->
-    Ident.print fmt x
-  | L_var (K_field, x) ->
-    Format.fprintf fmt "self.%a"
-      Ident.print x
+      print_ty ty
   | L_arrindex (lv, e) ->
     Format.fprintf fmt "%a[%a]"
       print_lvalue lv

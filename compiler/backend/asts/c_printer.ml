@@ -70,7 +70,7 @@ let rec print_const_exp fmt ce =
 
 let rec print_lvalue fmt lv =
   match lv with
-  | Var id ->
+  | Var (_, id) ->
     print_ident fmt id
   | Index (lv, e) ->
     Format.fprintf fmt "%a[%a]"

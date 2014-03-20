@@ -45,7 +45,7 @@ type var_kind =
 | K_field
 
 type lvalue =
-| L_var of var_kind * Ident.t
+| L_var of ty * var_kind * Ident.t
 | L_arrindex of lvalue * exp
 
 and exp =

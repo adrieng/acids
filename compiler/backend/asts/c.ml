@@ -28,7 +28,7 @@ type const_exp =
 | Sizeof of ty
 
 type lvalue =
-| Var of Ident.t
+| Var of ty * Ident.t
 | Index of lvalue * exp
 | Field of lvalue * Ident.t
 | Deref of lvalue

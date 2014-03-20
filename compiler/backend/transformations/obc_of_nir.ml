@@ -198,11 +198,10 @@ let find_var_ty env id = (find_var env id).Obc.v_type
 
 let rec ty_decompose ty =
   match ty with
-  | Obc.Ty_scal _ -> ty, Int.one
+  | Obc.Ty_scal _ | Obc.Ty_mach _-> ty, Int.one
   | Obc.Ty_arr (ty, size) ->
     let ty, size' = ty_decompose ty in
     ty, Int.(size * size')
-  | Obc.Ty_mach _ -> invalid_arg "find_var_size: machine type"
 
 let machine_type_of env x =
   let vd = find_var env x in

@@ -157,7 +157,7 @@ let rec translate_clock_exp env eql ce =
           let call =
             let open Nir_acids in
             {
-              c_op = Node Names.(make_longname (Module "Pervasives") "=");
+              c_op = Node Names.(make_longname (Module "Pervasives") "(=)");
               c_stream_inst = [0, ce.ce_info#ci_clock];
             }
           in

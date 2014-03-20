@@ -124,10 +124,6 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
     }
 }
 
-static inline void Rt_builtin_add(int x, int y, int *r) {
-  *r = x + y;
-}
-
 static inline void Rt_builtin_ceq(size_t n,
                            int cst,
                            const int *x,
@@ -144,5 +140,11 @@ static inline void Rt_builtin_on(size_t n,
     for (size_t i = 0; i < n; i++)
         *res += x[i];
 }
+
+static inline void Rt_builtin_add(int x, int y, int *r) {
+  *r = x + y;
+}
+
+#define Rt_builtin_max(a, b) ((a) < (b) ? (a) : (b))
 
 #endif // NIR_H

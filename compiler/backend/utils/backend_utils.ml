@@ -57,6 +57,7 @@ let push_name = "push"
 let pop_name = "pop"
 let ceq_name = "ceq"
 let copy_name = "copy"
+let max_name = "max"
 
 let op_name name =
   let table =
@@ -75,6 +76,18 @@ let op_name name =
   try List.assoc name table with Not_found -> name
 
 let runtime sn = Names.(make_longname (Module runtime_name) sn)
+
+let longname ln =
+  let open Names in
+  let modn =
+    match ln.modn with
+    | LocalModule -> Interface.get_current_module_name ()
+    | Module modn -> modn
+  in
+  modn ^ "_" ^ ln.shortn
+
+let method_name ln methd = longname ln ^ "_" ^ methd
+let builtin_op_name opn = method_name (runtime builtin_name) opn
 
 let mem_name sn = sn ^ "_mem"
 

@@ -33,22 +33,15 @@ open Obc
 let lit_int i = C.Const Ast_misc.(Cconstr (Ec_int i))
 let lit_int_e i = C.ConstExp (lit_int i)
 
-let longname ln =
-  let open Names in
-  let modn =
-    match ln.modn with
-    | LocalModule -> Interface.get_current_module_name ()
-    | Module modn -> modn
-  in
-  modn ^ "_" ^ ln.shortn
-
-let mem_struct_name ln = Backend_utils.mem_name (longname ln)
-let method_name ln methd = longname ln ^ "_" ^ methd
-let create_name ln = method_name ln Backend_utils.create_name
-let destroy_name ln = method_name ln Backend_utils.destroy_name
+let mem_struct_name ln =
+  Backend_utils.mem_name (Backend_utils.longname ln)
+let create_name ln =
+  Backend_utils.method_name ln Backend_utils.create_name
+let destroy_name ln =
+  Backend_utils.method_name ln Backend_utils.destroy_name
+let max_name = Backend_utils.builtin_op_name Backend_utils.max_name
 
 let op_add = "+"
-let op_max = "max"
 let op_lt = "<"
 
 let fun_decl_of_fun_def (fdef : C.fdef) =
@@ -107,7 +100,7 @@ let translate_call mem call =
   let translate_lvalue = translate_lvalue mem in
   let translate_exp = translate_exp mem in
 
-  let fun_n = method_name call.c_mach.mt_name call.c_method in
+  let fun_n = Backend_utils.method_name call.c_mach.mt_name call.c_method in
 
   let inputs = List.map translate_exp call.c_inputs in
   let outputs =
@@ -151,7 +144,7 @@ let rec translate_stm mem stm =
 
     let stop =
       Op (op_lt, [Lvalue (Var vd.v_name);
-                  Op(op_max, [translate_exp stop; lit_int_e bound])])
+                  Call(max_name, [translate_exp stop; lit_int_e bound])])
     in
 
     For
@@ -198,7 +191,7 @@ let translate_methd mach_name methd =
   in
 
   {
-    C.f_name = method_name mach_name methd.m_name;
+    C.f_name = Backend_utils.method_name mach_name methd.m_name;
     C.f_output = None;
     C.f_input = mem_input :: inputs;
     C.f_body = translate_block mem methd.m_body;

@@ -76,6 +76,10 @@ let rec print_lvalue fmt lv =
     Format.fprintf fmt "%a[%a]"
       print_lvalue lv
       print_exp e
+  | Field (Deref lv, f) ->
+    Format.fprintf fmt "%a->%a"
+      print_lvalue lv
+      print_ident f
   | Field (lv, f) ->
     Format.fprintf fmt "%a.%a"
       print_lvalue lv

@@ -471,7 +471,12 @@ and block env block =
   pop_block env;
   {
     Obc.b_locals = locals;
-    Obc.b_body = reset_if_machines env locals @ List.rev body;
+    Obc.b_body =
+      create_if_machines env locals
+    @ reset_if_machines env locals
+    @ List.rev body
+    @ destroy_if_machines env locals
+    ;
   }
 
 let node nd =

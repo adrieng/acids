@@ -184,7 +184,10 @@ let rec equation env eq =
 and block env block =
   let env' = enter_new_block env block in
 
-  let add_push_and_pop_for_conv x cv (subst, (env, env')) =
+  (* We recompute conv to make the block depends on its input buffers and
+     symmetrically. This is needed to obtain correct schedules later on. *)
+
+  let add_push_and_pop_for_conv x cv (subst, conv, (env, env')) =
     let size = Clock_types.max_burst_stream_type cv.cv_external_clock in
 
     let env, b =
@@ -198,7 +201,19 @@ and block env block =
 
     let env, y = add_copy env cv.cv_internal_clock x in
 
+    let conv =
+      Ident.Env.add
+        b
+        {
+          cv_direction = cv.cv_direction;
+          cv_internal_clock = Clock_types.St_var Info.Cv_base;
+          cv_external_clock = Clock_types.St_var Info.Cv_base;
+        }
+        conv
+    in
+
     Ident.Env.add x y subst,
+    conv,
     match cv.cv_direction with
     | Push ->
       (* x is being defined inside the block. *)
@@ -213,11 +228,11 @@ and block env block =
       add_eq env push_eq, add_eq env' pop_eq
   in
 
-  let subst, (env, env') =
+  let subst, conv, (env, env') =
     Ident.Env.fold
       add_push_and_pop_for_conv
       block.b_conv
-      (Ident.Env.empty, (env, env'))
+      (Ident.Env.empty, Ident.Env.empty, (env, env'))
   in
 
   let body = List.map (subst_eq subst) block.b_body in
@@ -225,6 +240,7 @@ and block env block =
   let block =
     make_block
       ~loc:block.b_loc
+      ~conv
       block.b_id
       (get_current_eqs env')
   in

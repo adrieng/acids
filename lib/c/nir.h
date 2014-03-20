@@ -52,18 +52,18 @@ static inline void Rt_buffer_destroy(struct Rt_buffer_mem *mem) {
 }
 
 static inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
-                            size_t elem_size,
-                            size_t capacity) {
+                                   size_t elem_size,
+                                   size_t capacity) {
     mem->front = 0;
     mem->back = 0;
     mem->data = malloc(elem_size * capacity);
 }
 
 static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
-                           size_t elem_size,
-                           size_t capacity,
-                           size_t amount,
-                           void *data) {
+                                  size_t elem_size,
+                                  size_t capacity,
+                                  size_t amount,
+                                  void *data) {
     memcpy(mem->data + mem->back * elem_size,
            data,
            elem_size * amount);
@@ -73,10 +73,10 @@ static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
 }
 
 static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
-                          size_t elem_size,
-                          size_t capacity,
-                          size_t amount,
-                          void *data) {
+                                 size_t elem_size,
+                                 size_t capacity,
+                                 size_t amount,
+                                 void *data) {
     memcpy(data,
            mem->data + mem->front * elem_size,
            elem_size * amount);
@@ -99,19 +99,19 @@ static inline void Rt_pword_destroy(struct Rt_pword_mem *mem) {
 }
 
 static inline void Rt_pword_reset(struct Rt_pword_mem *mem,
-                           unsigned int size_pref,
-                           unsigned int size_word,
-                           const int *word_data,
-                           const int *word_exps) {
+                                  unsigned int size_pref,
+                                  unsigned int size_word,
+                                  const int *word_data,
+                                  const int *word_exps) {
     mem->wpos = 0;
     mem->dpos = 0;
 }
 
 static inline void Rt_pword_step(struct Rt_pword_mem *mem,
-                          unsigned int size_pref,
-                          unsigned int size_word,
-                          const int *word_data,
-                          const int *word_exps,
+                                 unsigned int size_pref,
+                                 unsigned int size_word,
+                                 const int *word_data,
+                                 const int *word_exps,
 
                           int *step) {
     *step = word_data[mem->wpos];
@@ -126,23 +126,23 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
 
 static inline void Rt_builtin_copy(size_t elem_size,
                                    size_t elem_count,
-                                   void *src,
+                                   const void *src,
                                    void *dest) {
     memcpy(dest, src, elem_size * elem_count);
 }
 
 static inline void Rt_builtin_ceq(size_t n,
-                           int cst,
-                           const int *x,
-                           int *res)
+                                  int cst,
+                                  const int *x,
+                                  int *res)
 {
     for (size_t i = 0; i < n; i++)
         res[i] = x[i] == cst;
 }
 
 static inline void Rt_builtin_on(size_t n,
-                          const int *x,
-                          int *res) {
+                                 const int *x,
+                                 int *res) {
     *res = 0;
     for (size_t i = 0; i < n; i++)
         *res += x[i];

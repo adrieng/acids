@@ -144,8 +144,8 @@ let form_block
     Ident.Env.add
       x
       {
-        cv_internal_clock = x_vd.v_clock;
-        cv_external_clock = mk_ck bck;
+        cv_internal_clock = mk_ck bck;
+        cv_external_clock = x_vd.v_clock;
         cv_direction = dir;
       }
       conv

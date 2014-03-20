@@ -139,53 +139,27 @@ let form_block
   let bid = fresh_block_id env in
   let bck = Clock_types.St_var Info.Cv_base in
 
-  let refresh_variable dir (conv, eqs) x mk_ck =
+  let conv_variable dir conv x mk_ck =
     let x_vd = find_var_dec env x in
-    let x' = Ident.make_prefix "blk_" x in
-    (* let x'_ck = Clock_types.reroot_stream_type Info.Cv_base bck in *)
-    let x'_ck = mk_ck bck in
-    let x'_vd =
-      make_var_dec
-        ~loc:x_vd.v_loc
-        ~annots:x_vd.v_annots
-        x'
-        x_vd.v_data
-        x'_ck
-        (Scope_internal (Block_id 0)) (* TODO improve *)
-    in
-    let conv =
-      Ident.Env.add
-        x'
-        {
-          cv_internal_clock = x_vd.v_clock;
-          cv_external_clock = x'_ck;
-          cv_direction = dir;
-        }
-        conv
-    in
-    add_var_dec env x'_vd;
-    (conv, make_eq (Var (x', x)) bck :: eqs), x'
+    Ident.Env.add
+      x
+      {
+        cv_internal_clock = x_vd.v_clock;
+        cv_external_clock = mk_ck bck;
+        cv_direction = dir;
+      }
+      conv
   in
 
-  let (conv, eqs), x'_l =
-    Utils.mapfold_left_2
-      (refresh_variable Nir.Push)
-      (Ident.Env.empty, [])
-      x_l
-      x_ck_l
-  in
-  let (conv, eqs), y'_l =
-    Utils.mapfold_left_2
-      (refresh_variable Nir.Pop)
-      (conv, eqs)
-      y_l
-      y_ck_l
-  in
+  let conv = Ident.Env.empty in
+  let conv = List.fold_left2 (conv_variable Nir.Push) conv x_l x_ck_l in
+  let conv = List.fold_left2 (conv_variable Nir.Pop) conv y_l y_ck_l in
+
   let block =
     make_block
       ~conv
       bid
-      (make_eq ~loc:eq.eq_loc eq.eq_desc bck :: eqs)
+      [make_eq ~loc:eq.eq_loc eq.eq_desc bck]
   in
   make_eq (Block block) base_clock
 
@@ -203,13 +177,13 @@ let rec equation env eq =
     (* TODO: optimize buffer *)
       eq
 
-    | Const (x, c) ->
+    | Const (x, _) ->
       form_block env eq [x] [fun ck -> ck] [] []
 
-    | Pword (x, p) ->
+    | Pword (x, _) ->
       form_block env eq [x] [fun ck -> ck] [] []
 
-    | Call (x_l, ({ c_op = Node (ln, id); } as call), y_l) ->
+    | Call (x_l, { c_op = Node (ln, id); }, y_l) ->
       let input_sts, output_sts =
         find_node_clock_sig_sliced env.senv ln id
       in
@@ -232,10 +206,6 @@ let rec equation env eq =
         z_l (List.map (mk_sampled_clock (clock_exp_of_id env y)) ec_l)
 
     | Split (x_l, y, z, ec_l) ->
-      let mk_desc x_l z_l =
-        let y, z = Utils.assert2 z_l in
-        Split (x_l, y, z, ec_l)
-      in
       form_block
         env
         eq

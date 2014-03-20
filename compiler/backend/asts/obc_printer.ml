@@ -103,6 +103,10 @@ let rec print_stm fmt stm =
     Format.fprintf fmt "create (%a : %a)"
       print_lvalue lv
       print_machine_ty mty
+  | S_destroy (mty, lv) ->
+    Format.fprintf fmt "destroy (%a : %a)"
+      print_lvalue lv
+      print_machine_ty mty
   | S_call call ->
     print_call fmt call
   | S_affect (lv, e) ->
@@ -147,9 +151,11 @@ let print_methd fmt m =
 
 let print_machine fmt m =
   Format.fprintf fmt
-    "@[@[<v 2>machine %a {@\n%a@\n%a@]@\n}@]"
+    "@[@[<v 2>machine %a {@\n%a@\n@[<v>@[<v 2>constructor {@ %a@]@ }@]@\n@[<v>@[<v 2>destructor {@ %a@]@ }@]@\n%a@]@\n}@]"
     Names.print_longname m.ma_name
     (Utils.print_list_eol print_var_dec) m.ma_fields
+    (Utils.print_list_r print_stm ";") m.ma_constructor
+    (Utils.print_list_r print_stm ";") m.ma_destructor
     (Utils.print_list_eol print_methd) m.ma_methods
 
 let print_type_def fmt td =

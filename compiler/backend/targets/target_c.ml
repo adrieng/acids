@@ -45,6 +45,7 @@ let longname ln =
 let mem_struct_name ln = Backend_utils.mem_name (longname ln)
 let method_name ln methd = longname ln ^ "_" ^ methd
 let create_name ln = method_name ln Backend_utils.create_name
+let destroy_name ln = method_name ln Backend_utils.destroy_name
 
 let op_add = "+"
 let op_max = "max"
@@ -134,6 +135,8 @@ let rec translate_stm mem stm =
   match stm with
   | S_create (mty, lv) ->
     C.Affect (translate_lvalue lv, C.Call (create_name mty.mt_name, []))
+  | S_destroy (mty, lv) ->
+    C.(Exp (Call (destroy_name mty.mt_name, [C.Lvalue (translate_lvalue lv)])))
   | S_affect (lv, e) ->
     C.Affect (translate_lvalue lv, translate_exp e)
   | S_call call ->
@@ -215,11 +218,12 @@ let translate_machine (source, header) mach =
 
   let mem_decl = C.Decl (C.Dc_struct (mem_struct_name mach.ma_name)) in
 
+  let mem = Ident.make_internal "mem" in
+  let mty = C.Struct (mem_struct_name mach.ma_name) in
+  let mpty = C.Pointer mty in
+
   let constructor =
     let open C in
-    let mem = Ident.make_internal "mem" in
-    let mty = Struct (mem_struct_name mach.ma_name) in
-    let mpty = Pointer mty in
     let init = Call (Backend_utils.alloc, [ConstExp (Sizeof mty)]) in
     {
       f_name = create_name mach.ma_name;
@@ -235,9 +239,24 @@ let translate_machine (source, header) mach =
     }
   in
 
+  let destructor =
+    let open C in
+    let free = Exp (Call (Backend_utils.free, [Lvalue (Var mem)])) in
+    {
+      f_name = destroy_name mach.ma_name;
+      f_output = None;
+      f_input = [{ v_name = mem; v_type = mpty; v_init = None; }];
+      f_body =
+        {
+          b_locals = [];
+          b_body = List.map (translate_stm mem) mach.ma_destructor @ [free];
+        }
+    }
+  in
+
   let fun_defs =
     List.rev_map (translate_methd mach.ma_name) mach.ma_methods
-    @ [constructor]
+    @ [destructor; constructor]
   in
   let fun_decls = List.map fun_decl_of_fun_def fun_defs in
   let fun_defs = List.map (fun f -> C.(Def (Df_function f))) fun_defs in

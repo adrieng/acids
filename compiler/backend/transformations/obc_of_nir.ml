@@ -283,6 +283,9 @@ let method_call env inst ?(inputs = []) ?(outputs = []) op  =
 let create_stm env inst mty =
   Obc.S_create (mty, var env inst)
 
+let destroy_stm env inst mty =
+  Obc.S_destroy (mty, var env inst)
+
 let reset_stm env inst mty =
   Obc.S_call
     {
@@ -319,6 +322,8 @@ let map_if_machines f env vd_l =
 let reset_if_machines = map_if_machines reset_stm
 
 let create_if_machines = map_if_machines create_stm
+
+let destroy_if_machines = map_if_machines destroy_stm
 
 let create_pword env pw out =
   let w = new_pword env pw in
@@ -506,6 +511,7 @@ let node nd =
     Obc.ma_fields = fields;
     Obc.ma_methods = [reset; step];
     Obc.ma_constructor = create_if_machines env fields;
+    Obc.ma_destructor = destroy_if_machines env fields;
   }
 
 (* {2 Putting it all together} *)

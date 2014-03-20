@@ -63,6 +63,7 @@ type call =
 
 type stm =
 | S_create of machine_ty * lvalue
+| S_destroy of machine_ty * lvalue
 | S_affect of lvalue * exp
 | S_call of call
 | S_loop of var_dec * exp * Int.t * stm (* for v = 0 to max(exp, n) do body *)
@@ -90,6 +91,7 @@ type machine =
     ma_ctx : Ident.ctx;
     ma_fields : var_dec list;
     ma_constructor : stm list;
+    ma_destructor : stm list;
     ma_methods : methd list;
   }
 

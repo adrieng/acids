@@ -20,6 +20,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
+#include <strings.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -29,6 +30,10 @@ static inline void *Rt_alloc(size_t size) {
     return ret;
 }
 
+static inline void *Rt_free(void *p) {
+    free(p);
+}
+
 struct Rt_buffer_mem {
     size_t front;               /* consumer position  */
     size_t back;                /* producer position */
@@ -36,7 +41,14 @@ struct Rt_buffer_mem {
 };
 
 static inline struct Rt_buffer_mem *Rt_buffer_create() {
-    return Rt_alloc(sizeof(struct Rt_buffer_mem));
+    struct Rt_buffer_mem *res = Rt_alloc(sizeof(*res));
+    bzero(res, sizeof(*res));   /* data should always to be set to zero */
+    return res;
+}
+
+static inline void Rt_buffer_destroy(struct Rt_buffer_mem *mem) {
+    Rt_free(mem->data);
+    Rt_free(mem);
 }
 
 static inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
@@ -56,7 +68,7 @@ static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
            data,
            elem_size * amount);
     mem->back += amount;
-    if (mem->back > capacity)
+    if (mem->back >= capacity)
         mem->back = 0;
 }
 
@@ -69,7 +81,7 @@ static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
            mem->data + mem->front * elem_size,
            elem_size * amount);
     mem->front += amount;
-    if (mem->front > capacity)
+    if (mem->front >= capacity)
         mem->front = 0;
 }
 
@@ -80,6 +92,10 @@ struct Rt_pword_mem {
 
 static inline struct Rt_pword_mem *Rt_pword_create() {
     return Rt_alloc(sizeof(struct Rt_pword_mem));
+}
+
+static inline void Rt_pword_destroy(struct Rt_pword_mem *mem) {
+    Rt_free(mem);
 }
 
 static inline void Rt_pword_reset(struct Rt_pword_mem *mem,

@@ -348,15 +348,10 @@ let make_cond env x cases =
 let make_assign env x y =
   let ty = find_var_ty env y in
   let ty, size = ty_decompose ty in
-  (
-    if size = Int.one
-    then Obc.S_affect (var env x, exp_var env y)
-    else
-      builtin_op_stm
-        Backend_utils.copy_name
-        [Obc.(E_const (C_sizeof ty)); mk_int_e size; exp_var env y]
-        [var env x]
-  )
+  builtin_op_stm
+    Backend_utils.copy_name
+    [Obc.(E_const (C_sizeof ty)); mk_int_e size]
+    [var env y; var env x]
 
 (* {2 AST traversal} *)
 

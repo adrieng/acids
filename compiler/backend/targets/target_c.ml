@@ -52,6 +52,13 @@ let fun_decl_of_fun_def (fdef : C.fdef) =
     d_input = List.map (fun vd -> vd.v_type) fdef.f_input;
   }
 
+let mutable_ty ty =
+  let open C in
+  match ty with
+  | Scal _ | Struct _ -> false
+  | Pointer _ | Array _ -> true
+  | Name _ -> invalid_arg "mutable_ty: C.Name"
+
 (******************************************************************************)
 (* {2 AST walking} *)
 
@@ -78,14 +85,14 @@ let translate_var_dec vd =
     C.v_init = None;
   }
 
-let rec translate_lvalue mem lv =
+let rec translate_lvalue ((mem_ty, mem_name) as mem) lv =
   match lv with
   | L_var (ty, (K_local | K_input), id) ->
     C.Var (translate_ty ty, id)
   | L_var (ty, K_output, id) ->
-    C.Deref (C.Var (translate_ty ty, id))
-  | L_var (ty, K_field, id) ->
-    C.Field (C.Deref (C.Var (translate_ty ty, mem)), id)
+    C.Var (translate_ty ty, id)
+  | L_var (_, K_field, id) ->
+    C.Field (C.Deref (C.Var (mem_ty, mem_name)), id)
   | L_arrindex (lv, e) ->
     C.Index (translate_lvalue mem lv, translate_exp mem e)
 
@@ -96,6 +103,19 @@ and translate_exp mem e =
   | E_const c ->
     C.ConstExp (translate_const c)
 
+let translate_lvalue_output ((mem_ty, mem_name) as mem) lv =
+  match lv with
+  | L_var (ty, (K_local | K_input), id) ->
+    let ty = translate_ty ty in
+    let lv = C.Var (ty, id) in
+    if mutable_ty ty then C.Lvalue lv else C.AddrOf lv
+  | L_var (ty, K_output, id) ->
+    C.(Lvalue (Var (translate_ty ty, id)))
+  | L_var (_, K_field, id) ->
+    C.(Lvalue (Field (Deref (Var (mem_ty, mem_name)), id)))
+  | L_arrindex (lv, e) ->
+    C.(AddrOf (Index (translate_lvalue mem lv, translate_exp mem e)))
+
 let translate_call mem call =
   let translate_lvalue = translate_lvalue mem in
   let translate_exp = translate_exp mem in
@@ -103,10 +123,7 @@ let translate_call mem call =
   let fun_n = Backend_utils.method_name call.c_mach.mt_name call.c_method in
 
   let inputs = List.map translate_exp call.c_inputs in
-  let outputs =
-    let outputs = List.map translate_lvalue call.c_outputs in
-    List.map (fun lv -> C.AddrOf lv) outputs
-  in
+  let outputs = List.map (translate_lvalue_output mem) call.c_outputs in
 
   let args = inputs @ outputs in
   let args =
@@ -169,27 +186,35 @@ and translate_block mem block =
 
 let translate_methd mach_name methd =
   let mem = Ident.make_internal "mem" in
+  let mem_ty = C.(Pointer (Struct (mem_struct_name mach_name))) in
 
   let mem_input =
     let open C in
     {
       v_name = mem;
-      v_type = Pointer (Struct (mem_struct_name mach_name));
+      v_type = mem_ty;
       v_init = None;
     }
   in
 
   let inputs =
-    let add_deref vd = C.({ vd with v_type = Pointer vd.v_type; }) in
+    let add_deref_if_mutable vd =
+      let open C in
+      let ty = vd.v_type in
+      { vd with v_type = if mutable_ty ty then ty else C.Pointer ty; }
+    in
     List.map translate_var_dec methd.m_inputs
-    @ List.map (fun vd -> add_deref (translate_var_dec vd)) methd.m_outputs
+    @
+      List.map
+      (fun vd -> add_deref_if_mutable (translate_var_dec vd))
+      methd.m_outputs
   in
 
   {
     C.f_name = Backend_utils.method_name mach_name methd.m_name;
     C.f_output = None;
     C.f_input = mem_input :: inputs;
-    C.f_body = translate_block mem methd.m_body;
+    C.f_body = translate_block (mem_ty, mem) methd.m_body;
   }
 
 let translate_machine (source, header) mach =
@@ -221,7 +246,7 @@ let translate_machine (source, header) mach =
         {
           b_locals = [{ v_name = mem; v_type = mpty; v_init = Some init; }];
           b_body =
-            List.map (translate_stm mem) mach.ma_constructor
+            List.map (translate_stm (mty, mem)) mach.ma_constructor
             @ [Return (Lvalue (Var (mpty, mem)))];
         }
     }
@@ -237,7 +262,8 @@ let translate_machine (source, header) mach =
       f_body =
         {
           b_locals = [];
-          b_body = List.map (translate_stm mem) mach.ma_destructor @ [free];
+          b_body =
+            List.map (translate_stm (mty, mem)) mach.ma_destructor @ [free];
         }
     }
   in

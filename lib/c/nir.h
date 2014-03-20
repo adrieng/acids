@@ -124,6 +124,13 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
     }
 }
 
+static inline void Rt_builtin_copy(size_t elem_size,
+                                   size_t elem_count,
+                                   void *src,
+                                   void *dest) {
+    memcpy(dest, src, elem_size * elem_count);
+}
+
 static inline void Rt_builtin_ceq(size_t n,
                            int cst,
                            const int *x,

@@ -194,11 +194,14 @@ let locals_per_block env (Block_id b_id) =
 
 let find_var env id = Ident.Env.find id env.all
 
-let find_var_size env id =
-  let vd = find_var env id in
-  match vd.Obc.v_type with
-  | Obc.Ty_scal _ -> Int.one
-  | Obc.Ty_arr (_, size) -> size
+let find_var_ty env id = (find_var env id).Obc.v_type
+
+let rec ty_decompose ty =
+  match ty with
+  | Obc.Ty_scal _ -> ty, Int.one
+  | Obc.Ty_arr (ty, size) ->
+    let ty, size' = ty_decompose ty in
+    ty, Int.(size * size')
   | Obc.Ty_mach _ -> invalid_arg "find_var_size: machine type"
 
 let machine_type_of env x =
@@ -343,15 +346,15 @@ let make_cond env x cases =
     Obc.S_switch (exp_var env x, cases)
 
 let make_assign env x y =
-  let size = find_var_size env y in
-  assert (Int.equal size (find_var_size env x));
+  let ty = find_var_ty env y in
+  let ty, size = ty_decompose ty in
   (
     if size = Int.one
     then Obc.S_affect (var env x, exp_var env y)
     else
       builtin_op_stm
         Backend_utils.copy_name
-        [mk_int_e size; exp_var env y]
+        [Obc.(E_const (C_sizeof ty)); mk_int_e size; exp_var env y]
         [var env x]
   )
 

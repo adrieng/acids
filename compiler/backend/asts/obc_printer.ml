@@ -99,6 +99,10 @@ let print_call fmt call =
 
 let rec print_stm fmt stm =
   match stm with
+  | S_create (mty, lv) ->
+    Format.fprintf fmt "create (%a : %a)"
+      print_lvalue lv
+      print_machine_ty mty
   | S_call call ->
     print_call fmt call
   | S_affect (lv, e) ->

@@ -21,6 +21,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
+
+static inline void *Rt_alloc(size_t size) {
+    void *ret = malloc(size);
+    assert(ret != NULL && "NIR RUNTIME: malloc() failed");
+    return ret;
+}
 
 struct Rt_buffer_mem {
     size_t front;               /* consumer position  */
@@ -28,12 +35,11 @@ struct Rt_buffer_mem {
     char *data;                 /* internal data */
 };
 
-struct Rt_pword_mem {
-    unsigned int wpos;          /* position in the word */
-    unsigned int dpos;          /* position in a datum */
-};
+static inline struct Rt_buffer_mem *Rt_buffer_create() {
+    return Rt_alloc(sizeof(struct Rt_buffer_mem));
+}
 
-inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
+static inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
                             size_t elem_size,
                             size_t capacity) {
     mem->front = 0;
@@ -41,7 +47,7 @@ inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
     mem->data = malloc(elem_size * capacity);
 }
 
-inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
+static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
                            size_t elem_size,
                            size_t capacity,
                            size_t amount,
@@ -54,7 +60,7 @@ inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
         mem->back = 0;
 }
 
-inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
+static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
                           size_t elem_size,
                           size_t capacity,
                           size_t amount,
@@ -67,7 +73,16 @@ inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
         mem->front = 0;
 }
 
-inline void Rt_pword_reset(struct Rt_pword_mem *mem,
+struct Rt_pword_mem {
+    unsigned int wpos;          /* position in the word */
+    unsigned int dpos;          /* position in a datum */
+};
+
+static inline struct Rt_pword_mem *Rt_pword_create() {
+    return Rt_alloc(sizeof(struct Rt_pword_mem));
+}
+
+static inline void Rt_pword_reset(struct Rt_pword_mem *mem,
                            unsigned int size_pref,
                            unsigned int size_word,
                            const int *word_data,
@@ -76,7 +91,7 @@ inline void Rt_pword_reset(struct Rt_pword_mem *mem,
     mem->dpos = 0;
 }
 
-inline void Rt_pword_step(struct Rt_pword_mem *mem,
+static inline void Rt_pword_step(struct Rt_pword_mem *mem,
                           unsigned int size_pref,
                           unsigned int size_word,
                           const int *word_data,
@@ -93,11 +108,11 @@ inline void Rt_pword_step(struct Rt_pword_mem *mem,
     }
 }
 
-inline void Rt_builtin_add(int x, int y, int *r) {
+static inline void Rt_builtin_add(int x, int y, int *r) {
   *r = x + y;
 }
 
-inline void Rt_builtin_ceq(size_t n,
+static inline void Rt_builtin_ceq(size_t n,
                            int cst,
                            const int *x,
                            int *res)
@@ -106,7 +121,7 @@ inline void Rt_builtin_ceq(size_t n,
         res[i] = x[i] == cst;
 }
 
-inline void Rt_builtin_on(size_t n,
+static inline void Rt_builtin_on(size_t n,
                           const int *x,
                           int *res) {
     *res = 0;

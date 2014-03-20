@@ -54,6 +54,7 @@ type stm =
 | If of exp * stm * stm
 | For of var_dec * exp * exp * stm * stm
 (* vd * init * test * incr * body *)
+| Return of exp
 | Block of block
 
 and block =

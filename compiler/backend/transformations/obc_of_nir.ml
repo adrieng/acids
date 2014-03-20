@@ -280,6 +280,9 @@ let method_call env inst ?(inputs = []) ?(outputs = []) op  =
       Obc.c_outputs = outputs;
     }
 
+let create_stm env inst mty =
+  Obc.S_create (mty, var env inst)
+
 let reset_stm env inst mty =
   Obc.S_call
     {
@@ -302,16 +305,20 @@ let buffer_push_stm env inst ~amount ~data =
 let buffer_pop_stm env inst amount data =
   method_call env inst ~inputs:[amount] ~outputs:[data] pop_name
 
-let reset_if_machine env acc vd =
+let map_if_machine f env acc vd =
   let open Obc in
   match vd.v_type with
   | Ty_mach mty ->
-    reset_stm env vd.v_name mty :: acc
+    f env vd.v_name mty :: acc
   | _ ->
     acc
 
-let reset_if_machines env vd_l =
-  List.fold_left (reset_if_machine env) [] vd_l
+let map_if_machines f env vd_l =
+  List.fold_left (map_if_machine f env) [] vd_l
+
+let reset_if_machines = map_if_machines reset_stm
+
+let create_if_machines = map_if_machines create_stm
 
 let create_pword env pw out =
   let w = new_pword env pw in
@@ -498,6 +505,7 @@ let node nd =
     Obc.ma_ctx = nd.n_orig_info#ni_ctx;
     Obc.ma_fields = fields;
     Obc.ma_methods = [reset; step];
+    Obc.ma_constructor = create_if_machines env fields;
   }
 
 (* {2 Putting it all together} *)

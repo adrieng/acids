@@ -153,6 +153,9 @@ let rec print_stm fmt stm =
       print_exp test
       print_stm step
       print_stm body
+  | Return e ->
+    Format.fprintf fmt "return %a;"
+      print_exp e
   | Block block ->
     print_block fmt block
 

@@ -47,6 +47,7 @@ let buffer_name = "buffer"
 let boxed_name = "boxed"
 
 (* Method names *)
+let create_name = "create"
 let reset_name = "reset"
 let step_name = "step"
 let box_name = "box"
@@ -75,5 +76,7 @@ let op_name name =
 let runtime sn = Names.(make_longname (Module runtime_name) sn)
 
 let mem_name sn = sn ^ "_mem"
+
+let alloc = runtime_name ^ "_alloc"
 
 (******************************************************************************)

@@ -71,7 +71,7 @@ let rec translate_ty ty =
   | Ty_struct ln -> C.Struct (Backend_utils.longname ln)
 
 let rec translate_const cst =
-  match cst with
+  match cst.c_desc with
   | C_scal c ->
     C.Const c
   | C_array a ->
@@ -87,7 +87,7 @@ let translate_var_dec vd =
   }
 
 let rec translate_lvalue ((mem_ty, mem_name) as mem) lv =
-  match lv with
+  match lv.l_desc with
   | L_var (ty, (K_local | K_input), id) ->
     C.Var (translate_ty ty, id)
   | L_var (ty, K_output, id) ->
@@ -98,14 +98,14 @@ let rec translate_lvalue ((mem_ty, mem_name) as mem) lv =
     C.Index (translate_lvalue mem lv, translate_exp mem e)
 
 and translate_exp mem e =
-  match e with
+  match e.e_desc with
   | E_lval lv ->
     C.Lvalue (translate_lvalue mem lv)
   | E_const c ->
     C.ConstExp (translate_const c)
 
 let translate_lvalue_output ((mem_ty, mem_name) as mem) lv =
-  match lv with
+  match lv.l_desc with
   | L_var (ty, (K_local | K_input), id) ->
     let ty = translate_ty ty in
     let lv = C.Var (ty, id) in

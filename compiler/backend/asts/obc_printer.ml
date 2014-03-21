@@ -49,7 +49,7 @@ and print_machine_ty fmt mty =
     (Utils.print_list_r_ne print_const "," "<" ">") mty.mt_cparams
 
 and print_const fmt cst =
-  match cst with
+  match cst.c_desc with
   | C_scal c ->
     Ast_misc.print_const fmt c
   | C_array arr ->
@@ -75,7 +75,7 @@ let print_var_kind fmt kind =
     Format.fprintf fmt "field."
 
 let rec print_lvalue fmt lv =
-  match lv with
+  match lv.l_desc with
   | L_var (ty, kind, x) ->
     Format.fprintf fmt "(%a%a : %a)"
       print_var_kind kind
@@ -87,7 +87,7 @@ let rec print_lvalue fmt lv =
       print_exp e
 
 and print_exp fmt e =
-  match e with
+  match e.e_desc with
   | E_lval lv ->
     print_lvalue fmt lv
   | E_const c ->

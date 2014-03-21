@@ -26,7 +26,13 @@ open Backend_utils
 
 *)
 
-let mk_const ec = Obc.C_scal (Ast_misc.(Cconstr ec))
+module U = Obc_utils
+
+let mk_const ec =
+  {
+    Obc.c_desc = Obc.C_scal (Ast_misc.(Cconstr ec));
+    Obc.c_type = Obc.Ty_scal Data_types.Tys_int;
+  }
 
 let mk_int (* TODO factor in Ast_misc *) i = mk_const (Ast_misc.Ec_int i)
 let mk_int_e i = Obc.E_const (mk_int i)
@@ -46,8 +52,8 @@ let pword_machine_ty pw =
       [
         mk_int prefix_size;
         mk_int (Int.of_int (List.length p_len));
-        Obc.C_array (List.map mk_const p_dat);
-        Obc.C_array (List.map mk_int p_len);
+        U.make_const_array (List.map mk_const p_dat);
+        U.make_const_array (List.map mk_int p_len);
       ];
   }
 
@@ -56,8 +62,8 @@ let buffer_machine_ty ty capacity =
     Obc.mt_name = runtime buffer_name;
     Obc.mt_cparams =
       [
-        Obc.C_sizeof ty;
-        mk_int capacity;
+        U.make_const_sizeof ty;
+        U.make_const_int capacity;
       ];
   }
 
@@ -254,9 +260,12 @@ let var env id =
     then Obc.K_field
     else Obc.K_local
   in
-  Obc.L_var (find_var_ty env id, kind, id)
+  {
+    Obc.l_desc = Obc.L_var (find_var_ty env id, kind, id);
+    Obc.l_type = find_var_ty env id;
+  }
 
-let exp_var env id = Obc.E_lval (var env id)
+let exp_var env id = U.make_exp_lvalue (var env id)
 
 (******************************************************************************)
 (* {2 Helper functions} *)
@@ -349,7 +358,7 @@ let make_assign env x y =
   let ty, size = ty_decompose ty in
   builtin_op_stm
     Backend_utils.copy_name
-    [Obc.(E_const (C_sizeof ty)); mk_int_e size]
+    [U.(make_exp_const (make_const_sizeof ty)); U.make_exp_int size]
     [var env y; var env x]
 
 (* {2 AST traversal} *)
@@ -363,9 +372,8 @@ let rec clock_exp env ck_e acc ce =
     let r = Ident.make_internal "r_ce" in
     add_local_for_current_block_int env r;
     let acc, x = clock_exp env ck_e acc ce in
-    let open Obc in
     builtin_op_stm ceq_name
-      [ck_e; E_const (mk_const ec)]
+      [ck_e; U.(make_exp_const (mk_const ec))]
       [var env x; var env r]
     :: acc,
     r
@@ -377,7 +385,7 @@ let rec clock_exp env ck_e acc ce =
 and clock_type env acc ck =
   match ck with
   | Clock_types.St_var _ ->
-    acc, Obc.E_const (mk_int Int.one)
+    acc, U.make_exp_int Int.one
   | Clock_types.St_on (ck, ce) ->
     let acc, ck_e = clock_type env acc ck in
     let acc, ce_x = clock_exp env ck_e acc ce in
@@ -396,7 +404,8 @@ let rec equation env acc eq =
     make_assign env x y :: acc
 
   | Const (x, c) ->
-    Obc.S_affect (var env x, Obc.E_const (Obc.C_scal c)) :: acc
+    let ty = find_var_ty env x in
+    Obc.S_affect (var env x, U.(make_exp_const (make_const_scal ty c))) :: acc
 
   | Pword (x, pw) ->
     create_pword env pw (var env x) :: acc

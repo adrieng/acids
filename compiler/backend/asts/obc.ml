@@ -28,6 +28,12 @@ and machine_ty =
   }
 
 and const =
+  {
+    c_desc : const_desc;
+    c_type : ty;
+  }
+
+and const_desc =
 | C_scal of Ast_misc.const
 | C_array of const list
 | C_sizeof of ty
@@ -46,10 +52,22 @@ type var_kind =
 | K_field
 
 type lvalue =
+  {
+    l_desc : lvalue_desc;
+    l_type : ty;
+  }
+
+and lvalue_desc =
 | L_var of ty * var_kind * Ident.t
 | L_arrindex of lvalue * exp
 
 and exp =
+  {
+    e_desc : exp_desc;
+    e_type : ty;
+  }
+
+and exp_desc =
 | E_lval of lvalue
 | E_const of const
 

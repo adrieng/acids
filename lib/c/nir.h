@@ -148,11 +148,40 @@ static inline void Rt_builtin_on(size_t n,
         *res += x[i];
 }
 
+#define Rt_builtin_max(a, b) ((a) < (b) ? (a) : (b))
+
 static inline void Rt_builtin_add(int x, int y, int *r) {
   *r = x + y;
 }
 
-#define Rt_builtin_max(a, b) ((a) < (b) ? (a) : (b))
+static inline void Rt_builtin_sub(int x, int y, int *r) {
+  *r = x - y;
+}
+
+static inline void Rt_builtin_mult(int x, int y, int *r) {
+  *r = x * y;
+}
+
+static inline void Rt_builtin_div(int x, int y, int *r) {
+  *r = x / y;
+}
+
+static inline void Rt_builtin_fadd(float x, float y, float *r) {
+  *r = x + y;
+}
+
+static inline void Rt_builtin_fsub(float x, float y, float *r) {
+  *r = x - y;
+}
+
+static inline void Rt_builtin_fmult(float x, float y, float *r) {
+  *r = x * y;
+}
+
+static inline void Rt_builtin_fdiv(float x, float y, float *r) {
+  *r = x / y;
+}
+
 #define Rt_builtin_eq(a, b, res) (*(res) = (a) == (b))
 
 #endif // NIR_H

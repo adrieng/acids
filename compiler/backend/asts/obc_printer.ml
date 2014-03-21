@@ -56,7 +56,7 @@ and print_const fmt cst =
       print_ty ty
 
 let print_var_dec fmt v =
-  Format.fprintf fmt "%a : %a"
+  Format.fprintf fmt "%a@ : %a"
     Ident.print v.v_name
     print_ty v.v_type
 
@@ -105,17 +105,17 @@ let print_call fmt call =
 let rec print_stm fmt stm =
   match stm with
   | S_create (mty, lv) ->
-    Format.fprintf fmt "create (%a : %a)"
+    Format.fprintf fmt "create (%a@ : %a)"
       print_lvalue lv
       print_machine_ty mty
   | S_destroy (mty, lv) ->
-    Format.fprintf fmt "destroy (%a : %a)"
+    Format.fprintf fmt "destroy (%a@ : %a)"
       print_lvalue lv
       print_machine_ty mty
   | S_call call ->
     print_call fmt call
   | S_affect (lv, e) ->
-    Format.fprintf fmt "@[%a =@ %a@]"
+    Format.fprintf fmt "@[%a@ =@ %a@]"
       print_lvalue lv
       print_exp e
   | S_loop (i, stop, max, body) ->

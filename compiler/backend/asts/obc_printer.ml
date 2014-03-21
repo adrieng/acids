@@ -84,6 +84,10 @@ let rec print_lvalue fmt lv =
     Format.fprintf fmt "%a[%a]"
       print_lvalue lv
       print_exp e
+  | L_field (lv, id) ->
+    Format.fprintf fmt "%a.%a"
+      print_lvalue lv
+      Ident.print id
 
 and print_exp fmt e =
   match e.e_desc with
@@ -92,13 +96,18 @@ and print_exp fmt e =
   | E_const c ->
     print_const fmt c
 
+let print_inst fmt inst =
+  match inst with
+  | I_static ->
+    Format.fprintf fmt "static"
+  | I_self ->
+    Format.fprintf fmt "self"
+  | I_var lv ->
+    print_lvalue fmt lv
+
 let print_call fmt call =
-  let print_inst fmt inst =
-    Format.fprintf fmt "%a :@ "
-      print_lvalue inst
-  in
-  Format.fprintf fmt "@[(@[%a%a@])@,.%a(@[%a@])(@[%a@])@]"
-    (Utils.print_opt print_inst) call.c_inst
+  Format.fprintf fmt "@[(@[%a : %a@])@,.%a(@[%a@])(@[%a@])@]"
+    print_inst call.c_inst
     print_machine_ty call.c_mach
     Names.print_shortname call.c_method
     (Utils.print_list_r print_exp ",") call.c_inputs
@@ -152,8 +161,8 @@ let print_methd fmt m =
   Format.fprintf fmt
     "@[<v 2>method %a@ inputs:(@[%a@])@ outputs:(@[%a@])@ %a@]"
     Names.print_shortname m.m_name
-    (Utils.print_list_r print_var_dec " *") m.m_inputs
-    (Utils.print_list_r print_var_dec " *") m.m_outputs
+    (Utils.print_list_r print_var_dec ";") m.m_inputs
+    (Utils.print_list_r print_var_dec ";") m.m_outputs
     print_block m.m_body
 
 let print_machine fmt m =

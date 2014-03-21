@@ -60,6 +60,7 @@ type lvalue =
 and lvalue_desc =
 | L_var of var_kind * Ident.t
 | L_arrindex of lvalue * exp
+| L_field of lvalue * Ident.t
 
 and exp =
   {
@@ -71,9 +72,14 @@ and exp_desc =
 | E_lval of lvalue
 | E_const of const
 
+type inst =
+| I_static
+| I_self
+| I_var of lvalue
+
 type call =
   {
-    c_inst : lvalue option;
+    c_inst : inst;
     c_mach : machine_ty;
     c_method : Names.shortname;
     c_inputs : exp list;

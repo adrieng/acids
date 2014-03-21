@@ -51,6 +51,7 @@ let create_name = "create"
 let destroy_name = "destroy"
 let reset_name = "reset"
 let step_name = "step"
+let uniform_step_name = "ustep"
 let box_name = "box"
 let unbox_name = "unbox"
 let push_name = "push"
@@ -90,6 +91,8 @@ let method_name ln methd = longname ln ^ "_" ^ methd
 let builtin_op_name opn = method_name (runtime builtin_name) opn
 
 let mem_name sn = sn ^ "_mem"
+let input_name sn = sn ^ "_input"
+let output_name sn = sn ^ "_output"
 
 let alloc = runtime_name ^ "_alloc"
 let free = runtime_name ^ "_free"

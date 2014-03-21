@@ -20,10 +20,7 @@ open Nir_sliced
 open Backend_utils
 
 (*
-  TODO: document runtime system
-
-  pword : prefix_size * total_size * data * lengthes
-
+  TODO: document runtime system and reflection
 *)
 
 module U = Obc_utils
@@ -108,6 +105,8 @@ let longname_of_node_name (ln, id) =
     ln
   | _ ->
     Nir_sliced.Info.longname_of_sliced_name (ln, id)
+
+let shortname_of_node_name nn = (longname_of_node_name nn).Names.shortn
 
 (* Environment used to translate a given node *)
 type env =
@@ -273,7 +272,7 @@ let exp_var env id = U.make_exp_lvalue (var env id)
 let builtin_op_stm op inputs outputs =
   Obc.S_call
     {
-      Obc.c_inst = None;
+      Obc.c_inst = Obc.I_static;
       Obc.c_mach = builtin_machine_ty;
       Obc.c_method = Backend_utils.op_name op;
       Obc.c_inputs = inputs;
@@ -284,7 +283,7 @@ let method_call env inst ?(inputs = []) ?(outputs = []) op  =
   let mty = machine_type_of env inst in
   Obc.S_call
     {
-      Obc.c_inst = Some (var env inst);
+      Obc.c_inst = Obc.I_var (var env inst);
       Obc.c_mach = mty;
       Obc.c_method = op;
       Obc.c_inputs = inputs;
@@ -300,7 +299,7 @@ let destroy_stm env inst mty =
 let reset_stm env inst mty =
   Obc.S_call
     {
-      Obc.c_inst = Some (var env inst);
+      Obc.c_inst = Obc.I_var (var env inst);
       Obc.c_mach = mty;
       Obc.c_method = reset_name;
       Obc.c_inputs = [];
@@ -487,7 +486,80 @@ and block env block =
     ;
   }
 
-let node nd =
+(*
+  Generate reflection stuff.
+*)
+let reflection env ty_defs nd =
+  let open Obc in
+
+  let ty_defs =
+    let mk_struct mk fields =
+      Td_struct
+        (
+          mk (longname (longname_of_node_name nd.n_name)),
+          List.map (find_var env) fields
+        )
+    in
+    mk_struct Backend_utils.input_name nd.n_input
+    :: mk_struct Backend_utils.output_name nd.n_output
+    :: ty_defs
+  in
+
+  let mk_vd s kind mk =
+    let id = Ident.make_internal s in
+    let ln = Names.make_local (mk (shortname_of_node_name nd.n_name)) in
+    let ty = Ty_struct ln in
+    {
+      l_desc = L_var (kind, id);
+      l_type = ty;
+    },
+    {
+      v_name = id;
+      v_type = ty;
+      v_loc = Loc.dummy;
+    }
+  in
+
+  let inp, inp_vd = mk_vd "inp" K_output Backend_utils.input_name in
+  let out, out_vd = mk_vd "out" K_output Backend_utils.output_name in
+
+  let call =
+    let mk lv v =
+      {
+        l_desc = L_field (lv, v);
+        l_type = find_var_ty env v;
+      }
+    in
+    let mk_e lv v = Obc_utils.make_exp_lvalue (mk lv v) in
+    {
+      c_inst = I_self;
+      c_mach =
+        {
+          mt_name = longname_of_node_name nd.n_name;
+          mt_cparams = [];
+        };
+      c_method = step_name;
+      c_inputs = List.map (mk_e inp) nd.n_input;
+      c_outputs = List.map (mk out) nd.n_output;
+    }
+  in
+
+  let body =
+    {
+      b_locals = [];
+      b_body = [Obc.S_call call];
+    }
+  in
+
+  ty_defs,
+  {
+    m_name = uniform_step_name;
+    m_inputs = [];
+    m_outputs = [inp_vd; out_vd];
+    m_body = body;
+  }
+
+let node ty_defs nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
   let env = initial_env nd in
 
@@ -499,6 +571,8 @@ let node nd =
       Obc.m_body = block env nd.n_body;
     }
   in
+
+  let ty_defs, ustep = reflection env ty_defs nd in
 
   let fields = get_fields env in
 
@@ -515,11 +589,12 @@ let node nd =
     }
   in
 
+  ty_defs,
   {
     Obc.ma_name = longname_of_node_name nd.n_name;
     Obc.ma_ctx = nd.n_orig_info#ni_ctx;
     Obc.ma_fields = fields;
-    Obc.ma_methods = [reset; step];
+    Obc.ma_methods = [reset; step; ustep];
     Obc.ma_constructor = create_if_machines env fields;
     Obc.ma_destructor = destroy_if_machines env fields;
   }
@@ -530,11 +605,13 @@ let translate_type_def td =
   Obc.Td_user td
 
 let file ctx (f : Interface.env Nir_sliced.file) =
+  let ty_defs = List.rev_map translate_type_def f.f_type_defs in
+  let ty_defs, machines = Utils.mapfold_left node ty_defs f.f_body in
   ctx,
   {
     Obc.f_name = f.f_name;
-    Obc.f_type_defs = List.map translate_type_def f.f_type_defs;
-    Obc.f_machines = List.map node f.f_body;
+    Obc.f_type_defs = ty_defs;
+    Obc.f_machines = machines;
   }
 
 let pass = Backend_utils.make_transform "obc_of_nir" file

@@ -92,20 +92,25 @@ let translate_var_dec vd =
   }
 
 let rec translate_lvalue mem lv =
-  let ld =
+  let ld, ty =
     match lv.l_desc with
     | L_var ((K_local | K_input), id) ->
-      C.Var id
+      C.Var id, translate_ty lv.l_type
     | L_var (K_output, id) ->
-      C.Var id
+      C.Var id, C.Pointer (translate_ty lv.l_type)
     | L_var (K_field, id) ->
-      C.Field (lvalue_deref mem, id)
+      C.Field (lvalue_deref mem, id), translate_ty lv.l_type
     | L_arrindex (lv, e) ->
-      C.Index (translate_lvalue mem lv, translate_exp mem e)
+      C.Index (translate_lvalue mem lv, translate_exp mem e),
+      translate_ty lv.l_type
+    | L_field (lv, id) ->
+      let slv = translate_lvalue mem lv in
+      let slv = if mutable_ty slv.C.l_type then lvalue_deref slv else slv in
+      C.Field (slv, id), translate_ty lv.l_type
   in
   {
     C.l_desc = ld;
-    C.l_type = translate_ty lv.l_type;
+    C.l_type = ty;
   }
 
 and translate_exp mem e =
@@ -137,8 +142,9 @@ let translate_call mem call =
   in
   let args =
     match call.c_inst with
-    | None -> args
-    | Some lv -> translate_lvalue_exp mem lv :: args
+    | I_static -> args
+    | I_self -> exp_lvalue mem :: args
+    | I_var lv -> translate_lvalue_exp mem lv :: args
   in
   C.Exp (exp_void (C.Call (fun_n, args)))
 

@@ -30,7 +30,7 @@ static inline void *Rt_alloc(size_t size) {
     return ret;
 }
 
-static inline void *Rt_free(void *p) {
+static inline void Rt_free(void *p) {
     free(p);
 }
 
@@ -153,5 +153,6 @@ static inline void Rt_builtin_add(int x, int y, int *r) {
 }
 
 #define Rt_builtin_max(a, b) ((a) < (b) ? (a) : (b))
+#define Rt_builtin_eq(a, b, res) (*(res) = (a) == (b))
 
 #endif // NIR_H

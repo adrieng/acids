@@ -76,11 +76,10 @@ let print_var_kind fmt kind =
 
 let rec print_lvalue fmt lv =
   match lv.l_desc with
-  | L_var (ty, kind, x) ->
-    Format.fprintf fmt "(%a%a : %a)"
+  | L_var (kind, x) ->
+    Format.fprintf fmt "(%a%a)"
       print_var_kind kind
       Ident.print x
-      print_ty ty
   | L_arrindex (lv, e) ->
     Format.fprintf fmt "%a[%a]"
       print_lvalue lv

@@ -58,7 +58,7 @@ type lvalue =
   }
 
 and lvalue_desc =
-| L_var of ty * var_kind * Ident.t
+| L_var of var_kind * Ident.t
 | L_arrindex of lvalue * exp
 
 and exp =

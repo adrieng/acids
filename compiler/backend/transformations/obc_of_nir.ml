@@ -261,7 +261,7 @@ let var env id =
     else Obc.K_local
   in
   {
-    Obc.l_desc = Obc.L_var (find_var_ty env id, kind, id);
+    Obc.l_desc = Obc.L_var (kind, id);
     Obc.l_type = find_var_ty env id;
   }
 

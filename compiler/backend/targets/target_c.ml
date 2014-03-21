@@ -88,11 +88,11 @@ let translate_var_dec vd =
 
 let rec translate_lvalue ((mem_ty, mem_name) as mem) lv =
   match lv.l_desc with
-  | L_var (ty, (K_local | K_input), id) ->
-    C.Var (translate_ty ty, id)
-  | L_var (ty, K_output, id) ->
-    C.Var (translate_ty ty, id)
-  | L_var (_, K_field, id) ->
+  | L_var ((K_local | K_input), id) ->
+    C.Var (translate_ty lv.l_type, id)
+  | L_var (K_output, id) ->
+    C.Var (translate_ty lv.l_type, id)
+  | L_var (K_field, id) ->
     C.Field (C.Deref (C.Var (mem_ty, mem_name)), id)
   | L_arrindex (lv, e) ->
     C.Index (translate_lvalue mem lv, translate_exp mem e)
@@ -106,13 +106,13 @@ and translate_exp mem e =
 
 let translate_lvalue_output ((mem_ty, mem_name) as mem) lv =
   match lv.l_desc with
-  | L_var (ty, (K_local | K_input), id) ->
-    let ty = translate_ty ty in
+  | L_var ((K_local | K_input), id) ->
+    let ty = translate_ty lv.l_type in
     let lv = C.Var (ty, id) in
     if mutable_ty ty then C.Lvalue lv else C.AddrOf lv
-  | L_var (ty, K_output, id) ->
-    C.(Lvalue (Var (translate_ty ty, id)))
-  | L_var (_, K_field, id) ->
+  | L_var (K_output, id) ->
+    C.(Lvalue (Var (translate_ty lv.l_type, id)))
+  | L_var (K_field, id) ->
     C.(Lvalue (Field (Deref (Var (mem_ty, mem_name)), id)))
   | L_arrindex (lv, e) ->
     C.(AddrOf (Index (translate_lvalue mem lv, translate_exp mem e)))

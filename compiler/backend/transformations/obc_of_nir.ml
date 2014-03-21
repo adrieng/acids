@@ -198,7 +198,7 @@ let find_var_ty env id = (find_var env id).Obc.v_type
 
 let rec ty_decompose ty =
   match ty with
-  | Obc.Ty_scal _ | Obc.Ty_mach _-> ty, Int.one
+  | Obc.Ty_scal _ | Obc.Ty_mach _ | Obc.Ty_struct _-> ty, Int.one
   | Obc.Ty_arr (ty, size) ->
     let ty, size' = ty_decompose ty in
     ty, Int.(size * size')
@@ -517,11 +517,14 @@ let node nd =
 
 (* {2 Putting it all together} *)
 
+let translate_type_def td =
+  Obc.Td_user td
+
 let file ctx (f : Interface.env Nir_sliced.file) =
   ctx,
   {
     Obc.f_name = f.f_name;
-    Obc.f_type_defs = f.f_type_defs;
+    Obc.f_type_defs = List.map translate_type_def f.f_type_defs;
     Obc.f_machines = List.map node f.f_body;
   }
 

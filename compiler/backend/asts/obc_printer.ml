@@ -39,6 +39,9 @@ let rec print_ty fmt ty =
     Format.fprintf fmt "%a^%a"
       print_ty ty
       Int.print size
+  | Ty_struct ln ->
+    Format.fprintf fmt "struct<%a>"
+      Names.print_longname ln
 
 and print_machine_ty fmt mty =
   Format.fprintf fmt "%a%a"
@@ -163,11 +166,20 @@ let print_machine fmt m =
     (Utils.print_list_r print_stm ";") m.ma_destructor
     (Utils.print_list_eol print_methd) m.ma_methods
 
-let print_type_def fmt td =
+let print_user_type_def fmt td =
   let open Ast_misc in
   Format.fprintf fmt "@[<v 2>type %a =@ %a@]"
     Names.print_shortname td.ty_name
     (Utils.print_list_r Names.print_shortname "|") td.ty_body
+
+let print_type_def fmt td =
+  match td with
+  | Td_user td ->
+    print_user_type_def fmt td
+  | Td_struct (name, fields) ->
+    Format.fprintf fmt "@[<v>@[<v 2>type %a =@ { %a@]@ }@]"
+      Names.print_shortname name
+      (Utils.print_list_r print_var_dec ",") fields
 
 let print_file fmt file =
   Format.fprintf fmt "@[(* File %a *)@\n%a@\n%a@\n@]"

@@ -68,6 +68,7 @@ let rec translate_ty ty =
   | Ty_scal tys -> C.Scal tys
   | Ty_arr (ty, size) -> C.Array (translate_ty ty, size)
   | Ty_mach mty -> C.(Pointer (Struct (mem_struct_name mty.mt_name)))
+  | Ty_struct ln -> C.Struct (Backend_utils.longname ln)
 
 let rec translate_const cst =
   match cst with
@@ -282,11 +283,19 @@ let translate_machine (source, header) mach =
 let translate_type_def td =
   C.Def
     (
-      C.Df_enum
-        {
-          C.e_name = td.Ast_misc.ty_name;
-          C.e_tags = td.Ast_misc.ty_body;
-        }
+      match td with
+      | Td_user td ->
+        C.Df_enum
+          {
+            C.e_name = td.Ast_misc.ty_name;
+            C.e_tags = td.Ast_misc.ty_body;
+          }
+      | Td_struct (name, fields) ->
+        C.Df_struct
+          {
+            C.s_name = name;
+            C.s_fields = List.map translate_var_dec fields;
+          }
     )
 
 let translate file =
@@ -294,12 +303,12 @@ let translate file =
     List.fold_left translate_machine ([], []) file.f_machines
   in
   let header =
-    let enums = List.map translate_type_def file.f_type_defs in
+    let ty_defs = List.map translate_type_def file.f_type_defs in
     {
       C.f_name = file.f_name;
       C.f_kind = C.Header;
       C.f_includes = ["nir"];
-      C.f_body = enums @ List.rev header;
+      C.f_body = ty_defs @ List.rev header;
     }
   in
   let source =

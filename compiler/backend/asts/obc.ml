@@ -19,6 +19,7 @@ type ty =
 | Ty_mach of machine_ty
 | Ty_scal of Data_types.data_ty_scal
 | Ty_arr of ty * Int.t
+| Ty_struct of Names.longname
 
 and machine_ty =
   {
@@ -95,9 +96,13 @@ type machine =
     ma_methods : methd list;
   }
 
+type type_def =
+  | Td_user of Ast_misc.type_def
+  | Td_struct of Names.shortname * var_dec list
+
 type file =
   {
     f_name : Names.shortname;
-    f_type_defs : Ast_misc.type_def list;
+    f_type_defs : type_def list;
     f_machines : machine list;
   }

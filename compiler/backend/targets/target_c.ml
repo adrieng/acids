@@ -16,6 +16,7 @@
  *)
 
 open Obc
+open C_utils
 
 (*
   Things to document:
@@ -29,9 +30,6 @@ open Obc
 
 (******************************************************************************)
 (* {2 Helpers} *)
-
-let lit_int i = C.Const Ast_misc.(Cconstr (Ec_int i))
-let lit_int_e i = C.ConstExp (lit_int i)
 
 let mem_struct_name ln =
   Backend_utils.mem_name (Backend_utils.longname ln)
@@ -57,6 +55,7 @@ let mutable_ty ty =
   match ty with
   | Scal _ | Struct _ -> false
   | Pointer _ | Array _ -> true
+  | Void -> invalid_arg "mutable_ty: C.Void"
   | Name _ -> invalid_arg "mutable_ty: C.Name"
 
 (******************************************************************************)
@@ -70,14 +69,20 @@ let rec translate_ty ty =
   | Ty_mach mty -> C.(Pointer (Struct (mem_struct_name mty.mt_name)))
   | Ty_struct ln -> C.Struct (Backend_utils.longname ln)
 
-let rec translate_const cst =
-  match cst.c_desc with
-  | C_scal c ->
-    C.Const c
-  | C_array a ->
-    C.Array_lit (List.map translate_const a)
-  | C_sizeof ty ->
-    C.Sizeof (translate_ty ty)
+let rec translate_const c =
+  let cd =
+    match c.c_desc with
+    | C_scal c ->
+      C.Const c
+    | C_array a ->
+      C.Array_lit (List.map translate_const a)
+    | C_sizeof ty ->
+      C.Sizeof (translate_ty ty)
+  in
+  {
+    C.c_desc = cd;
+    C.c_type = translate_ty c.c_type;
+  }
 
 let translate_var_dec vd =
   {
@@ -86,68 +91,68 @@ let translate_var_dec vd =
     C.v_init = None;
   }
 
-let rec translate_lvalue ((mem_ty, mem_name) as mem) lv =
-  match lv.l_desc with
-  | L_var ((K_local | K_input), id) ->
-    C.Var (translate_ty lv.l_type, id)
-  | L_var (K_output, id) ->
-    C.Var (translate_ty lv.l_type, id)
-  | L_var (K_field, id) ->
-    C.Field (C.Deref (C.Var (mem_ty, mem_name)), id)
-  | L_arrindex (lv, e) ->
-    C.Index (translate_lvalue mem lv, translate_exp mem e)
+let rec translate_lvalue mem lv =
+  let ld =
+    match lv.l_desc with
+    | L_var ((K_local | K_input), id) ->
+      C.Var id
+    | L_var (K_output, id) ->
+      C.Var id
+    | L_var (K_field, id) ->
+      C.Field (lvalue_deref mem, id)
+    | L_arrindex (lv, e) ->
+      C.Index (translate_lvalue mem lv, translate_exp mem e)
+  in
+  {
+    C.l_desc = ld;
+    C.l_type = translate_ty lv.l_type;
+  }
 
 and translate_exp mem e =
   match e.e_desc with
-  | E_lval lv ->
-    C.Lvalue (translate_lvalue mem lv)
-  | E_const c ->
-    C.ConstExp (translate_const c)
+  | E_lval lv -> exp_lvalue (translate_lvalue mem lv)
+  | E_const c -> exp_const (translate_const c)
 
-let translate_lvalue_output ((mem_ty, mem_name) as mem) lv =
-  match lv.l_desc with
-  | L_var ((K_local | K_input), id) ->
-    let ty = translate_ty lv.l_type in
-    let lv = C.Var (ty, id) in
-    if mutable_ty ty then C.Lvalue lv else C.AddrOf lv
-  | L_var (K_output, id) ->
-    C.(Lvalue (Var (translate_ty lv.l_type, id)))
-  | L_var (K_field, id) ->
-    C.(Lvalue (Field (Deref (Var (mem_ty, mem_name)), id)))
-  | L_arrindex (lv, e) ->
-    C.(AddrOf (Index (translate_lvalue mem lv, translate_exp mem e)))
+let translate_lvalue_exp mem lv =
+  exp_lvalue (translate_lvalue mem lv)
+
+let translate_lvalue_ref mem lv =
+  let lv = translate_lvalue mem lv in
+  if mutable_ty lv.C.l_type then exp_lvalue lv else exp_addrof lv
 
 let translate_call mem call =
-  let translate_lvalue = translate_lvalue mem in
   let translate_exp = translate_exp mem in
 
   let fun_n = Backend_utils.method_name call.c_mach.mt_name call.c_method in
 
   let inputs = List.map translate_exp call.c_inputs in
-  let outputs = List.map (translate_lvalue_output mem) call.c_outputs in
+  let outputs = List.map (translate_lvalue_ref mem) call.c_outputs in
 
   let args = inputs @ outputs in
   let args =
-    List.map (fun c -> C.ConstExp (translate_const c)) call.c_mach.mt_cparams
+    List.map
+      (fun c -> exp_const (translate_const c))
+      call.c_mach.mt_cparams
     @ args
   in
   let args =
     match call.c_inst with
     | None -> args
-    | Some lv -> C.Lvalue (translate_lvalue lv) :: args
+    | Some lv -> translate_lvalue_exp mem lv :: args
   in
-  C.Exp (C.Call (fun_n, args))
+  C.Exp (exp_void (C.Call (fun_n, args)))
 
 let rec translate_stm mem stm =
   let translate_lvalue = translate_lvalue mem in
+  let translate_lvalue_exp = translate_lvalue_exp mem in
   let translate_exp = translate_exp mem in
   let translate_stm = translate_stm mem in
 
   match stm with
   | S_create (mty, lv) ->
-    C.Affect (translate_lvalue lv, C.Call (create_name mty.mt_name, []))
+    C.Affect (translate_lvalue lv, exp_call_void (create_name mty.mt_name) [])
   | S_destroy (mty, lv) ->
-    C.(Exp (Call (destroy_name mty.mt_name, [C.Lvalue (translate_lvalue lv)])))
+    C.Exp (exp_call_void (destroy_name mty.mt_name) [translate_lvalue_exp lv])
   | S_affect (lv, e) ->
     C.Affect (translate_lvalue lv, translate_exp e)
   | S_call call ->
@@ -156,16 +161,17 @@ let rec translate_stm mem stm =
     let open C in
 
     let stop =
-      Op (op_lt, [Lvalue (Var (C_utils.int_ty, v));
-                  Call(max_name, [translate_exp stop; lit_int_e bound])])
+      exp_op_int op_lt
+        [exp_var_int v;
+         exp_int (C.Call (max_name, [translate_exp stop; exp_const_int bound]))]
     in
 
     For
       (
         v,
-        lit_int_e Int.zero,
+        exp_const_int Int.zero,
         stop,
-        lit_int_e Int.one,
+        exp_const_int Int.one,
         translate_stm body
       )
   | S_switch (e, cases) ->
@@ -211,11 +217,18 @@ let translate_methd mach_name methd =
       methd.m_outputs
   in
 
+  let mem_lv =
+    {
+      C.l_desc = C.Var mem;
+      C.l_type = mem_ty;
+    }
+  in
+
   {
     C.f_name = Backend_utils.method_name mach_name methd.m_name;
-    C.f_output = None;
+    C.f_output = C.Void;
     C.f_input = mem_input :: inputs;
-    C.f_body = translate_block (mem_ty, mem) methd.m_body;
+    C.f_body = translate_block mem_lv methd.m_body;
   }
 
 let translate_machine (source, header) mach =
@@ -235,36 +248,42 @@ let translate_machine (source, header) mach =
   let mem = Ident.make_internal "mem" in
   let mty = C.Struct (mem_struct_name mach.ma_name) in
   let mpty = C.Pointer mty in
+  let mem_lv =
+    {
+      C.l_desc = C.Var mem;
+      C.l_type = mpty;
+    }
+  in
 
   let constructor =
     let open C in
-    let init = Call (Backend_utils.alloc, [ConstExp (Sizeof mty)]) in
+    let init = exp_int (Call (Backend_utils.alloc, [exp_sizeof mty])) in
     {
       f_name = create_name mach.ma_name;
-      f_output = Some mpty;
+      f_output = mpty;
       f_input = [];
       f_body =
         {
           b_locals = [{ v_name = mem; v_type = mpty; v_init = Some init; }];
           b_body =
-            List.map (translate_stm (mty, mem)) mach.ma_constructor
-            @ [Return (Lvalue (Var (mpty, mem)))];
+            List.map (translate_stm mem_lv) mach.ma_constructor
+            @ [Return (exp_lvalue mem_lv)];
         }
     }
   in
 
   let destructor =
     let open C in
-    let free = Exp (Call (Backend_utils.free, [Lvalue (Var (mpty, mem))])) in
+    let free = C.Exp (exp_call_void Backend_utils.free [exp_lvalue mem_lv]) in
     {
       f_name = destroy_name mach.ma_name;
-      f_output = None;
+      f_output = C.Void;
       f_input = [{ v_name = mem; v_type = mpty; v_init = None; }];
       f_body =
         {
           b_locals = [];
           b_body =
-            List.map (translate_stm (mty, mem)) mach.ma_destructor @ [free];
+            List.map (translate_stm mem_lv) mach.ma_destructor @ [free];
         }
     }
   in

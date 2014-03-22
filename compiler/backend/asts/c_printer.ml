@@ -29,6 +29,8 @@ let print_longname fmt ln =
 
 let rec print_ty_kont k fmt ty =
   match ty with
+  | Void ->
+    Format.fprintf fmt "void"
   | Scal Data_types.Tys_int ->
     Format.fprintf fmt "int%a" k ()
   | Scal Data_types.Tys_float ->
@@ -57,26 +59,26 @@ let rec print_ty_kont k fmt ty =
 
 let print_ty fmt ty = print_ty_kont (fun _ () -> ()) fmt ty
 
-let rec print_const_exp fmt ce =
-  match ce with
+let rec print_const fmt c =
+  match c.c_desc with
   | Const c ->
     Ast_misc.print_const fmt c
   | Array_lit a ->
     Format.fprintf fmt "((const int[]){@[%a@]})"
-      (Utils.print_list_r print_const_exp ",") a
+      (Utils.print_list_r print_const ",") a
   | Sizeof ty ->
     Format.fprintf fmt "sizeof(%a)"
       print_ty ty
 
 let rec print_lvalue fmt lv =
-  match lv with
-  | Var (_, id) ->
+  match lv.l_desc with
+  | Var id ->
     print_ident fmt id
   | Index (lv, e) ->
     Format.fprintf fmt "%a[%a]"
       print_lvalue lv
       print_exp e
-  | Field (Deref lv, f) ->
+  | Field ({ l_desc = Deref lv; }, f) ->
     Format.fprintf fmt "%a->%a"
       print_lvalue lv
       print_ident f
@@ -89,9 +91,9 @@ let rec print_lvalue fmt lv =
       print_lvalue lv
 
 and print_exp fmt e =
-  match e with
-  | ConstExp ce ->
-    print_const_exp fmt ce
+  match e.e_desc with
+  | ConstExp c ->
+    print_const fmt c
   | Lvalue lv ->
     print_lvalue fmt lv
   | Op (s, [e1; e2]) ->
@@ -171,14 +173,9 @@ and print_block fmt block =
     (Utils.print_list_sep print_var_dec ";") block.b_locals
     (Utils.print_list_r print_stm "") block.b_body
 
-let print_ty_option fmt tyo =
-  match tyo with
-  | None -> Format.fprintf fmt "void"
-  | Some ty -> print_ty fmt ty
-
 let print_fdef fmt fd =
   Format.fprintf fmt "@[%a %a(@[%a@])@ %a@]"
-    print_ty_option fd.f_output
+    print_ty fd.f_output
     print_name fd.f_name
     (Utils.print_list_r print_var_dec ",") fd.f_input
     print_block fd.f_body
@@ -207,7 +204,7 @@ let print_def fmt def =
 
 let print_fdecl fmt fd =
   Format.fprintf fmt "%a %a(@[%a@]);"
-    print_ty_option fd.d_output
+    print_ty fd.d_output
     print_name fd.d_name
     (Utils.print_list_r print_ty ",") fd.d_input
 

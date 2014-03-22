@@ -16,25 +16,44 @@
  *)
 
 type ty =
+| Void
 | Scal of Data_types.data_ty_scal
 | Pointer of ty
 | Array of ty * Int.t
 | Struct of string
 | Name of string
 
-type const_exp =
+type const =
+  {
+    c_desc : const_desc;
+    c_type : ty;
+  }
+
+and const_desc =
 | Const of Ast_misc.const
-| Array_lit of const_exp list
+| Array_lit of const list
 | Sizeof of ty
 
 type lvalue =
-| Var of ty * Ident.t
+  {
+    l_desc : lvalue_desc;
+    l_type : ty;
+  }
+
+and lvalue_desc =
+| Var of Ident.t
 | Index of lvalue * exp
 | Field of lvalue * Ident.t
 | Deref of lvalue
 
 and exp =
-| ConstExp of const_exp
+  {
+    e_desc : exp_desc;
+    e_type : ty;
+  }
+
+and exp_desc =
+| ConstExp of const
 | Lvalue of lvalue
 | Op of string * exp list
 | Call of string * exp list
@@ -66,7 +85,7 @@ and block =
 type fdef =
   {
     f_name : Names.shortname;
-    f_output : ty option;
+    f_output : ty;
     f_input : var_dec list;
     f_body : block;
   }
@@ -92,7 +111,7 @@ type def =
 type fdecl =
   {
     d_name : Names.shortname;
-    d_output : ty option;
+    d_output : ty;
     d_input : ty list;
   }
 

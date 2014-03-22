@@ -35,5 +35,72 @@ let fun_decl_of_fun_def (f : fdef) =
     d_input = List.map (fun v -> v.v_type) f.f_input;
   }
 
-let int_ty = Scal Data_types.Tys_int
-let int i = ConstExp (Const Ast_misc.(Cconstr (Ec_int i)))
+let ty_int = Scal Data_types.Tys_int
+
+let const_int i =
+  {
+    c_desc = Const Ast_misc.(Cconstr (Ec_int i));
+    c_type = ty_int;
+  }
+
+let const_sizeof ty =
+  {
+    c_desc = Sizeof ty;
+    c_type = ty_int;
+  }
+
+let lvalue_var_int v =
+  {
+    l_desc = Var v;
+    l_type = ty_int;
+  }
+
+let lvalue_deref lv =
+  match lv.l_type with
+  | Pointer ty ->
+    {
+      l_desc = Deref lv;
+      l_type = ty;
+    }
+  | _ ->
+    invalid_arg "lvalue_deref: expected pointer type"
+
+let exp_const c =
+  {
+    e_desc = ConstExp c;
+    e_type = c.c_type;
+  }
+
+let exp_lvalue lv =
+  {
+    e_desc = Lvalue lv;
+    e_type = lv.l_type;
+  }
+
+let exp_addrof lv =
+  {
+    e_desc = AddrOf lv;
+    e_type = Pointer lv.l_type;
+  }
+
+let exp_void ed =
+  {
+    e_desc = ed;
+    e_type = Void;
+  }
+
+let exp_int ed =
+  {
+    e_desc = ed;
+    e_type = ty_int;
+  }
+
+let exp_const_int i = exp_const (const_int i)
+
+let exp_var_int v = exp_lvalue (lvalue_var_int v)
+
+let exp_call_void call args = exp_void (Call (call, args))
+
+let exp_op_int opn args = exp_int (Op (opn, args))
+
+let exp_sizeof ty = exp_const (const_sizeof ty)

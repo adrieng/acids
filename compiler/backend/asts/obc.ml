@@ -105,6 +105,7 @@ and block =
 type methd =
   {
     m_name : Names.shortname;
+    m_static : bool;
     m_inputs : var_dec list;
     m_outputs : var_dec list;
     m_body : block;

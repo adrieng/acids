@@ -233,7 +233,7 @@ let translate_methd mach_name methd =
   {
     C.f_name = Backend_utils.method_name mach_name methd.m_name;
     C.f_output = C.Void;
-    C.f_input = mem_input :: inputs;
+    C.f_input = if methd.m_static then inputs else mem_input :: inputs;
     C.f_body = translate_block mem_lv methd.m_body;
   }
 

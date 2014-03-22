@@ -554,6 +554,7 @@ let reflection env ty_defs nd =
   ty_defs,
   {
     m_name = uniform_step_name;
+    m_static = false;
     m_inputs = [];
     m_outputs = [inp_vd; out_vd];
     m_body = body;
@@ -566,6 +567,7 @@ let node ty_defs nd =
   let step =
     {
       Obc.m_name = step_name;
+      Obc.m_static = false;
       Obc.m_inputs = List.map (find_var env) nd.n_input;
       Obc.m_outputs = List.map (find_var env) nd.n_output;
       Obc.m_body = block env nd.n_body;
@@ -579,6 +581,7 @@ let node ty_defs nd =
   let reset =
     {
       Obc.m_name = reset_name;
+      Obc.m_static = false;
       Obc.m_inputs = [];
       Obc.m_outputs = [];
       Obc.m_body =

@@ -24,6 +24,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
+/******************************************************************************/
+/* Memory management functions                                                */
+/******************************************************************************/
+
 static inline void *Rt_alloc(size_t size) {
     void *ret = malloc(size);
     assert(ret != NULL && "NIR RUNTIME: malloc() failed");
@@ -34,9 +38,20 @@ static inline void Rt_free(void *p) {
     free(p);
 }
 
+static inline void Rt_builtin_copy(size_t elem_size,
+                                   size_t elem_count,
+                                   const void *src,
+                                   void *dest) {
+    memcpy(dest, src, elem_size * elem_count);
+}
+
+/******************************************************************************/
+/* Language primitives: buffers and ultimately periodic words                 */
+/******************************************************************************/
+
 struct Rt_buffer_mem {
-    size_t front;               /* consumer position  */
-    size_t back;                /* producer position */
+    size_t front;               /* producer position  */
+    size_t back;                /* consumer position */
     char *data;                 /* internal data */
 };
 
@@ -56,7 +71,8 @@ static inline void Rt_buffer_reset(struct Rt_buffer_mem *mem,
                                    size_t capacity) {
     mem->front = 0;
     mem->back = 0;
-    mem->data = malloc(elem_size * capacity);
+    if (mem->data == NULL)
+        mem->data = malloc(elem_size * capacity);
 }
 
 static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
@@ -64,12 +80,23 @@ static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
                                   size_t capacity,
                                   size_t amount,
                                   void *data) {
-    memcpy(mem->data + mem->back * elem_size,
-           data,
-           elem_size * amount);
-    mem->back += amount;
-    if (mem->back >= capacity)
-        mem->back = 0;
+    assert(amount <= capacity);
+
+    if (mem->front + amount < capacity) {
+        memcpy(mem->data + mem->front * elem_size,
+               data,
+               elem_size * amount);
+    } else {
+        size_t initial_amount = capacity - mem->front;
+        memcpy(mem->data + mem->front * elem_size,
+               data,
+               elem_size * initial_amount);
+        memcpy(mem->data,
+               data,
+               amount - initial_amount);
+    }
+
+    mem->front = (mem->front + amount) % capacity;
 }
 
 static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
@@ -77,12 +104,23 @@ static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
                                  size_t capacity,
                                  size_t amount,
                                  void *data) {
-    memcpy(data,
-           mem->data + mem->front * elem_size,
-           elem_size * amount);
-    mem->front += amount;
-    if (mem->front >= capacity)
-        mem->front = 0;
+    assert(amount <= capacity);
+
+    if (mem->back + amount < capacity) {
+        memcpy(mem->data + mem->back * elem_size,
+               data,
+               elem_size * amount);
+    } else {
+        size_t initial_amount = capacity - mem->back;
+        memcpy(data,
+               mem->data + mem->back * elem_size,
+               elem_size * initial_amount);
+        memcpy(data,
+               mem->data,
+               amount - initial_amount);
+    }
+
+    mem->back = (mem->back + amount) % capacity;
 }
 
 struct Rt_pword_mem {
@@ -112,8 +150,7 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
                                  unsigned int size_word,
                                  const int *word_data,
                                  const int *word_exps,
-
-                          int *step) {
+                                 int *step) {
     *step = word_data[mem->wpos];
     mem->dpos++;
     if (mem->dpos >= word_exps[mem->wpos]) {
@@ -124,12 +161,9 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
     }
 }
 
-static inline void Rt_builtin_copy(size_t elem_size,
-                                   size_t elem_count,
-                                   const void *src,
-                                   void *dest) {
-    memcpy(dest, src, elem_size * elem_count);
-}
+/******************************************************************************/
+/* Language operators                                                         */
+/******************************************************************************/
 
 static inline void Rt_builtin_ceq(size_t n,
                                   int cst,
@@ -147,6 +181,10 @@ static inline void Rt_builtin_on(size_t n,
     for (size_t i = 0; i < n; i++)
         *res += x[i];
 }
+
+/******************************************************************************/
+/* Functions from the standard library                                        */
+/******************************************************************************/
 
 #define Rt_builtin_max(a, b) ((a) < (b) ? (a) : (b))
 
@@ -183,5 +221,26 @@ static inline void Rt_builtin_fdiv(float x, float y, float *r) {
 }
 
 #define Rt_builtin_eq(a, b, res) (*(res) = (a) == (b))
+
+/******************************************************************************/
+/* Reflection stuff                                                           */
+/******************************************************************************/
+
+enum NIR_TYPE {
+    NIR_TYPE_BOOL = 0,
+    NIR_TYPE_INT,
+    NIR_TYPE_FLOAT,
+    NIR_TYPE_ARRAY
+};
+
+struct NIR_VALUE {
+    enum NIR_TYPE nir_type;
+    union {
+        int nir_bool;
+        int nir_int;
+        float nir_float;
+        struct NIR_VALUE *nir_array;
+    } nir_val;
+};
 
 #endif // NIR_H

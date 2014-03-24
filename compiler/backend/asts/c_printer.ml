@@ -212,6 +212,8 @@ let print_decl fmt decl =
   match decl with
   | Dc_function fd ->
     print_fdecl fmt fd
+  | Dc_enum id ->
+    Format.fprintf fmt "enum %a;" print_name id
   | Dc_struct id ->
     Format.fprintf fmt "struct %a;" print_name id
 

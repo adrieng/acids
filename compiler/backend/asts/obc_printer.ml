@@ -181,7 +181,7 @@ let print_user_type_def fmt td =
     (Utils.print_list_r Names.print_shortname "|") td.ty_body
 
 let print_type_def fmt td =
-  match td with
+  match td.t_desc with
   | Td_user td ->
     print_user_type_def fmt td
   | Td_struct (name, fields) ->

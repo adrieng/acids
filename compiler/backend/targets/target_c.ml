@@ -263,7 +263,12 @@ let translate_machine (source, header) mach =
 
   let constructor =
     let open C in
-    let init = exp_int (Call (Backend_utils.alloc, [exp_sizeof mty])) in
+    let init =
+      {
+        e_desc = Call (Backend_utils.alloc, [exp_sizeof mty]);
+        e_type = mpty;
+      }
+    in
     {
       f_name = create_name mach.ma_name;
       f_output = mpty;
@@ -305,35 +310,55 @@ let translate_machine (source, header) mach =
   fun_defs @ mem_def :: source,
   fun_decls @ mem_decl :: header
 
-let translate_type_def td =
-  C.Def
-    (
-      match td with
-      | Td_user td ->
-        C.Df_enum
-          {
-            C.e_name = td.Ast_misc.ty_name;
-            C.e_tags = td.Ast_misc.ty_body;
-          }
-      | Td_struct (name, fields) ->
-        C.Df_struct
-          {
-            C.s_name = name;
-            C.s_fields = List.map translate_var_dec fields;
-          }
-    )
+let translate_type_def (source, header) td =
+  let def, mem_def =
+    match td.t_desc with
+    | Td_user td ->
+      C.Df_enum
+        {
+          C.e_name = td.Ast_misc.ty_name;
+          C.e_tags = td.Ast_misc.ty_body;
+        },
+      []
+    | Td_struct (name, fields) ->
+      C.Df_struct
+        {
+          C.s_name = name;
+          C.s_fields = List.map translate_var_dec fields;
+        },
+      [make_struct_destroy name; make_struct_alloc name]
+  in
+  let decl, mem_decl =
+    C.Decl
+      (
+        match td.t_desc with
+        | Td_user td -> C.Dc_enum td.Ast_misc.ty_name
+        | Td_struct (name, _) -> C.Dc_struct name
+      ),
+    List.map C_utils.fun_decl_of_fun_def mem_def
+  in
+  let def = C.Def def in
+  if td.t_opaque
+  then
+    let mk_def d = C.(Def (Df_function d)) in
+    let mk_decl d = C.(Decl (Dc_function d)) in
+    List.map mk_def mem_def @ [def] @ source,
+    List.map mk_decl mem_decl @ [decl] @ header
+  else source, def :: header
 
 let translate file =
   let source, header =
-    List.fold_left translate_machine ([], []) file.f_machines
+    List.fold_left translate_type_def ([], []) file.f_type_defs
+  in
+  let source, header =
+    List.fold_left translate_machine (source, header) file.f_machines
   in
   let header =
-    let ty_defs = List.map translate_type_def file.f_type_defs in
     {
       C.f_name = file.f_name;
       C.f_kind = C.Header;
       C.f_includes = ["nir"];
-      C.f_body = ty_defs @ List.rev header;
+      C.f_body = List.rev header;
     }
   in
   let source =

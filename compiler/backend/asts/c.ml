@@ -117,6 +117,7 @@ type fdecl =
 
 type decl =
 | Dc_function of fdecl
+| Dc_enum of Names.shortname
 | Dc_struct of Names.shortname
 
 type phr =

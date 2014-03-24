@@ -494,11 +494,15 @@ let reflection env ty_defs nd =
 
   let ty_defs =
     let mk_struct mk fields =
-      Td_struct
-        (
-          mk (longname (longname_of_node_name nd.n_name)),
-          List.map (find_var env) fields
-        )
+      {
+        t_desc =
+          Td_struct
+            (
+              mk (longname (longname_of_node_name nd.n_name)),
+              List.map (find_var env) fields
+            );
+        t_opaque = true;
+      }
     in
     mk_struct Backend_utils.input_name nd.n_input
     :: mk_struct Backend_utils.output_name nd.n_output
@@ -605,7 +609,10 @@ let node ty_defs nd =
 (* {2 Putting it all together} *)
 
 let translate_type_def td =
-  Obc.Td_user td
+  {
+    Obc.t_desc = Obc.Td_user td;
+    Obc.t_opaque = false;
+  }
 
 let file ctx (f : Interface.env Nir_sliced.file) =
   let ty_defs = List.rev_map translate_type_def f.f_type_defs in

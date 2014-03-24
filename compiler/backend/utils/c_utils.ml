@@ -104,3 +104,57 @@ let exp_call_void call args = exp_void (Call (call, args))
 let exp_op_int opn args = exp_int (Op (opn, args))
 
 let exp_sizeof ty = exp_const (const_sizeof ty)
+
+let make_struct_alloc name =
+  let mty = Struct name in
+  let mpty = Pointer mty in
+  let init =
+    {
+      e_desc = Call (Backend_utils.alloc, [exp_sizeof mty]);
+      e_type = mpty;
+    }
+  in
+  let ret = Ident.make_internal "ret" in
+  let ret_lv =
+    {
+      l_desc = Var ret;
+      l_type = mpty;
+    }
+  in
+  {
+    f_name = name ^ "_" ^ Backend_utils.create_name;
+    f_output = mpty;
+    f_input = [];
+    f_body =
+      {
+        b_locals = [{ v_name = ret; v_type = mpty; v_init = Some init; }];
+        b_body = [Return (exp_lvalue ret_lv)];
+      }
+  }
+
+let make_struct_destroy name =
+  let mty = Struct name in
+  let mpty = Pointer mty in
+  let s = Ident.make_internal "s" in
+  let s_lv =
+    {
+      l_desc = Var s;
+      l_type = mpty;
+    }
+  in
+  let free =
+    {
+      e_desc = Call (Backend_utils.free, [exp_lvalue s_lv]);
+      e_type = mpty;
+    }
+  in
+  {
+    f_name = name ^ "_" ^ Backend_utils.destroy_name;
+    f_output = Void;
+    f_input = [{ v_name = s; v_type = mpty; v_init = None; }];
+    f_body =
+      {
+        b_locals = [];
+        b_body = [C.Exp free];
+      }
+  }

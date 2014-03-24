@@ -122,8 +122,14 @@ type machine =
   }
 
 type type_def =
-  | Td_user of Ast_misc.type_def
-  | Td_struct of Names.shortname * var_dec list
+  {
+    t_desc : type_def_desc;
+    t_opaque : bool;
+  }
+
+and type_def_desc =
+| Td_user of Ast_misc.type_def
+| Td_struct of Names.shortname * var_dec list
 
 type file =
   {

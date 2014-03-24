@@ -201,6 +201,8 @@ let bounds_of_int_pword p =
   Tree_word.iter_upword check (fun _ -> ()) p;
   !l, !u
 
+let upword_of_pword p = Tree_word.map_upword (fun i -> Ec_int i) (fun x -> x) p
+
 type type_def = {
   ty_name : Names.shortname;
   ty_body : Names.shortname list;

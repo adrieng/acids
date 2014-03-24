@@ -629,6 +629,16 @@ let generalize_clock_sig inp out cstrs =
   in
   simplify_sig ty_sig
 
+let decompose_pword st =
+  let bst, p_l = decompose_st st in
+  let p_l = List.map Resolution_utils.pword_of_tree p_l in
+  bst, List.fold_left Pword.on Pword.unit_pword p_l
+
+let normalize_st st =
+  let bst, p = decompose_pword st in
+  let pw = Pword.to_tree_pword p in
+  St_on (bst, Ce_pword (Ast_misc.upword_of_pword pw))
+
 let rec max_burst_stream_type st =
   let open Int in
   match st with
@@ -644,10 +654,9 @@ let rec max_burst_stream_type st =
     in
     upper_bound_ce * max_burst_stream_type st
 
-let decompose_pword st =
-  let bst, p_l = decompose_st st in
-  let p_l = List.map Resolution_utils.pword_of_tree p_l in
-  bst, List.fold_left Pword.on Pword.unit_pword p_l
+let max_burst_stream_type ?(exact = true) st =
+  let st = if exact then normalize_st st else st in
+  max_burst_stream_type st
 
 let non_strict_adaptable st1 st2 =
   let bst1, p1 = decompose_pword st1 in

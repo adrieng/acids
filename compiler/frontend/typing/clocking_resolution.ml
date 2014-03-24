@@ -472,9 +472,7 @@ let solve_constraints env ctx pragma_env loc sys =
     | Some p ->
       let open VarCe in
       assert (v.v_link = None);
-      let pw =
-        Tree_word.map_upword (fun i -> Ast_misc.Ec_int i) (fun x -> x) p
-      in
+      let pw = Ast_misc.upword_of_pword p in
       v.v_link <- Some (PreCe.Pce_pword pw)
     | None ->
       let err = "no solution to " ^ Ident.to_string id in

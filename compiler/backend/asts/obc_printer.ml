@@ -59,7 +59,7 @@ and print_const fmt cst =
       print_ty ty
 
 let print_var_dec fmt v =
-  Format.fprintf fmt "%a@ : %a"
+  Format.fprintf fmt "@[%a@ : %a@]"
     Ident.print v.v_name
     print_ty v.v_type
 
@@ -153,7 +153,7 @@ let rec print_stm fmt stm =
     print_block fmt block
 
 and print_block fmt block =
-  Format.fprintf fmt "@[<v>@[<v 2>{@ %a%a@]@ }@]"
+  Format.fprintf fmt "@[<v>@[<v 2>{@ @[<hov>%a@]%a@]@ }@]"
     (Utils.print_list_sep print_var_dec ";") block.b_locals
     (Utils.print_list_r print_stm ";") block.b_body
 
@@ -167,7 +167,7 @@ let print_methd fmt m =
 
 let print_machine fmt m =
   Format.fprintf fmt
-    "@[@[<v 2>machine %a {@\n%a@\n@[<v>@[<v 2>constructor {@ %a@]@ }@]@\n@[<v>@[<v 2>destructor {@ %a@]@ }@]@\n%a@]@\n}@]"
+    "@[@[<hov 2>machine %a {@\n%a@\n@[<v>@[<hov 2>constructor {@ %a@]@ }@]@\n@[<v>@[<hov 2>destructor {@ %a@]@ }@]@\n%a@]@\n}@]"
     Names.print_longname m.ma_name
     (Utils.print_list_eol print_var_dec) m.ma_fields
     (Utils.print_list_r print_stm ";") m.ma_constructor

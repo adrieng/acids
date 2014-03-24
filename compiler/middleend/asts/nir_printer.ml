@@ -123,7 +123,7 @@ struct
     | Pword (x, p) ->
       Format.fprintf fmt "%a = %a"
         Ident.print x
-        Ast_misc.print_const_pword p
+        Ast_misc.print_econstr_pword p
 
     | Call ([], call, y_l) ->
       Format.fprintf fmt "(@[%a@ (%a)@])"

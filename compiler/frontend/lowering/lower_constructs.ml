@@ -151,7 +151,7 @@ let merge_translation find_pword e1 e2 e3 =
 type env =
   {
     intf_env : Interface.env;
-    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.econstr_pword Names.ShortEnv.t;
   }
 
 let initial_env intf_env =

@@ -78,10 +78,16 @@ let int_of_econstr ec =
   | Ec_int i -> i
   | Ec_constr (_, rank) -> rank
 
-type const_pword = (econstr, Int.t) Tree_word.t
+type econstr_pword = (econstr, Int.t) Tree_word.t
 
-let print_const_pword fmt pw =
+let print_econstr_pword fmt pw =
   Tree_word.print_upword_int print_econstr fmt pw
+
+let int_pword_of_econstr_pword pw =
+  Tree_word.map_upword int_of_econstr (fun x -> x) pw
+
+let int_econstr_pword_of_int_pword pw =
+  Tree_word.map_upword (fun i -> Ec_int i) (fun x -> x) pw
 
 type const =
   | Cconstr of econstr
@@ -200,8 +206,6 @@ let bounds_of_int_pword p =
   in
   Tree_word.iter_upword check (fun _ -> ()) p;
   !l, !u
-
-let upword_of_pword p = Tree_word.map_upword (fun i -> Ec_int i) (fun x -> x) p
 
 type type_def = {
   ty_name : Names.shortname;

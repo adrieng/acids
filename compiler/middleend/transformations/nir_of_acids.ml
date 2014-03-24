@@ -41,7 +41,7 @@ let st_base =
 type env =
   {
     intf_env : Interface.env;
-    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.econstr_pword Names.ShortEnv.t;
     current_block : int;
     current_locals : Nir_acids.var_dec Ident.Env.t;
   }

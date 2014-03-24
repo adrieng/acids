@@ -93,7 +93,7 @@ sig
   and eq_desc =
   | Var of Ident.t * Ident.t
   | Const of Ident.t * Ast_misc.const
-  | Pword of Ident.t * Ast_misc.const_pword
+  | Pword of Ident.t * Ast_misc.econstr_pword
   | Call of Ident.t list * call * Ident.t list
   | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
   | Split of Ident.t list * Ident.t * Ident.t * Ast_misc.econstr list
@@ -220,7 +220,7 @@ struct
   and eq_desc =
   | Var of Ident.t * Ident.t
   | Const of Ident.t * Ast_misc.const
-  | Pword of Ident.t * Ast_misc.const_pword
+  | Pword of Ident.t * Ast_misc.econstr_pword
   | Call of idents * call * idents
   | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
   | Split of idents * Ident.t * Ident.t * Ast_misc.econstr list

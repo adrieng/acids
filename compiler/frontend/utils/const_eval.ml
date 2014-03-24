@@ -143,7 +143,7 @@ and env =
     external_nodes : node_fun Names.ShortEnv.t Names.ShortEnv.t;
     current_nodes : node_fun Names.ShortEnv.t;
     current_consts : desc Names.ShortEnv.t;
-    current_pwords : Ast_misc.const_pword Names.ShortEnv.t;
+    current_pwords : Ast_misc.econstr_pword Names.ShortEnv.t;
     values : value Ident.Env.t;
   }
 

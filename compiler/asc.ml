@@ -99,6 +99,7 @@ let flow =
   +>+ Nir_of_acids.pass
   +>+ Clock_slicing.pass
   +>+ Block_formation.pass
+  +>+ Clock_exp_naming.pass
   +>+ Buffer_lowering.pass
   +>+ Scheduling.pass
   (* Back-end *)

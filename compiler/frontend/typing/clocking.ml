@@ -43,7 +43,7 @@ type env =
     intf_env : Interface.t Names.ModEnv.t;
     pragmas : Pragma.pragma Utils.Env.t;
     local_nodes : Clock_types.clock_sig Names.ShortEnv.t;
-    local_pwords : Ast_misc.const_pword Names.ShortEnv.t;
+    local_pwords : Ast_misc.econstr_pword Names.ShortEnv.t;
     mutable ck_vars : VarTySt.t Utils.Int_map.t;
   }
 

@@ -183,7 +183,7 @@ let recompute_free_dom_variables env free =
     let int_sts = flatten_clock_type [] free_var.internal_clock in
     assert (List.length vs = List.length ext_sts);
     assert (List.length ext_sts = List.length int_sts);
-    Utils.fold_left3
+    Utils.fold_left_3
       (fun new_free v ext int ->
         Ident.Env.add
           v

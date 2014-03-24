@@ -93,7 +93,7 @@ sig
   and eq_desc =
   | Var of Ident.t * Ident.t (** x = y *)
   | Const of Ident.t * Ast_misc.const (** x = c *)
-  | Pword of Ident.t * Ast_misc.const_pword (** x = p *)
+  | Pword of Ident.t * Ast_misc.econstr_pword (** x = p *)
   | Call of idents * call * idents (** x_l = f(y_l) *)
   | Merge of Ident.t * Ident.t * (Ast_misc.econstr * Ident.t) list
   (** x = merge y_ce (ec_i -> z_i)*)

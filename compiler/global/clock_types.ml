@@ -17,7 +17,7 @@
 
 type clock_exp =
   | Ce_condvar of clock_exp_cond_var
-  | Ce_pword of Ast_misc.const_pword
+  | Ce_pword of Ast_misc.econstr_pword
   | Ce_equal of clock_exp * Ast_misc.econstr
 
 and clock_exp_cond_var =
@@ -84,7 +84,7 @@ let rec print_clock_exp fmt ce =
       Ast_misc.print_interval_annot cev.cecv_bounds
       (Utils.print_list Ast_misc.print_spec_annot) cev.cecv_specs
   | Ce_pword pw ->
-    Ast_misc.print_const_pword fmt pw
+    Ast_misc.print_econstr_pword fmt pw
   | Ce_equal (ce, ec) ->
     Format.fprintf fmt "(%a = %a)"
       print_clock_exp ce
@@ -165,7 +165,7 @@ struct
   type 'a pre_ty =
   | Pce_var of 'a
   | Pce_condvar of clock_exp_cond_var
-  | Pce_pword of Ast_misc.const_pword
+  | Pce_pword of Ast_misc.econstr_pword
   | Pce_equal of 'a pre_ty * Ast_misc.econstr
 
   let rec print print_var fmt pce =
@@ -177,7 +177,7 @@ struct
         Ast_misc.print_interval_annot pcv.cecv_bounds
         (Utils.print_list Ast_misc.print_spec_annot) pcv.cecv_specs
     | Pce_pword pw ->
-      Ast_misc.print_const_pword fmt pw
+      Ast_misc.print_econstr_pword fmt pw
     | Pce_equal (pce, ec) ->
       Format.fprintf fmt "(%a = %a)"
         (print print_var) pce
@@ -637,7 +637,7 @@ let decompose_pword st =
 let normalize_st st =
   let bst, p = decompose_pword st in
   let pw = Pword.to_tree_pword p in
-  St_on (bst, Ce_pword (Ast_misc.upword_of_pword pw))
+  St_on (bst, Ce_pword (Ast_misc.int_econstr_pword_of_int_pword pw))
 
 let rec max_burst_stream_type st =
   let open Int in

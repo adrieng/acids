@@ -85,12 +85,12 @@ let fold_left_1 f l =
   | x :: l -> List.fold_left f x l
   | _ -> invalid_arg "fold_left_1: list too short"
 
-let rec fold_left3 f acc l1 l2 l3 =
+let rec fold_left_3 f acc l1 l2 l3 =
   match l1, l2, l3 with
   | [], [], [] -> acc
   | x1 :: l1, x2 :: l2, x3 :: l3 ->
     let acc = f acc x1 x2 x3 in
-    fold_left3 f acc l1 l2 l3
+    fold_left_3 f acc l1 l2 l3
   | _ ->
     invalid_arg "fold_left3: list too short"
 

@@ -103,8 +103,8 @@ let rec translate_lvalue mem lv =
     | L_arrindex (lv, e) ->
       C.Index (translate_lvalue mem lv, translate_exp mem e),
       translate_ty lv.l_type
-    | L_field (lv, id) ->
-      let slv = translate_lvalue mem lv in
+    | L_field (ilv, id) ->
+      let slv = translate_lvalue mem ilv in
       let slv = if mutable_ty slv.C.l_type then lvalue_deref slv else slv in
       C.Field (slv, id), translate_ty lv.l_type
   in

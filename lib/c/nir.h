@@ -82,19 +82,25 @@ static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
                                   void *data) {
     assert(amount <= capacity);
 
-    if (mem->front + amount < capacity) {
+    if (amount == 0)
+        return;
+
+    if (mem->front + amount <= capacity) {
         memcpy(mem->data + mem->front * elem_size,
                data,
-               elem_size * amount);
+               amount * elem_size);
     } else {
         size_t initial_amount = capacity - mem->front;
         memcpy(mem->data + mem->front * elem_size,
                data,
-               elem_size * initial_amount);
+               initial_amount * elem_size);
         memcpy(mem->data,
-               data,
-               amount - initial_amount);
+               data + initial_amount * elem_size,
+               (amount - initial_amount) * elem_size);
     }
+
+    /* for (int i = 0; i < amount; i++) */
+    /*     mem->data[(mem->back + i) % capacity] = data[i]; */
 
     mem->front = (mem->front + amount) % capacity;
 }
@@ -106,19 +112,25 @@ static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
                                  void *data) {
     assert(amount <= capacity);
 
-    if (mem->back + amount < capacity) {
-        memcpy(mem->data + mem->back * elem_size,
-               data,
-               elem_size * amount);
+    if (amount == 0)
+        return;
+
+    if (mem->back + amount <= capacity) {
+        memcpy(data,
+               mem->data + mem->back * elem_size,
+               amount * elem_size);
     } else {
         size_t initial_amount = capacity - mem->back;
         memcpy(data,
                mem->data + mem->back * elem_size,
-               elem_size * initial_amount);
-        memcpy(data,
+               initial_amount * elem_size);
+        memcpy(data + initial_amount * elem_size,
                mem->data,
-               amount - initial_amount);
+               (amount - initial_amount) * elem_size);
     }
+
+    /* for (int i = 0; i < amount; i++) */
+    /*     data[i] = mem->data[(mem->front + i) % capacity]; */
 
     mem->back = (mem->back + amount) % capacity;
 }

@@ -171,17 +171,13 @@ let rec equation env eq =
   | Clock_types.St_on _ ->
     match eq.eq_desc with
     | Var _
+    | Const _
+    | Pword _
     | Buffer _
     | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
     | Delay _ ->
       (* TODO: optimize buffer *)
       eq
-
-    | Const (x, _) ->
-      form_block env eq [x] [fun ck -> ck] [] []
-
-    | Pword (x, _) ->
-      form_block env eq [x] [fun ck -> ck] [] []
 
     | Call (x_l, { c_op = Node (ln, id); }, y_l) ->
       let input_sts, output_sts =

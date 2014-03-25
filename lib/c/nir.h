@@ -162,14 +162,17 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
                                  unsigned int size_word,
                                  const int *word_data,
                                  const int *word_exps,
+                                 int n,
                                  int *step) {
-    *step = word_data[mem->wpos];
-    mem->dpos++;
-    if (mem->dpos >= word_exps[mem->wpos]) {
-        mem->dpos = 0;
-        mem->wpos++;
-        if (mem->wpos >= size_word)
-            mem->wpos = size_pref;
+    for (int i = 0; i < n; i++) {
+        step[i] = word_data[mem->wpos];
+        mem->dpos++;
+        if (mem->dpos >= word_exps[mem->wpos]) {
+            mem->dpos = 0;
+            mem->wpos++;
+            if (mem->wpos >= size_word)
+                mem->wpos = size_pref;
+        }
     }
 }
 
@@ -192,6 +195,13 @@ static inline void Rt_builtin_on(size_t n,
     *res = 0;
     for (size_t i = 0; i < n; i++)
         *res += x[i];
+}
+
+static inline void Rt_builtin_const(size_t n,
+                                    int c,
+                                    int *res) {
+    for (size_t i = 0; i < n; i++)
+        res[i] = c;
 }
 
 /******************************************************************************/
@@ -232,7 +242,17 @@ static inline void Rt_builtin_fdiv(float x, float y, float *r) {
   *r = x / y;
 }
 
-#define Rt_builtin_eq(a, b, res) (*(res) = (a) == (b))
+static inline void Rt_builtin_eq_int(int n, int *x, int *y, int *r) {
+    for (int i = 0; i < n; i++) {
+        r[i] = x[i] == y[i];
+    }
+}
+
+static inline void Rt_builtin_eq_float(int n, float *x, float *y, int *r) {
+    for (int i = 0; i < n; i++) {
+        r[i] = x[i] == y[i];
+    }
+}
 
 /******************************************************************************/
 /* Reflection stuff                                                           */

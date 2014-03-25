@@ -309,8 +309,8 @@ let reset_stm env inst mty =
 let step_stm env inst ~inputs ~outputs =
   method_call env inst ~inputs ~outputs step_name
 
-let pword_step_stm env inst out =
-  method_call env inst ~outputs:[out] step_name
+let pword_step_stm env inst ck out =
+  method_call env inst ~inputs:[ck] ~outputs:[out] step_name
 
 let buffer_push_stm env inst ~amount ~data =
   method_call env inst ~inputs:[amount] ~outputs:[data] push_name
@@ -335,9 +335,9 @@ let create_if_machines = map_if_machines create_stm
 
 let destroy_if_machines = map_if_machines destroy_stm
 
-let create_pword env pw out =
+let create_pword env ck pw out =
   let w = new_pword env pw in
-  pword_step_stm env w out
+  pword_step_stm env w ck out
 
 let create_node env ln ~inputs ~outputs =
   let m = new_node env ln in
@@ -397,11 +397,17 @@ let rec equation env acc eq =
     make_assign env x y :: acc
 
   | Const (x, c) ->
-    let ty = find_var_ty env x in
-    Obc.S_affect (var env x, U.(make_exp_const (make_const_scal ty c))) :: acc
+    let acc, w = clock_type env acc eq.eq_base_clock in
+    let c = U.(make_exp_const (make_const_scal (find_var_ty env x) c)) in
+    builtin_op_stm
+      const_name
+      [w; c]
+      [var env x]
+    :: acc
 
   | Pword (x, pw) ->
-    create_pword env pw (var env x) :: acc
+    let acc, w = clock_type env acc eq.eq_base_clock in
+    create_pword env w pw (var env x) :: acc
 
   | Call ([x], { c_op = Box; }, y_l) ->
     builtin_op_stm

@@ -42,7 +42,7 @@ let initial_env nd =
     current_block = nd.n_body.b_id;
     current_eqs = [];
     current_ce = CeEnv.empty;
-    current_vars = nd.n_env;
+    current_vars = Ident.Env.empty;
   }
 
 let get_current_block env = env.current_block
@@ -178,15 +178,28 @@ let rec clock_exp env base_st ce =
           base_st
       )
 
-let rec stream_type env st =
+let rec clock env ck =
   let open Clock_types in
-  match st with
+  match ck with
   | St_var _ ->
-    env, st
-  | St_on (st, ce) ->
-    let env, st = stream_type env st in
-    let env, ce = clock_exp env st ce in
-    env, St_on (st, ce)
+    env, ck
+  | St_on (ck, ce) ->
+    let env, ck = clock env ck in
+    let env, ce = clock_exp env ck ce in
+    env, St_on (ck, ce)
+
+let var_dec vd env =
+  let env, ck = clock env vd.v_clock in
+  let vd =
+    make_var_dec
+      ~loc:vd.v_loc
+      ~annots:vd.v_annots
+      vd.v_name
+      vd.v_data
+      ck
+      vd.v_scope
+  in
+  add_var env vd
 
 let rec equation env eq =
   let env, eqd =
@@ -198,7 +211,7 @@ let rec equation env eq =
       let env, bl = block env bl in
       env, Block bl
   in
-  let env, bst = stream_type env eq.eq_base_clock in
+  let env, bst = clock env eq.eq_base_clock in
   env,
   make_eq
     ~loc:eq.eq_loc
@@ -209,8 +222,8 @@ and block env bl =
   let bl_env = enter_block env bl in
   let conv, env, bl_env =
     let do_conv id cv (conv, env, bl_env) =
-      let bl_env, int = stream_type bl_env cv.cv_internal_clock in
-      let env, ext = stream_type env cv.cv_external_clock in
+      let bl_env, int = clock bl_env cv.cv_internal_clock in
+      let env, ext = clock env cv.cv_external_clock in
       Ident.Env.add
         id
         { cv with cv_internal_clock = int; cv_external_clock = ext; }
@@ -231,6 +244,7 @@ and block env bl =
 let node nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
   let env = initial_env nd in
+  let env = Ident.Env.fold (fun _ -> var_dec) nd.n_env env in
   let env, body = block env nd.n_body in
   make_node
     ~loc:nd.n_loc
@@ -246,4 +260,4 @@ let node nd =
 module U = Middleend_utils.Make(Nir_sliced)(Nir_sliced)
 
 let pass =
-  U.(make_transform "name_clock_exprs" (map_to_nodes node))
+  U.(make_transform "clock_exp_namin" (map_to_nodes node))

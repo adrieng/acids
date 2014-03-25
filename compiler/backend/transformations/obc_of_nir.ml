@@ -383,7 +383,7 @@ let rec clock_type env acc ck =
       [ck_e]
       [var env ce_x; var env ck_x]
     :: acc,
-    exp_var env ce_x
+    exp_var env ck_x
 
 let rec equation env acc eq =
   match eq.eq_desc with

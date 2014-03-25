@@ -271,8 +271,78 @@ struct NIR_VALUE {
         int nir_bool;
         int nir_int;
         float nir_float;
-        struct NIR_VALUE *nir_array;
+        struct {
+            size_t size;
+            struct NIR_VALUE **arr;
+        } nir_arr;
     } nir_val;
 };
+
+static inline struct NIR_VALUE *Rt_value_create() {
+    struct NIR_VALUE *v = Rt_alloc(sizeof(*v));
+    bzero(v, sizeof(*v));
+    return v;
+}
+
+static inline void Rt_value_destroy(struct NIR_VALUE *v) {
+    switch(v->nir_type) {
+    case NIR_TYPE_BOOL:
+    case NIR_TYPE_INT:
+    case NIR_TYPE_FLOAT:
+        break;
+    case NIR_TYPE_ARRAY:
+        for (size_t i = 0; i < v->nir_val.nir_arr.size; i++)
+            Rt_value_destroy(v->nir_val.nir_arr.arr[i]);
+        Rt_free(v->nir_val.nir_arr.arr);
+        break;
+    }
+    Rt_free(v);
+}
+
+static inline struct NIR_VALUE *Rt_value_bool(int b) {
+    struct NIR_VALUE *v = Rt_value_create();
+    v->nir_type = NIR_TYPE_BOOL;
+    v->nir_val.nir_bool = b;
+    return v;
+}
+
+static inline struct NIR_VALUE *Rt_value_int(int i) {
+    struct NIR_VALUE *v = Rt_value_create();
+    v->nir_type = NIR_TYPE_INT;
+    v->nir_val.nir_int = i;
+    return v;
+}
+
+static inline struct NIR_VALUE *Rt_value_float(float f) {
+    struct NIR_VALUE *v = Rt_value_create();
+    v->nir_type = NIR_TYPE_FLOAT;
+    v->nir_val.nir_float = f;
+    return v;
+}
+
+static inline struct NIR_VALUE *Rt_value_array(size_t n, struct NIR_VALUE **a) {
+    struct NIR_VALUE *v = Rt_value_create();
+    v->nir_type = NIR_TYPE_ARRAY;
+    v->nir_val.nir_arr.size = n;
+    v->nir_val.nir_arr.arr = a;
+    return v;
+}
+
+static inline struct NIR_VALUE *Rt_value_copy(struct NIR_VALUE *v) {
+    switch(v->nir_type) {
+    case NIR_TYPE_BOOL:
+        return Rt_value_bool(v->nir_val.nir_bool);
+    case NIR_TYPE_INT:
+        return Rt_value_int(v->nir_val.nir_int);
+    case NIR_TYPE_FLOAT:
+        return Rt_value_float(v->nir_val.nir_float);
+    case NIR_TYPE_ARRAY:;
+        struct NIR_VALUE **arr =
+            Rt_alloc(sizeof(*arr) * v->nir_val.nir_arr.size);
+        for (size_t i = 0; i < v->nir_val.nir_arr.size; i++)
+            arr[i] = Rt_value_copy(v->nir_val.nir_arr.arr[i]);
+        return Rt_value_array(v->nir_val.nir_arr.size, arr);
+    }
+}
 
 #endif // NIR_H

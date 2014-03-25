@@ -174,7 +174,7 @@ let rec equation env eq =
     | Buffer _
     | Call (_, { c_op = Box | Unbox | BufferAccess _; }, _)
     | Delay _ ->
-    (* TODO: optimize buffer *)
+      (* TODO: optimize buffer *)
       eq
 
     | Const (x, _) ->

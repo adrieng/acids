@@ -51,19 +51,24 @@ let enter_block env block =
   { env with current_block = block.b_id; }
 
 let fuse_envs env ~nested_env =
-  { env with current_vars = nested_env.current_vars; }
+  {
+    env with
+      current_vars = Ident.Env.union env.current_vars nested_env.current_vars;
+  }
 
 let get_vars env = env.current_vars
 
 let add_var env vd =
   { env with current_vars = Ident.Env.add vd.v_name vd env.current_vars; }
 
+let get_eqs env = env.current_eqs
+
 let add_eq env eq = { env with current_eqs = eq :: env.current_eqs; }
 
 let find_ce env ce =
   CeEnv.find ce env.current_ce
 
-let add_ce env orig_ce ck tys id bounds specs eq =
+let add_ce env orig_ce st tys id bounds specs eq =
   let open Clock_types in
   let ce =
     Ce_condvar { cecv_name = id; cecv_bounds = bounds; cecv_specs = specs; }
@@ -72,7 +77,7 @@ let add_ce env orig_ce ck tys id bounds specs eq =
     make_var_dec
       id
       (Nir.Ty_scal tys)
-      ck
+      st
       (Nir.Scope_internal (get_current_block env))
   in
   let env = add_var env vd in
@@ -83,9 +88,17 @@ let add_ce env orig_ce ck tys id bounds specs eq =
   },
   ce
 
-(* {2 Put it all together} *)
+(* {2 Helper functions} *)
 
-let rec clock_exp env base_ck ce =
+let get_ce_name ce =
+  let open Clock_types in
+  match ce with
+  | Ce_condvar cecv -> cecv.cecv_name
+  | _ -> invalid_arg "get_ce_name: not a condvar"
+
+(* {2 AST Traversal} *)
+
+let rec clock_exp env base_st ce =
   let open Clock_types in
   match ce with
   | Ce_condvar _ ->
@@ -109,39 +122,126 @@ let rec clock_exp env base_ck ce =
         add_ce
           env
           ce
-          base_ck
-          Data_types.Tys_int (* TODO fix *)
+          base_st
+          Data_types.Tys_int (* TODO fix... not easy *)
           id
           bounds
           specs
           (
             make_eq
               (Pword (id, pw))
-              base_ck
+              base_st
           )
     )
-  | Ce_equal (ce, ec) ->
-    let env, ce = clock_exp env base_ck ce in
+  | Ce_equal (ice, ec) ->
+    let env, ice = clock_exp env base_st ice in
     let id_ec = Ident.make_internal "ec" in
     let ec_vd =
       make_var_dec
         id_ec
         (Nir.Ty_scal Data_types.Tys_int)
-        base_ck
+        base_st
         (Nir.Scope_internal (get_current_block env))
     in
     let ec_eq =
       make_eq
         (Const (id_ec, Ast_misc.Cconstr ec))
-        base_ck
+        base_st
     in
     let env = add_eq (add_var env ec_vd) ec_eq in
 
-    assert false
+    let id = Ident.make_internal "ce" in
+    let bounds = Interval.bool in
+    let specs =
+      [
+        Ast_misc.Interval bounds;
+      ]
+    in
+    let call =
+      {
+        c_op = Node (Names.(make_longname (Module "Pervasives") "(=)"), 0);
+        c_stream_inst = [];
+      }
+    in
+
+    add_ce
+      env
+      ce
+      base_st
+      Data_types.Tys_bool
+      id
+      bounds
+      specs
+      (
+        make_eq
+          (Call ([id], call, [get_ce_name ice; id_ec]))
+          base_st
+      )
+
+let rec stream_type env st =
+  let open Clock_types in
+  match st with
+  | St_var _ ->
+    env, st
+  | St_on (st, ce) ->
+    let env, st = stream_type env st in
+    let env, ce = clock_exp env st ce in
+    env, St_on (st, ce)
+
+let rec equation env eq =
+  let env, eqd =
+    match eq.eq_desc with
+    | Var _ | Const _ | Pword _ | Call _ | Merge _ | Split _ | Buffer _
+    | Delay _ ->
+      env, eq.eq_desc
+    | Block bl ->
+      let env, bl = block env bl in
+      env, Block bl
+  in
+  let env, bst = stream_type env eq.eq_base_clock in
+  env,
+  make_eq
+    ~loc:eq.eq_loc
+    eqd
+    bst
+
+and block env bl =
+  let bl_env = enter_block env bl in
+  let conv, env, bl_env =
+    let do_conv id cv (conv, env, bl_env) =
+      let bl_env, int = stream_type bl_env cv.cv_internal_clock in
+      let env, ext = stream_type env cv.cv_external_clock in
+      Ident.Env.add
+        id
+        { cv with cv_internal_clock = int; cv_external_clock = ext; }
+        conv,
+      env,
+      bl_env
+    in
+    Ident.Env.fold do_conv bl.b_conv (Ident.Env.empty, env, bl_env)
+  in
+  let bl_env, body = Utils.mapfold_left equation bl_env bl.b_body in
+  fuse_envs env ~nested_env:bl_env,
+  make_block
+    ~loc:bl.b_loc
+    ~conv
+    bl.b_id
+    (get_eqs env @ body)
 
 let node nd =
   Ident.set_current_ctx nd.n_orig_info#ni_ctx;
-  nd
+  let env = initial_env nd in
+  let env, body = block env nd.n_body in
+  make_node
+    ~loc:nd.n_loc
+    nd.n_name
+    nd.n_orig_info
+    ~input:nd.n_input
+    ~output:nd.n_output
+    ~env:(get_vars env)
+    ~body
+
+(* {2 Put it all together} *)
 
 module U = Middleend_utils.Make(Nir_sliced)(Nir_sliced)
 

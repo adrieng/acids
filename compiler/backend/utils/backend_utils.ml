@@ -71,10 +71,19 @@ let op_name name =
       "(-.)", "fsub";
       "(*.)", "fmult";
       "(/.)", "fdiv";
-      "(=)", "eq";
     ]
   in
   try List.assoc name table with Not_found -> name
+
+let ty_name tys =
+  let open Data_types in
+  match tys with
+  | Tys_bool -> "int"
+  | Tys_int -> "int"
+  | Tys_float -> "float"
+  | Tys_user _ -> "int"
+
+let eq_name tys = "eq_" ^ ty_name tys
 
 let runtime sn = Names.(make_longname (Module runtime_name) sn)
 

@@ -360,6 +360,12 @@ let make_assign env x y =
     [U.(make_exp_const (make_const_sizeof ty)); U.make_exp_int size]
     [var env y; var env x]
 
+let rec root_ty_scal ty =
+  match ty with
+  | Obc.Ty_scal tys -> tys
+  | Obc.Ty_arr (ty, _) -> root_ty_scal ty
+  | _ -> invalid_arg "get_ty_scal: not a scalar"
+
 (* {2 AST traversal} *)
 
 let clock_exp ce =
@@ -420,17 +426,26 @@ let rec equation env acc eq =
     buffer_pop_stm env b w (var env x) :: acc
 
   | Call (x_l, { c_op = Node (ln, i); }, y_l) ->
-    let x_l = List.map (var env) x_l in
-    let y_l = List.map (exp_var env) y_l in
+    let outputs = List.map (var env) x_l in
+    let inputs = List.map (exp_var env) y_l in
     let open Names in
     (
-      match ln.modn with
-      | Module "Pervasives" ->
-        builtin_op_stm ln.shortn y_l x_l
+      match ln.modn, ln.shortn with
+      | Module "Pervasives", "(=)" ->
+        (* We need to monomorphize equality here. TODO so ugly *)
+        let acc, w = clock_type env acc eq.eq_base_clock in
+        let tys = root_ty_scal ((List.hd inputs).Obc.e_type) in
+        builtin_op_stm
+          (eq_name tys)
+          [w]
+          (List.map (var env) (y_l @ x_l))
+        :: acc
+
+      | Module "Pervasives", _ ->
+        builtin_op_stm ln.shortn inputs outputs :: acc
       | _ ->
-        create_node env (longname_of_node_name (ln, i)) ~outputs:x_l ~inputs:y_l
+        create_node env (longname_of_node_name (ln, i)) ~outputs ~inputs :: acc
     )
-    :: acc
 
   | Call _ ->
     invalid_arg "equation: bad call"

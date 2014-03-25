@@ -362,32 +362,20 @@ let make_assign env x y =
 
 (* {2 AST traversal} *)
 
-let rec clock_exp env ck_e acc ce =
-  let open Clock_types in
+let clock_exp ce =
   match ce with
-  | Ce_condvar cecv ->
-    acc, cecv.cecv_name
-  | Ce_equal (ce, ec) ->
-    let r = Ident.make_internal "r_ce" in
-    add_local_for_current_block_int env r;
-    let acc, x = clock_exp env ck_e acc ce in
-    builtin_op_stm ceq_name
-      [ck_e; U.(make_exp_const (mk_const ec))]
-      [var env x; var env r]
-    :: acc,
-    r
-  | Ce_pword pw ->
-    let x = Ident.make_internal "x_w" in
-    add_local_for_current_block_int env x;
-    create_pword env pw (var env x) :: acc, x
+  | Clock_types.Ce_condvar cecv ->
+    cecv.Clock_types.cecv_name
+  | Clock_types.Ce_equal _ | Clock_types.Ce_pword _ ->
+    invalid_arg "clock_exp: unnamed clock exp"
 
-and clock_type env acc ck =
+let rec clock_type env acc ck =
   match ck with
   | Clock_types.St_var _ ->
     acc, U.make_exp_int Int.one
   | Clock_types.St_on (ck, ce) ->
     let acc, ck_e = clock_type env acc ck in
-    let acc, ce_x = clock_exp env ck_e acc ce in
+    let ce_x = clock_exp ce in
     let ck_x = Ident.make_internal "w" in
     add_local_for_current_block_int env ck_x;
     builtin_op_stm

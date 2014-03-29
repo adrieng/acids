@@ -258,22 +258,98 @@ static inline void Rt_builtin_eq_float(int n, float *x, float *y, int *r) {
 /* Reflection stuff                                                           */
 /******************************************************************************/
 
-enum NIR_TYPE {
-    NIR_TYPE_BOOL = 0,
-    NIR_TYPE_INT,
-    NIR_TYPE_FLOAT,
-    NIR_TYPE_ARRAY
+/* Tags */
+
+enum NIR_TYPE_TAG {
+    NIR_TYPE_TAG_BOOL = 0,
+    NIR_TYPE_TAG_INT,
+    NIR_TYPE_TAG_FLOAT,
+    NIR_TYPE_TAG_ARRAY
 };
 
+/* Types */
+
+struct NIR_TYPE {
+    enum NIR_TYPE_TAG nir_tag;
+    struct {
+        size_t size;
+        struct NIR_TYPE **types;
+    } nir_arr;
+};
+
+static inline struct NIR_TYPE *Rt_type_create() {
+    struct NIR_TYPE *t = Rt_alloc(sizeof(*t));
+    bzero(t, sizeof(*t));
+    return t;
+}
+
+static inline void Rt_type_destroy(struct NIR_TYPE *t) {
+    switch(t->nir_tag) {
+    case NIR_TYPE_TAG_BOOL:
+    case NIR_TYPE_TAG_INT:
+    case NIR_TYPE_TAG_FLOAT:
+        break;
+    case NIR_TYPE_TAG_ARRAY:
+        for (size_t i = 0; i < t->nir_arr.size; i++)
+            Rt_type_destroy(t->nir_arr.types[i]);
+        Rt_free(t->nir_arr.types);
+        break;
+    }
+    Rt_free(t);
+}
+
+static inline struct NIR_TYPE *Rt_type_bool() {
+    struct NIR_TYPE *t = Rt_type_create();
+    t->nir_tag = NIR_TYPE_TAG_BOOL;
+    return t;
+}
+
+static inline struct NIR_TYPE *Rt_type_int() {
+    struct NIR_TYPE *t = Rt_type_create();
+    t->nir_tag = NIR_TYPE_TAG_INT;
+    return t;
+}
+
+static inline struct NIR_TYPE *Rt_type_float() {
+    struct NIR_TYPE *t = Rt_type_create();
+    t->nir_tag = NIR_TYPE_TAG_FLOAT;
+    return t;
+}
+
+static inline struct NIR_TYPE *Rt_type_array(size_t n, struct NIR_TYPE **a) {
+    struct NIR_TYPE *t = Rt_type_create();
+    t->nir_tag = NIR_TYPE_TAG_ARRAY;
+    t->nir_arr.types = a;
+    return t;
+}
+
+static inline struct NIR_TYPE *Rt_type_copy(const struct NIR_TYPE *t) {
+    switch(t->nir_tag) {
+    case NIR_TYPE_TAG_BOOL:
+        return Rt_type_bool();
+    case NIR_TYPE_TAG_INT:
+        return Rt_type_int();
+    case NIR_TYPE_TAG_FLOAT:
+        return Rt_type_float();
+    case NIR_TYPE_TAG_ARRAY:;
+        struct NIR_TYPE **types = Rt_alloc(sizeof(*types) * t->nir_arr.size);
+        for (size_t i = 0; i < t->nir_arr.size; i++)
+            types[i] = Rt_type_copy(t->nir_arr.types[i]);
+        return Rt_type_array(t->nir_arr.size, types);
+    }
+}
+
+/* Values */
+
 struct NIR_VALUE {
-    enum NIR_TYPE nir_type;
+    enum NIR_TYPE_TAG nir_tag;
     union {
         int nir_bool;
         int nir_int;
         float nir_float;
         struct {
             size_t size;
-            struct NIR_VALUE **arr;
+            struct NIR_VALUE **values;
         } nir_arr;
     } nir_val;
 };
@@ -285,15 +361,15 @@ static inline struct NIR_VALUE *Rt_value_create() {
 }
 
 static inline void Rt_value_destroy(struct NIR_VALUE *v) {
-    switch(v->nir_type) {
-    case NIR_TYPE_BOOL:
-    case NIR_TYPE_INT:
-    case NIR_TYPE_FLOAT:
+    switch(v->nir_tag) {
+    case NIR_TYPE_TAG_BOOL:
+    case NIR_TYPE_TAG_INT:
+    case NIR_TYPE_TAG_FLOAT:
         break;
-    case NIR_TYPE_ARRAY:
+    case NIR_TYPE_TAG_ARRAY:
         for (size_t i = 0; i < v->nir_val.nir_arr.size; i++)
-            Rt_value_destroy(v->nir_val.nir_arr.arr[i]);
-        Rt_free(v->nir_val.nir_arr.arr);
+            Rt_value_destroy(v->nir_val.nir_arr.values[i]);
+        Rt_free(v->nir_val.nir_arr.values);
         break;
     }
     Rt_free(v);
@@ -301,47 +377,47 @@ static inline void Rt_value_destroy(struct NIR_VALUE *v) {
 
 static inline struct NIR_VALUE *Rt_value_bool(int b) {
     struct NIR_VALUE *v = Rt_value_create();
-    v->nir_type = NIR_TYPE_BOOL;
+    v->nir_tag = NIR_TYPE_TAG_BOOL;
     v->nir_val.nir_bool = b;
     return v;
 }
 
 static inline struct NIR_VALUE *Rt_value_int(int i) {
     struct NIR_VALUE *v = Rt_value_create();
-    v->nir_type = NIR_TYPE_INT;
+    v->nir_tag = NIR_TYPE_TAG_INT;
     v->nir_val.nir_int = i;
     return v;
 }
 
 static inline struct NIR_VALUE *Rt_value_float(float f) {
     struct NIR_VALUE *v = Rt_value_create();
-    v->nir_type = NIR_TYPE_FLOAT;
+    v->nir_tag = NIR_TYPE_TAG_FLOAT;
     v->nir_val.nir_float = f;
     return v;
 }
 
 static inline struct NIR_VALUE *Rt_value_array(size_t n, struct NIR_VALUE **a) {
     struct NIR_VALUE *v = Rt_value_create();
-    v->nir_type = NIR_TYPE_ARRAY;
+    v->nir_tag = NIR_TYPE_TAG_ARRAY;
     v->nir_val.nir_arr.size = n;
-    v->nir_val.nir_arr.arr = a;
+    v->nir_val.nir_arr.values = a;
     return v;
 }
 
-static inline struct NIR_VALUE *Rt_value_copy(struct NIR_VALUE *v) {
-    switch(v->nir_type) {
-    case NIR_TYPE_BOOL:
+static inline struct NIR_VALUE *Rt_value_copy(const struct NIR_VALUE *v) {
+    switch(v->nir_tag) {
+    case NIR_TYPE_TAG_BOOL:
         return Rt_value_bool(v->nir_val.nir_bool);
-    case NIR_TYPE_INT:
+    case NIR_TYPE_TAG_INT:
         return Rt_value_int(v->nir_val.nir_int);
-    case NIR_TYPE_FLOAT:
+    case NIR_TYPE_TAG_FLOAT:
         return Rt_value_float(v->nir_val.nir_float);
-    case NIR_TYPE_ARRAY:;
-        struct NIR_VALUE **arr =
-            Rt_alloc(sizeof(*arr) * v->nir_val.nir_arr.size);
+    case NIR_TYPE_TAG_ARRAY:;
+        struct NIR_VALUE **values =
+            Rt_alloc(sizeof(*values) * v->nir_val.nir_arr.size);
         for (size_t i = 0; i < v->nir_val.nir_arr.size; i++)
-            arr[i] = Rt_value_copy(v->nir_val.nir_arr.arr[i]);
-        return Rt_value_array(v->nir_val.nir_arr.size, arr);
+            values[i] = Rt_value_copy(v->nir_val.nir_arr.values[i]);
+        return Rt_value_array(v->nir_val.nir_arr.size, values);
     }
 }
 

@@ -95,12 +95,9 @@ static inline void Rt_buffer_push(struct Rt_buffer_mem *mem,
                data,
                initial_amount * elem_size);
         memcpy(mem->data,
-               data + initial_amount * elem_size,
+               (char *)data + initial_amount * elem_size,
                (amount - initial_amount) * elem_size);
     }
-
-    /* for (int i = 0; i < amount; i++) */
-    /*     mem->data[(mem->back + i) % capacity] = data[i]; */
 
     mem->front = (mem->front + amount) % capacity;
 }
@@ -124,13 +121,10 @@ static inline void Rt_buffer_pop(struct Rt_buffer_mem *mem,
         memcpy(data,
                mem->data + mem->back * elem_size,
                initial_amount * elem_size);
-        memcpy(data + initial_amount * elem_size,
+        memcpy((char *)data + initial_amount * elem_size,
                mem->data,
                (amount - initial_amount) * elem_size);
     }
-
-    /* for (int i = 0; i < amount; i++) */
-    /*     data[i] = mem->data[(mem->front + i) % capacity]; */
 
     mem->back = (mem->back + amount) % capacity;
 }
@@ -174,6 +168,65 @@ static inline void Rt_pword_step(struct Rt_pword_mem *mem,
                 mem->wpos = size_pref;
         }
     }
+}
+
+/******************************************************************************/
+/* Boxes                                                                      */
+/******************************************************************************/
+
+struct Rt_box {
+    size_t size;
+    char *mem;
+    int live;
+    struct Rt_box *next;
+};
+
+static struct Rt_box *global_box = NULL;
+
+static inline struct Rt_box *Rt_box_alloc(size_t size, const char *p) {
+    struct Rt_box *r;
+    r = Rt_alloc(sizeof(*r));
+
+    r->size = size;
+    memcpy(r->mem, p, size);
+    r->mem = Rt_alloc(size);
+    r->live = 0;
+    r->next = global_box;
+
+    global_box = r;
+    return r;
+}
+
+static inline void Rt_box_destroy(struct Rt_box *box) {
+    Rt_free(box->mem);
+    Rt_free(box);
+}
+
+static inline struct Rt_box *Rt_box_copy(const struct Rt_box *b) {
+    struct Rt_box *c = Rt_box_alloc(b->size, b->mem);
+    return c;
+}
+
+static inline void Rt_box_collect() {
+    struct Rt_box *old, **b = &global_box;
+
+    while (*b != NULL) {
+        if ((*b)->live)
+            b = &(*b)->next;
+        else {
+            old = *b;
+            *b = (*b)->next;
+            Rt_box_destroy(old);
+        }
+    }
+}
+
+static inline void Rt_box_register(struct Rt_box *box) {
+    box->live = 1;
+}
+
+static inline void Rt_box_unregister(struct Rt_box *box) {
+    box->live = 0;
 }
 
 /******************************************************************************/
@@ -264,6 +317,7 @@ enum NIR_TYPE_TAG {
     NIR_TYPE_TAG_BOOL = 0,
     NIR_TYPE_TAG_INT,
     NIR_TYPE_TAG_FLOAT,
+    NIR_TYPE_TAG_BOX,
     NIR_TYPE_TAG_ARRAY
 };
 
@@ -284,10 +338,11 @@ static inline struct NIR_TYPE *Rt_type_create() {
 }
 
 static inline void Rt_type_destroy(struct NIR_TYPE *t) {
-    switch(t->nir_tag) {
+    switch (t->nir_tag) {
     case NIR_TYPE_TAG_BOOL:
     case NIR_TYPE_TAG_INT:
     case NIR_TYPE_TAG_FLOAT:
+    case NIR_TYPE_TAG_BOX: // TODO
         break;
     case NIR_TYPE_TAG_ARRAY:
         for (size_t i = 0; i < t->nir_arr.size; i++)
@@ -316,6 +371,12 @@ static inline struct NIR_TYPE *Rt_type_float() {
     return t;
 }
 
+static inline struct NIR_TYPE *Rt_type_box() {
+    struct NIR_TYPE *t = Rt_type_create();
+    t->nir_tag = NIR_TYPE_TAG_BOX;
+    return t;
+}
+
 static inline struct NIR_TYPE *Rt_type_array(size_t n, struct NIR_TYPE **a) {
     struct NIR_TYPE *t = Rt_type_create();
     t->nir_tag = NIR_TYPE_TAG_ARRAY;
@@ -324,13 +385,15 @@ static inline struct NIR_TYPE *Rt_type_array(size_t n, struct NIR_TYPE **a) {
 }
 
 static inline struct NIR_TYPE *Rt_type_copy(const struct NIR_TYPE *t) {
-    switch(t->nir_tag) {
+    switch (t->nir_tag) {
     case NIR_TYPE_TAG_BOOL:
         return Rt_type_bool();
     case NIR_TYPE_TAG_INT:
         return Rt_type_int();
     case NIR_TYPE_TAG_FLOAT:
         return Rt_type_float();
+    case NIR_TYPE_TAG_BOX:
+        return Rt_type_box();
     case NIR_TYPE_TAG_ARRAY:;
         struct NIR_TYPE **types = Rt_alloc(sizeof(*types) * t->nir_arr.size);
         for (size_t i = 0; i < t->nir_arr.size; i++)
@@ -347,6 +410,7 @@ struct NIR_VALUE {
         int nir_bool;
         int nir_int;
         float nir_float;
+        struct Rt_box *nir_box;
         struct {
             size_t size;
             struct NIR_VALUE **values;
@@ -361,10 +425,11 @@ static inline struct NIR_VALUE *Rt_value_create() {
 }
 
 static inline void Rt_value_destroy(struct NIR_VALUE *v) {
-    switch(v->nir_tag) {
+    switch (v->nir_tag) {
     case NIR_TYPE_TAG_BOOL:
     case NIR_TYPE_TAG_INT:
     case NIR_TYPE_TAG_FLOAT:
+    case NIR_TYPE_TAG_BOX: // TODO
         break;
     case NIR_TYPE_TAG_ARRAY:
         for (size_t i = 0; i < v->nir_val.nir_arr.size; i++)
@@ -396,6 +461,13 @@ static inline struct NIR_VALUE *Rt_value_float(float f) {
     return v;
 }
 
+static inline struct NIR_VALUE *Rt_value_box(struct Rt_box *b) {
+    struct NIR_VALUE *v = Rt_value_create();
+    v->nir_tag = NIR_TYPE_TAG_BOX;
+    v->nir_val.nir_box = b;
+    return v;
+}
+
 static inline struct NIR_VALUE *Rt_value_array(size_t n, struct NIR_VALUE **a) {
     struct NIR_VALUE *v = Rt_value_create();
     v->nir_tag = NIR_TYPE_TAG_ARRAY;
@@ -412,6 +484,10 @@ static inline struct NIR_VALUE *Rt_value_copy(const struct NIR_VALUE *v) {
         return Rt_value_int(v->nir_val.nir_int);
     case NIR_TYPE_TAG_FLOAT:
         return Rt_value_float(v->nir_val.nir_float);
+    case NIR_TYPE_TAG_BOX: {
+        struct Rt_box *b = Rt_box_copy(v->nir_val.nir_box);
+        return Rt_value_box(b);
+    }
     case NIR_TYPE_TAG_ARRAY:;
         struct NIR_VALUE **values =
             Rt_alloc(sizeof(*values) * v->nir_val.nir_arr.size);

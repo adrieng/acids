@@ -9,7 +9,7 @@ let node horizontal_filter p = o where
   rec p0 = p fby p1
   and p1 = p fby p2
   and p2 = p
-  and o = (convolution (p0, p1, p2)) when hf
+  and o = convolution ((p0, p1, p2) when hf)
 
 let static sd_width = 720
 let static sd_height = 480

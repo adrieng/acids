@@ -96,7 +96,7 @@ type const =
 let print_const fmt c =
   match c with
   | Cconstr c -> print_econstr fmt c
-  | Cfloat f -> Format.fprintf fmt "%f" f
+  | Cfloat f -> Format.fprintf fmt "%e" f
 
 let get_econstr c =
   match c with

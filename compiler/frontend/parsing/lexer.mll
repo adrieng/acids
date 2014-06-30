@@ -137,10 +137,12 @@ let alpha = ['a'-'z' 'A'-'Z']
 let digit = ['0'-'9']
 let int = digit+
 let posint = ['1'-'9'] digit*
-let exponent = ('e' | 'E') ('+' | '-')? digit+
-let float = digit+ '.' digit* exponent?
-          | digit* '.'digit+ exponent?
-          | digit+ exponent
+let optsign = ('+' | '-')?
+let exponent = ('e' | 'E') optsign digit+
+let float_body = digit+ '.' digit* exponent?
+               | digit* '.'digit+ exponent?
+               | digit+ exponent
+let float = optsign float_body
 let ident = alpha (alpha | '_' | ''' | digit)*
 let lident = ['a'-'z'] (alpha | '_' | ''' | digit)*
 let uident = ['A'-'Z'] (alpha | '_' | ''' | digit)*

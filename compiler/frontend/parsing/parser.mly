@@ -215,8 +215,8 @@
       Acids_parsetree.pd_loc = loc;
     }
 
-  (* Ugly: a bit of scoping at parsing time *)
-
+  (* Ugly: some scoping is performed at parsing time using the following
+     hash-table. *)
   let ht = Hashtbl.create 100
 
   let sig_scope_reinitialize () =
@@ -298,16 +298,15 @@
 
 /* Precedence and associativity */
 
-%left EQUAL
-
 %left WHERE
+%left EQUAL
 %left IF
 // %left SPLIT
 %nonassoc OP
-%right APP
 %left LE GE LT GT
 %left PLUS MINUS PLUSF MINUSF
 %left TIMES DIV TIMESF DIVF
+%right APP
 %left WHEN
 %nonassoc BUFFER
 %nonassoc FST SND

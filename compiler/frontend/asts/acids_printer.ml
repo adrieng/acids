@@ -61,7 +61,7 @@ struct
     | E_fst e -> Format.fprintf fmt "fst %a" print_exp e
     | E_snd e -> Format.fprintf fmt "snd %a" print_exp e
     | E_tuple e_l ->
-      Format.fprintf fmt "(%a)"
+      Format.fprintf fmt "(@[<hv 2>%a@])"
         (Utils.print_list_r print_exp ",") e_l
     | E_fby (e1, e2) ->
       Format.fprintf fmt "%a@ fby %a" print_exp e1 print_exp e2
@@ -71,7 +71,7 @@ struct
         print_exp e2
         print_exp e3
     | E_app (app, e) ->
-      Format.fprintf fmt "(%a %a)"
+      Format.fprintf fmt "(@[<hv 2>%a@ %a@])"
         print_app app
         print_exp e
     | E_where (e, bl) ->

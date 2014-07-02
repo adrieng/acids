@@ -69,6 +69,50 @@ val ( /. )
   is ('c * 'c) -> 'c
   :: ('a * 'a) -> 'a
 
+(* Floating-point functions *)
+
+val sin
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val cos
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val tan
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val asin
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val acos
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val atan
+  : float -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+(* Conversion functions *)
+
+val float_of_int
+  : int -> float
+  is 'c -> 'c
+  :: 'a -> 'a
+
+val int_of_float
+  : float -> int
+  is 'c -> 'c
+  :: 'a -> 'a
+
 (* Internal operators *)
 
 val box

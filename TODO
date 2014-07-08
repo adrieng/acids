@@ -19,6 +19,8 @@ type variables.
 - rename "real size" of buffers to "nobypass size"
 - clean up the Buffer_lowering pass (remove fuse_local_variables)
 - factor out the creation of operators from Pervasives
+- lower polymorphic equality earlier in the compiler, or switch to a uniform
+  representation of values.
 
 Resolution:
 - Only compute causal solutions

@@ -33,6 +33,9 @@
 
     TODO: generate well-typed code around functions. For this we would need to
     modify on the fly the data type signatures in the interface.
+
+    TODO: currently we box the arguments of Pervasives.(=), which is a bad idea
+    since it crashes the Obc code generator.
 *)
 
 module SUB = Acids_utils.MAP_SUB(Acids_causal)

@@ -100,6 +100,6 @@ release: clean_release
 	mkdir $(RELEASE_DIR)/examples
 	cp examples/*.as $(RELEASE_DIR)/examples
 	tar cjf "acids-`git rev-parse HEAD`_`date +%F-%Hh%M`.tar.bz2" $(RELEASE_DIR)/
-	scp "acids-`git rev-parse HEAD`_`date +%F-%Hh%M`.tar.bz2" ludics:public_html
+	scp "acids-`git rev-parse HEAD`_`date +%F-%Hh%M`.tar.bz2" ludics:public_html/acids
 
 .FORCE:

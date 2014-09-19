@@ -439,13 +439,15 @@ and type_exp env e =
       M.E_split (ce, e, ec_l), ty
 
     | E_bmerge (ce, e1, e2) ->
-      let ce, ty = type_clock_exp env ce in
+      let ty = fresh_ty () in
+      let ce = expect_clock_exp ce.ce_loc env ty ce in
       let e1 = expect_exp loc env ty e1 in
       let e2 = expect_exp loc env ty e2 in
       M.E_bmerge (ce, e1, e2), ty
 
     | E_merge (ce, c_l) ->
-      let ce, ty = type_clock_exp env ce in
+      let ty = fresh_ty () in
+      let ce = expect_clock_exp ce.ce_loc env ty ce in
       let c_l =
         List.map
           (fun ec ->

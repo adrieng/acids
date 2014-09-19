@@ -72,6 +72,8 @@ let op_name name =
       "(-.)", "fsub";
       "(*.)", "fmult";
       "(/.)", "fdiv";
+      "(&&)", "and";
+      "(||)", "or";
     ]
   in
   try List.assoc name table with Not_found -> name

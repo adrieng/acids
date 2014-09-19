@@ -307,6 +307,18 @@ static inline void Rt_builtin_eq_float(int n, float *x, float *y, int *r) {
     }
 }
 
+static inline void Rt_builtin_and(int x, int y, int *r) {
+    *r = x && y;
+}
+
+static inline void Rt_builtin_or(int x, int y, int *r) {
+    *r = x || y;
+}
+
+static inline void Rt_builtin_xor(int x, int y, int *r) {
+    *r = x ^ y;
+}
+
 /******************************************************************************/
 /* Reflection stuff                                                           */
 /******************************************************************************/

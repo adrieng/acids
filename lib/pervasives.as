@@ -47,6 +47,23 @@ val ( > )
   is ('c * 'c) -> 'c
   :: ('a * 'a) -> 'a
 
+(* Boolean operators *)
+
+val ( && )
+  : (bool * bool) -> bool
+  is ('c * 'c) -> 'c
+  :: ('a * 'a) -> 'a
+
+val ( || )
+  : (bool * bool) -> bool
+  is ('c * 'c) -> 'c
+  :: ('a * 'a) -> 'a
+
+val xor
+  : (bool * bool) -> bool
+  is ('c * 'c) -> 'c
+  :: ('a * 'a) -> 'a
+
 (* Floating-point operators *)
 
 val ( +. )

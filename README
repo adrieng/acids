@@ -20,8 +20,9 @@ USING THE COMPILER
 The Acid Synchrone compiler is written in OCaml. To compile it, you need:
 * the OCaml compiler and run-time system: http://caml.inria.fr
 * the OCamlGraph library: http://ocamlgraph.lri.fr
+* the Menhir parser generator: http://pauillac.inria.fr/~fpottier/menhir/
 
-I strongly recommend the use of FindLib to handle OCamlGraph.
+I strongly recommend the use of FindLib to handle OCamlGraph and Menhir.
 
 Additionaly, to use it to its full extent, you need a linear programming
 solver. Currently, only the GNU Linear Programming Kit is supported.
@@ -36,13 +37,14 @@ The directory layout of Acid Synchrone is as follows:
 
 - base/ holds a library of basic modules used in the project
 
-- resolution/ holds a library dedicated to the resolution of sampling problems on
-  ultimately periodic integer words.
+- resolution/ holds a library dedicated to the resolution of sampling problems
+  on ultimately periodic integer words.
 
-- quicksolve/ holds a small stand-alone utility using the abovementioned library,  see tests/sys/ its the textual input format.
+- quicksolve/ holds a small stand-alone utility using the abovementioned
+  library, see tests/sys/ its the textual input format.
 
 - compiler/ holds the... compiler (doh!)
-  - frontend/ is dedicated from syntactic analysis to clocking
+  - frontend/ is mainly dedicated to clock type inference
     - asts/ holds the various asts of the front-end. The main AST is a functor,
       enabling reuse and type-safety through the front-end
     - parsing/ holds the parser and lexer
@@ -50,7 +52,14 @@ The directory layout of Acid Synchrone is as follows:
       typing.
     - misc_passes/ holds miscellaneous passes.
 
-Code generation features are not yet implemented.
+
+  - middleend/ is responsible on optimizations of the NIR language, an n-ary IR
+    with only three-address code.This part handles scheduling and (one day)
+    data-flow optimizations.
+
+  - backend/ is responsible for the translation to imperative code. Currently,
+    this may generate (poor and ugly) C code for a subset of well-typed AcidS
+    programs.
 
 ACKNOWLEDGMENTS
 ===============

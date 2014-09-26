@@ -14,21 +14,26 @@ EXAMPLES
 
 See the examples/ directory.
 
-USING THE COMPILER
-==================
+BUILDING THE COMPILER
+=====================
 
 The Acid Synchrone compiler is written in OCaml. To compile it, you need:
 * the OCaml compiler and run-time system: http://caml.inria.fr
 * the OCamlGraph library: http://ocamlgraph.lri.fr
 * the Menhir parser generator: http://pauillac.inria.fr/~fpottier/menhir/
 
-I strongly recommend the use of FindLib to handle OCamlGraph and Menhir.
-
-Additionaly, to use it to its full extent, you need a linear programming
-solver. Currently, only the GNU Linear Programming Kit is supported.
+(I strongly recommend the use of FindLib to handle OCamlGraph and Menhir. Note
+that "opam install menhir ocamlgraph" should do the trick.)
 
 To compile, just run "make" in the top-level directory, and add this directory
 to your path.
+
+RUNNING THE COMPILER
+====================
+
+To use the compiler to its full extent, you need a linear programming
+solver. Currently, only the GNU Linear Programming Kit is supported.
+
 
 ARCHITECTURE
 ============
@@ -52,7 +57,6 @@ The directory layout of Acid Synchrone is as follows:
       typing.
     - misc_passes/ holds miscellaneous passes.
 
-
   - middleend/ is responsible on optimizations of the NIR language, an n-ary IR
     with only three-address code.This part handles scheduling and (one day)
     data-flow optimizations.
@@ -61,13 +65,38 @@ The directory layout of Acid Synchrone is as follows:
     this may generate (poor and ugly) C code for a subset of well-typed AcidS
     programs.
 
+LIMITATIONS
+===========
+
+The current features are *not* supported, and will only be available once the
+second version of the compiler is done:
+
+- Hardware (VHDL) generation
+- Integrated clocking and productivity analysis (the current compiler may infer
+  clock types that make programs non-productive!)
+- Higher-order functions
+- Code generation for data-type polymorphic functions
+- Any optimization whatsoever
+
+More generally, you can expect the compiler to be buggy and unpredictable.
+
 ACKNOWLEDGMENTS
 ===============
 
-This project uses the OCaml Union-Find implementation from Pottier, Rémy and
-Régis-Gianas. See base/UnionFind.ml{,i}.
+This project relies on numerous tools, libraries and ideas. Some
+acknowledgments:
 
-Its test infrastructure re-uses code from Plateau and Mandel's Lucy-n
-project. See test/tools.
+- F. Pottier and Y. Régis-Gianas for Menhir
+
+- S. Conchon, J.-C. Filliâtre and J. Signoles for OcamlGraph
+
+- F. Pottier, D. Rémy and Y. Régis-Gianas for their UnionFind implementation
+  (see base/UnionFind.ml{,i} in the source)
+
+- L. Mandel and F. Plateau for Lucy-n in general and its testing infrastructure
+  in particular (see test/tools).
+
+- P. Caspi, N. Halbwachs, M. Pouzet, P. Raymond and others for their general
+  work on the design and implementation of synchronous functional languages.
 
 -- Adrien Guatto <adrien.guatto@laposte.net>

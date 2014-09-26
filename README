@@ -34,7 +34,6 @@ RUNNING THE COMPILER
 To use the compiler to its full extent, you need a linear programming
 solver. Currently, only the GNU Linear Programming Kit is supported.
 
-
 ARCHITECTURE
 ============
 
@@ -68,7 +67,7 @@ The directory layout of Acid Synchrone is as follows:
 LIMITATIONS
 ===========
 
-The current features are *not* supported, and will only be available once the
+The following features are *not* supported, and will only be available once the
 second version of the compiler is done:
 
 - Hardware (VHDL) generation

@@ -13,6 +13,18 @@ pervasives.aso through the -I command-line switch.
 
 Some Acid Synchrone source code can be found in the examples/ directory.
 
+The following features are *not* supported, and will only be available once the
+second version of the compiler is done:
+
+- Hardware (VHDL) generation
+- Integrated clocking and productivity analysis (the current compiler may infer
+  clock types that make programs non-productive!)
+- Higher-order functions
+- Code generation for data-type polymorphic functions
+- Any optimization whatsoever
+
+More generally, you can expect the compiler to be buggy and unpredictable.
+
 Do not hesitate to e-mail me questions and remarks. The full source code will be
 available soon.
 

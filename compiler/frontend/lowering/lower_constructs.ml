@@ -105,7 +105,7 @@ let fby_translation find_pword e1 e2 =
   merge ce (e1 when ce) (e2 when (ce = false))
 *)
 
-let merge_valof_translation find_pword ce e1 e2 =
+let if_valof_translation find_pword ce e1 e2 =
   make_exp_st
     e1.e_info#ei_data
     ce.ce_info#ci_clock
@@ -121,7 +121,7 @@ let merge_valof_translation find_pword ce e1 e2 =
   with if_cnd a fresh identifier
 *)
 
-let merge_translation find_pword e1 e2 e3 =
+let if_translation find_pword e1 e2 e3 =
   let cnd = Ident.make_internal if_var_prefix in
 
   let base_st = Clock_types.get_st e1.e_info#ei_clock in
@@ -129,7 +129,7 @@ let merge_translation find_pword e1 e2 e3 =
   let block =
     let eq =
       make_plain_eq
-        (make_pat e1.e_info#ei_data e1.e_info#ei_clock (P_var cnd))
+       (make_pat e1.e_info#ei_data e1.e_info#ei_clock (P_var cnd))
         e1
     in
     make_block [eq]
@@ -141,7 +141,7 @@ let merge_translation find_pword e1 e2 e3 =
         base_st
         (Ce_condvar cnd)
     in
-    merge_valof_translation find_pword ce e2 e3
+    if_valof_translation find_pword ce e2 e3
   in
 
   make_exp_st e2.e_info#ei_data base_st (E_where (e_merge, block))
@@ -204,8 +204,8 @@ let rec lower_exp env e =
       let e =
         (
           match e1.e_desc with
-          | E_valof ce -> merge_valof_translation find_pword ce e2 e3
-          | _ -> merge_translation find_pword e1 e2 e3
+          | E_valof ce -> if_valof_translation find_pword ce e2 e3
+          | _ -> if_translation find_pword e1 e2 e3
         )
       in
       e.e_desc

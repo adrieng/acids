@@ -1,4 +1,4 @@
 <**/parser.ml>: parser, package(menhirLib)
-<**/*.{ml,mli}>: annot, debug, package(ocamlgraph)
+<**/*.{ml,mli}>: annot, debug, package(menhirLib), package(ocamlgraph)
 <**/*.{byte,native}>: use_asc_base, use_asc_mllp, use_asc_resolution, use_unix, use_str, package(menhirLib), package(ocamlgraph), debug
 "base" or "mllp" or "resolution": include

@@ -19,8 +19,9 @@ OCAMLBUILDOPTS=-j $(NCPU) -use-menhir -use-ocamlfind -classic-display
 
 COMPILER=compiler/asc.$(PREF)
 SOLVER=quicksolve/solve.$(PREF)
+LUX=lux/lux.$(PREF)
 
-TARGETS=$(SOLVER) $(COMPILER)
+TARGETS=$(SOLVER) $(COMPILER) $(LUX)
 
 RELEASE_DIR=acids_release
 

@@ -34,7 +34,7 @@ let print_word fmt w =
     then Int.print fmt i
     else Format.fprintf fmt "%a^%a" Int.print i Int.print k
   in
-  Format.fprintf fmt "@[%a@]" (Utils.print_list_r print "") w.desc
+  Format.fprintf fmt "%a" (Utils.print_list_r print "") w.desc
 
 let print_pword fmt { u = u; v = v; } =
   Format.fprintf fmt "%a%s(%a)"

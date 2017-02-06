@@ -8,6 +8,8 @@ Acid Synchrone programs handle infinite streams of values. The compiler employs
 a dedicated static analysis (the clock calculus) to reject ill-behaved
 programs and generate efficient code for well-behaved ones.
 
+The compiler and related tools are released under GPLv3.
+
 # Examples
 
 See the examples/ directory.

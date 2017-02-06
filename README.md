@@ -1,21 +1,18 @@
-ACID SYNCHRONE
-==============
+# Acid Synchrone
 
 This project is a compiler for Acid Synchrone, an experimental first-order
 functional programming language. It is a domain-specific language designed to
 ease the implementation of high-performance reactive systems.
 
 Acid Synchrone programs handle infinite streams of values. The compiler employs
-a sophisticated static analysis (the clock calculus) to reject ill-behaved
+a dedicated static analysis (the clock calculus) to reject ill-behaved
 programs and generate efficient code for well-behaved ones.
 
-EXAMPLES
-========
+# Examples
 
 See the examples/ directory.
 
-BUILDING THE COMPILER
-=====================
+# Building the compiler
 
 The Acid Synchrone compiler is written in OCaml. To compile it, you need:
 * the OCaml compiler and run-time system: http://caml.inria.fr
@@ -28,14 +25,12 @@ that "opam install menhir ocamlgraph" should do the trick.)
 To compile, just run "make" in the top-level directory, and add this directory
 to your path.
 
-RUNNING THE COMPILER
-====================
+# Running the compiler
 
 To use the compiler to its full extent, you need a linear programming
 solver. Currently, only the GNU Linear Programming Kit is supported.
 
-ARCHITECTURE
-============
+# Architecture
 
 The directory layout of Acid Synchrone is as follows:
 
@@ -64,8 +59,7 @@ The directory layout of Acid Synchrone is as follows:
     this may generate (poor and ugly) C code for a subset of well-typed AcidS
     programs.
 
-LIMITATIONS
-===========
+# Limitations
 
 The following features are *not* supported, and will only be available once the
 second version of the compiler is done:
@@ -79,8 +73,7 @@ second version of the compiler is done:
 
 More generally, you can expect the compiler to be buggy and unpredictable.
 
-ACKNOWLEDGMENTS
-===============
+# Acknowledgments
 
 This project relies on numerous tools, libraries and ideas. Some
 acknowledgments:
